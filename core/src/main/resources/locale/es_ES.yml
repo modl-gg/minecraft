@@ -1,0 +1,71 @@
+# MODL Minecraft Plugin - Spanish Locale Example
+# This demonstrates how to create custom locales
+
+# General Messages
+messages:
+  prefix: "&8[&6MODL&8]&r "
+  cannot_report_self: "&c¡No puedes reportarte a ti mismo!"
+  submitting: "&eEnviando {type}..."
+  creating: "&eCreando {type}..."
+  success: "&a¡{type} enviado exitosamente!"
+  created: "&a¡{type} creado exitosamente!"
+  ticket_id: "&7ID del Ticket: &f{ticketId}"
+  view_ticket: "&7Ver tu ticket: &b{url}"
+  complete_form: "&7Completa tu {type}: &b{url}"
+  evidence_note: "&7Puedes agregar evidencia adicional a tu ticket si es necesario."
+  form_title_note: "&7Puedes cambiar el título '&f{title}&7' en el formulario antes de enviar."
+  failed_submit: "&cError al enviar {type}: {error}"
+  failed_create: "&cError al crear {type}: {error}"
+  try_again: "&cInténtalo de nuevo más tarde o contacta al staff directamente."
+  unknown_error: "Error desconocido"
+  no_details: "Sin detalles adicionales proporcionados"
+
+# Report GUI Configuration
+report_gui:
+  title: "&4&lReportar {player}"
+  inventory_size: 27
+  
+  categories:
+    chat_violation:
+      item: "WRITABLE_BOOK"
+      slot: 1
+      name: "&c&lViolación de Chat"
+      lore:
+        - "&7Reporta mensajes inapropiados de chat"
+        - "&7o lenguaje usado por este jugador."
+        - ""
+        - "&e&lClick para reportar {player}"
+      report_type: "chat"
+      subject: "Violación de Chat"
+      
+    username:
+      item: "NAME_TAG"
+      slot: 2
+      name: "&6&lNombre de Usuario Inapropiado"
+      lore:
+        - "&7Reporta un nombre de usuario"
+        - "&7inapropiado u ofensivo."
+        - ""
+        - "&e&lClick para reportar {player}"
+      report_type: "player"
+      subject: "Nombre de Usuario Inapropiado"
+      
+  close_button:
+    item: "BARRIER"
+    slot: 22
+    name: "&c&lCerrar Menú"
+    lore: []
+
+# Form Data
+form_data:
+  server_name: "Servidor de Minecraft"
+  automatic_chat_log: true
+
+# Tags in Spanish
+tags:
+  player_report: "reporte-jugador"
+  chat_report: "reporte-chat"
+  bug_report: "reporte-bug"
+  support: "soporte"
+  minecraft: "minecraft"
+  auto_logs: "logs-automaticos"

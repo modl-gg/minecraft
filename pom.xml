@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>gg.modl</groupId>
+    <artifactId>modl-minecraft</artifactId>
+    <packaging>pom</packaging>
+    <version>1.0-SNAPSHOT</version>
+
+    <modules>
+        <module>api</module>
+        <module>core</module>
+        <module>distribution</module>
+        <module>platforms</module>
+    </modules>
+
+    <name>modl-minecraft</name>
+    <description>First-class moderation and support systems</description>
+    <url>https://github.com/modl-gg/minecraft</url>
+    <inceptionYear>2025</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>GNU Affero General Public License, Version 3</name>
+            <url>https://www.gnu.org/licenses/agpl-3.0-standalone.html</url>
+            <distribution>repo</distribution>
+            <comments>Strong copyleft license, commonly known as the GNU AGPL v3</comments>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>tigerbong</id>
+            <name>Theodore Bong</name>
+            <url>https://www.bongbong.com/</url>
+            <roles>
+                <role>creator</role>
+                <role>developer</role>
+            </roles>
+            <timezone>America/Los_Angeles</timezone>
+        </developer>
+        <developer>
+            <id>byteful</id>
+            <url>https://www.byteful.me/</url>
+            <roles>
+                <role>creator</role>
+                <role>developer</role>
+            </roles>
+            <timezone>America/Chicago</timezone>
+        </developer>
+    </developers>
+
+    <properties>
+        <maven.compiler.source>18</maven.compiler.source>
+        <maven.compiler.target>18</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Internal dependencies -->
+        <protocolize.version>2.4.2</protocolize.version>
+        <cirrus.version>3.0.0-SNAPSHOT</cirrus.version>
+        <acf.version>0.5.1-SNAPSHOT</acf.version>
+        <lombok.version>1.18.34</lombok.version>
+        <gson.version>2.12.1</gson.version>
+        <slf4j.version>2.0.16</slf4j.version>
+        <jda.version>5.2.1</jda.version>
+        <mongo.version>5.2.1</mongo.version>
+        <snakeyaml.version>2.3</snakeyaml.version>
+        <annotations.version>13.0</annotations.version>
+
+        <!-- Platform dependencies -->
+        <bungeecord.version>1.16-R0.4</bungeecord.version>
+        <spigot.version>1.8.8-R0.1-20160221.082514-43</spigot.version>
+        <velocity.version>3.4.0-SNAPSHOT</velocity.version>
+
+        <!-- Plugin variables -->
+        <plugin.id>modl</plugin.id>
+        <plugin.name>modl</plugin.name>
+        <plugin.version>${project.version}-${plugin.timestamp}</plugin.version>
+        <plugin.author>tigerbong, byteful</plugin.author>
+        <plugin.url>https://github.com/modl-gg/minecraft</plugin.url>
+        <plugin.description>${project.description}</plugin.description>
+        <plugin.timestamp>${maven.build.timestamp}</plugin.timestamp>
+
+        <!-- Skip javadocs and sources by default -->
+        <common-parent.skip-javadoc>true</common-parent.skip-javadoc>
+        <common-parent.skip-sources>true</common-parent.skip-sources>
+    </properties>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <release>17</release>
+                        <testRelease>17</testRelease>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <executions>
+                        <execution>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>shade</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <createDependencyReducedPom>false</createDependencyReducedPom>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>gg.modl</groupId>
+                <artifactId>api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>gg.modl</groupId>
+                <artifactId>core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>gg.modl</groupId>
+                <artifactId>bungee</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>gg.modl</groupId>
+                <artifactId>spigot</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>gg.modl</groupId>
+                <artifactId>velocity</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.simplix</groupId>
+                <artifactId>protocolize-api</artifactId>
+                <version>${protocolize.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.simplix.cirrus</groupId>
+                <artifactId>cirrus-api</artifactId>
+                <version>${cirrus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.simplix.cirrus</groupId>
+                <artifactId>cirrus-velocity</artifactId>
+                <version>${cirrus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.simplix.cirrus</groupId>
+                <artifactId>cirrus-spigot</artifactId>
+                <version>${cirrus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.simplix.cirrus</groupId>
+                <artifactId>cirrus-bungeecord</artifactId>
+                <version>${cirrus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>co.aikar</groupId>
+                <artifactId>acf-core</artifactId>
+                <version>${acf.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>co.aikar</groupId>
+                <artifactId>acf-bukkit</artifactId>
+                <version>${acf.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>co.aikar</groupId>
+                <artifactId>acf-velocity</artifactId>
+                <version>${acf.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>co.aikar</groupId>
+                <artifactId>acf-bungee</artifactId>
+                <version>${acf.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>${snakeyaml.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>${gson.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>${annotations.version}</version>
+        </dependency>
+
+    </dependencies>
+
+    <repositories>
+        <repository>
+            <id>aikar</id>
+            <url>https://repo.aikar.co/content/groups/aikar/</url>
+        </repository>
+        <repository>
+            <id>exceptionflug</id>
+            <url>https://mvn.exceptionflug.de/repository/exceptionflug-public/</url>
+        </repository>
+        <repository>
+            <id>sonatype-oss</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </repository>
+        <repository>
+            <id>sonatype</id>
+            <url>https://repository.sonatype.org/content/groups/public/</url>
+        </repository>
+    </repositories>
+
+</project>

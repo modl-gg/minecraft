@@ -1,0 +1,420 @@
+# MODL Minecraft Plugin - English Locale
+# Color codes: Use & for color codes (e.g., &c for red, &a for green)
+# Placeholders: {player}, {reason}, {ticketId}, {url}, {title}
+
+# General Messages
+messages:
+  prefix: "&8[&6MODL&8]&r "
+  cannot_report_self: "&cYou cannot report yourself!"
+  submitting: "&eSubmitting {type}..."
+  creating: "&eCreating {type}..."
+  success: "&a{type} submitted successfully!"
+  created: "&a{type} created successfully!"
+  ticket_id: "&7Ticket ID: &f{ticketId}"
+  view_ticket: "&7View your ticket: &b{url}"
+  complete_form: "&7Complete your {type}: &b{url}"
+  evidence_note: "&7You can add additional evidence to your ticket if needed."
+  form_title_note: "&7You can change the title '&f{title}&7' in the form before submitting."
+  failed_submit: "&cFailed to submit {type}: {error}"
+  failed_create: "&cFailed to create {type}: {error}"
+  try_again: "&cPlease try again later or contact staff directly."
+  unknown_error: "Unknown error"
+  no_details: "No additional details provided"
+  no_chat_logs_available: "&cNo recent chat messages found for {player}. Cannot create chat report without chat logs."
+  view_ticket_label: "View your ticket"
+  complete_form_label: "Complete your {type}"
+  console_ticket_url: "&6{message}: &b{url}"
+
+# Command-based ticket system (GUI removed)
+
+# Command Help Messages
+commands:
+  report:
+    description: "Report a player with a reason (creates finished ticket)"
+    usage: "/report <player> <reason...>"
+    
+  chatreport:
+    description: "Report a player for chat violations (automatically includes chat logs)"
+    usage: "/chatreport <player>"
+    
+  apply:
+    description: "Submit a staff application (creates unfinished ticket with web form)"
+    usage: "/apply"
+    
+  bugreport:
+    description: "Report a bug (creates unfinished report with web form)"
+    usage: "/bugreport <description...>"
+    
+  support:
+    description: "Request support (creates unfinished request with web form)"
+    usage: "/support <description...>"
+
+# Chat Log Messages
+chat_logs:
+  placeholder: "(Recent chat messages would be captured here)"
+  system_note: "Chat logs automatically saved for review"
+  auto_reason: "Inappropriate chat"
+
+# Form Data
+form_data:
+  server_name: "Minecraft Server"
+  automatic_chat_log: true
+
+# Ticket Tags
+tags:
+  player_report: "player-report"
+  chat_report: "chat-report"
+  bug_report: "bug-report"
+  support: "support"
+  minecraft: "minecraft"
+  auto_logs: "auto-logs"
+
+# Ticket Priorities
+priorities:
+  chat: "high"
+  player: "medium"
+  bug: "medium"
+  support: "low"
+
+# Punishment System Messages
+# Available variables: {player}, {target}, {reason}, {duration}, {type}, {id}, {issuer}, {punishment_type}, {expiration}, {server}
+# General punishment messages
+general:
+  # Permission messages
+  no_permission: "&cYou don't have permission to use this command."
+  no_permission_punishment: "&cYou don't have permission to apply '{type}' punishments."
+  no_permission_reload: "&cYou don't have permission to reload punishment data."
+  invalid_syntax: "&cInvalid command syntax. Please check your usage."
+  
+  # Error messages
+  player_not_found: "&cPlayer not found."
+  punishment_error: "&cError creating punishment: {error}"
+  punishment_types_not_loaded: "&cPunishment types not loaded. Try &f/modl reload&c or contact an administrator."
+  invalid_punishment_type: "&cInvalid punishment type. Available types: {types}"
+  invalid_duration: "&cInvalid duration format. Examples: 1d, 2h, 30m, 1w"
+  cannot_punish_self: "&cYou cannot punish yourself."
+  target_immune: "&cYou cannot punish {target} as they have immunity."
+  
+  # Success messages
+  punishment_issued: "&aSuccessfully issued {type} for &f{target}&a."
+  punishment_issued_duration: "&aSuccessfully issued {type} for &f{target}&a ({duration})."
+  
+  # Staff notifications
+  staff_notification: "&7&o[{issuer}: created {type} for {target}&7&o]"
+  
+  # Reload messages
+  reloading: "&eReloading punishment types and staff permissions..."
+  reload_success_types: "&aSuccessfully refreshed {count} punishment types."
+  reload_success_permissions: "&aSuccessfully loaded permissions for {count} staff members."
+  reload_error: "&cError reloading: {error}"
+
+# Reload command messages
+reload:
+  invalid_component: "&cInvalid component '{component}'. Valid options: {valid}"
+
+# Punishment type validation messages
+validation:
+  single_severity_error: "&cCannot set severity on single-severity punishment type '{type}'. This punishment type has only one severity level."
+  permanent_skin_change_error: "&cCannot set severity on permanent until skin change punishment type '{type}'."
+  permanent_name_change_error: "&cCannot set severity on permanent until name change punishment type '{type}'."
+  alt_blocking_not_supported: "&cAlt-blocking flag is not supported for punishment type '{type}'."
+  stat_wiping_not_supported: "&cStat-wiping flag is not supported for punishment type '{type}'."
+
+# Punishment Type Specific Messages
+# Format: punishment_types.ordinal_<ordinal_number>
+# Manual punishment types (ordinals 0-5):
+#   0: Kick, 1: Manual Mute, 2: Manual Ban, 3: Security Ban, 4: Linked Ban, 5: Blacklist
+# Dynamic punishment types start at ordinal 6+
+# 
+# Structure:
+#   public_notification: Single message shown to all players
+#   player_notification: List of strings shown to the punished player (joined by \n)
+#   All placeholders available: {target}, {reason}, {duration}, {expiration}, {description}, {appeal_url}, {id}
+punishment_types:
+  # Manual punishment types
+  ordinal_0:  # Kick
+    public_notification: "&c{target} has been kicked from the server."
+    player_notification:
+      - "&cYou have been kicked from the server."
+      - "&cReason: &f{reason}"
+      - "&7Duration: &f{duration}"
+      - "&7Punishment ID: &f{id}"
+      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
+      
+  ordinal_1:  # Manual Mute
+    public_notification: "&c{target} has been muted."
+    player_notification:
+      - "&cYou have been muted."
+      - "&cReason: &f{reason}"
+      - "&7Duration: &f{duration}"
+      - "&7Punishment ID: &f{id}"
+      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
+      
+  ordinal_2:  # Manual Ban
+    public_notification: "&c{target} has been banned from the server."
+    player_notification:
+      - "&cYou have been banned from the server."
+      - "&cReason: &f{reason}"
+      - "&7Duration: &f{duration}"
+      - "&7Punishment ID: &f{id}"
+      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
+      
+  ordinal_3:  # Security Ban
+    public_notification: "&c{target} has been security banned for account protection."
+    player_notification:
+      - "&cYou have been security banned for account protection."
+      - "&cReason: &f{reason}"
+      - "&7Punishment ID: &f{id}"
+      - "&7This ban helps protect your account security."
+      - "&7Please contact staff if you believe this is an error."
+      
+  ordinal_4:  # Linked Ban
+    public_notification: "&c{target} has been banned due to account linking violations."
+    player_notification:
+      - "&cYou have been banned due to account linking violations."
+      - "&cReason: &f{reason}"
+      - "&7Punishment ID: &f{id}"
+      - "&7This ban is associated with another account on your network."
+      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
+      
+  ordinal_5:  # Blacklist
+    public_notification: "&c{target} has been blacklisted from the network."
+    player_notification:
+      - "&cYou have been blacklisted from this network."
+      - "&cReason: &f{reason}"
+      - "&7Punishment ID: &f{id}"
+      - "&7This is a permanent network-wide punishment."
+      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
+      
+  # Example dynamic punishment types (ordinal 6+)
+  ordinal_6:  # Example: Chat Spam
+    public_notification: "&c{target} has been punished for {description}."
+    player_notification:
+      - "&cYou have been punished for {description}."
+      - "&cReason: &f{reason}"
+      - "&7Duration: &f{duration}"
+      - "&7Punishment ID: &f{id}"
+      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
+      
+  ordinal_7:  # Example: Inappropriate Language  
+    public_notification: "&c{target} has been punished for {description}."
+    player_notification:
+      - "&cYou have been punished for {description}."
+      - "&cReason: &f{reason}"
+      - "&7Duration: &f{duration}"
+      - "&7Punishment ID: &f{id}"
+      - "&7Please review our chat rules to avoid future punishments."
+      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
+      
+  ordinal_8:  # Example: Griefing
+    public_notification: "&c{target} has been punished for {description}."
+    player_notification:
+      - "&cYou have been punished for {description}."
+      - "&cReason: &f{reason}"
+      - "&7Duration: &f{duration}"
+      - "&7Punishment ID: &f{id}"
+      - "&7Griefing damages the experience for other players."
+      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
+
+# Manual command messages
+commands:
+  # Existing report commands...
+  report:
+    description: "Report a player - opens a GUI with customizable options"
+    usage: "/report <player> [reason]"
+    
+  chatreport:
+    description: "Report a player for inappropriate chat and save chat logs"
+    usage: "/chatreport <player> [reason]"
+    
+  bugreport:
+    description: "Report a bug - creates an unfinished report with a form link"
+    usage: "/bugreport <title>"
+    
+  support:
+    description: "Request support - creates an unfinished request with a form link"
+    usage: "/support <title>"
+    
+  # New punishment commands
+  punish:
+    description: "Issue a dynamic punishment based on player history"
+    usage: "/punish <player> <type> [reason...] [flags]"
+    
+  ban:
+    description: "Ban a player from the server"
+    usage: "/ban <player> [duration] [reason...] [flags]"
+    
+  mute:
+    description: "Mute a player"
+    usage: "/mute <player> [duration] [reason...] [flags]"
+    
+  kick:
+    description: "Kick a player from the server"
+    usage: "/kick <player> [reason...] [flags]"
+    
+  blacklist:
+    description: "Blacklist a player from the network"
+    usage: "/blacklist <player> [reason...] [flags]"
+    
+  pardon:
+    description: "Pardon a player's ban by name or punishment ID (for bans only)"
+    usage: "/pardon <player/punishment_id> [reason...]"
+    
+  unban:
+    description: "Unban a player by name or punishment ID"
+    usage: "/unban <player/punishment_id> [reason...]"
+    
+  unmute:
+    description: "Unmute a player by name or punishment ID"
+    usage: "/unmute <player/punishment_id> [reason...]"
+    
+  modl:
+    reload:
+      description: "Reload punishment types and staff permissions"
+      usage: "/modl reload"
+
+# Configuration
+config:
+  appeal_url: "https://appeals.example.com"
+  default_reason: "No reason specified"
+  date_format: "MMM dd, yyyy 'at' HH:mm"
+  duration_format:
+    days: "{days}d"
+    hours: "{hours}h" 
+    minutes: "{minutes}m"
+    seconds: "{seconds}s"
+    permanent: "permanent"
+  
+  # IAmMuted command cooldown in minutes
+  iammuted_cooldown_minutes: 5
+  
+  # Commands that are blocked when a player is muted (in addition to chat)
+  blocked_by_mute:
+    - "msg"
+    - "tell"
+    - "whisper"
+    - "w"
+    - "m"
+    - "message"
+    - "reply"
+    - "r"
+    - "mail"
+    - "email"
+    - "helpop"
+    - "ac"
+    - "adminchat"
+    - "shout"
+    - "broadcast"
+    - "announce"
+
+# Notifications
+notification:
+  ticket_reply: "&6[Ticket] &f{message}"
+  ticket_reply_with_link: "&6[Ticket] &f{message} &b[Click to view]"
+  ticket_click_action: "&7Click to view ticket {ticketId}"
+  modl_prefix: "&6[MODL] &f{message}"
+  ticket_prefix: "&6[Ticket] &f{message}"
+
+# IAmMuted Command Messages
+iammuted:
+  only_players: "&cThis command can only be used by players."
+  not_muted: "&cYou can only use this command while you are muted."
+  player_not_found: "&cPlayer not found."
+  player_not_online: "&cThat player is not online."
+  cannot_message_self: "&cYou cannot send this message to yourself."
+  cooldown_message: "&cYou must wait {minutes} minutes and {seconds} seconds before using this command again."
+  notification_to_target: "&6[Muted Player] &f{sender} &7is currently muted and cannot respond to chat."
+  custom_message_prefix: "&7Message: &f"
+  success_message: "&aYour muted status has been communicated to &f{target}&a."
+
+# Player Lookup Messages
+player_lookup:
+  permission_denied: "&cYou must be a staff member to use this command."
+  looking_up: "&7Looking up player &e{player}&7..."
+  not_found: "&cPlayer not found: &e{player}"
+  error: "&cError looking up player: {error}"
+  header: "&8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  footer: "&8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  title: "&6&lPlayer Lookup: &e{username}"
+  uuid: "&7UUID: &f{uuid}"
+  currently_banned: "&7Currently Banned: {status}"
+  currently_muted: "&7Currently Muted: {status}"
+  staff_notes_header: "&7Staff Notes:"
+  staff_note_format: "  &8• &f{text} &7- {issuer}"
+  no_staff_notes: "  &8No staff notes"
+  total_punishments: "&7Total Punishments: &f{count}"
+  linked_accounts_header: "&7Linked Accounts:"
+  linked_account_format: "  &8• &f{username}{status}"
+  linked_account_more: "  &8... and {count} more"
+  no_linked_accounts: "  &8No linked accounts"
+  total_tickets: "&7Total Tickets: &f{count}"
+  profile_fallback: "&6Profile: &b{url}"
+  
+  # Status messages for linked accounts
+  status:
+    banned_and_muted: " &c(currently banned & muted)"
+    banned: " &c(currently banned)"
+    muted: " &e(currently muted)"
+    no_punishments: " &7(no active punishments)"
+
+# Constants Messages
+constants:
+  mojang_api_no_player: "&cNo player with that username exists (queried Mojang API)"
+  never_joined_server: "&cNo player with that username has never joined the server."
+
+# Punishment Command Messages
+punishment_commands:
+  invalid_severity: "&cInvalid severity. Valid severities: low, regular, severe"
+  warning_message: "&c{username} has been {punishment_type}."
+
+# Punishment notification defaults (fallback messages)
+punishments:
+  player_notifications:
+    default: "&cYou have been punished. Reason: {reason}. If you believe this is an error, you can appeal at: {appeal_url}"
+  public_notifications:
+    default: "&c{target} has been punished by staff."
+
+# Punishment System Messages (Player-facing)
+    
+# Missing Locale Fallbacks
+locale:
+  missing: "&cMissing locale: {path}"
+  missing_list: "&cMissing locale list: {path}"
+
+# Console/Debug Messages (for consistency)
+console:
+  punishment_types_loaded: "[MODL] Loaded {count} punishment types from API"
+  punishment_types_failed: "[MODL] Failed to load punishment types from API: {status}"
+  punishment_types_error: "[MODL] Error loading punishment types: {error}"
+  permissions_loaded: "[MODL] Loaded permissions for {count} staff members"
+  permissions_error: "[MODL] Error loading staff permissions: {error}"
+  config_error: "Failed to set config option: {key}: {value}"
+  config_empty: "Configuration file is empty, using defaults"
+  locale_resource_missing: "Default locale resource not found in JAR"
+
+# API Error Handling
+api_errors:
+  panel_restarting: "&cThe panel is currently restarting. Please try that again in 10 seconds."
+  panel_unavailable: "&cThe panel is temporarily unavailable. Please try again shortly."
+  connection_failed: "&cConnection to panel failed. Please try again in a moment."
+  ban_check_failed: "&cUnable to verify ban status. Login temporarily restricted for safety."
+  
+  # Logging messages (for console)
+  log:
+    panel_502: "[MODL] Panel returned 502 (Bad Gateway) - likely restarting. Command: {command}"
+    panel_502_login: "[MODL] Panel 502 during login check for {player} - blocking login for safety"
+    panel_502_sync: "[MODL] Panel 502 during sync - will retry on next cycle"
+    panel_502_command: "[MODL] Panel 502 during {command} execution - user notified to retry"
+
+# Pardon Command Messages
+pardon:
+  processing_id: "&7Processing pardon for punishment ID: &e{id}&7..."
+  processing_player: "&7Processing pardon for player: &e{player}&7..."
+  success_id: "&aSuccessfully pardoned punishment &e#{id}&a."
+  success_player: "&aSuccessfully pardoned {player}'s {type}."
+  error: "&cFailed to pardon: {error}"
+  error_player: "&cFailed to pardon {player}'s {type}: {error}"
+  error_wrong_type_ban: "&cPunishment &e#{id}&c is not a ban. Use &e/pardon {id}&c to pardon any punishment type."
+  error_wrong_type_mute: "&cPunishment &e#{id}&c is not a mute. Use &e/pardon {id}&c to pardon any punishment type."
+  staff_notification_id: "&6[MODL] &f{issuer} &7pardoned punishment &e#{id}"
+  staff_notification_player: "&6[MODL] &f{issuer} &7pardoned {player}'s {type}"
