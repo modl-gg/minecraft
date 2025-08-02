@@ -396,6 +396,7 @@ public class SyncService {
                 Map<String, String> variables = new HashMap<>();
                 variables.put("target", "You");
                 variables.put("reason", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
+                variables.put("description", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
                 variables.put("duration", punishment.isPermanent() ? "permanent" : PunishmentMessages.formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
                 variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
                 variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");

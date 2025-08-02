@@ -34,6 +34,7 @@ public class PunishmentMessages {
         Map<String, String> variables = new HashMap<>();
         variables.put("target", "You");
         variables.put("reason", ban.getDescription() != null ? ban.getDescription() : "No reason specified");
+        variables.put("description", ban.getDescription() != null ? ban.getDescription() : "No reason specified");
         variables.put("duration", ban.isPermanent() ? "permanent" : formatDuration(ban.getExpiration() - System.currentTimeMillis()));
         variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
         variables.put("id", ban.getId() != null ? ban.getId() : "Unknown");
@@ -77,6 +78,7 @@ public class PunishmentMessages {
         Map<String, String> variables = new HashMap<>();
         variables.put("target", "You");
         variables.put("reason", mute.getDescription() != null ? mute.getDescription() : "No reason specified");
+        variables.put("description", mute.getDescription() != null ? mute.getDescription() : "No reason specified");
         variables.put("duration", mute.isPermanent() ? "permanent" : formatDuration(mute.getExpiration() - System.currentTimeMillis()));
         variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
         variables.put("id", mute.getId() != null ? mute.getId() : "Unknown");
@@ -106,6 +108,7 @@ public class PunishmentMessages {
         Map<String, String> variables = new HashMap<>();
         variables.put("target", "You");
         variables.put("reason", kick.getDescription() != null ? kick.getDescription() : "No reason specified");
+        variables.put("description", kick.getDescription() != null ? kick.getDescription() : "No reason specified");
         variables.put("duration", "temporary"); // Kicks are always temporary
         variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
         variables.put("id", kick.getId() != null ? kick.getId() : "Unknown");
@@ -150,6 +153,7 @@ public class PunishmentMessages {
         Map<String, String> variables = new HashMap<>();
         variables.put("target", username);
         variables.put("reason", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
+        variables.put("description", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
         variables.put("duration", punishment.isPermanent() ? "permanent" : formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
         variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
         variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");

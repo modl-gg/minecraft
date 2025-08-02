@@ -141,7 +141,7 @@ public class BlacklistCommand extends BaseCommand {
         Map<String, String> variables = Map.of("target", targetName);
         
         // Use ordinal 5 for blacklist (blacklists are always permanent)
-        return localeManager.getPunishmentTypeMessage(5, "public_notification.permanent", variables);
+        return localeManager.getPunishmentTypeMessage(5, "public_notification", variables);
     }
 
     private static class BlacklistArgs {
