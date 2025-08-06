@@ -268,13 +268,7 @@ public class SyncService {
         
         SyncResponse.SyncData data = response.getData();
         
-        // Log sync data summary
-        logger.info(String.format("Sync response received - Pending: %d, Recently Started: %d, Modified: %d, Notifications: %d", 
-                data.getPendingPunishments().size(), 
-                data.getRecentlyStartedPunishments().size(),
-                data.getRecentlyModifiedPunishments().size(),
-                data.getPlayerNotifications().size()));
-        
+
         // Process pending punishments
         for (SyncResponse.PendingPunishment pending : data.getPendingPunishments()) {
             processPendingPunishment(pending);
