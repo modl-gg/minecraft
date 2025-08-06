@@ -39,6 +39,7 @@ public class JoinListener {
     private final Platform platform;
     private final SyncService syncService;
     private final String panelUrl;
+    private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
 
     @Subscribe
     public void onLogin(LoginEvent event) {
@@ -87,7 +88,7 @@ public class JoinListener {
             
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
-                String banText = PunishmentMessages.formatBanMessage(ban, ((VelocityPlatform) platform).getLocaleManager());
+                String banText = PunishmentMessages.formatBanMessage(ban, localeManager);
                 Component kickMessage = Colors.get(banText);
                 event.setResult(ResultedEvent.ComponentResult.denied(kickMessage));
                 

@@ -51,7 +51,7 @@ public class BungeePlugin extends Plugin {
         ChatMessageCache chatMessageCache = new ChatMessageCache();
 
         this.loader = new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager);
-        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClient(), chatMessageCache, loader.getSyncService(), httpManager.getPanelUrl()));
+        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClient(), chatMessageCache, loader.getSyncService(), httpManager.getPanelUrl(), loader.getLocaleManager()));
 
     }
 

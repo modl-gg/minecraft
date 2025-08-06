@@ -40,6 +40,7 @@ public class BungeeListener implements Listener {
     private final ChatMessageCache chatMessageCache;
     private final SyncService syncService;
     private final String panelUrl;
+    private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(LoginEvent event) {
@@ -76,7 +77,7 @@ public class BungeeListener implements Listener {
             
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
-                String banText = PunishmentMessages.formatBanMessage(ban, platform.getLocaleManager());
+                String banText = PunishmentMessages.formatBanMessage(ban, localeManager);
                 TextComponent kickMessage = new TextComponent(banText);
                 event.setCancelReason(kickMessage);
                 event.setCancelled(true);
@@ -174,7 +175,7 @@ public class BungeeListener implements Listener {
             if (data != null) {
                 String muteMessage;
                 if (data.getSimpleMute() != null) {
-                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), platform.getLocaleManager());
+                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager);
                 } else if (data.getMute() != null) {
                     // Fallback to old punishment format
                     muteMessage = formatMuteMessage(data.getMute());

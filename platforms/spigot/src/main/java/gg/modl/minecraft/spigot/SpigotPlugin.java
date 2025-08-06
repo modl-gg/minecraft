@@ -47,7 +47,7 @@ public class SpigotPlugin extends JavaPlugin {
         ChatMessageCache chatMessageCache = new ChatMessageCache();
 
         this.loader = new PluginLoader(platform, new SpigotCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager);
-        getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClient(), chatMessageCache, loader.getSyncService(), httpManager.getPanelUrl()), this);
+        getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClient(), chatMessageCache, loader.getSyncService(), httpManager.getPanelUrl(), loader.getLocaleManager()), this);
 
     }
 

@@ -38,6 +38,7 @@ public class SpigotListener implements Listener {
     private final ChatMessageCache chatMessageCache;
     private final SyncService syncService;
     private final String panelUrl;
+    private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerLogin(PlayerLoginEvent event) {
@@ -69,7 +70,7 @@ public class SpigotListener implements Listener {
             
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
-                String banMessage = PunishmentMessages.formatBanMessage(ban, platform.getLocaleManager());
+                String banMessage = PunishmentMessages.formatBanMessage(ban, localeManager);
                 event.setResult(PlayerLoginEvent.Result.KICK_BANNED);
                 event.setKickMessage(banMessage);
                 
@@ -157,7 +158,7 @@ public class SpigotListener implements Listener {
             if (data != null) {
                 String muteMessage;
                 if (data.getSimpleMute() != null) {
-                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), platform.getLocaleManager());
+                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager);
                 } else if (data.getMute() != null) {
                     // Fallback to old punishment format
                     muteMessage = formatMuteMessage(data.getMute());

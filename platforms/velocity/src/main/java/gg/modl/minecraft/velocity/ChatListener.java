@@ -13,11 +13,13 @@ public class ChatListener {
     private final VelocityPlatform platform;
     private final Cache cache;
     private final ChatMessageCache chatMessageCache;
+    private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
     
-    public ChatListener(VelocityPlatform platform, Cache cache, ChatMessageCache chatMessageCache) {
+    public ChatListener(VelocityPlatform platform, Cache cache, ChatMessageCache chatMessageCache, gg.modl.minecraft.core.locale.LocaleManager localeManager) {
         this.platform = platform;
         this.cache = cache;
         this.chatMessageCache = chatMessageCache;
+        this.localeManager = localeManager;
     }
     
     @Subscribe
@@ -42,7 +44,7 @@ public class ChatListener {
             if (data != null) {
                 String muteMessage;
                 if (data.getSimpleMute() != null) {
-                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), platform.getLocaleManager());
+                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager);
                 } else if (data.getMute() != null) {
                     // Fallback to old punishment format
                     muteMessage = formatMuteMessage(data.getMute());
