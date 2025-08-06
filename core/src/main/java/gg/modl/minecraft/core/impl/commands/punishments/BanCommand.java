@@ -86,15 +86,7 @@ public class BanCommand extends BaseCommand {
                 .target(targetName)
                 .duration(banArgs.duration)
                 .get("general.punishment_issued"));
-            
-            if (!silentBan) {
-                // Public notification using ordinal-based messaging
-                String publicMessage = getPublicNotificationMessage(targetName, banArgs.duration);
-                if (publicMessage != null) {
-                    platform.broadcast(publicMessage);
-                }
-            }
-            
+
             // Staff notification
             String staffMessage = localeManager.punishment()
                 .issuer(issuerName)

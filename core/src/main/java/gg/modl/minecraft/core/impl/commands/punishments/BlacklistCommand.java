@@ -80,14 +80,7 @@ public class BlacklistCommand extends BaseCommand {
                 .type("blacklist")
                 .target(targetName)
                 .get("general.punishment_issued"));
-            
-            if (!silentBlacklist) {
-                // Public notification using ordinal-based messaging
-                String publicMessage = getPublicNotificationMessage(targetName);
-                if (publicMessage != null) {
-                    platform.broadcast(publicMessage);
-                }
-            }
+
             
             // Staff notification
             String staffMessage = localeManager.punishment()

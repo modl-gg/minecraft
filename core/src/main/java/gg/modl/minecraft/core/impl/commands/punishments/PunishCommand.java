@@ -147,15 +147,7 @@ public class PunishCommand extends BaseCommand {
                     .target(targetName)
                     .punishmentId(response.getPunishmentId())
                     .get("general.punishment_issued"));
-                
-                if (!silentPunishment) {
-                    // Public notification using new locale format
-                    String publicMessage = getPublicNotificationMessage(punishmentTypeName, targetName, 
-                            punishmentArgs.duration, punishmentType.getOrdinal(), punishmentArgs.reason);
-                    if (publicMessage != null && !publicMessage.trim().isEmpty()) {
-                        platform.broadcast(publicMessage);
-                    }
-                }
+
                 
                 // Staff notification
                 String staffMessage = localeManager.punishment()

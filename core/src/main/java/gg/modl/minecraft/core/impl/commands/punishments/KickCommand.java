@@ -153,7 +153,7 @@ public class KickCommand extends BaseCommand {
         Map<String, String> variables = Map.of("target", targetName);
         
         // Use ordinal 0 for kick (kicks are always immediate, no duration)
-        return localeManager.getPunishmentTypeMessage(0, "public_notification.default", variables);
+        return localeManager.getPunishmentMessage("public_notification.default", variables);
     }
 
     private static class KickArgs {
