@@ -47,7 +47,7 @@ public class SimplePunishment {
      * Check if this is a kick punishment
      */
     public boolean isKick() {
-        return "KICK".equalsIgnoreCase(type);
+        return "KICK".equalsIgnoreCase(type) || ordinal == 0;
     }
     
     /**

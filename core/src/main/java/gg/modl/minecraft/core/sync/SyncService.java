@@ -268,6 +268,13 @@ public class SyncService {
         
         SyncResponse.SyncData data = response.getData();
         
+        // Log sync data summary
+        logger.info(String.format("Sync response received - Pending: %d, Recently Started: %d, Modified: %d, Notifications: %d", 
+                data.getPendingPunishments().size(), 
+                data.getRecentlyStartedPunishments().size(),
+                data.getRecentlyModifiedPunishments().size(),
+                data.getPlayerNotifications().size()));
+        
         // Process pending punishments
         for (SyncResponse.PendingPunishment pending : data.getPendingPunishments()) {
             processPendingPunishment(pending);
@@ -304,8 +311,9 @@ public class SyncService {
         String username = pending.getUsername();
         SimplePunishment punishment = pending.getPunishment();
         
-        logger.info(String.format("Processing pending punishment %s for %s (%s)", 
-                punishment.getId(), username, punishment.getType()));
+        logger.info(String.format("Processing pending punishment %s for %s - Type: '%s', Ordinal: %d, isBan: %s, isMute: %s, isKick: %s", 
+                punishment.getId(), username, punishment.getType(), punishment.getOrdinal(), 
+                punishment.isBan(), punishment.isMute(), punishment.isKick()));
         
         // Execute on main thread for platform-specific operations
         platform.runOnMainThread(() -> {
@@ -348,13 +356,18 @@ public class SyncService {
             AbstractPlayer player = platform.getPlayer(uuid);
             
             if (punishment.isBan()) {
+                logger.info(String.format("Executing BAN for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
                 return executeBan(uuid, username, punishment);
             } else if (punishment.isMute()) {
+                logger.info(String.format("Executing MUTE for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
                 return executeMute(uuid, username, punishment);
             } else if (punishment.isKick()) {
+                logger.info(String.format("Executing KICK for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
                 return executeKick(uuid, username, punishment);
             } else {
-                logger.warning("Unknown punishment type: " + punishment.getType());
+                logger.warning(String.format("Unknown punishment type for %s - Type: '%s', Ordinal: %d, isBan: %s, isMute: %s, isKick: %s", 
+                        username, punishment.getType(), punishment.getOrdinal(), 
+                        punishment.isBan(), punishment.isMute(), punishment.isKick()));
                 return false;
             }
         } catch (Exception e) {
@@ -392,7 +405,7 @@ public class SyncService {
             // Kick player if online
             AbstractPlayer player = platform.getPlayer(uuid);
             if (player != null && player.isOnline()) {
-                // Use proper ban message from punishment types (ordinal 2)
+                // Use proper ban message from punishment types using actual ordinal
                 Map<String, String> variables = new HashMap<>();
                 variables.put("target", "You");
                 variables.put("reason", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
@@ -401,7 +414,7 @@ public class SyncService {
                 variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
                 variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");
                 
-                String kickMsg = localeManager.getPlayerNotificationMessage(2, variables);
+                String kickMsg = localeManager.getPlayerNotificationMessage(punishment.getOrdinal(), variables);
                 platform.kickPlayer(player, kickMsg);
             }
             
