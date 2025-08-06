@@ -318,8 +318,9 @@ public class PunishCommand extends BaseCommand {
                 // Map UI severity names to API severity names (matching panel logic)
                 switch (severityInput) {
                     case "lenient":
-                        result.severity = "lenient";
+                        result.severity = "low";
                         break;
+                    case "normal":
                     case "regular":
                         result.severity = "regular";
                         break;
@@ -331,8 +332,8 @@ public class PunishCommand extends BaseCommand {
                         result.severity = severityInput; // Use as-is for lenient/regular/severe
                 }
             } else if (arg.equalsIgnoreCase("-lenient")) {
-                result.severity = "lenient";
-            } else if (arg.equalsIgnoreCase("-regular")) {
+                result.severity = "low";
+            } else if (arg.equalsIgnoreCase("-regular") || arg.equalsIgnoreCase("-normal")) {
                 result.severity = "regular";
             } else if (arg.equalsIgnoreCase("-severe")) {
                 result.severity = "severe";

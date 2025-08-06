@@ -208,7 +208,8 @@ public class SyncService {
             request.setLastSyncTimestamp(lastSyncTimestamp);
             request.setOnlinePlayers(buildOnlinePlayersList(onlinePlayers));
             request.setServerStatus(buildServerStatus(onlinePlayers));
-            
+
+
             // Send sync request
             CompletableFuture<SyncResponse> syncFuture = httpClient.sync(request);
             
@@ -267,7 +268,14 @@ public class SyncService {
         this.lastSyncTimestamp = response.getTimestamp();
         
         SyncResponse.SyncData data = response.getData();
-        
+
+        // Log sync data summary
+        logger.info(String.format("Sync response received - Pending: %d, Recently Started: %d, Modified: %d, Notifications: %d",
+                data.getPendingPunishments().size(),
+                data.getRecentlyStartedPunishments().size(),
+                data.getRecentlyModifiedPunishments().size(),
+                data.getPlayerNotifications().size()));
+
 
         // Process pending punishments
         for (SyncResponse.PendingPunishment pending : data.getPendingPunishments()) {
@@ -399,16 +407,8 @@ public class SyncService {
             // Kick player if online
             AbstractPlayer player = platform.getPlayer(uuid);
             if (player != null && player.isOnline()) {
-                // Use proper ban message from punishment types using actual ordinal
-                Map<String, String> variables = new HashMap<>();
-                variables.put("target", "You");
-                variables.put("reason", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
-                variables.put("description", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
-                variables.put("duration", punishment.isPermanent() ? "permanent" : PunishmentMessages.formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
-                variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
-                variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");
-                
-                String kickMsg = localeManager.getPlayerNotificationMessage(punishment.getOrdinal(), variables);
+                // Use proper ban message formatting with SYNC context for dynamic variables
+                String kickMsg = PunishmentMessages.formatBanMessage(punishment, localeManager, PunishmentMessages.MessageContext.SYNC);
                 platform.kickPlayer(player, kickMsg);
             }
             
