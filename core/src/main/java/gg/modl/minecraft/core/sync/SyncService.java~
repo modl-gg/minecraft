@@ -427,10 +427,6 @@ public class SyncService {
                 // Use proper kick message formatting with SYNC context for dynamic variables
                 String kickMsg = PunishmentMessages.formatKickMessage(punishment, localeManager, PunishmentMessages.MessageContext.SYNC);
                 platform.kickPlayer(player, kickMsg);
-
-                // Broadcast punishment
-                String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "kicked", localeManager);
-                platform.broadcast(broadcastMessage);
                 
                 logger.info(String.format("Successfully executed kick for %s: %s", username, punishment.getDescription()));
                 return true;
