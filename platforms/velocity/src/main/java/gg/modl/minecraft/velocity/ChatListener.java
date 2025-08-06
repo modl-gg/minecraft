@@ -42,7 +42,7 @@ public class ChatListener {
             if (data != null) {
                 String muteMessage;
                 if (data.getSimpleMute() != null) {
-                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute());
+                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), platform.getLocaleManager());
                 } else if (data.getMute() != null) {
                     // Fallback to old punishment format
                     muteMessage = formatMuteMessage(data.getMute());

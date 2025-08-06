@@ -137,8 +137,6 @@ punishment_types:
     player_notification:
       - "&cYou have been kicked from the server."
       - "&cReason: &f{reason}"
-      - "&7Duration: &f{duration}"
-      - "&7Punishment ID: &f{id}"
       - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
       
   ordinal_1:  # Manual Mute

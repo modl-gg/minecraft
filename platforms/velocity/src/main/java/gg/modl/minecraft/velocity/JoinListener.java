@@ -87,7 +87,7 @@ public class JoinListener {
             
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
-                String banText = PunishmentMessages.formatBanMessage(ban);
+                String banText = PunishmentMessages.formatBanMessage(ban, ((VelocityPlatform) platform).getLocaleManager());
                 Component kickMessage = Colors.get(banText);
                 event.setResult(ResultedEvent.ComponentResult.denied(kickMessage));
                 

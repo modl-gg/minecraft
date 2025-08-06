@@ -69,7 +69,7 @@ public class SpigotListener implements Listener {
             
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
-                String banMessage = PunishmentMessages.formatBanMessage(ban);
+                String banMessage = PunishmentMessages.formatBanMessage(ban, platform.getLocaleManager());
                 event.setResult(PlayerLoginEvent.Result.KICK_BANNED);
                 event.setKickMessage(banMessage);
                 
@@ -157,7 +157,7 @@ public class SpigotListener implements Listener {
             if (data != null) {
                 String muteMessage;
                 if (data.getSimpleMute() != null) {
-                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute());
+                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), platform.getLocaleManager());
                 } else if (data.getMute() != null) {
                     // Fallback to old punishment format
                     muteMessage = formatMuteMessage(data.getMute());

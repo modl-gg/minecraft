@@ -114,11 +114,12 @@ public class PardonCommand extends BaseCommand {
         });
     }
 
-    private void pardonByPlayerName(CommandIssuer sender, String playerName, String issuerName, String reason) {
+    private void pardonByPlayerName(CommandIssuer sender, String playerName, String issuerName, String reason, String expectedType) {
         sender.sendMessage(localeManager.getMessage("pardon.processing_player", Map.of("player", playerName)));
 
-        // Only try ban for player names, not mutes (per requirements)
-        pardonSpecificType(sender, playerName, issuerName, reason, "ban");
+        // Use the expected type if specified, otherwise default to ban
+        String typeToPardon = expectedType != null ? expectedType : "ban";
+        pardonSpecificType(sender, playerName, issuerName, reason, typeToPardon);
     }
 
     private void pardonSpecificType(CommandIssuer sender, String playerName, String issuerName, String reason, String type) {
@@ -250,11 +251,11 @@ public class PardonCommand extends BaseCommand {
                     errorMessage.contains("404"))) {
                     // Fall back to player name
                     if (expectedType != null) {
-                        // Specific type for unban/unmute commands
-                        pardonSpecificType(sender, target, issuerName, reason, expectedType);
+                        // Specific type for unban/unmute commands - use pardonByPlayerName with expected type
+                        pardonByPlayerName(sender, target, issuerName, reason, expectedType);
                     } else {
                         // General pardon - only try bans for player names
-                        pardonByPlayerName(sender, target, issuerName, reason);
+                        pardonByPlayerName(sender, target, issuerName, reason, null);
                     }
                 } else if (errorMessage.toLowerCase().contains("type")) {
                     // Type validation error - show specific message
