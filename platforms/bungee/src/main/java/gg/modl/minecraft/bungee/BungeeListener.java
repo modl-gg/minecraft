@@ -14,6 +14,7 @@ import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.PunishmentMessages;
+import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
 import com.google.gson.JsonObject;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
@@ -77,7 +78,7 @@ public class BungeeListener implements Listener {
             
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
-                String banText = PunishmentMessages.formatBanMessage(ban, localeManager);
+                String banText = PunishmentMessages.formatBanMessage(ban, localeManager, MessageContext.LOGIN);
                 TextComponent kickMessage = new TextComponent(banText);
                 event.setCancelReason(kickMessage);
                 event.setCancelled(true);
@@ -175,7 +176,7 @@ public class BungeeListener implements Listener {
             if (data != null) {
                 String muteMessage;
                 if (data.getSimpleMute() != null) {
-                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager);
+                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
                 } else if (data.getMute() != null) {
                     // Fallback to old punishment format
                     muteMessage = formatMuteMessage(data.getMute());

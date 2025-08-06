@@ -14,6 +14,7 @@ import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.PunishmentMessages;
+import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
 import com.google.gson.JsonObject;
 import com.velocitypowered.api.event.ResultedEvent;
 import com.velocitypowered.api.event.Subscribe;
@@ -88,7 +89,7 @@ public class JoinListener {
             
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
-                String banText = PunishmentMessages.formatBanMessage(ban, localeManager);
+                String banText = PunishmentMessages.formatBanMessage(ban, localeManager, MessageContext.LOGIN);
                 Component kickMessage = Colors.get(banText);
                 event.setResult(ResultedEvent.ComponentResult.denied(kickMessage));
                 

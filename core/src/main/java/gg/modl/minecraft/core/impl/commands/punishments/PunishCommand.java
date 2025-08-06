@@ -338,7 +338,7 @@ public class PunishCommand extends BaseCommand {
                     default:
                         result.severity = severityInput; // Use as-is for low/regular/severe
                 }
-            } else if (arg.equalsIgnoreCase("-low")) {
+            } else if (arg.equalsIgnoreCase("-low") || arg.equalsIgnoreCase("-lenient")) {
                 result.severity = "low";
             } else if (arg.equalsIgnoreCase("-regular")) {
                 result.severity = "regular";

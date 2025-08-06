@@ -132,87 +132,48 @@ validation:
 #   All placeholders available: {target}, {reason}, {duration}, {expiration}, {description}, {appeal_url}, {id}
 punishment_types:
   # Manual punishment types
-  ordinal_0:  # Kick
-    public_notification: "&c{target} has been kicked from the server."
-    player_notification:
-      - "&cYou have been kicked from the server."
-      - "&cReason: &f{reason}"
-      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
-      
-  ordinal_1:  # Manual Mute
-    public_notification: "&c{target} has been muted."
-    player_notification:
-      - "&cYou have been muted."
-      - "&cReason: &f{reason}"
-      - "&7Duration: &f{duration}"
-      - "&7Punishment ID: &f{id}"
-      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
-      
-  ordinal_2:  # Manual Ban
-    public_notification: "&c{target} has been banned from the server."
-    player_notification:
-      - "&cYou have been banned from the server."
-      - "&cReason: &f{reason}"
-      - "&7Duration: &f{duration}"
-      - "&7Punishment ID: &f{id}"
-      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
-      
   ordinal_3:  # Security Ban
-    public_notification: "&c{target} has been security banned for account protection."
+    public_notification: "&c{target} has been banned."
     player_notification:
-      - "&cYou have been security banned for account protection."
-      - "&cReason: &f{reason}"
-      - "&7Punishment ID: &f{id}"
-      - "&7This ban helps protect your account security."
-      - "&7Please contact staff if you believe this is an error."
+      - "&c&lYour account {tense2} restricted due to security concerns."
+      - "&fSuspicious activity has been detected on your account. Please secure your account and open an appeal at {appeal_url} using ID #{id}."
       
   ordinal_4:  # Linked Ban
-    public_notification: "&c{target} has been banned due to account linking violations."
+    public_notification: "&c{target} has been banned."
     player_notification:
-      - "&cYou have been banned due to account linking violations."
-      - "&cReason: &f{reason}"
-      - "&7Punishment ID: &f{id}"
-      - "&7This ban is associated with another account on your network."
-      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
+      - "&c&lYour account {tense2} linked to a banned account."
+      - ""
+      - "&fEvading bans through the use of alternate accounts or sharing your account is strictly prohibited."
+      - ""
+      - "&7This ban will be automatically lifted upon the linked ban lapsing."
+      - "&8Is this an error? Appeal at {appeal_url} using ID #{id}"
       
   ordinal_5:  # Blacklist
-    public_notification: "&c{target} has been blacklisted from the network."
+    public_notification: "&c{target} has been blacklisted."
     player_notification:
-      - "&cYou have been blacklisted from this network."
-      - "&cReason: &f{reason}"
-      - "&7Punishment ID: &f{id}"
-      - "&7This is a permanent network-wide punishment."
-      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
-      
-  # Example dynamic punishment types (ordinal 6+)
-  ordinal_6:  # Example: Chat Spam
-    public_notification: "&c{target} has been punished for {description}."
+      - "&4You {tense} blacklisted &7(#{id})"
+      - "&f{reason}"
+
+  ordinal_10: # Bad username
+    public_notification: "&c{target} has been banned."
     player_notification:
-      - "&cYou have been punished for {description}."
-      - "&cReason: &f{reason}"
-      - "&7Duration: &f{duration}"
-      - "&7Punishment ID: &f{id}"
-      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
-      
-  ordinal_7:  # Example: Inappropriate Language  
-    public_notification: "&c{target} has been punished for {description}."
+      - "&c&lYou {tense} banned due to your Minecraft username."
+      - ""
+      - "&f{reason}"
+      - ""
+      - "&7This ban will be automatically lifted when you change your username."
+      - "&8Is this an error? Appeal at {appeal_url} using ID #{id}"
+
+  ordinal_11: # Bad skin
+    public_notification: "&c{target} has been banned."
     player_notification:
-      - "&cYou have been punished for {description}."
-      - "&cReason: &f{reason}"
-      - "&7Duration: &f{duration}"
-      - "&7Punishment ID: &f{id}"
-      - "&7Please review our chat rules to avoid future punishments."
-      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
-      
-  ordinal_8:  # Example: Griefing
-    public_notification: "&c{target} has been punished for {description}."
-    player_notification:
-      - "&cYou have been punished for {description}."
-      - "&cReason: &f{reason}"
-      - "&7Duration: &f{duration}"
-      - "&7Punishment ID: &f{id}"
-      - "&7Griefing damages the experience for other players."
-      - "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
+      - "&c&lYou {tense} banned due to your Minecraft skin."
+      - ""
+      - "&f{reason}"
+      - ""
+      - "&7This ban will be automatically lifted when you change your skin."
+      - "&8Is this an error? Appeal at {appeal_url} using ID #{id}"
+
 
 # Manual command messages
 commands:
@@ -273,7 +234,7 @@ commands:
 
 # Configuration
 config:
-  appeal_url: "https://appeals.example.com"
+  appeal_url: "https://server.modl.gg/appeal"
   default_reason: "No reason specified"
   date_format: "MMM dd, yyyy 'at' HH:mm"
   duration_format:
@@ -365,12 +326,31 @@ punishment_commands:
   invalid_severity: "&cInvalid severity. Valid severities: low, regular, severe"
   warning_message: "&c{username} has been {punishment_type}."
 
-# Punishment notification defaults (fallback messages)
+# Punishment notification defaults (if ordinal specific not defined)
 punishments:
   player_notifications:
     default: "&cYou have been punished. Reason: {reason}. If you believe this is an error, you can appeal at: {appeal_url}"
+    ban_default:
+      - "&c&lYou {tense} {temp} banned for:"
+      - ""
+      - "&f{reason}"
+      - "{duration_formatted}"
+      - "&8Is this an error? Appeal at {appeal_url} using ID #{id}"
+    mute_default:
+      - " "
+      - "&cYou {tense} {temp} muted{mute_duration_formatted}."
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}"
+      - " "
+      - "&f{reason}"
+      - " "
+    kick_default:
+      - "&cYou have been kicked from the server."
+      - "&f{reason}"
   public_notifications:
     default: "&c{target} has been punished by staff."
+    ban_default: "&c{target} has been banned."
+    mute_default: "&c{target} has been muted."
+    kick_default: "&c{target} has been kicked."
 
 # Punishment System Messages (Player-facing)
     

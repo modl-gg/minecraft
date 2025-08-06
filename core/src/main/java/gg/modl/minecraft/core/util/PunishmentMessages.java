@@ -12,6 +12,16 @@ import java.util.Map;
 public class PunishmentMessages {
     
     /**
+     * Context for punishment messages to determine appropriate tense and formatting
+     */
+    public enum MessageContext {
+        DEFAULT,     // Standard message (have been)
+        SYNC,        // From sync system (are)
+        LOGIN,       // From login check (have been)
+        CHAT         // From chat event (are)
+    }
+    
+    /**
      * Format a ban message with all available punishment data (deprecated - use overload with LocaleManager)
      * Platform-specific components should be created from this text
      * @deprecated Use formatBanMessage(SimplePunishment, LocaleManager) instead
@@ -27,20 +37,21 @@ public class PunishmentMessages {
      * Platform-specific components should be created from this text
      */
     public static String formatBanMessage(SimplePunishment ban, LocaleManager localeManager) {
+        return formatBanMessage(ban, localeManager, MessageContext.DEFAULT);
+    }
+    
+    /**
+     * Format a ban message with context for dynamic variables
+     */
+    public static String formatBanMessage(SimplePunishment ban, LocaleManager localeManager, MessageContext context) {
         // Use the actual punishment ordinal from the punishment data
         int ordinal = ban.getOrdinal();
         
-        // Build variables for message formatting
-        Map<String, String> variables = new HashMap<>();
-        variables.put("target", "You");
-        variables.put("reason", ban.getDescription() != null ? ban.getDescription() : "No reason specified");
-        variables.put("description", ban.getDescription() != null ? ban.getDescription() : "No reason specified");
-        variables.put("duration", ban.isPermanent() ? "permanent" : formatDuration(ban.getExpiration() - System.currentTimeMillis()));
-        variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
-        variables.put("id", ban.getId() != null ? ban.getId() : "Unknown");
+        // Build basic variables for message formatting
+        Map<String, String> variables = buildBasicPunishmentVariables(ban, localeManager);
         
-        // Use punishment type specific message for consistency
-        return localeManager.getPlayerNotificationMessage(ordinal, variables);
+        // Use punishment type specific message with full context for dynamic variables
+        return localeManager.getPlayerNotificationMessage(ordinal, ban.getType(), variables, ban, context);
     }
 
     public static String getFormattedDuration(SimplePunishment punishment) {
@@ -71,20 +82,21 @@ public class PunishmentMessages {
      * Format a mute message with all available punishment data
      */
     public static String formatMuteMessage(SimplePunishment mute, LocaleManager localeManager) {
+        return formatMuteMessage(mute, localeManager, MessageContext.DEFAULT);
+    }
+    
+    /**
+     * Format a mute message with context for dynamic variables
+     */
+    public static String formatMuteMessage(SimplePunishment mute, LocaleManager localeManager, MessageContext context) {
         // Use the actual punishment ordinal from the punishment data
         int ordinal = mute.getOrdinal();
         
-        // Build variables for message formatting
-        Map<String, String> variables = new HashMap<>();
-        variables.put("target", "You");
-        variables.put("reason", mute.getDescription() != null ? mute.getDescription() : "No reason specified");
-        variables.put("description", mute.getDescription() != null ? mute.getDescription() : "No reason specified");
-        variables.put("duration", mute.isPermanent() ? "permanent" : formatDuration(mute.getExpiration() - System.currentTimeMillis()));
-        variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
-        variables.put("id", mute.getId() != null ? mute.getId() : "Unknown");
+        // Build basic variables for message formatting
+        Map<String, String> variables = buildBasicPunishmentVariables(mute, localeManager);
         
-        // Use punishment type specific message for consistency
-        return localeManager.getPlayerNotificationMessage(ordinal, variables);
+        // Use punishment type specific message with full context for dynamic variables
+        return localeManager.getPlayerNotificationMessage(ordinal, mute.getType(), variables, mute, context);
     }
     
     /**
@@ -114,7 +126,7 @@ public class PunishmentMessages {
         variables.put("id", kick.getId() != null ? kick.getId() : "Unknown");
         
         // Use punishment type specific message for consistency
-        return localeManager.getPlayerNotificationMessage(ordinal, variables);
+        return localeManager.getPlayerNotificationMessage(ordinal, kick.getType(), variables);
     }
 
     /**
@@ -159,7 +171,7 @@ public class PunishmentMessages {
         variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");
         
         // Use public notification message for consistency
-        return localeManager.getPublicNotificationMessage(ordinal, variables);
+        return localeManager.getPublicNotificationMessage(ordinal, punishment.getType(), variables);
     }
     
     /**
@@ -198,6 +210,23 @@ public class PunishmentMessages {
         if (seconds != 0) time.append(seconds).append("s ");
 
         return time.toString().trim();
+    }
+    
+    /**
+     * Build basic punishment variables map (without dynamic context variables)
+     */
+    private static Map<String, String> buildBasicPunishmentVariables(SimplePunishment punishment, LocaleManager localeManager) {
+        Map<String, String> variables = new HashMap<>();
+        
+        // Basic variables
+        variables.put("target", "You");
+        variables.put("reason", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
+        variables.put("description", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
+        variables.put("duration", punishment.isPermanent() ? "permanent" : formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
+        variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
+        variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");
+        
+        return variables;
     }
     
     /**

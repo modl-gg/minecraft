@@ -14,6 +14,7 @@ import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.PunishmentMessages;
+import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
 import com.google.gson.JsonObject;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.ChatColor;
@@ -70,7 +71,7 @@ public class SpigotListener implements Listener {
             
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
-                String banMessage = PunishmentMessages.formatBanMessage(ban, localeManager);
+                String banMessage = PunishmentMessages.formatBanMessage(ban, localeManager, MessageContext.LOGIN);
                 event.setResult(PlayerLoginEvent.Result.KICK_BANNED);
                 event.setKickMessage(banMessage);
                 
@@ -158,7 +159,7 @@ public class SpigotListener implements Listener {
             if (data != null) {
                 String muteMessage;
                 if (data.getSimpleMute() != null) {
-                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager);
+                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
                 } else if (data.getMute() != null) {
                     // Fallback to old punishment format
                     muteMessage = formatMuteMessage(data.getMute());

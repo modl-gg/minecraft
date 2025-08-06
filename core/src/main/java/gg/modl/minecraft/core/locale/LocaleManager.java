@@ -274,8 +274,23 @@ public class LocaleManager {
             return getMessage(path, variables);
         }
         
-        // Fallback to default if no specific message found
-        return getMessage("punishments.public_notifications.default", variables);
+        // Fallback to type-specific default if no specific message found
+        return getDefaultPublicNotification(ordinal, variables);
+    }
+    
+    /**
+     * Get public notification message for punishment with type information
+     */
+    public String getPublicNotificationMessage(int ordinal, String punishmentType, Map<String, String> variables) {
+        String path = "punishment_types.ordinal_" + ordinal + ".public_notification";
+        Object value = getNestedValue(messages, path);
+        
+        if (value instanceof String) {
+            return getMessage(path, variables);
+        }
+        
+        // Fallback to type-specific default based on punishment type
+        return getDefaultPublicNotificationByType(punishmentType, variables);
     }
     
     /**
@@ -304,8 +319,56 @@ public class LocaleManager {
             return getMessage(path, variables);
         }
         
-        // Fallback to default if no specific message found
-        return getMessage("punishments.player_notifications.default", variables);
+        // Fallback to type-specific default if no specific message found
+        return getDefaultPlayerNotification(ordinal, variables);
+    }
+    
+    /**
+     * Get player notification message for punishment with type information (returns joined lines)
+     */
+    public String getPlayerNotificationMessage(int ordinal, String punishmentType, Map<String, String> variables) {
+        String path = "punishment_types.ordinal_" + ordinal + ".player_notification";
+        Object value = getNestedValue(messages, path);
+        
+        if (value instanceof List<?>) {
+            @SuppressWarnings("unchecked")
+            List<String> lines = (List<String>) value;
+            
+            // Replace variables in each line and join with newlines
+            return lines.stream()
+                    .map(line -> {
+                        // Replace placeholders
+                        for (Map.Entry<String, String> entry : variables.entrySet()) {
+                            line = line.replace("{" + entry.getKey() + "}", entry.getValue());
+                        }
+                        return colorize(line);
+                    })
+                    .collect(Collectors.joining("\n"));
+        } else if (value instanceof String) {
+            // Handle legacy single string format
+            return getMessage(path, variables);
+        }
+        
+        // Fallback to type-specific default based on punishment type
+        return getDefaultPlayerNotificationByType(punishmentType, variables);
+    }
+    
+    /**
+     * Get player notification message with full punishment context for dynamic variables
+     */
+    public String getPlayerNotificationMessage(int ordinal, String punishmentType, Map<String, String> baseVariables, gg.modl.minecraft.api.SimplePunishment punishment, gg.modl.minecraft.core.util.PunishmentMessages.MessageContext context) {
+        // Create enhanced variables map with dynamic variables
+        Map<String, String> variables = new HashMap<>(baseVariables);
+        
+        // Add dynamic variables
+        variables.put("tense", getTenseForContext(context));
+        variables.put("tense2", getTense2ForContext(context));
+        variables.put("temp", punishment.isPermanent() ? "permanently" : "temporarily");
+        variables.put("duration_formatted", getDurationFormatted(punishment, getPunishmentTypeName(punishmentType)));
+        variables.put("mute_duration_formatted", getMuteDurationFormatted(punishment));
+        
+        // Use the enhanced variables with the standard method
+        return getPlayerNotificationMessage(ordinal, punishmentType, variables);
     }
     
     /**
@@ -334,8 +397,253 @@ public class LocaleManager {
             return List.of(getMessage(path, variables));
         }
         
-        // Fallback to default if no specific message found
+        // Fallback to type-specific default if no specific message found
+        return getDefaultPlayerNotificationLines(ordinal, variables);
+    }
+    
+    /**
+     * Get default player notification message based on punishment type ordinal
+     */
+    private String getDefaultPlayerNotification(int ordinal, Map<String, String> variables) {
+        String defaultPath = getDefaultPathForOrdinal(ordinal);
+        Object value = getNestedValue(messages, defaultPath);
+        
+        if (value instanceof List<?>) {
+            @SuppressWarnings("unchecked")
+            List<String> lines = (List<String>) value;
+            
+            // Replace variables in each line and join with newlines
+            return lines.stream()
+                    .map(line -> {
+                        // Replace placeholders
+                        for (Map.Entry<String, String> entry : variables.entrySet()) {
+                            line = line.replace("{" + entry.getKey() + "}", entry.getValue());
+                        }
+                        return colorize(line);
+                    })
+                    .collect(Collectors.joining("\n"));
+        } else if (value instanceof String) {
+            return getMessage(defaultPath, variables);
+        }
+        
+        // Ultimate fallback to universal default
+        return getMessage("punishments.player_notifications.default", variables);
+    }
+    
+    /**
+     * Get default player notification lines based on punishment type ordinal
+     */
+    private List<String> getDefaultPlayerNotificationLines(int ordinal, Map<String, String> variables) {
+        String defaultPath = getDefaultPathForOrdinal(ordinal);
+        Object value = getNestedValue(messages, defaultPath);
+        
+        if (value instanceof List<?>) {
+            @SuppressWarnings("unchecked")
+            List<String> lines = (List<String>) value;
+            
+            // Replace variables in each line
+            return lines.stream()
+                    .map(line -> {
+                        // Replace placeholders
+                        for (Map.Entry<String, String> entry : variables.entrySet()) {
+                            line = line.replace("{" + entry.getKey() + "}", entry.getValue());
+                        }
+                        return colorize(line);
+                    })
+                    .collect(Collectors.toList());
+        } else if (value instanceof String) {
+            return List.of(getMessage(defaultPath, variables));
+        }
+        
+        // Ultimate fallback to universal default
         return List.of(getMessage("punishments.player_notifications.default", variables));
+    }
+    
+    /**
+     * Get default public notification message based on punishment type ordinal
+     */
+    private String getDefaultPublicNotification(int ordinal, Map<String, String> variables) {
+        String defaultPath = getDefaultPublicPathForOrdinal(ordinal);
+        return getMessage(defaultPath, variables);
+    }
+    
+    /**
+     * Get default public notification message based on punishment type string
+     */
+    private String getDefaultPublicNotificationByType(String punishmentType, Map<String, String> variables) {
+        String defaultPath = getDefaultPublicPathForType(punishmentType);
+        return getMessage(defaultPath, variables);
+    }
+    
+    /**
+     * Get default player notification message based on punishment type string
+     */
+    private String getDefaultPlayerNotificationByType(String punishmentType, Map<String, String> variables) {
+        String defaultPath = getDefaultPlayerPathForType(punishmentType);
+        Object value = getNestedValue(messages, defaultPath);
+        
+        if (value instanceof List<?>) {
+            @SuppressWarnings("unchecked")
+            List<String> lines = (List<String>) value;
+            
+            // Replace variables in each line and join with newlines
+            return lines.stream()
+                    .map(line -> {
+                        // Replace placeholders
+                        for (Map.Entry<String, String> entry : variables.entrySet()) {
+                            line = line.replace("{" + entry.getKey() + "}", entry.getValue());
+                        }
+                        return colorize(line);
+                    })
+                    .collect(Collectors.joining("\n"));
+        } else if (value instanceof String) {
+            return getMessage(defaultPath, variables);
+        }
+        
+        // Ultimate fallback to universal default
+        return getMessage("punishments.player_notifications.default", variables);
+    }
+    
+    /**
+     * Get the appropriate default path based on punishment type ordinal
+     */
+    private String getDefaultPathForOrdinal(int ordinal) {
+        if (ordinal == 0) {
+            // Kick
+            return "punishments.player_notifications.kick_default";
+        } else if (ordinal == 1) {
+            // Mute (manual or other)
+            return "punishments.player_notifications.mute_default";
+        } else if (ordinal >= 2) {
+            // Ban (manual, security, linked, blacklist, etc.)
+            return "punishments.player_notifications.ban_default";
+        }
+        
+        // Fallback to universal default for unknown ordinals
+        return "punishments.player_notifications.default";
+    }
+    
+    /**
+     * Get the appropriate default public notification path based on punishment type ordinal
+     */
+    private String getDefaultPublicPathForOrdinal(int ordinal) {
+        if (ordinal == 0) {
+            // Kick
+            return "punishments.public_notifications.kick_default";
+        } else if (ordinal == 1) {
+            // Mute (manual or other)
+            return "punishments.public_notifications.mute_default";
+        } else if (ordinal >= 2) {
+            // Ban (manual, security, linked, blacklist, etc.)
+            return "punishments.public_notifications.ban_default";
+        }
+        
+        // Fallback to universal default for unknown ordinals
+        return "punishments.public_notifications.default";
+    }
+    
+    /**
+     * Get the appropriate default public notification path based on punishment type string
+     */
+    private String getDefaultPublicPathForType(String punishmentType) {
+        if ("KICK".equalsIgnoreCase(punishmentType)) {
+            return "punishments.public_notifications.kick_default";
+        } else if ("MUTE".equalsIgnoreCase(punishmentType)) {
+            return "punishments.public_notifications.mute_default";
+        } else if ("BAN".equalsIgnoreCase(punishmentType)) {
+            return "punishments.public_notifications.ban_default";
+        }
+        
+        // Fallback to universal default for unknown types
+        return "punishments.public_notifications.default";
+    }
+    
+    /**
+     * Get the appropriate default player notification path based on punishment type string
+     */
+    private String getDefaultPlayerPathForType(String punishmentType) {
+        if ("KICK".equalsIgnoreCase(punishmentType)) {
+            return "punishments.player_notifications.kick_default";
+        } else if ("MUTE".equalsIgnoreCase(punishmentType)) {
+            return "punishments.player_notifications.mute_default";
+        } else if ("BAN".equalsIgnoreCase(punishmentType)) {
+            return "punishments.player_notifications.ban_default";
+        }
+        
+        // Fallback to universal default for unknown types
+        return "punishments.player_notifications.default";
+    }
+    
+    /**
+     * Get appropriate tense based on message context
+     */
+    private String getTenseForContext(gg.modl.minecraft.core.util.PunishmentMessages.MessageContext context) {
+        switch (context) {
+            case SYNC:
+            case CHAT:
+                return "are";
+            case DEFAULT:
+            case LOGIN:
+            default:
+                return "have been";
+        }
+    }
+    
+    /**
+     * Get appropriate tense2 (is/has been) based on message context
+     */
+    private String getTense2ForContext(gg.modl.minecraft.core.util.PunishmentMessages.MessageContext context) {
+        switch (context) {
+            case SYNC:
+            case CHAT:
+                return "is";
+            case DEFAULT:
+            case LOGIN:
+            default:
+                return "has been";
+        }
+    }
+    
+    /**
+     * Get formatted duration line for punishment messages
+     */
+    private String getDurationFormatted(gg.modl.minecraft.api.SimplePunishment punishment, String punishmentType) {
+        if (punishment.isPermanent()) {
+            return ""; // No duration line for permanent punishments
+        }
+        
+        long timeLeft = punishment.getExpiration() - System.currentTimeMillis();
+        if (timeLeft <= 0) {
+            return ""; // No duration line for expired punishments
+        }
+        
+        String duration = gg.modl.minecraft.core.util.PunishmentMessages.formatDuration(timeLeft);
+        return "\n&7This " + punishmentType + " will expire in " + duration;
+    }
+    
+    /**
+     * Get formatted duration for mute notifications
+     */
+    private String getMuteDurationFormatted(gg.modl.minecraft.api.SimplePunishment punishment) {
+        if (punishment.isPermanent()) {
+            return ""; // No duration for permanent mutes
+        }
+        
+        long timeLeft = punishment.getExpiration() - System.currentTimeMillis();
+        if (timeLeft <= 0) {
+            return ""; // No duration for expired mutes
+        }
+        
+        String duration = gg.modl.minecraft.core.util.PunishmentMessages.formatDuration(timeLeft);
+        return " for " + duration;
+    }
+    
+    /**
+     * Get punishment type name for display
+     */
+    private String getPunishmentTypeName(String punishmentType) {
+        if (punishmentType == null) return "punishment";
+        return punishmentType.toLowerCase();
     }
     
     /**
