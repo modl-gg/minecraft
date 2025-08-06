@@ -30,7 +30,7 @@ public class PunishCommand extends BaseCommand {
     private volatile List<PunishmentTypesResponse.PunishmentTypeData> cachedPunishmentTypes = new ArrayList<>();
     private volatile boolean cacheInitialized = false;
 
-    private static final Set<String> VALID_SEVERITIES = Set.of("lenient", "regular", "severe");
+    private static final Set<String> VALID_SEVERITIES = Set.of("low", "regular", "severe");
 
     @CommandCompletion("@players @punishment-types")
     @CommandAlias("punish")

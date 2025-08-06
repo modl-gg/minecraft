@@ -323,7 +323,7 @@ constants:
 
 # Punishment Command Messages
 punishment_commands:
-  invalid_severity: "&cInvalid severity. Valid severities: low, regular, severe"
+  invalid_severity: "&cInvalid severity. Valid severities: lenient, regular, severe"
   warning_message: "&c{username} has been {punishment_type}."
 
 # Punishment notification defaults (if ordinal specific not defined)
