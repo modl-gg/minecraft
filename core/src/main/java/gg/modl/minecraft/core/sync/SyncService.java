@@ -281,9 +281,9 @@ public class SyncService {
         }
         
         // Process recently started punishments
-        for (SyncResponse.PendingPunishment started : data.getRecentlyStartedPunishments()) {
-            processStartedPunishment(started);
-        }
+//        for (SyncResponse.PendingPunishment started : data.getRecentlyStartedPunishments()) {
+//            processStartedPunishment(started);
+//        }
         
         // Process modified punishments (pardons, duration changes)
         for (SyncResponse.ModifiedPunishment modified : data.getRecentlyModifiedPunishments()) {
@@ -438,8 +438,8 @@ public class SyncService {
             // Kick player if online
             AbstractPlayer player = platform.getPlayer(uuid);
             if (player != null && player.isOnline()) {
-                // Use proper kick message formatting
-                String kickMsg = PunishmentMessages.formatKickMessage(punishment, localeManager);
+                // Use proper kick message formatting with SYNC context for dynamic variables
+                String kickMsg = PunishmentMessages.formatKickMessage(punishment, localeManager, PunishmentMessages.MessageContext.SYNC);
                 platform.kickPlayer(player, kickMsg);
                 
                 logger.info(String.format("Successfully executed kick for %s: %s", username, punishment.getDescription()));

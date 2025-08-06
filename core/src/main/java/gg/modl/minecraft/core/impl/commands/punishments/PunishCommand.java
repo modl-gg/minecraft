@@ -30,11 +30,11 @@ public class PunishCommand extends BaseCommand {
     private volatile List<PunishmentTypesResponse.PunishmentTypeData> cachedPunishmentTypes = new ArrayList<>();
     private volatile boolean cacheInitialized = false;
 
-    private static final Set<String> VALID_SEVERITIES = Set.of("low", "regular", "severe");
+    private static final Set<String> VALID_SEVERITIES = Set.of("lenient", "regular", "severe");
 
     @CommandCompletion("@players @punishment-types")
     @CommandAlias("punish")
-    @Syntax("<target> <type> [reason...] [-low|regular|severe] [-ab (alt block)] [-s (silent)] [-sw (stat-wipe)]")
+    @Syntax("<target> <type> [reason...] [-lenient|regular|severe] [-ab (alt block)] [-s (silent)] [-sw (stat-wipe)]")
     @Description("Issue a punishment to a player. Multi-word punishment types like 'Chat Abuse' are supported without quotes.")
     public void punish(CommandIssuer sender, @Name("target") Account target, @Name("args") String[] args) {
         if (target == null) {
@@ -318,7 +318,7 @@ public class PunishCommand extends BaseCommand {
                 // Map UI severity names to API severity names (matching panel logic)
                 switch (severityInput) {
                     case "lenient":
-                        result.severity = "low";
+                        result.severity = "lenient";
                         break;
                     case "regular":
                         result.severity = "regular";
@@ -328,10 +328,10 @@ public class PunishCommand extends BaseCommand {
                         result.severity = "severe";
                         break;
                     default:
-                        result.severity = severityInput; // Use as-is for low/regular/severe
+                        result.severity = severityInput; // Use as-is for lenient/regular/severe
                 }
-            } else if (arg.equalsIgnoreCase("-low") || arg.equalsIgnoreCase("-lenient")) {
-                result.severity = "low";
+            } else if (arg.equalsIgnoreCase("-lenient")) {
+                result.severity = "lenient";
             } else if (arg.equalsIgnoreCase("-regular")) {
                 result.severity = "regular";
             } else if (arg.equalsIgnoreCase("-severe")) {

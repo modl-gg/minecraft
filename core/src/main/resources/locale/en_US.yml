@@ -146,13 +146,13 @@ punishment_types:
       - "&fEvading bans through the use of alternate accounts or sharing your account is strictly prohibited."
       - ""
       - "&7This ban will be automatically lifted upon the linked ban lapsing."
-      - "&8Is this an error? Appeal at {appeal_url} using ID #{id}"
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}"
       
   ordinal_5:  # Blacklist
     public_notification: "&c{target} has been blacklisted."
     player_notification:
-      - "&4You {tense} blacklisted &7(#{id})"
-      - "&f{reason}"
+      - "&cYou {tense} blacklisted"
+      - "&7ID: #{id}"
 
   ordinal_10: # Bad username
     public_notification: "&c{target} has been banned."
@@ -162,7 +162,7 @@ punishment_types:
       - "&f{reason}"
       - ""
       - "&7This ban will be automatically lifted when you change your username."
-      - "&8Is this an error? Appeal at {appeal_url} using ID #{id}"
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}"
 
   ordinal_11: # Bad skin
     public_notification: "&c{target} has been banned."
@@ -172,7 +172,7 @@ punishment_types:
       - "&f{reason}"
       - ""
       - "&7This ban will be automatically lifted when you change your skin."
-      - "&8Is this an error? Appeal at {appeal_url} using ID #{id}"
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}"
 
 
 # Manual command messages
@@ -335,7 +335,7 @@ punishments:
       - ""
       - "&f{reason}"
       - "{duration_formatted}"
-      - "&8Is this an error? Appeal at {appeal_url} using ID #{id}"
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}"
     mute_default:
       - " "
       - "&cYou {tense} {temp} muted{mute_duration_formatted}."

@@ -113,20 +113,21 @@ public class PunishmentMessages {
      * Format a kick message with all available punishment data
      */
     public static String formatKickMessage(SimplePunishment kick, LocaleManager localeManager) {
+        return formatKickMessage(kick, localeManager, MessageContext.DEFAULT);
+    }
+    
+    /**
+     * Format a kick message with context for dynamic variables
+     */
+    public static String formatKickMessage(SimplePunishment kick, LocaleManager localeManager, MessageContext context) {
         // Use the actual punishment ordinal from the punishment data
         int ordinal = kick.getOrdinal();
         
-        // Build variables for message formatting
-        Map<String, String> variables = new HashMap<>();
-        variables.put("target", "You");
-        variables.put("reason", kick.getDescription() != null ? kick.getDescription() : "No reason specified");
-        variables.put("description", kick.getDescription() != null ? kick.getDescription() : "No reason specified");
-        variables.put("duration", "temporary"); // Kicks are always temporary
-        variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
-        variables.put("id", kick.getId() != null ? kick.getId() : "Unknown");
+        // Build basic variables for message formatting
+        Map<String, String> variables = buildBasicPunishmentVariables(kick, localeManager);
         
-        // Use punishment type specific message for consistency
-        return localeManager.getPlayerNotificationMessage(ordinal, kick.getType(), variables);
+        // Use punishment type specific message with full context for dynamic variables
+        return localeManager.getPlayerNotificationMessage(ordinal, kick.getType(), variables, kick, context);
     }
 
     /**
