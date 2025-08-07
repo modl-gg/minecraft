@@ -28,6 +28,6 @@ public class PunishmentTypesResponse {
         private final String staffDescription;
         private final String playerDescription;
         private final Boolean permanentUntilSkinChange;
-        private final Boolean permanentUntilNameChange;
+        private final Boolean permanentUntilUsernameChange;
     }
 }

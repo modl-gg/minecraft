@@ -366,7 +366,7 @@ public class PunishCommand extends BaseCommand {
         data.put("duration", 0L);
         
         // Set blockedName and blockedSkin for "permanent until" punishment types
-        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilNameChange())) {
+        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilUsernameChange())) {
             String currentUsername = target.getUsernames() != null && !target.getUsernames().isEmpty()
                 ? target.getUsernames().get(target.getUsernames().size() - 1).getUsername()
                 : "Unknown";
@@ -442,14 +442,14 @@ public class PunishCommand extends BaseCommand {
                 Map.of("type", punishmentType.getName()));
         }
         
-        // Check if severity is being set on permanent until skin/name change punishments
+        // Check if severity is being set on permanent until skin/username change punishments
         if (Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange()) && args.severity != null) {
             return localeManager.getPunishmentMessage("validation.permanent_skin_change_error", 
                 Map.of("type", punishmentType.getName()));
         }
         
-        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilNameChange()) && args.severity != null) {
-            return localeManager.getPunishmentMessage("validation.permanent_name_change_error", 
+        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilUsernameChange()) && args.severity != null) {
+            return localeManager.getPunishmentMessage("validation.permanent_username_change_error", 
                 Map.of("type", punishmentType.getName()));
         }
         

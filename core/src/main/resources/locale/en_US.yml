@@ -116,7 +116,7 @@ reload:
 validation:
   single_severity_error: "&cCannot set severity on single-severity punishment type '{type}'. This punishment type has only one severity level."
   permanent_skin_change_error: "&cCannot set severity on permanent until skin change punishment type '{type}'."
-  permanent_name_change_error: "&cCannot set severity on permanent until name change punishment type '{type}'."
+  permanent_username_change_error: "&cCannot set severity on permanent until username change punishment type '{type}'."
   alt_blocking_not_supported: "&cAlt-blocking flag is not supported for punishment type '{type}'."
   stat_wiping_not_supported: "&cStat-wiping flag is not supported for punishment type '{type}'."
 
