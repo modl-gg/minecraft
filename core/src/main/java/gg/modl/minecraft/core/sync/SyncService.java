@@ -47,18 +47,25 @@ public class SyncService {
     private final String apiUrl;
     @NotNull
     private final String apiKey;
+    private final int pollingRateSeconds;
     
     private String lastSyncTimestamp;
     private ScheduledExecutorService syncExecutor;
     private boolean isRunning = false;
     
     /**
-     * Start the sync service with 5-second intervals
+     * Start the sync service with configurable polling interval
      */
     public void start() {
         if (isRunning) {
             logger.warning("Sync service is already running");
             return;
+        }
+        
+        // Validate polling rate (minimum 1 second)
+        int actualPollingRate = Math.max(1, pollingRateSeconds);
+        if (actualPollingRate != pollingRateSeconds) {
+            logger.warning("Polling rate adjusted from " + pollingRateSeconds + " to " + actualPollingRate + " seconds (minimum is 1 second)");
         }
         
         this.lastSyncTimestamp = Instant.now().toString();
@@ -72,11 +79,11 @@ public class SyncService {
         logger.info("MODL Sync service starting - performing initial diagnostic check...");
         performDiagnosticCheck();
         
-        // Start sync task every 5 seconds (delayed by 10 seconds to allow diagnostic check)
-        syncExecutor.scheduleAtFixedRate(this::performSync, 10, 5, TimeUnit.SECONDS);
+        // Start sync task with configurable rate (delayed by 10 seconds to allow diagnostic check)
+        syncExecutor.scheduleAtFixedRate(this::performSync, 10, actualPollingRate, TimeUnit.SECONDS);
         isRunning = true;
         
-        logger.info("MODL Sync service started - syncing every 5 seconds");
+        logger.info("MODL Sync service started - syncing every " + actualPollingRate + " seconds");
     }
     
     /**

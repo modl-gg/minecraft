@@ -15,3 +15,9 @@ server:
   name: "Server 1"
   # Allow querying Mojang API for unknown players (default: false)
   query_mojang: false
+
+# Sync Configuration
+sync:
+  # How often to sync with the panel (in seconds)
+  # Default: 2 seconds. Minimum: 1 second
+  polling_rate: 2
