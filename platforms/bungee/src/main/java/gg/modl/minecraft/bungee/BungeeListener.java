@@ -15,6 +15,7 @@ import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
+import gg.modl.minecraft.core.util.WebPlayer;
 import com.google.gson.JsonObject;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
@@ -62,11 +63,23 @@ public class BungeeListener implements Listener {
             // Continue without IP info
         }
         
+        // Get player skin hash for punishment tracking
+        String skinHash = null;
+        try {
+            WebPlayer webPlayer = WebPlayer.get(event.getConnection().getUniqueId());
+            if (webPlayer != null && webPlayer.valid()) {
+                skinHash = webPlayer.skin();
+            }
+        } catch (Exception e) {
+            platform.getLogger().warning("Failed to get skin hash for " + event.getConnection().getName() + ": " + e.getMessage());
+            // Continue without skin hash
+        }
+        
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getConnection().getUniqueId().toString(),
                 event.getConnection().getName(),
                 ipAddress,
-                null,
+                skinHash,
                 ipInfo,
                 platform.getServerName()
         );
@@ -102,12 +115,24 @@ public class BungeeListener implements Listener {
 
     @EventHandler
     public void onPostLogin(PostLoginEvent event) {
+        // Get player skin hash for punishment tracking
+        String skinHash = null;
+        try {
+            WebPlayer webPlayer = WebPlayer.get(event.getPlayer().getUniqueId());
+            if (webPlayer != null && webPlayer.valid()) {
+                skinHash = webPlayer.skin();
+            }
+        } catch (Exception e) {
+            platform.getLogger().warning("Failed to get skin hash for " + event.getPlayer().getName() + ": " + e.getMessage());
+            // Continue without skin hash
+        }
+        
         // Cache mute status after successful join
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getName(),
                 event.getPlayer().getSocketAddress().toString(),
-                null,
+                skinHash,
                 null,
                 platform.getServerName()
         );

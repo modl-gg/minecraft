@@ -13,6 +13,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.RequiredArgsConstructor;
 
 import java.util.*;
@@ -108,7 +109,7 @@ public class PunishCommand extends BaseCommand {
             platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
 
         // Build punishment data (matching panel logic)
-        Map<String, Object> data = buildPunishmentData(punishmentArgs, punishmentType);
+        Map<String, Object> data = buildPunishmentData(punishmentArgs, punishmentType, target);
 
         // Create notes list (matching panel logic)
         List<String> notes = new ArrayList<>();
@@ -358,13 +359,37 @@ public class PunishCommand extends BaseCommand {
         return result;
     }
 
-    private Map<String, Object> buildPunishmentData(PunishmentArgs args, PunishmentTypesResponse.PunishmentTypeData punishmentType) {
+    private Map<String, Object> buildPunishmentData(PunishmentArgs args, PunishmentTypesResponse.PunishmentTypeData punishmentType, Account target) {
         Map<String, Object> data = new HashMap<>();
         
         // Initialize default fields (matching panel backend logic)
         data.put("duration", 0L);
-        data.put("blockedName", null);
-        data.put("blockedSkin", null);
+        
+        // Set blockedName and blockedSkin for "permanent until" punishment types
+        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilNameChange())) {
+            String currentUsername = target.getUsernames() != null && !target.getUsernames().isEmpty()
+                ? target.getUsernames().get(target.getUsernames().size() - 1).getUsername()
+                : "Unknown";
+            data.put("blockedName", currentUsername);
+        } else {
+            data.put("blockedName", null);
+        }
+        
+        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange())) {
+            String currentSkinHash = null;
+            try {
+                WebPlayer webPlayer = WebPlayer.get(target.getMinecraftUuid());
+                if (webPlayer != null && webPlayer.valid()) {
+                    currentSkinHash = webPlayer.skin();
+                }
+            } catch (Exception e) {
+                // Log warning but continue with null skin hash
+                System.err.println("Failed to get skin hash for " + target.getUsernames().get(0).getUsername() + ": " + e.getMessage());
+            }
+            data.put("blockedSkin", currentSkinHash);
+        } else {
+            data.put("blockedSkin", null);
+        }
         data.put("linkedBanId", null);
         data.put("linkedBanExpiry", null);
         data.put("chatLog", null);

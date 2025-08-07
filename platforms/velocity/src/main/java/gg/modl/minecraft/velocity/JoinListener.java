@@ -15,6 +15,7 @@ import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
+import gg.modl.minecraft.core.util.WebPlayer;
 import com.google.gson.JsonObject;
 import com.velocitypowered.api.event.ResultedEvent;
 import com.velocitypowered.api.event.Subscribe;
@@ -56,11 +57,23 @@ public class JoinListener {
             // Continue without IP info
         }
         
+        // Get player skin hash for punishment tracking
+        String skinHash = null;
+        try {
+            WebPlayer webPlayer = WebPlayer.get(event.getPlayer().getUniqueId());
+            if (webPlayer != null && webPlayer.valid()) {
+                skinHash = webPlayer.skin();
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to get skin hash for {}: {}", event.getPlayer().getUsername(), e.getMessage());
+            // Continue without skin hash
+        }
+        
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getUsername(),
                 ipAddress,
-                null,
+                skinHash,
                 ipInfo,
                 platform.getServerName()
         );
