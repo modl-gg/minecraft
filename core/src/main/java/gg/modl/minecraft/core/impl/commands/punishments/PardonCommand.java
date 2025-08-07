@@ -25,7 +25,7 @@ public class PardonCommand extends BaseCommand {
     private final LocaleManager localeManager;
 
     @CommandCompletion("@players")
-    @CommandAlias("pardon|unban|unmute")
+    @CommandAlias("pardon")
     @Syntax("<player/punishment_id> [reason...]")
     @Description("Pardon a player's ban/mute by player name or punishment ID")
     public void pardon(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
