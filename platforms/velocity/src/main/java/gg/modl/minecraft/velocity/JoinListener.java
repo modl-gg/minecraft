@@ -60,7 +60,7 @@ public class JoinListener {
         // Get player skin hash for punishment tracking
         String skinHash = null;
         try {
-            WebPlayer webPlayer = WebPlayer.get(event.getPlayer().getUniqueId());
+            WebPlayer webPlayer = WebPlayer.get(event.getPlayer().getUniqueId()).get(3, TimeUnit.SECONDS);
             if (webPlayer != null && webPlayer.valid()) {
                 skinHash = webPlayer.skin();
             }
@@ -79,36 +79,37 @@ public class JoinListener {
         );
 
         try {
-            // Check for active punishments and prevent login if banned (synchronous)
+            // Check for active punishments and prevent login if banned
+            // Note: Velocity LoginEvent is synchronous and requires immediate decision
             CompletableFuture<PlayerLoginResponse> loginFuture = httpClient.playerLogin(request);
-            PlayerLoginResponse response = loginFuture.join(); // Block until response
-            
-            logger.info(String.format("Login response for %s: status=%d, punishments=%s", 
+            PlayerLoginResponse response = loginFuture.get(5, TimeUnit.SECONDS); // 5 second timeout
+
+            logger.info(String.format("Login response for %s: status=%d, punishments=%s",
                     event.getPlayer().getUsername(),
                     response.getStatus(),
                     response.getActivePunishments()));
-            
+
             if (response.getActivePunishments() != null) {
                 for (SimplePunishment p : response.getActivePunishments()) {
-                    logger.info(String.format("Punishment: type='%s', isBan=%s, isMute=%s, started=%s, id=%s", 
+                    logger.info(String.format("Punishment: type='%s', isBan=%s, isMute=%s, started=%s, id=%s",
                             p.getType(), p.isBan(), p.isMute(), p.isStarted(), p.getId()));
                 }
             }
-            
-            logger.info(String.format("Login response for %s: hasBan=%s, hasMute=%s", 
+
+            logger.info(String.format("Login response for %s: hasBan=%s, hasMute=%s",
                     event.getPlayer().getUsername(),
                     response.hasActiveBan(),
                     response.hasActiveMute()));
-            
+
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
                 String banText = PunishmentMessages.formatBanMessage(ban, localeManager, MessageContext.LOGIN);
                 Component kickMessage = Colors.get(banText);
                 event.setResult(ResultedEvent.ComponentResult.denied(kickMessage));
-                
-                logger.info(String.format("Denied login for %s due to active ban: %s", 
+
+                logger.info(String.format("Denied login for %s due to active ban: %s",
                         event.getPlayer().getUsername(), ban.getDescription()));
-                
+
                 // Acknowledge ban enforcement if it wasn't started yet
                 if (!ban.isStarted()) {
                     acknowledgeBanEnforcement(ban, event.getPlayer().getUniqueId().toString());
@@ -118,10 +119,10 @@ public class JoinListener {
                 if (response.hasActiveMute()) {
                     SimplePunishment mute = response.getActiveMute();
                     cache.cacheMute(event.getPlayer().getUniqueId(), mute);
-                    logger.info(String.format("Cached active mute for %s: %s", 
+                    logger.info(String.format("Cached active mute for %s: %s",
                             event.getPlayer().getUsername(), mute.getDescription()));
                 }
-                
+
                 // Process pending notifications from login response
                 if (response.hasNotifications()) {
                     for (Map<String, Object> notificationData : response.getPendingNotifications()) {
@@ -133,9 +134,9 @@ public class JoinListener {
                         }
                     }
                 }
-                
+
                 event.setResult(ResultedEvent.ComponentResult.allowed());
-                
+
                 logger.info(String.format("Allowed login for %s", event.getPlayer().getUsername()));
             }
         } catch (PanelUnavailableException e) {
@@ -145,9 +146,16 @@ public class JoinListener {
             Component errorMessage = Component.text("Unable to verify ban status. Login temporarily restricted for safety.")
                     .color(NamedTextColor.RED);
             event.setResult(ResultedEvent.ComponentResult.denied(errorMessage));
+        } catch (java.util.concurrent.TimeoutException e) {
+            // Login check timed out - deny for safety
+            logger.warn(String.format("Login check timed out for %s - blocking login for safety",
+                    event.getPlayer().getUsername()));
+            Component errorMessage = Component.text("Login verification timed out. Please try again.")
+                    .color(NamedTextColor.RED);
+            event.setResult(ResultedEvent.ComponentResult.denied(errorMessage));
         } catch (Exception e) {
-            // On other errors, allow login but log warning  
-            logger.error("Failed to check punishments for " + event.getPlayer().getUsername() + 
+            // On other errors, allow login but log warning
+            logger.error("Failed to check punishments for " + event.getPlayer().getUsername() +
                         " - allowing login as fallback", e);
             event.setResult(ResultedEvent.ComponentResult.allowed());
         }
@@ -224,7 +232,9 @@ public class JoinListener {
             // Handle nested data map
             Object nestedData = data.get("data");
             if (nestedData instanceof Map) {
-                notification.setData((Map<String, Object>) nestedData);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> dataMap = (Map<String, Object>) nestedData;
+                notification.setData(dataMap);
             }
             
             return notification;

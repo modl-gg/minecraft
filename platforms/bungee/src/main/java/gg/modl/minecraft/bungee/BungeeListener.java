@@ -66,7 +66,7 @@ public class BungeeListener implements Listener {
         // Get player skin hash for punishment tracking
         String skinHash = null;
         try {
-            WebPlayer webPlayer = WebPlayer.get(event.getConnection().getUniqueId());
+            WebPlayer webPlayer = WebPlayer.get(event.getConnection().getUniqueId()).get(3, TimeUnit.SECONDS);
             if (webPlayer != null && webPlayer.valid()) {
                 skinHash = webPlayer.skin();
             }
@@ -85,9 +85,9 @@ public class BungeeListener implements Listener {
         );
 
         try {
-            // Check for active punishments and prevent login if banned (synchronous)
+            // Check for active punishments and prevent login if banned
             CompletableFuture<PlayerLoginResponse> loginFuture = httpClient.playerLogin(request);
-            PlayerLoginResponse response = loginFuture.join(); // Block until response
+            PlayerLoginResponse response = loginFuture.get(5, TimeUnit.SECONDS); // 5 second timeout
             
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
@@ -107,6 +107,12 @@ public class BungeeListener implements Listener {
             TextComponent errorMessage = new TextComponent("Unable to verify ban status. Login temporarily restricted for safety.");
             event.setCancelReason(errorMessage);
             event.setCancelled(true);
+        } catch (java.util.concurrent.TimeoutException e) {
+            // Login check timed out - deny for safety
+            platform.getLogger().warning("Login check timed out for " + event.getConnection().getName() + " - blocking login for safety");
+            TextComponent errorMessage = new TextComponent("Login verification timed out. Please try again.");
+            event.setCancelReason(errorMessage);
+            event.setCancelled(true);
         } catch (Exception e) {
             // On other errors, allow login but log warning
             platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + e.getMessage());
@@ -118,7 +124,7 @@ public class BungeeListener implements Listener {
         // Get player skin hash for punishment tracking
         String skinHash = null;
         try {
-            WebPlayer webPlayer = WebPlayer.get(event.getPlayer().getUniqueId());
+            WebPlayer webPlayer = WebPlayer.get(event.getPlayer().getUniqueId()).get(3, TimeUnit.SECONDS);
             if (webPlayer != null && webPlayer.valid()) {
                 skinHash = webPlayer.skin();
             }
@@ -290,7 +296,9 @@ public class BungeeListener implements Listener {
             // Handle nested data map
             Object nestedData = data.get("data");
             if (nestedData instanceof Map) {
-                notification.setData((Map<String, Object>) nestedData);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> dataMap = (Map<String, Object>) nestedData;
+                notification.setData(dataMap);
             }
             
             return notification;

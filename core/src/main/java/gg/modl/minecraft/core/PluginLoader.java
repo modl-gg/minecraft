@@ -8,6 +8,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PlayerNameRequest;
 import gg.modl.minecraft.api.http.response.PlayerNameResponse;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.cache.LoginCache;
 import gg.modl.minecraft.core.impl.commands.TicketCommands;
 import gg.modl.minecraft.core.impl.commands.PlayerLookupCommand;
 import gg.modl.minecraft.core.impl.commands.ModlReloadCommand;
@@ -30,6 +31,7 @@ public class PluginLoader {
     private final SyncService syncService;
     private final ChatMessageCache chatMessageCache;
     private final LocaleManager localeManager;
+    private final LoginCache loginCache;
 
     public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache) {
         throw new UnsupportedOperationException("This constructor is deprecated. Use the HttpManager overload instead.");
@@ -38,6 +40,7 @@ public class PluginLoader {
     public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache, HttpManager httpManager, int syncPollingRateSeconds) {
         this.chatMessageCache = chatMessageCache;
         cache = new Cache();
+        loginCache = new LoginCache();
 
         this.httpClient = httpManager.getHttpClient();
 
@@ -147,6 +150,9 @@ public class PluginLoader {
     public void shutdown() {
         if (syncService != null) {
             syncService.stop();
+        }
+        if (loginCache != null) {
+            loginCache.shutdown();
         }
     }
 }

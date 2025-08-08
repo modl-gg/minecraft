@@ -378,7 +378,7 @@ public class PunishCommand extends BaseCommand {
         if (Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange())) {
             String currentSkinHash = null;
             try {
-                WebPlayer webPlayer = WebPlayer.get(target.getMinecraftUuid());
+                WebPlayer webPlayer = WebPlayer.getSync(target.getMinecraftUuid()); // Use sync wrapper
                 if (webPlayer != null && webPlayer.valid()) {
                     currentSkinHash = webPlayer.skin();
                 }
