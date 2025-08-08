@@ -28,7 +28,7 @@ public class SpigotPlugin extends JavaPlugin {
             getLogger().severe("===============================================");
             getLogger().severe("You must configure your API URL in config.yml!");
             getLogger().severe("Please set 'api.url' to your actual MODL panel URL.");
-            getLogger().severe("Example: https://yourcompany.modl.gg");
+            getLogger().severe("Example: https://yourserver.modl.gg");
             getLogger().severe("Plugin will now disable itself.");
             getLogger().severe("===============================================");
             getServer().getPluginManager().disablePlugin(this);

@@ -62,7 +62,7 @@ public final class VelocityPlugin {
             logger.error("===============================================");
             logger.error("You must configure your API URL in config.yml!");
             logger.error("Please set 'api.url' to your actual MODL panel URL.");
-            logger.error("Example: https://yourcompany.modl.gg");
+            logger.error("Example: https://yourserver.modl.gg");
             logger.error("Plugin initialization stopped due to invalid configuration.");
             logger.error("===============================================");;
             return;

@@ -68,7 +68,6 @@ public class VelocityPlatform implements Platform {
                 player.sendMessage(net.kyori.adventure.text.Component.text("Notification: " + jsonMessage));
             }
         });
-        server.getPlayer(uuid).ifPresent(player -> player.sendMessage(get(jsonMessage)));
     }
 
     @Override
