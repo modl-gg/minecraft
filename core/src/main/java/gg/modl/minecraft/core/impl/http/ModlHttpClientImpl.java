@@ -5,6 +5,7 @@ import gg.modl.minecraft.api.http.PanelUnavailableException;
 import com.google.gson.Gson;
 import gg.modl.minecraft.api.http.request.*;
 import gg.modl.minecraft.api.http.response.*;
+import gg.modl.minecraft.core.util.CircuitBreaker;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.URI;
@@ -15,6 +16,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.logging.Logger;
 
 public class ModlHttpClientImpl implements ModlHttpClient {
@@ -29,6 +32,8 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @NotNull
     private final Logger logger;
     private final boolean debugMode;
+    @NotNull
+    private final CircuitBreaker circuitBreaker;
 
     public ModlHttpClientImpl(@NotNull String baseUrl, @NotNull String apiKey) {
         this(baseUrl, apiKey, false);
@@ -38,8 +43,21 @@ public class ModlHttpClientImpl implements ModlHttpClient {
         this.baseUrl = baseUrl;
         this.apiKey = apiKey;
         this.debugMode = debugMode;
+        this.circuitBreaker = new CircuitBreaker("modl-panel");
+
+        // Create custom thread factory for HTTP client threads
+        ThreadFactory httpThreadFactory = r -> {
+            Thread t = new Thread(r, "modl-http-client");
+            t.setDaemon(true);
+            t.setPriority(Thread.NORM_PRIORITY);
+            return t;
+        };
+
+        // Configure HTTP client with optimized settings
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
+                .executor(Executors.newCachedThreadPool(httpThreadFactory))
+                .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
         this.gson = new Gson();
         this.logger = Logger.getLogger(ModlHttpClientImpl.class.getName());
@@ -70,11 +88,12 @@ public class ModlHttpClientImpl implements ModlHttpClient {
         if (debugMode) {
             logger.info(String.format("Player login request body: %s", requestBody));
         }
-        
+
         return sendAsync(HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/minecraft/player/login"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
+                .timeout(Duration.ofSeconds(15)) // Longer timeout for login checks
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build(), PlayerLoginResponse.class, "LOGIN");
     }
@@ -191,11 +210,12 @@ public class ModlHttpClientImpl implements ModlHttpClient {
         if (debugMode) {
             logger.info(String.format("Sync request body: %s", requestBody));
         }
-        
+
         return sendAsync(HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/minecraft/sync"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
+                .timeout(Duration.ofSeconds(20)) // Longer timeout for sync operations
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build(), SyncResponse.class, "SYNC");
     }
@@ -229,17 +249,26 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType, String operation) {
         final Instant startTime = Instant.now();
         final String requestId = generateRequestId();
-        
+
+        // Check circuit breaker before making request
+        if (!circuitBreaker.allowRequest()) {
+            logger.warning(String.format("[REQ-%s] Circuit breaker is OPEN - blocking request to %s",
+                    requestId, request.uri()));
+            return CompletableFuture.failedFuture(
+                new PanelUnavailableException(503, request.uri().getPath(),
+                    "Panel is temporarily unavailable (circuit breaker open)"));
+        }
+
         if (debugMode) {
             logger.info(String.format("[REQ-%s] %s %s", requestId, request.method(), request.uri()));
             logger.info(String.format("[REQ-%s] Headers: %s", requestId, request.headers().map()));
-            
+
             // Log request body if present (for POST/PUT requests)
             request.bodyPublisher().ifPresent(body -> {
                 logger.info(String.format("[REQ-%s] Body present: %s", requestId, body.getClass().getSimpleName()));
             });
         }
-        
+
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {
                     final Duration duration = Duration.between(startTime, Instant.now());
@@ -262,14 +291,17 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                     }
                     
                     if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                        // Record successful request for circuit breaker
+                        circuitBreaker.recordSuccess();
+
                         if (responseType == Void.class) {
                             return null;
                         }
-                        
+
                         try {
                             T result = gson.fromJson(response.body(), responseType);
                             if (debugMode) {
-                                logger.info(String.format("[REQ-%s] Successfully parsed response to %s", 
+                                logger.info(String.format("[REQ-%s] Successfully parsed response to %s",
                                         requestId, responseType.getSimpleName()));
                             }
                             return result;
@@ -295,27 +327,35 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                                     response.statusCode(), response.body());
                         }
                         
+                        // Record failure for circuit breaker
+                        circuitBreaker.recordFailure();
+
                         // Log additional details for common errors
                         if (response.statusCode() == 502) {
-                            logger.warning(String.format("[REQ-%s] Panel returned 502 (Bad Gateway) - likely restarting. Endpoint: %s", 
+                            logger.warning(String.format("[REQ-%s] Panel returned 502 (Bad Gateway) - likely restarting. Endpoint: %s",
                                     requestId, request.uri().getPath()));
-                            throw new PanelUnavailableException(502, request.uri().getPath(), 
+                            throw new PanelUnavailableException(502, request.uri().getPath(),
                                     "Panel is temporarily unavailable (502 Bad Gateway)");
                         } else if (response.statusCode() == 401 || response.statusCode() == 403) {
                             logger.severe(String.format("[REQ-%s] Authentication failed - check API key", requestId));
                         } else if (response.statusCode() == 404) {
                             logger.severe(String.format("[REQ-%s] Endpoint not found - check API URL", requestId));
                         }
-                        
+
                         logger.warning(String.format("[REQ-%s] %s", requestId, errorMessage));
                         throw new RuntimeException(errorMessage);
                     }
                 })
                 .exceptionally(throwable -> {
                     final Duration duration = Duration.between(startTime, Instant.now());
-                    logger.severe(String.format("[REQ-%s] Request failed after %dms: %s", 
+                    logger.severe(String.format("[REQ-%s] Request failed after %dms: %s",
                             requestId, duration.toMillis(), throwable.getMessage()));
-                    
+
+                    // Record failure for circuit breaker (unless it's already a PanelUnavailableException)
+                    if (!(throwable instanceof PanelUnavailableException)) {
+                        circuitBreaker.recordFailure();
+                    }
+
                     if (throwable instanceof RuntimeException) {
                         throw (RuntimeException) throwable;
                     }

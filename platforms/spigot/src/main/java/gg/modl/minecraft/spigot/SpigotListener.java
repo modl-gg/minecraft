@@ -10,6 +10,7 @@ import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.cache.LoginCache;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
@@ -23,6 +24,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -41,113 +43,205 @@ public class SpigotListener implements Listener {
     private final SyncService syncService;
     private final String panelUrl;
     private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
+    private final LoginCache loginCache;
 
+    /**
+     * Async pre-login event - performs all HTTP operations on background thread
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onAsyncPlayerPreLogin(AsyncPlayerPreLoginEvent event) {
+        String ipAddress = event.getAddress().getHostAddress();
+
+        // Check cache first to avoid repeated API calls
+        LoginCache.CachedLoginResult cached = loginCache.getCachedLoginResult(event.getUniqueId());
+        if (cached != null) {
+            platform.getLogger().fine("Using cached login result for " + event.getName());
+            loginCache.storePreLoginResult(event.getUniqueId(),
+                new LoginCache.PreLoginResult(cached.getResponse(), cached.getIpInfo(), cached.getSkinHash()));
+            return;
+        }
+
+        // Perform all async operations
+        CompletableFuture<JsonObject> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
+        CompletableFuture<WebPlayer> webPlayerFuture = WebPlayer.get(event.getUniqueId());
+
+        // Combine both futures and process results
+        CompletableFuture<Void> combinedFuture = ipInfoFuture
+            .thenCombine(webPlayerFuture, (ipInfo, webPlayer) -> {
+                // Extract skin hash from WebPlayer
+                String skinHash = null;
+                if (webPlayer != null && webPlayer.valid()) {
+                    skinHash = webPlayer.skin();
+                }
+
+                // Create login request
+                PlayerLoginRequest request = new PlayerLoginRequest(
+                        event.getUniqueId().toString(),
+                        event.getName(),
+                        ipAddress,
+                        skinHash,
+                        ipInfo,
+                        platform.getServerName()
+                );
+
+                return new Object[] { request, ipInfo, skinHash };
+            })
+            .thenCompose(data -> {
+                PlayerLoginRequest request = (PlayerLoginRequest) data[0];
+                JsonObject ipInfo = (JsonObject) data[1];
+                String skinHash = (String) data[2];
+
+                // Perform login check
+                return httpClient.playerLogin(request)
+                    .thenAccept(response -> {
+                        // Cache the result
+                        loginCache.cacheLoginResult(event.getUniqueId(), response, ipInfo, skinHash);
+
+                        // Store for sync event
+                        loginCache.storePreLoginResult(event.getUniqueId(),
+                            new LoginCache.PreLoginResult(response, ipInfo, skinHash));
+                    });
+            })
+            .exceptionally(throwable -> {
+                platform.getLogger().warning("Failed to check punishments for " + event.getName() + ": " + throwable.getMessage());
+
+                // Store error result
+                Exception error = throwable instanceof Exception ? (Exception) throwable : new RuntimeException(throwable);
+                loginCache.storePreLoginResult(event.getUniqueId(), new LoginCache.PreLoginResult(error));
+                return null;
+            });
+
+        // Wait for completion with timeout (max 10 seconds)
+        try {
+            combinedFuture.get(10, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            platform.getLogger().warning("Async pre-login timed out for " + event.getName() + ": " + e.getMessage());
+            loginCache.storePreLoginResult(event.getUniqueId(), new LoginCache.PreLoginResult(e));
+        }
+    }
+
+    /**
+     * Sync login event - makes decision based on cached async results
+     */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerLogin(PlayerLoginEvent event) {
-        String ipAddress = event.getAddress().getHostAddress();
-        
-        // Get IP information asynchronously but wait for it (with timeout)
-        JsonObject ipInfo = null;
-        try {
-            CompletableFuture<JsonObject> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
-            ipInfo = ipInfoFuture.get(3, TimeUnit.SECONDS); // 3 second timeout
-        } catch (Exception e) {
-            platform.getLogger().warning("Failed to get IP info for " + ipAddress + " within timeout: " + e.getMessage());
-            // Continue without IP info
-        }
-        
-        // Get player skin hash for punishment tracking
-        String skinHash = null;
-        try {
-            WebPlayer webPlayer = WebPlayer.get(event.getPlayer().getUniqueId());
-            if (webPlayer != null && webPlayer.valid()) {
-                skinHash = webPlayer.skin();
-            }
-        } catch (Exception e) {
-            platform.getLogger().warning("Failed to get skin hash for " + event.getPlayer().getName() + ": " + e.getMessage());
-            // Continue without skin hash
-        }
-        
-        PlayerLoginRequest request = new PlayerLoginRequest(
-                event.getPlayer().getUniqueId().toString(),
-                event.getPlayer().getName(),
-                ipAddress,
-                skinHash,
-                ipInfo,
-                platform.getServerName()
-        );
+        // Get pre-login result from cache
+        LoginCache.PreLoginResult preLoginResult = loginCache.getAndRemovePreLoginResult(event.getPlayer().getUniqueId());
 
-        try {
-            // Synchronous check for active punishments
-            CompletableFuture<PlayerLoginResponse> loginFuture = httpClient.playerLogin(request);
-            PlayerLoginResponse response = loginFuture.join(); // Blocks until response
-            
-            if (response.hasActiveBan()) {
-                SimplePunishment ban = response.getActiveBan();
-                String banMessage = PunishmentMessages.formatBanMessage(ban, localeManager, MessageContext.LOGIN);
-                event.setResult(PlayerLoginEvent.Result.KICK_BANNED);
-                event.setKickMessage(banMessage);
-                
-                // Acknowledge ban enforcement if it wasn't started yet
-                if (!ban.isStarted()) {
-                    acknowledgeBanEnforcement(ban, event.getPlayer().getUniqueId().toString());
-                }
+        if (preLoginResult == null) {
+            platform.getLogger().warning("No pre-login result found for " + event.getPlayer().getName() + " - allowing login as fallback");
+            return;
+        }
+
+        if (preLoginResult.hasError()) {
+            Exception error = preLoginResult.getError();
+            if (error instanceof PanelUnavailableException) {
+                // Panel is restarting (502 error) - deny login for safety
+                platform.getLogger().warning("Panel 502 during login check for " + event.getPlayer().getName() + " - blocking login for safety");
+                event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
+                event.setKickMessage("Unable to verify ban status. Login temporarily restricted for safety.");
+            } else {
+                platform.getLogger().severe("Failed to check punishments for " + event.getPlayer().getName() + ": " + error.getMessage());
+                // Allow login on other errors to prevent false kicks
             }
-        } catch (PanelUnavailableException e) {
-            // Panel is restarting (502 error) - deny login for safety to prevent banned players from connecting
-            platform.getLogger().warning("Panel 502 during login check for " + event.getPlayer().getName() + " - blocking login for safety");
-            event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
-            event.setKickMessage("Unable to verify ban status. Login temporarily restricted for safety.");
-        } catch (Exception e) {
-            platform.getLogger().severe("Failed to check punishments for " + event.getPlayer().getName() + ": " + e.getMessage());
-            // Allow login on other errors to prevent false kicks
+            return;
+        }
+
+        if (!preLoginResult.isSuccess()) {
+            platform.getLogger().warning("Invalid pre-login result for " + event.getPlayer().getName() + " - allowing login as fallback");
+            return;
+        }
+
+        PlayerLoginResponse response = preLoginResult.getResponse();
+        if (response.hasActiveBan()) {
+            SimplePunishment ban = response.getActiveBan();
+            String banMessage = PunishmentMessages.formatBanMessage(ban, localeManager, MessageContext.LOGIN);
+            event.setResult(PlayerLoginEvent.Result.KICK_BANNED);
+            event.setKickMessage(banMessage);
+
+            // Acknowledge ban enforcement if it wasn't started yet
+            if (!ban.isStarted()) {
+                acknowledgeBanEnforcement(ban, event.getPlayer().getUniqueId().toString());
+            }
         }
     }
     
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        // Get player skin hash for punishment tracking
-        String skinHash = null;
-        try {
-            WebPlayer webPlayer = WebPlayer.get(event.getPlayer().getUniqueId());
-            if (webPlayer != null && webPlayer.valid()) {
-                skinHash = webPlayer.skin();
-            }
-        } catch (Exception e) {
-            platform.getLogger().warning("Failed to get skin hash for " + event.getPlayer().getName() + ": " + e.getMessage());
-            // Continue without skin hash
-        }
-        
-        // Cache mute status after successful join
-        PlayerLoginRequest request = new PlayerLoginRequest(
-                event.getPlayer().getUniqueId().toString(),
-                event.getPlayer().getName(),
-                event.getPlayer().getAddress().getHostName(),
-                skinHash,
-                null,
-                platform.getServerName()
-        );
-        
-        httpClient.playerLogin(request).thenAccept(response -> {
-            if (response.hasActiveMute()) {
-                cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
-            }
-            
-            // Process pending notifications from login response
-            if (response.hasNotifications()) {
-                for (Map<String, Object> notificationData : response.getPendingNotifications()) {
-                    // Convert map to PlayerNotification and deliver immediately
-                    SyncResponse.PlayerNotification notification = mapToPlayerNotification(notificationData);
-                    if (notification != null) {
-                        syncService.deliverLoginNotification(event.getPlayer().getUniqueId(), notification);
-                    }
+        // Get skin hash asynchronously and then cache mute status
+        WebPlayer.get(event.getPlayer().getUniqueId())
+            .thenAccept(webPlayer -> {
+                String skinHash = null;
+                if (webPlayer != null && webPlayer.valid()) {
+                    skinHash = webPlayer.skin();
                 }
-            }
-        }).exceptionally(throwable -> {
-            platform.getLogger().severe("Failed to cache mute for " + event.getPlayer().getName() + ": " + throwable.getMessage());
-            return null;
-        });
-        
+
+                // Cache mute status after successful join
+                PlayerLoginRequest request = new PlayerLoginRequest(
+                        event.getPlayer().getUniqueId().toString(),
+                        event.getPlayer().getName(),
+                        event.getPlayer().getAddress().getHostName(),
+                        skinHash,
+                        null,
+                        platform.getServerName()
+                );
+
+                httpClient.playerLogin(request).thenAccept(response -> {
+                    if (response.hasActiveMute()) {
+                        cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
+                    }
+
+                    // Process pending notifications from login response
+                    if (response.hasNotifications()) {
+                        for (Map<String, Object> notificationData : response.getPendingNotifications()) {
+                            // Convert map to PlayerNotification and deliver immediately
+                            SyncResponse.PlayerNotification notification = mapToPlayerNotification(notificationData);
+                            if (notification != null) {
+                                syncService.deliverLoginNotification(event.getPlayer().getUniqueId(), notification);
+                            }
+                        }
+                    }
+                }).exceptionally(throwable -> {
+                    platform.getLogger().severe("Failed to cache mute for " + event.getPlayer().getName() + ": " + throwable.getMessage());
+                    return null;
+                });
+            })
+            .exceptionally(throwable -> {
+                platform.getLogger().warning("Failed to get skin hash for " + event.getPlayer().getName() + ": " + throwable.getMessage());
+
+                // Continue without skin hash
+                PlayerLoginRequest request = new PlayerLoginRequest(
+                        event.getPlayer().getUniqueId().toString(),
+                        event.getPlayer().getName(),
+                        event.getPlayer().getAddress().getHostName(),
+                        null,
+                        null,
+                        platform.getServerName()
+                );
+
+                httpClient.playerLogin(request).thenAccept(response -> {
+                    if (response.hasActiveMute()) {
+                        cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
+                    }
+
+                    // Process pending notifications from login response
+                    if (response.hasNotifications()) {
+                        for (Map<String, Object> notificationData : response.getPendingNotifications()) {
+                            // Convert map to PlayerNotification and deliver immediately
+                            SyncResponse.PlayerNotification notification = mapToPlayerNotification(notificationData);
+                            if (notification != null) {
+                                syncService.deliverLoginNotification(event.getPlayer().getUniqueId(), notification);
+                            }
+                        }
+                    }
+                }).exceptionally(innerThrowable -> {
+                    platform.getLogger().severe("Failed to cache mute for " + event.getPlayer().getName() + ": " + innerThrowable.getMessage());
+                    return null;
+                });
+
+                return null;
+            });
+
         // Also deliver any cached notifications (fallback)
         syncService.deliverPendingNotifications(event.getPlayer().getUniqueId());
     }
@@ -271,7 +365,9 @@ public class SpigotListener implements Listener {
             // Handle nested data map
             Object nestedData = data.get("data");
             if (nestedData instanceof Map) {
-                notification.setData((Map<String, Object>) nestedData);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> dataMap = (Map<String, Object>) nestedData;
+                notification.setData(dataMap);
             }
             
             return notification;
