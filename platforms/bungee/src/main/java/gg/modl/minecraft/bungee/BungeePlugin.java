@@ -50,7 +50,10 @@ public class BungeePlugin extends Plugin {
         BungeePlatform platform = new BungeePlatform(commandManager, getLogger());
         ChatMessageCache chatMessageCache = new ChatMessageCache();
 
-        this.loader = new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager);
+        // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)
+        int syncPollingRate = Math.max(1, configuration.getInt("sync.polling_rate", 2));
+
+        this.loader = new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
         getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClient(), chatMessageCache, loader.getSyncService(), httpManager.getPanelUrl(), loader.getLocaleManager()));
 
     }
@@ -78,6 +81,7 @@ public class BungeePlugin extends Plugin {
                 defaultConfig.set("api.url", "https://yourserver.modl.gg");
                 defaultConfig.set("server.name", "Server 1");
                 defaultConfig.set("server.query_mojang", false);
+                defaultConfig.set("sync.polling_rate", 2);
                 defaultConfig.set("api.debug", false);
                 ConfigurationProvider.getProvider(YamlConfiguration.class).save(defaultConfig, file);
             } catch (IOException e) {

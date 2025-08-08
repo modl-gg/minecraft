@@ -46,7 +46,10 @@ public class SpigotPlugin extends JavaPlugin {
         SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger());
         ChatMessageCache chatMessageCache = new ChatMessageCache();
 
-        this.loader = new PluginLoader(platform, new SpigotCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager);
+        // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)
+        int syncPollingRate = Math.max(1, getConfig().getInt("sync.polling_rate", 2));
+
+        this.loader = new PluginLoader(platform, new SpigotCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
         getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClient(), chatMessageCache, loader.getSyncService(), httpManager.getPanelUrl(), loader.getLocaleManager()), this);
 
     }

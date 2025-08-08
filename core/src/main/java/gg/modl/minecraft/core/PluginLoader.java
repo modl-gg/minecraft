@@ -35,7 +35,7 @@ public class PluginLoader {
         throw new UnsupportedOperationException("This constructor is deprecated. Use the HttpManager overload instead.");
     }
 
-    public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache, HttpManager httpManager) {
+    public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache, HttpManager httpManager, int syncPollingRateSeconds) {
         this.chatMessageCache = chatMessageCache;
         cache = new Cache();
 
@@ -52,10 +52,9 @@ public class PluginLoader {
             this.localeManager.loadFromFile(localeFile);
         }
 
-        // Initialize sync service
-
+        // Initialize sync service with configurable polling rate
         this.syncService = new SyncService(platform, httpClient, cache, logger, this.localeManager,
-                httpManager.getApiUrl(), httpManager.getApiKey());
+                httpManager.getApiUrl(), httpManager.getApiKey(), syncPollingRateSeconds);
         
         // Log configuration details
         logger.info("MODL Configuration:");
