@@ -68,6 +68,7 @@
         <mongo.version>5.2.1</mongo.version>
         <snakeyaml.version>2.3</snakeyaml.version>
         <annotations.version>13.0</annotations.version>
+        <adventure.version>4.24.0</adventure.version>
 
         <!-- Platform dependencies -->
         <bungeecord.version>1.16-R0.4</bungeecord.version>
