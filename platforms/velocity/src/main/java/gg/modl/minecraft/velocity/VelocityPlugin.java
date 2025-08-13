@@ -62,7 +62,7 @@ public final class VelocityPlugin {
             logger.error("===============================================");
             logger.error("You must configure your API URL in config.yml!");
             logger.error("Please set 'api.url' to your actual MODL panel URL.");
-            logger.error("Example: https://yourcompany.modl.gg");
+            logger.error("Example: https://yourserver.modl.gg");
             logger.error("Plugin initialization stopped due to invalid configuration.");
             logger.error("===============================================");;
             return;
@@ -79,11 +79,15 @@ public final class VelocityPlugin {
 
         VelocityPlatform platform = new VelocityPlatform(this.server, commandManager);
         ChatMessageCache chatMessageCache = new ChatMessageCache();
-        this.pluginLoader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder, chatMessageCache, httpManager);
+        
+        // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)
+        int syncPollingRate = Math.max(1, getConfigInt("sync.polling_rate", 2));
+        
+        this.pluginLoader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder, chatMessageCache, httpManager, syncPollingRate);
 
-        server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClient(), pluginLoader.getCache(), logger, chatMessageCache, platform, pluginLoader.getSyncService(), httpManager.getPanelUrl()));
+        server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClient(), pluginLoader.getCache(), logger, chatMessageCache, platform, pluginLoader.getSyncService(), httpManager.getPanelUrl(), pluginLoader.getLocaleManager()));
 
-        server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache(), chatMessageCache));
+        server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache(), chatMessageCache, pluginLoader.getLocaleManager()));
     }
 
     @Subscribe
@@ -144,6 +148,12 @@ public final class VelocityPlugin {
                   name: "Server 1"
                   # Allow querying Mojang API for unknown players (default: false)
                   query_mojang: false
+                  
+                # Sync Configuration
+                sync:
+                  # How often to sync with the panel (in seconds)
+                  # Default: 2 seconds. Minimum: 1 second
+                  polling_rate: 2
                 """;
         
         Files.writeString(configFile, defaultConfig);
@@ -188,6 +198,18 @@ public final class VelocityPlugin {
         }
         
         return current != null ? current : defaultValue;
+    }
+    
+    @SuppressWarnings("unchecked")
+    private int getConfigInt(String path, int defaultValue) {
+        Object value = getNestedConfig(path, defaultValue);
+        if (value instanceof Integer) {
+            return (Integer) value;
+        } else if (value instanceof Number) {
+            return ((Number) value).intValue();
+        } else {
+            return defaultValue;
+        }
     }
     
     private void createLocaleFiles() {

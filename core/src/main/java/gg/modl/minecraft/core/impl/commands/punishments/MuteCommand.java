@@ -84,14 +84,7 @@ public class MuteCommand extends BaseCommand {
                 .target(targetName)
                 .duration(muteArgs.duration)
                 .get("general.punishment_issued"));
-            
-            if (!silentMute) {
-                // Public notification using ordinal-based messaging
-                String publicMessage = getPublicNotificationMessage(targetName, muteArgs.duration);
-                if (publicMessage != null) {
-                    platform.broadcast(publicMessage);
-                }
-            }
+
             
             // Staff notification
             String staffMessage = localeManager.punishment()

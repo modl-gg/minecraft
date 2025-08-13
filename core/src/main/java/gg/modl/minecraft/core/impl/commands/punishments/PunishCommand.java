@@ -13,6 +13,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.RequiredArgsConstructor;
 
 import java.util.*;
@@ -34,7 +35,7 @@ public class PunishCommand extends BaseCommand {
 
     @CommandCompletion("@players @punishment-types")
     @CommandAlias("punish")
-    @Syntax("<target> <type> [reason...] [-low|regular|severe] [-ab (alt block)] [-s (silent)] [-sw (stat-wipe)]")
+    @Syntax("<target> <type> [reason...] [-lenient|regular|severe] [-ab (alt block)] [-s (silent)] [-sw (stat-wipe)]")
     @Description("Issue a punishment to a player. Multi-word punishment types like 'Chat Abuse' are supported without quotes.")
     public void punish(CommandIssuer sender, @Name("target") Account target, @Name("args") String[] args) {
         if (target == null) {
@@ -108,7 +109,7 @@ public class PunishCommand extends BaseCommand {
             platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
 
         // Build punishment data (matching panel logic)
-        Map<String, Object> data = buildPunishmentData(punishmentArgs, punishmentType);
+        Map<String, Object> data = buildPunishmentData(punishmentArgs, punishmentType, target);
 
         // Create notes list (matching panel logic)
         List<String> notes = new ArrayList<>();
@@ -147,15 +148,7 @@ public class PunishCommand extends BaseCommand {
                     .target(targetName)
                     .punishmentId(response.getPunishmentId())
                     .get("general.punishment_issued"));
-                
-                if (!silentPunishment) {
-                    // Public notification using new locale format
-                    String publicMessage = getPublicNotificationMessage(punishmentTypeName, targetName, 
-                            punishmentArgs.duration, punishmentType.getOrdinal(), punishmentArgs.reason);
-                    if (publicMessage != null && !publicMessage.trim().isEmpty()) {
-                        platform.broadcast(publicMessage);
-                    }
-                }
+
                 
                 // Staff notification
                 String staffMessage = localeManager.punishment()
@@ -328,6 +321,7 @@ public class PunishCommand extends BaseCommand {
                     case "lenient":
                         result.severity = "low";
                         break;
+                    case "normal":
                     case "regular":
                         result.severity = "regular";
                         break;
@@ -336,11 +330,11 @@ public class PunishCommand extends BaseCommand {
                         result.severity = "severe";
                         break;
                     default:
-                        result.severity = severityInput; // Use as-is for low/regular/severe
+                        result.severity = severityInput; // Use as-is for lenient/regular/severe
                 }
-            } else if (arg.equalsIgnoreCase("-low")) {
+            } else if (arg.equalsIgnoreCase("-lenient")) {
                 result.severity = "low";
-            } else if (arg.equalsIgnoreCase("-regular")) {
+            } else if (arg.equalsIgnoreCase("-regular") || arg.equalsIgnoreCase("-normal")) {
                 result.severity = "regular";
             } else if (arg.equalsIgnoreCase("-severe")) {
                 result.severity = "severe";
@@ -365,13 +359,37 @@ public class PunishCommand extends BaseCommand {
         return result;
     }
 
-    private Map<String, Object> buildPunishmentData(PunishmentArgs args, PunishmentTypesResponse.PunishmentTypeData punishmentType) {
+    private Map<String, Object> buildPunishmentData(PunishmentArgs args, PunishmentTypesResponse.PunishmentTypeData punishmentType, Account target) {
         Map<String, Object> data = new HashMap<>();
         
         // Initialize default fields (matching panel backend logic)
         data.put("duration", 0L);
-        data.put("blockedName", null);
-        data.put("blockedSkin", null);
+        
+        // Set blockedName and blockedSkin for "permanent until" punishment types
+        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilUsernameChange())) {
+            String currentUsername = target.getUsernames() != null && !target.getUsernames().isEmpty()
+                ? target.getUsernames().get(target.getUsernames().size() - 1).getUsername()
+                : "Unknown";
+            data.put("blockedName", currentUsername);
+        } else {
+            data.put("blockedName", null);
+        }
+        
+        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange())) {
+            String currentSkinHash = null;
+            try {
+                WebPlayer webPlayer = WebPlayer.getSync(target.getMinecraftUuid()); // Use sync wrapper
+                if (webPlayer != null && webPlayer.valid()) {
+                    currentSkinHash = webPlayer.skin();
+                }
+            } catch (Exception e) {
+                // Log warning but continue with null skin hash
+                System.err.println("Failed to get skin hash for " + target.getUsernames().get(0).getUsername() + ": " + e.getMessage());
+            }
+            data.put("blockedSkin", currentSkinHash);
+        } else {
+            data.put("blockedSkin", null);
+        }
         data.put("linkedBanId", null);
         data.put("linkedBanExpiry", null);
         data.put("chatLog", null);
@@ -424,14 +442,14 @@ public class PunishCommand extends BaseCommand {
                 Map.of("type", punishmentType.getName()));
         }
         
-        // Check if severity is being set on permanent until skin/name change punishments
+        // Check if severity is being set on permanent until skin/username change punishments
         if (Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange()) && args.severity != null) {
             return localeManager.getPunishmentMessage("validation.permanent_skin_change_error", 
                 Map.of("type", punishmentType.getName()));
         }
         
-        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilNameChange()) && args.severity != null) {
-            return localeManager.getPunishmentMessage("validation.permanent_name_change_error", 
+        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilUsernameChange()) && args.severity != null) {
+            return localeManager.getPunishmentMessage("validation.permanent_username_change_error", 
                 Map.of("type", punishmentType.getName()));
         }
         

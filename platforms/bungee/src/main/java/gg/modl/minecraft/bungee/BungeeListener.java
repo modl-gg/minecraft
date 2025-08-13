@@ -14,6 +14,8 @@ import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.PunishmentMessages;
+import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
+import gg.modl.minecraft.core.util.WebPlayer;
 import com.google.gson.JsonObject;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
@@ -40,6 +42,7 @@ public class BungeeListener implements Listener {
     private final ChatMessageCache chatMessageCache;
     private final SyncService syncService;
     private final String panelUrl;
+    private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(LoginEvent event) {
@@ -60,23 +63,35 @@ public class BungeeListener implements Listener {
             // Continue without IP info
         }
         
+        // Get player skin hash for punishment tracking
+        String skinHash = null;
+        try {
+            WebPlayer webPlayer = WebPlayer.get(event.getConnection().getUniqueId()).get(3, TimeUnit.SECONDS);
+            if (webPlayer != null && webPlayer.valid()) {
+                skinHash = webPlayer.skin();
+            }
+        } catch (Exception e) {
+            platform.getLogger().warning("Failed to get skin hash for " + event.getConnection().getName() + ": " + e.getMessage());
+            // Continue without skin hash
+        }
+        
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getConnection().getUniqueId().toString(),
                 event.getConnection().getName(),
                 ipAddress,
-                null,
+                skinHash,
                 ipInfo,
                 platform.getServerName()
         );
 
         try {
-            // Check for active punishments and prevent login if banned (synchronous)
+            // Check for active punishments and prevent login if banned
             CompletableFuture<PlayerLoginResponse> loginFuture = httpClient.playerLogin(request);
-            PlayerLoginResponse response = loginFuture.join(); // Block until response
+            PlayerLoginResponse response = loginFuture.get(5, TimeUnit.SECONDS); // 5 second timeout
             
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
-                String banText = PunishmentMessages.formatBanMessage(ban);
+                String banText = PunishmentMessages.formatBanMessage(ban, localeManager, MessageContext.LOGIN);
                 TextComponent kickMessage = new TextComponent(banText);
                 event.setCancelReason(kickMessage);
                 event.setCancelled(true);
@@ -92,6 +107,12 @@ public class BungeeListener implements Listener {
             TextComponent errorMessage = new TextComponent("Unable to verify ban status. Login temporarily restricted for safety.");
             event.setCancelReason(errorMessage);
             event.setCancelled(true);
+        } catch (java.util.concurrent.TimeoutException e) {
+            // Login check timed out - deny for safety
+            platform.getLogger().warning("Login check timed out for " + event.getConnection().getName() + " - blocking login for safety");
+            TextComponent errorMessage = new TextComponent("Login verification timed out. Please try again.");
+            event.setCancelReason(errorMessage);
+            event.setCancelled(true);
         } catch (Exception e) {
             // On other errors, allow login but log warning
             platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + e.getMessage());
@@ -100,12 +121,24 @@ public class BungeeListener implements Listener {
 
     @EventHandler
     public void onPostLogin(PostLoginEvent event) {
+        // Get player skin hash for punishment tracking
+        String skinHash = null;
+        try {
+            WebPlayer webPlayer = WebPlayer.get(event.getPlayer().getUniqueId()).get(3, TimeUnit.SECONDS);
+            if (webPlayer != null && webPlayer.valid()) {
+                skinHash = webPlayer.skin();
+            }
+        } catch (Exception e) {
+            platform.getLogger().warning("Failed to get skin hash for " + event.getPlayer().getName() + ": " + e.getMessage());
+            // Continue without skin hash
+        }
+        
         // Cache mute status after successful join
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getName(),
                 event.getPlayer().getSocketAddress().toString(),
-                null,
+                skinHash,
                 null,
                 platform.getServerName()
         );
@@ -174,7 +207,7 @@ public class BungeeListener implements Listener {
             if (data != null) {
                 String muteMessage;
                 if (data.getSimpleMute() != null) {
-                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute());
+                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
                 } else if (data.getMute() != null) {
                     // Fallback to old punishment format
                     muteMessage = formatMuteMessage(data.getMute());
@@ -263,7 +296,9 @@ public class BungeeListener implements Listener {
             // Handle nested data map
             Object nestedData = data.get("data");
             if (nestedData instanceof Map) {
-                notification.setData((Map<String, Object>) nestedData);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> dataMap = (Map<String, Object>) nestedData;
+                notification.setData(dataMap);
             }
             
             return notification;

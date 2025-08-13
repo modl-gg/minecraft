@@ -68,7 +68,6 @@ public class VelocityPlatform implements Platform {
                 player.sendMessage(net.kyori.adventure.text.Component.text("Notification: " + jsonMessage));
             }
         });
-        server.getPlayer(uuid).ifPresent(player -> player.sendMessage(get(jsonMessage)));
     }
 
     @Override
@@ -101,8 +100,8 @@ public class VelocityPlatform implements Platform {
 
         WebPlayer webPlayer;
         try {
-            webPlayer = WebPlayer.get(uuid);
-        } catch (IOException ignored) {
+            webPlayer = WebPlayer.getSync(uuid); // Use sync wrapper for backward compatibility
+        } catch (Exception ignored) {
             return null;
         }
 
@@ -122,8 +121,8 @@ public class VelocityPlatform implements Platform {
 
         WebPlayer webPlayer;
         try {
-            webPlayer = WebPlayer.get(username);
-        } catch (IOException ignored) {
+            webPlayer = WebPlayer.getSync(username); // Use sync wrapper for backward compatibility
+        } catch (Exception ignored) {
             return null;
         }
 

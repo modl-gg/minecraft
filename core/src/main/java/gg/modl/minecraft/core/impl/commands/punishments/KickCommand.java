@@ -74,37 +74,12 @@ public class KickCommand extends BaseCommand {
         future.thenAccept(response -> {
             String targetName = target.getUsernames().get(0).getUsername();
             
-            // Actually kick the player from the server
-            AbstractPlayer onlinePlayer = platform.getAbstractPlayer(target.getMinecraftUuid(), false);
-            if (onlinePlayer != null && platform.isOnline(target.getMinecraftUuid())) {
-                // Prepare kick message for the player using punishment type format
-                Map<String, String> variables = Map.of(
-                    "target", "You",
-                    "reason", kickArgs.reason.isEmpty() ? "No reason specified" : kickArgs.reason,
-                    "appeal_url", localeManager.getMessage("config.appeal_url")
-                );
-                String kickMessage = localeManager.getPlayerNotificationMessage(0, variables);
-                
-                // Kick the player
-                platform.runOnMainThread(() -> {
-                    platform.kickPlayer(onlinePlayer, kickMessage);
-                });
-            }
-            
             // Success message to issuer
             sender.sendMessage(localeManager.punishment()
                 .type("kick")
                 .target(targetName)
                 .get("general.punishment_issued"));
-            
-            if (!silentKick) {
-                // Public notification using ordinal-based messaging
-                String publicMessage = getPublicNotificationMessage(targetName);
-                if (publicMessage != null) {
-                    platform.broadcast(publicMessage);
-                }
-            }
-            
+
             // Staff notification
             String staffMessage = localeManager.punishment()
                 .issuer(issuerName)
@@ -153,7 +128,7 @@ public class KickCommand extends BaseCommand {
         Map<String, String> variables = Map.of("target", targetName);
         
         // Use ordinal 0 for kick (kicks are always immediate, no duration)
-        return localeManager.getPunishmentTypeMessage(0, "public_notification.default", variables);
+        return localeManager.getPunishmentMessage("public_notification.default", variables);
     }
 
     private static class KickArgs {

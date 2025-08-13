@@ -28,7 +28,7 @@ public class SpigotPlugin extends JavaPlugin {
             getLogger().severe("===============================================");
             getLogger().severe("You must configure your API URL in config.yml!");
             getLogger().severe("Please set 'api.url' to your actual MODL panel URL.");
-            getLogger().severe("Example: https://yourcompany.modl.gg");
+            getLogger().severe("Example: https://yourserver.modl.gg");
             getLogger().severe("Plugin will now disable itself.");
             getLogger().severe("===============================================");
             getServer().getPluginManager().disablePlugin(this);
@@ -46,8 +46,11 @@ public class SpigotPlugin extends JavaPlugin {
         SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger());
         ChatMessageCache chatMessageCache = new ChatMessageCache();
 
-        this.loader = new PluginLoader(platform, new SpigotCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager);
-        getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClient(), chatMessageCache, loader.getSyncService(), httpManager.getPanelUrl()), this);
+        // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)
+        int syncPollingRate = Math.max(1, getConfig().getInt("sync.polling_rate", 2));
+
+        this.loader = new PluginLoader(platform, new SpigotCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
+        getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClient(), chatMessageCache, loader.getSyncService(), httpManager.getPanelUrl(), loader.getLocaleManager(), loader.getLoginCache()), this);
 
     }
 

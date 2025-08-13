@@ -47,18 +47,25 @@ public class SyncService {
     private final String apiUrl;
     @NotNull
     private final String apiKey;
+    private final int pollingRateSeconds;
     
     private String lastSyncTimestamp;
     private ScheduledExecutorService syncExecutor;
     private boolean isRunning = false;
     
     /**
-     * Start the sync service with 5-second intervals
+     * Start the sync service with configurable polling interval
      */
     public void start() {
         if (isRunning) {
             logger.warning("Sync service is already running");
             return;
+        }
+        
+        // Validate polling rate (minimum 1 second)
+        int actualPollingRate = Math.max(1, pollingRateSeconds);
+        if (actualPollingRate != pollingRateSeconds) {
+            logger.warning("Polling rate adjusted from " + pollingRateSeconds + " to " + actualPollingRate + " seconds (minimum is 1 second)");
         }
         
         this.lastSyncTimestamp = Instant.now().toString();
@@ -72,11 +79,11 @@ public class SyncService {
         logger.info("MODL Sync service starting - performing initial diagnostic check...");
         performDiagnosticCheck();
         
-        // Start sync task every 5 seconds (delayed by 10 seconds to allow diagnostic check)
-        syncExecutor.scheduleAtFixedRate(this::performSync, 10, 5, TimeUnit.SECONDS);
+        // Start sync task with configurable rate (delayed by 10 seconds to allow diagnostic check)
+        syncExecutor.scheduleAtFixedRate(this::performSync, 10, actualPollingRate, TimeUnit.SECONDS);
         isRunning = true;
         
-        logger.info("MODL Sync service started - syncing every 5 seconds");
+        logger.info("MODL Sync service started - syncing every " + actualPollingRate + " seconds");
     }
     
     /**
@@ -208,7 +215,8 @@ public class SyncService {
             request.setLastSyncTimestamp(lastSyncTimestamp);
             request.setOnlinePlayers(buildOnlinePlayersList(onlinePlayers));
             request.setServerStatus(buildServerStatus(onlinePlayers));
-            
+
+
             // Send sync request
             CompletableFuture<SyncResponse> syncFuture = httpClient.sync(request);
             
@@ -267,16 +275,16 @@ public class SyncService {
         this.lastSyncTimestamp = response.getTimestamp();
         
         SyncResponse.SyncData data = response.getData();
-        
+
         // Process pending punishments
         for (SyncResponse.PendingPunishment pending : data.getPendingPunishments()) {
             processPendingPunishment(pending);
         }
         
         // Process recently started punishments
-        for (SyncResponse.PendingPunishment started : data.getRecentlyStartedPunishments()) {
-            processStartedPunishment(started);
-        }
+//        for (SyncResponse.PendingPunishment started : data.getRecentlyStartedPunishments()) {
+//            processStartedPunishment(started);
+//        }
         
         // Process modified punishments (pardons, duration changes)
         for (SyncResponse.ModifiedPunishment modified : data.getRecentlyModifiedPunishments()) {
@@ -304,8 +312,9 @@ public class SyncService {
         String username = pending.getUsername();
         SimplePunishment punishment = pending.getPunishment();
         
-        logger.info(String.format("Processing pending punishment %s for %s (%s)", 
-                punishment.getId(), username, punishment.getType()));
+        logger.info(String.format("Processing pending punishment %s for %s - Type: '%s', Ordinal: %d, isBan: %s, isMute: %s, isKick: %s", 
+                punishment.getId(), username, punishment.getType(), punishment.getOrdinal(), 
+                punishment.isBan(), punishment.isMute(), punishment.isKick()));
         
         // Execute on main thread for platform-specific operations
         platform.runOnMainThread(() -> {
@@ -348,13 +357,18 @@ public class SyncService {
             AbstractPlayer player = platform.getPlayer(uuid);
             
             if (punishment.isBan()) {
+                logger.info(String.format("Executing BAN for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
                 return executeBan(uuid, username, punishment);
             } else if (punishment.isMute()) {
+                logger.info(String.format("Executing MUTE for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
                 return executeMute(uuid, username, punishment);
             } else if (punishment.isKick()) {
+                logger.info(String.format("Executing KICK for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
                 return executeKick(uuid, username, punishment);
             } else {
-                logger.warning("Unknown punishment type: " + punishment.getType());
+                logger.warning(String.format("Unknown punishment type for %s - Type: '%s', Ordinal: %d, isBan: %s, isMute: %s, isKick: %s", 
+                        username, punishment.getType(), punishment.getOrdinal(), 
+                        punishment.isBan(), punishment.isMute(), punishment.isKick()));
                 return false;
             }
         } catch (Exception e) {
@@ -392,16 +406,8 @@ public class SyncService {
             // Kick player if online
             AbstractPlayer player = platform.getPlayer(uuid);
             if (player != null && player.isOnline()) {
-                // Use proper ban message from punishment types (ordinal 2)
-                Map<String, String> variables = new HashMap<>();
-                variables.put("target", "You");
-                variables.put("reason", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
-                variables.put("description", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
-                variables.put("duration", punishment.isPermanent() ? "permanent" : PunishmentMessages.formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
-                variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
-                variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");
-                
-                String kickMsg = localeManager.getPlayerNotificationMessage(2, variables);
+                // Use proper ban message formatting with SYNC context for dynamic variables
+                String kickMsg = PunishmentMessages.formatBanMessage(punishment, localeManager, PunishmentMessages.MessageContext.SYNC);
                 platform.kickPlayer(player, kickMsg);
             }
             
@@ -425,9 +431,13 @@ public class SyncService {
             // Kick player if online
             AbstractPlayer player = platform.getPlayer(uuid);
             if (player != null && player.isOnline()) {
-                // Use proper kick message formatting
-                String kickMsg = PunishmentMessages.formatKickMessage(punishment, localeManager);
+                // Use proper kick message formatting with SYNC context for dynamic variables
+                String kickMsg = PunishmentMessages.formatKickMessage(punishment, localeManager, PunishmentMessages.MessageContext.SYNC);
                 platform.kickPlayer(player, kickMsg);
+
+                // Broadcast punishment
+                String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "kicked", localeManager);
+                platform.broadcast(broadcastMessage);
                 
                 logger.info(String.format("Successfully executed kick for %s: %s", username, punishment.getDescription()));
                 return true;
