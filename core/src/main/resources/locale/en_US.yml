@@ -215,6 +215,10 @@ commands:
     description: "Blacklist a player from the network"
     usage: "/blacklist <player> [reason...] [flags]"
     
+  warn:
+    description: "Warn a player and add a note to their profile"
+    usage: "/warn <player> <reason...> [-silent]"
+
   pardon:
     description: "Pardon a player's ban by name or punishment ID (for bans only)"
     usage: "/pardon <player/punishment_id> [reason...]"
@@ -396,3 +400,10 @@ pardon:
   error_wrong_type_mute: "&cPunishment &e#{id}&c is not a mute. Use &e/pardon {id}&c to pardon any punishment type."
   staff_notification_id: "&6[MODL] &f{issuer} &7pardoned punishment &e#{id}"
   staff_notification_player: "&6[MODL] &f{issuer} &7pardoned {player}'s {type}"
+
+# Warning Command Messages
+warn:
+  player_message: "&c&lYou have received a warning from {issuer}.\n&fReason: &7{reason}\n&7Please review the server rules and adjust your behavior accordingly."
+  success: "&aSuccessfully warned &f{target}&a for: &7{reason}"
+  staff_notification: "&7&o[{issuer}: warned {target} for {reason}&7&o]"
+  error: "&cFailed to create warning: {error}"

@@ -49,12 +49,13 @@ report_gui:
         - "&e&lClick para reportar {player}"
       report_type: "player"
       subject: "Nombre de Usuario Inapropiado"
-      
-  close_button:
-    item: "BARRIER"
-    slot: 22
-    name: "&c&lCerrar Menú"
-    lore: []
+
+# Warning Command Messages
+warn:
+  player_message: "&c&lHas recibido una advertencia de {issuer}.\n&fRazón: &7{reason}\n&7Por favor revisa las reglas del servidor y ajusta tu comportamiento en consecuencia."
+  success: "&aAdvertencia enviada exitosamente a &f{target}&a por: &7{reason}"
+  staff_notification: "&7&o[{issuer}: advirtió a {target} por {reason}&7&o]"
+  error: "&cError al crear advertencia: {error}"
 
 # Form Data
 form_data:
