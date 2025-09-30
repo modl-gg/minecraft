@@ -7,7 +7,7 @@
     <groupId>gg.modl</groupId>
     <artifactId>modl-minecraft</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.2-SNAPSHOT</version>
+    <version>1.0.3</version>
 
     <modules>
         <module>api</module>
@@ -77,7 +77,7 @@
         <!-- Plugin variables -->
         <plugin.id>modl</plugin.id>
         <plugin.name>modl</plugin.name>
-        <plugin.version>${project.version}-${plugin.timestamp}</plugin.version>
+        <plugin.version>${project.version}</plugin.version>
         <plugin.author>tigerbong, byteful</plugin.author>
         <plugin.url>https://github.com/modl-gg/minecraft</plugin.url>
         <plugin.description>${project.description}</plugin.description>
