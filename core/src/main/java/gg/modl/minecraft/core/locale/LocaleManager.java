@@ -52,7 +52,7 @@ public class LocaleManager {
         try {
             if (Files.exists(localeFile)) {
                 Yaml yaml = new Yaml();
-                this.messages = yaml.load(Files.newInputStream(localeFile));
+                this.messages.putAll(yaml.load(Files.newInputStream(localeFile)));
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to load locale from file: " + localeFile, e);

@@ -108,6 +108,7 @@ public class PluginLoader {
         commandManager.registerCommand(new KickCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
         commandManager.registerCommand(new BlacklistCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
         commandManager.registerCommand(new PardonCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
+        commandManager.registerCommand(new WarnCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
         
         // Register player commands
         commandManager.registerCommand(new IAmMutedCommand(platform, cache, this.localeManager));

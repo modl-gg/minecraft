@@ -11,7 +11,6 @@ import gg.modl.minecraft.api.http.request.CreatePlayerNoteRequest;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
@@ -32,13 +31,6 @@ public class WarnCommand extends BaseCommand {
             sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", Map.of()));
             return;
         }
-
-        // Check permission for warn - technically we don't really need to check cause this isn't a real punishment
-//        if (!PermissionUtil.hasPermission(sender, cache, "punishment.apply.warn")) {
-//            sender.sendMessage(localeManager.getPunishmentMessage("general.no_permission_punishment",
-//                Map.of("type", "warn")));
-//            return;
-//        }
 
         // Parse arguments
         final WarnArgs warnArgs = parseArguments(args);

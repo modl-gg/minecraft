@@ -154,7 +154,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> createPlayerNote(@NotNull CreatePlayerNoteRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/player/" + request.getTargetUuid() + "/notes"))
+                .uri(URI.create(baseUrl + "/minecraft/player/note/create"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))

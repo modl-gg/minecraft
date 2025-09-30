@@ -81,13 +81,14 @@ public class KickCommand extends BaseCommand {
                 .get("general.punishment_issued"));
 
             // Staff notification
-            String staffMessage = localeManager.punishment()
-                .issuer(issuerName)
-                .type("kick")
-                .target(targetName)
-                .get("general.staff_notification");
-            platform.staffBroadcast(staffMessage);
-            
+            if (!silentKick) {
+                String staffMessage = localeManager.punishment()
+                        .issuer(issuerName)
+                        .type("kick")
+                        .target(targetName)
+                        .get("general.staff_notification");
+                platform.staffBroadcast(staffMessage);
+            }
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
