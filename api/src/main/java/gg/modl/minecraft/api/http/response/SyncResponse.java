@@ -36,6 +36,8 @@ public class SyncResponse {
         
         @NotNull
         private List<ActiveStaffMember> activeStaffMembers;
+        
+        private MigrationTask migrationTask;
     }
     
     @Data
@@ -128,5 +130,16 @@ public class SyncResponse {
         
         @NotNull
         private String email;
+    }
+    
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class MigrationTask {
+        @NotNull
+        private String taskId;
+        
+        @NotNull
+        private String type;
     }
 }

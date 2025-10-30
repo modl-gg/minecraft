@@ -415,6 +415,17 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                         .build(), Void.class);
     }
 
+    @NotNull
+    @Override
+    public CompletableFuture<Void> updateMigrationStatus(@NotNull MigrationStatusUpdateRequest request) {
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/migration/progress"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                .build(), Void.class);
+    }
+
     private String generateRequestId() {
         return String.valueOf(System.nanoTime() % 1000000);
     }

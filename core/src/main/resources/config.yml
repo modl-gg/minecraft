@@ -5,6 +5,7 @@ api:
   # Your API key from the panel
   key: "your-api-key-here"
   # Your panel's base URL (e.g., https://yourserver.modl.gg)
+  # NOTE: Do NOT include /api in the URL - it will be added automatically
   url: "https://yourserver.modl.gg"
   # Enable debug HTTP logging (default: false)
   debug: false
@@ -21,3 +22,21 @@ sync:
   # How often to sync with the panel (in seconds)
   # Default: 2 seconds. Minimum: 1 second
   polling_rate: 2
+
+# Migration Configuration
+migration:
+  litebans:
+    database:
+      # Database connection details for LiteBans migration
+      # The plugin will try to auto-detect from LiteBans config first
+      # If LiteBans is not found, these settings will be used as fallback
+      host: "localhost"
+      port: 3306
+      database: "minecraft"
+      username: "root"
+      password: ""
+      # Supported types: mysql, mariadb, postgresql, h2
+      type: "mysql"
+      # Table prefix for LiteBans tables (default: "litebans_")
+      # Plugin will try to read from LiteBans config first
+      table_prefix: "litebans_"

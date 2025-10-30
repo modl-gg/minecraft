@@ -2,8 +2,10 @@ package gg.modl.minecraft.core;
 
 import co.aikar.commands.CommandManager;
 import gg.modl.minecraft.api.AbstractPlayer;
+import gg.modl.minecraft.api.DatabaseProvider;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 
+import java.io.File;
 import java.util.Collection;
 import java.util.UUID;
 
@@ -27,5 +29,12 @@ public interface Platform {
     void runOnMainThread(Runnable task);
     void kickPlayer(AbstractPlayer player, String reason);
     String getServerName();
+    File getDataFolder();
+    
+    /**
+     * Create a DatabaseProvider using LiteBans API if available
+     * @return DatabaseProvider or null if LiteBans is not available
+     */
+    DatabaseProvider createLiteBansDatabaseProvider();
 }
 

@@ -19,8 +19,13 @@ public class HttpManager {
 
     public HttpManager(@NotNull String key, @NotNull String url, boolean debugHttp) {
         this.apiKey = key;
-        this.apiUrl = url + "/api";
-        this.panelUrl = url;
+        // Normalize URL: remove trailing slash and /api if present
+        String normalizedUrl = url.replaceAll("/+$", "");
+        if (normalizedUrl.endsWith("/api")) {
+            normalizedUrl = normalizedUrl.substring(0, normalizedUrl.length() - 4);
+        }
+        this.apiUrl = normalizedUrl + "/api";
+        this.panelUrl = normalizedUrl;
         this.debugHttp = debugHttp;
         this.httpClient = new ModlHttpClientImpl(apiUrl, key, debugHttp);
     }

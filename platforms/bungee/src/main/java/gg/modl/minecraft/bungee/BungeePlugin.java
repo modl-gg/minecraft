@@ -47,7 +47,7 @@ public class BungeePlugin extends Plugin {
 
         BungeeCommandManager commandManager = new BungeeCommandManager(this);
 
-        BungeePlatform platform = new BungeePlatform(commandManager, getLogger());
+        BungeePlatform platform = new BungeePlatform(commandManager, getLogger(), getDataFolder());
         ChatMessageCache chatMessageCache = new ChatMessageCache();
 
         // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)

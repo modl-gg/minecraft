@@ -73,4 +73,7 @@ public interface ModlHttpClient {
 
     @NotNull
     CompletableFuture<Void> pardonPlayer(@NotNull PardonPlayerRequest request);
+
+    @NotNull
+    CompletableFuture<Void> updateMigrationStatus(@NotNull MigrationStatusUpdateRequest request);
 }

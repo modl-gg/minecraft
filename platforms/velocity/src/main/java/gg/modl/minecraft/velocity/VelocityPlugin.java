@@ -77,7 +77,7 @@ public final class VelocityPlugin {
                 (Boolean) getNestedConfig("api.debug", false)
         );
 
-        VelocityPlatform platform = new VelocityPlatform(this.server, commandManager);
+        VelocityPlatform platform = new VelocityPlatform(this.server, commandManager, logger, folder.toFile());
         ChatMessageCache chatMessageCache = new ChatMessageCache();
         
         // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)

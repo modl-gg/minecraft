@@ -3,7 +3,9 @@ package gg.modl.minecraft.velocity;
 import co.aikar.commands.CommandManager;
 import co.aikar.commands.VelocityCommandManager;
 import gg.modl.minecraft.api.AbstractPlayer;
+import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import gg.modl.minecraft.core.util.WebPlayer;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
@@ -12,7 +14,9 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.slf4j.Logger;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.UUID;
@@ -22,6 +26,8 @@ import java.util.stream.Collectors;
 public class VelocityPlatform implements Platform {
     private final ProxyServer server;
     private final VelocityCommandManager commandManager;
+    private final Logger logger;
+    private final File dataFolder;
 
     private static Component get(String string) {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(string);
@@ -191,5 +197,29 @@ public class VelocityPlatform implements Platform {
     @Override
     public String getServerName() {
         return "velocity-proxy"; // Default server name, can be made configurable
+    }
+
+    @Override
+    public File getDataFolder() {
+        return dataFolder;
+    }
+
+    @Override
+    public DatabaseProvider createLiteBansDatabaseProvider() {
+        try {
+            // Check if LiteBans plugin is loaded
+            if (server.getPluginManager().getPlugin("LiteBans").isPresent()) {
+                // Verify LiteBans API is accessible
+                Class.forName("litebans.api.Database");
+                logger.info("[Migration] LiteBans plugin detected, using LiteBans API");
+                return new LiteBansDatabaseProvider();
+            }
+        } catch (ClassNotFoundException e) {
+            logger.info("[Migration] LiteBans API not found in classpath");
+        } catch (Exception e) {
+            logger.warn("[Migration] Error checking for LiteBans: " + e.getMessage());
+        }
+
+        return null;
     }
 }

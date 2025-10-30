@@ -43,7 +43,7 @@ public class SpigotPlugin extends JavaPlugin {
 
         BukkitCommandManager commandManager = new BukkitCommandManager(this);
 
-        SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger());
+        SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger(), getDataFolder());
         ChatMessageCache chatMessageCache = new ChatMessageCache();
 
         // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)

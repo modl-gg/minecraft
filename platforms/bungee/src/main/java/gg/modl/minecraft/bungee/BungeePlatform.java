@@ -3,8 +3,10 @@ package gg.modl.minecraft.bungee;
 import co.aikar.commands.BungeeCommandManager;
 import co.aikar.commands.CommandManager;
 import gg.modl.minecraft.api.AbstractPlayer;
+import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ProxyServer;
@@ -12,6 +14,7 @@ import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.UUID;
@@ -23,8 +26,7 @@ import java.util.stream.Collectors;
 public class BungeePlatform implements Platform {
     private final BungeeCommandManager commandManager;
     private final Logger logger;
-
-
+    private final File dataFolder;
 
     @Override
     public void broadcast(String string) {
@@ -164,6 +166,30 @@ public class BungeePlatform implements Platform {
     @Override
     public String getServerName() {
         return "bungee-proxy"; // Default server name, can be made configurable
+    }
+
+    @Override
+    public File getDataFolder() {
+        return dataFolder;
+    }
+
+    @Override
+    public DatabaseProvider createLiteBansDatabaseProvider() {
+        try {
+            // Check if LiteBans plugin is loaded
+            if (ProxyServer.getInstance().getPluginManager().getPlugin("LiteBans") != null) {
+                // Verify LiteBans API is accessible
+                Class.forName("litebans.api.Database");
+                logger.info("[Migration] LiteBans plugin detected, using LiteBans API");
+                return new LiteBansDatabaseProvider();
+            }
+        } catch (ClassNotFoundException e) {
+            logger.info("[Migration] LiteBans API not found in classpath");
+        } catch (Exception e) {
+            logger.warning("[Migration] Error checking for LiteBans: " + e.getMessage());
+        }
+
+        return null;
     }
 
     public Logger getLogger() {

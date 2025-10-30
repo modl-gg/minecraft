@@ -8,11 +8,17 @@ import gg.modl.minecraft.api.http.request.NotificationAcknowledgeRequest;
 import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.request.SyncRequest;
 import gg.modl.minecraft.api.http.response.SyncResponse;
+import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.database.DatabaseConfig;
+import gg.modl.minecraft.core.service.database.JdbcDatabaseProvider;
+import gg.modl.minecraft.core.service.MigrationService;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import lombok.RequiredArgsConstructor;
+
+import java.io.File;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.HttpURLConnection;
@@ -20,7 +26,6 @@ import java.net.URL;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -48,10 +53,14 @@ public class SyncService {
     @NotNull
     private final String apiKey;
     private final int pollingRateSeconds;
+    @NotNull
+    private final File dataFolder;
+    private final DatabaseConfig databaseConfig;
     
     private String lastSyncTimestamp;
     private ScheduledExecutorService syncExecutor;
     private boolean isRunning = false;
+    private MigrationService migrationService;
     
     /**
      * Start the sync service with configurable polling interval
@@ -104,6 +113,11 @@ public class SyncService {
                 syncExecutor.shutdownNow();
                 Thread.currentThread().interrupt();
             }
+        }
+        
+        // Shutdown migration service if active
+        if (migrationService != null) {
+            migrationService.shutdown();
         }
         
         isRunning = false;
@@ -301,6 +315,73 @@ public class SyncService {
         // Process player notifications
         for (SyncResponse.PlayerNotification notification : data.getPlayerNotifications()) {
             processPlayerNotification(notification);
+        }
+        
+        // Process migration task if present
+        if (data.getMigrationTask() != null) {
+            processMigrationTask(data.getMigrationTask());
+        }
+    }
+    
+    /**
+     * Process migration task from sync response
+     */
+    private void processMigrationTask(SyncResponse.MigrationTask migrationTask) {
+        try {
+            logger.info(String.format("Processing migration task %s (type: %s)", 
+                migrationTask.getTaskId(), migrationTask.getType()));
+            
+            // Initialize migration service if not already done
+            if (migrationService == null) {
+                try {
+                    // Try to get LiteBans database provider from platform first
+                    DatabaseProvider databaseProvider = platform.createLiteBansDatabaseProvider();
+                    
+                    if (databaseProvider == null) {
+                        // LiteBans not available, use JDBC
+                        logger.info("[Migration] LiteBans not available, using JDBC connection");
+                        databaseProvider = new JdbcDatabaseProvider(databaseConfig, logger);
+                    }
+                    
+                    migrationService = new MigrationService(logger, httpClient, apiUrl, apiKey, dataFolder, databaseProvider);
+                } catch (Exception e) {
+                    logger.severe("[Migration] Failed to initialize migration service: " + e.getMessage());
+                    e.printStackTrace();
+                    return;
+                }
+            }
+            
+            // Start migration based on type
+            String taskId = migrationTask.getTaskId();
+            String type = migrationTask.getType();
+            
+            if ("litebans".equalsIgnoreCase(type)) {
+                // Export LiteBans data asynchronously
+                migrationService.exportLiteBansData(taskId).thenAccept(jsonFile -> {
+                    if (jsonFile != null && jsonFile.exists()) {
+                        // Upload the file to panel
+                        migrationService.uploadMigrationFile(jsonFile, taskId).thenAccept(success -> {
+                            if (success) {
+                                logger.info("[Migration] Migration task " + taskId + " completed successfully");
+                            } else {
+                                logger.warning("[Migration] Migration task " + taskId + " upload failed");
+                            }
+                        });
+                    } else {
+                        logger.warning("[Migration] Migration task " + taskId + " export failed - no file generated");
+                    }
+                }).exceptionally(throwable -> {
+                    logger.severe("[Migration] Migration task " + taskId + " failed: " + throwable.getMessage());
+                    throwable.printStackTrace();
+                    return null;
+                });
+            } else {
+                logger.warning("[Migration] Unknown migration type: " + type);
+            }
+            
+        } catch (Exception e) {
+            logger.severe("[Migration] Error processing migration task: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     

@@ -16,11 +16,16 @@ import gg.modl.minecraft.core.impl.commands.player.IAmMutedCommand;
 import gg.modl.minecraft.core.impl.commands.punishments.*;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.service.database.DatabaseConfig;
 import gg.modl.minecraft.core.sync.SyncService;
 import lombok.Getter;
+import org.yaml.snakeyaml.Yaml;
 
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.logging.Logger;
 
 // import static gg.modl.minecraft.core.Constants.QUERY_MOJANG; // Moved to config
@@ -55,9 +60,12 @@ public class PluginLoader {
             this.localeManager.loadFromFile(localeFile);
         }
 
+        // Load database configuration for migration
+        DatabaseConfig databaseConfig = loadDatabaseConfig(dataDirectory, logger);
+
         // Initialize sync service with configurable polling rate
         this.syncService = new SyncService(platform, httpClient, cache, logger, this.localeManager,
-                httpManager.getApiUrl(), httpManager.getApiKey(), syncPollingRateSeconds);
+                httpManager.getApiUrl(), httpManager.getApiKey(), syncPollingRateSeconds, dataDirectory.toFile(), databaseConfig);
         
         // Log configuration details
         logger.info("MODL Configuration:");
@@ -145,6 +153,100 @@ public class PluginLoader {
         return null;
     }
     
+    /**
+     * Load database configuration from config.yml
+     */
+    private DatabaseConfig loadDatabaseConfig(Path dataDirectory, Logger logger) {
+        try {
+            Path configFile = dataDirectory.resolve("config.yml");
+            if (!Files.exists(configFile)) {
+                logger.warning("[Migration] Config file not found, using default database config");
+                return createDefaultDatabaseConfig();
+            }
+
+            Yaml yaml = new Yaml();
+            try (InputStream inputStream = new FileInputStream(configFile.toFile())) {
+                Map<String, Object> config = yaml.load(inputStream);
+                
+                if (config != null && config.containsKey("migration")) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> migration = (Map<String, Object>) config.get("migration");
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> litebans = (Map<String, Object>) migration.get("litebans");
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> database = (Map<String, Object>) litebans.get("database");
+                    
+                    String host = (String) database.getOrDefault("host", "localhost");
+                    int port = (int) database.getOrDefault("port", 3306);
+                    String dbName = (String) database.getOrDefault("database", "minecraft");
+                    String username = (String) database.getOrDefault("username", "root");
+                    String password = (String) database.getOrDefault("password", "");
+                    String type = (String) database.getOrDefault("type", "mysql");
+                    String tablePrefix = (String) database.getOrDefault("table_prefix", "litebans_");
+                    
+                    DatabaseConfig.DatabaseType dbType = DatabaseConfig.DatabaseType.fromString(type);
+                    
+                    // Try to read table prefix from LiteBans config if it exists
+                    String detectedPrefix = detectLiteBansTablePrefix(dataDirectory, logger);
+                    if (detectedPrefix != null) {
+                        tablePrefix = detectedPrefix;
+                        logger.info("[Migration] Detected LiteBans table prefix from config: " + tablePrefix);
+                    }
+                    
+                    logger.info("[Migration] Loaded database config: " + type + " @ " + host + ":" + port + "/" + dbName);
+                    logger.info("[Migration] Using table prefix: " + tablePrefix);
+                    
+                    return new DatabaseConfig(host, port, dbName, username, password, dbType, tablePrefix);
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("[Migration] Failed to load database config: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return createDefaultDatabaseConfig();
+    }
+
+    private DatabaseConfig createDefaultDatabaseConfig() {
+        return new DatabaseConfig("localhost", 3306, "minecraft", "root", "", DatabaseConfig.DatabaseType.MYSQL, "litebans_");
+    }
+
+    /**
+     * Try to detect LiteBans table prefix from LiteBans config.yml
+     */
+    private String detectLiteBansTablePrefix(Path dataDirectory, Logger logger) {
+        try {
+            // LiteBans config is in plugins/LiteBans/config.yml
+            Path litebansConfig = dataDirectory.getParent().resolve("LiteBans").resolve("config.yml");
+            
+            if (!Files.exists(litebansConfig)) {
+                logger.info("[Migration] LiteBans config not found, using prefix from MODL config");
+                return null;
+            }
+            
+            Yaml yaml = new Yaml();
+            try (InputStream inputStream = new FileInputStream(litebansConfig.toFile())) {
+                Map<String, Object> config = yaml.load(inputStream);
+                
+                if (config != null && config.containsKey("sql")) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> sql = (Map<String, Object>) config.get("sql");
+                    
+                    if (sql.containsKey("table_prefix")) {
+                        String prefix = (String) sql.get("table_prefix");
+                        if (prefix != null && !prefix.isEmpty()) {
+                            return prefix;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("[Migration] Failed to read LiteBans config: " + e.getMessage());
+        }
+        
+        return null;
+    }
+
     /**
      * Stop all services (should be called on plugin disable)
      */
