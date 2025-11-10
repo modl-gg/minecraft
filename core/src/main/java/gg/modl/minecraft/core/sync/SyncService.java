@@ -243,7 +243,7 @@ public class SyncService {
                 }
             }).exceptionally(throwable -> {
                 if (throwable.getCause() instanceof PanelUnavailableException) {
-                    logger.warning("Sync request failed: Panel temporarily unavailable (502 error)");
+                    //logger.warning("Sync request failed: Panel temporarily unavailable (502 error)");
                 } else {
                     logger.warning("Sync request failed: " + throwable.getMessage());
                 }

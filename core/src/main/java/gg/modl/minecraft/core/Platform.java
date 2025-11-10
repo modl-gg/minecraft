@@ -36,5 +36,7 @@ public interface Platform {
      * @return DatabaseProvider or null if LiteBans is not available
      */
     DatabaseProvider createLiteBansDatabaseProvider();
+
+    void log(String msg);
 }
 

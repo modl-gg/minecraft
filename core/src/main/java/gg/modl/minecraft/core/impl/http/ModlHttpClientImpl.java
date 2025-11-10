@@ -252,8 +252,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
 
         // Check circuit breaker before making request
         if (!circuitBreaker.allowRequest()) {
-            logger.warning(String.format("[REQ-%s] Circuit breaker is OPEN - blocking request to %s",
-                    requestId, request.uri()));
+            //logger.warning(String.format("[REQ-%s] Circuit breaker is OPEN - blocking request to %s", requestId, request.uri()));
             return CompletableFuture.failedFuture(
                 new PanelUnavailableException(503, request.uri().getPath(),
                     "Panel is temporarily unavailable (circuit breaker open)"));
@@ -332,8 +331,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
 
                         // Log additional details for common errors
                         if (response.statusCode() == 502) {
-                            logger.warning(String.format("[REQ-%s] Panel returned 502 (Bad Gateway) - likely restarting. Endpoint: %s",
-                                    requestId, request.uri().getPath()));
+                            //logger.warning(String.format("[REQ-%s] Panel returned 502 (Bad Gateway) - likely restarting. Endpoint: %s", requestId, request.uri().getPath()));
                             throw new PanelUnavailableException(502, request.uri().getPath(),
                                     "Panel is temporarily unavailable (502 Bad Gateway)");
                         } else if (response.statusCode() == 401 || response.statusCode() == 403) {
@@ -347,10 +345,6 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                     }
                 })
                 .exceptionally(throwable -> {
-                    final Duration duration = Duration.between(startTime, Instant.now());
-                    logger.severe(String.format("[REQ-%s] Request failed after %dms: %s",
-                            requestId, duration.toMillis(), throwable.getMessage()));
-
                     // Record failure for circuit breaker (unless it's already a PanelUnavailableException)
                     if (!(throwable instanceof PanelUnavailableException)) {
                         circuitBreaker.recordFailure();

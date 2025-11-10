@@ -109,9 +109,7 @@ public class MigrationService {
     private Set<String> getAllPlayerUuids() throws SQLException {
         Set<String> uuids = new LinkedHashSet<>();
         
-        String query = "SELECT DISTINCT UUID FROM {bans} " +
-                      "UNION " +
-                      "SELECT DISTINCT UUID FROM {mutes}";
+        String query = "SELECT DISTINCT UUID FROM {history}";
         
         try (PreparedStatement stmt = databaseProvider.prepareStatement(query);
              ResultSet rs = stmt.executeQuery()) {
@@ -158,7 +156,11 @@ public class MigrationService {
                     if (name != null && !name.isEmpty()) {
                         UsernameData usernameData = new UsernameData();
                         usernameData.username = name;
-                        usernameData.date = formatTimestamp(date);
+                        if (date != null) {
+                            usernameData.date = formatTimestamp(date);
+                        } else {
+                            usernameData.date = formatMillisToIso(System.currentTimeMillis());
+                        }
                         usernames.add(usernameData);
                     }
                 }
@@ -168,21 +170,9 @@ public class MigrationService {
         return usernames;
     }
 
-    /**
-     * Extract IP addresses from bans and mutes tables
-     */
     private List<IpData> extractIpAddresses(String uuid) throws SQLException {
         Map<String, IpData> ipMap = new HashMap<>();
-        
-        // Query both bans and mutes for IPs
-        extractIpsFromTable(uuid, "{bans}", ipMap);
-        extractIpsFromTable(uuid, "{mutes}", ipMap);
-        
-        return new ArrayList<>(ipMap.values());
-    }
-
-    private void extractIpsFromTable(String uuid, String tableToken, Map<String, IpData> ipMap) throws SQLException {
-        String query = "SELECT IP, TIME FROM " + tableToken + " WHERE UUID = ? AND IP IS NOT NULL";
+        String query = "SELECT IP, DATE FROM {history} WHERE UUID = ? AND IP IS NOT NULL ORDER BY DATE ASC";
         
         try (PreparedStatement stmt = databaseProvider.prepareStatement(query)) {
             stmt.setString(1, uuid);
@@ -190,31 +180,50 @@ public class MigrationService {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String ip = rs.getString("IP");
-                    long time = rs.getLong("TIME");
+                    Timestamp date = rs.getTimestamp("DATE");
                     
                     if (ip != null && !ip.isEmpty()) {
                         IpData ipData = ipMap.computeIfAbsent(ip, k -> {
                             IpData data = new IpData();
                             data.ipAddress = ip;
+                            data.country = null;
+                            data.region = null;
+                            data.asn = null;
+                            data.proxy = false;
+                            data.hosting = false;
                             data.logins = new ArrayList<>();
                             data.firstLogin = null;
                             return data;
                         });
                         
-                        String loginTime = formatMillisToIso(time);
+                        Timestamp loginDate = date != null ? date : new Timestamp(System.currentTimeMillis());
+                        String loginTime = formatTimestamp(loginDate);
+                        
                         if (!ipData.logins.contains(loginTime)) {
                             ipData.logins.add(loginTime);
                         }
                         
                         if (ipData.firstLogin == null) {
                             ipData.firstLogin = loginTime;
-                        } else if (time < parseIsoToMillis(ipData.firstLogin)) {
+                        } else if (loginDate.getTime() < parseIsoToMillis(ipData.firstLogin)) {
                             ipData.firstLogin = loginTime;
                         }
                     }
                 }
             }
         }
+
+        for (IpData ipData : ipMap.values()) {
+            if (ipData.firstLogin == null && !ipData.logins.isEmpty()) {
+                // Use first login if available
+                ipData.firstLogin = ipData.logins.get(0);
+            } else if (ipData.firstLogin == null) {
+                // Fallback to current time if no logins (shouldn't happen, but safety check)
+                ipData.firstLogin = formatMillisToIso(System.currentTimeMillis());
+            }
+        }
+
+        return new ArrayList<>(ipMap.values());
     }
 
     /**
@@ -249,9 +258,14 @@ public class MigrationService {
                     punishment.id = "litebans-" + typeName.toLowerCase() + "-" + litebansId;
                     punishment.type = typeName;
                     punishment.typeOrdinal = typeOrdinal;
-                    punishment.reason = rs.getString("REASON");
+                    
+                    String reason = rs.getString("REASON");
+                    punishment.reason = (reason != null && !reason.isEmpty()) ? reason : "No reason provided";
                     
                     long timeIssued = rs.getLong("TIME");
+                    if (timeIssued <= 0) {
+                        timeIssued = System.currentTimeMillis();
+                    }
                     punishment.issued = formatMillisToIso(timeIssued);
                     
                     // Handle issuer (could be UUID or "Console")
@@ -264,13 +278,31 @@ public class MigrationService {
                     long until = rs.getLong("UNTIL");
                     if (until > 0 && until != -1) {
                         punishment.duration = until - timeIssued;
+                    } else {
+                        punishment.duration = 0L; // Permanent punishment
                     }
                     
                     // Set started time (for active punishments)
                     punishment.started = punishment.issued;
                     
+                    // Initialize required arrays
+                    punishment.notes = new ArrayList<>();
+                    punishment.evidence = new ArrayList<>();
+                    punishment.attachedTicketIds = new ArrayList<>();
+                    
+                    // Add reason as first note (per schema requirement)
+                    // Always add a note even if reason is empty/null
+                    Map<String, Object> reasonNote = new HashMap<>();
+                    reasonNote.put("text", punishment.reason);
+                    reasonNote.put("issuerName", punishment.issuerName);
+                    reasonNote.put("date", punishment.issued);
+                    punishment.notes.add(reasonNote);
+                    
                     // Build data object
                     punishment.data = new HashMap<>();
+                    
+                    // Move duration to data map (per schema requirement)
+                    punishment.data.put("duration", punishment.duration);
                     
                     // Determine if active
                     boolean active = rs.getBoolean("ACTIVE");
@@ -282,9 +314,9 @@ public class MigrationService {
                     punishment.data.put("importDate", Instant.now().toString());
                     punishment.data.put("litebansId", litebansId);
                     
-                    // Add pardon info if pardoned
                     if (removedByUuid != null) {
-                        punishment.data.put("pardonedBy", rs.getString("REMOVED_BY_NAME"));
+                        String removedByName = rs.getString("REMOVED_BY_NAME");
+                        punishment.data.put("pardonedBy", removedByName != null ? removedByName : "Unknown");
                     }
                     
                     punishments.add(punishment);
@@ -320,7 +352,16 @@ public class MigrationService {
     private List<StreamingJsonWriter.IpEntry> convertIpList(List<IpData> ipList) {
         List<StreamingJsonWriter.IpEntry> result = new ArrayList<>();
         for (IpData ip : ipList) {
-            result.add(new StreamingJsonWriter.IpEntry(ip.ipAddress, ip.country, ip.firstLogin, ip.logins));
+            result.add(new StreamingJsonWriter.IpEntry(
+                ip.ipAddress, 
+                ip.country, 
+                ip.region,
+                ip.asn,
+                ip.proxy != null ? ip.proxy : false,
+                ip.hosting != null ? ip.hosting : false,
+                ip.firstLogin, 
+                ip.logins
+            ));
         }
         return result;
     }
@@ -330,7 +371,8 @@ public class MigrationService {
         for (PunishmentData p : punishments) {
             result.add(new StreamingJsonWriter.PunishmentEntry(
                 p.id, p.type, p.typeOrdinal, p.reason, p.issued, 
-                p.issuerName, p.duration, p.started, p.data
+                p.issuerName, p.duration, p.started, p.data,
+                p.notes, p.evidence, p.attachedTicketIds
             ));
         }
         return result;
@@ -374,6 +416,10 @@ public class MigrationService {
     private static class IpData {
         String ipAddress;
         String country;
+        String region;
+        String asn;
+        Boolean proxy;
+        Boolean hosting;
         String firstLogin;
         List<String> logins;
     }
@@ -388,6 +434,9 @@ public class MigrationService {
         Long duration;
         String started;
         Map<String, Object> data;
+        List<Map<String, Object>> notes;
+        List<Object> evidence;
+        List<String> attachedTicketIds;
     }
 
     /**

@@ -195,4 +195,9 @@ public class BungeePlatform implements Platform {
     public Logger getLogger() {
         return logger;
     }
+
+    @Override
+    public void log(String msg) {
+        logger.info(msg);
+    }
 }

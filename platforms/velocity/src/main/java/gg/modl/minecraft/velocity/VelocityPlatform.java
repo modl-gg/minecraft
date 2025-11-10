@@ -61,15 +61,9 @@ public class VelocityPlatform implements Platform {
     public void sendJsonMessage(UUID uuid, String jsonMessage) {
         server.getPlayer(uuid).ifPresent(player -> {
             try {
-                // Log the JSON for debugging
-                System.out.println("Velocity JSON: " + jsonMessage);
-                
-                // Parse JSON using Velocity's Adventure component system
                 net.kyori.adventure.text.Component component = net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson().deserialize(jsonMessage);
                 player.sendMessage(component);
             } catch (Exception e) {
-                // Fallback to plain text if JSON parsing fails
-                System.err.println("Failed to parse JSON message on Velocity: " + e.getMessage());
                 e.printStackTrace();
                 player.sendMessage(net.kyori.adventure.text.Component.text("Notification: " + jsonMessage));
             }
@@ -221,5 +215,10 @@ public class VelocityPlatform implements Platform {
         }
 
         return null;
+    }
+
+    @Override
+    public void log(String msg) {
+        logger.info(msg);
     }
 }

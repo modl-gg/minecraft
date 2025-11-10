@@ -1,6 +1,7 @@
 package gg.modl.minecraft.velocity;
 
 import co.aikar.commands.VelocityCommandManager;
+import com.google.inject.Inject;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.plugin.PluginInfo;
@@ -16,7 +17,6 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import org.slf4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
-import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;

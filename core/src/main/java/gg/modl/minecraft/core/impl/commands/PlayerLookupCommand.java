@@ -49,21 +49,21 @@ public class PlayerLookupCommand extends BaseCommand {
                 });
                 punishmentTypesLoaded = true;
                 platform.runOnMainThread(() -> {
-                    System.out.println("[MODL] Loaded " + response.getData().size() + " punishment types for lookup display");
+                    platform.log("[MODL] Loaded " + response.getData().size() + " punishment types for lookup display");
                 });
             } else {
                 platform.runOnMainThread(() -> {
-                    System.err.println("[MODL] Failed to load punishment types for lookup display: " + response.getStatus());
+                    platform.log("[MODL] Failed to load punishment types for lookup display: " + response.getStatus());
                 });
             }
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 platform.runOnMainThread(() -> {
-                    System.err.println("[MODL] Panel restarting, cannot load punishment types: " + throwable.getMessage());
+                    platform.log("[MODL] Panel restarting, cannot load punishment types: " + throwable.getMessage());
                 });
             } else {
                 platform.runOnMainThread(() -> {
-                    System.err.println("[MODL] Error loading punishment types for lookup display: " + throwable.getMessage());
+                    platform.log("[MODL] Error loading punishment types for lookup display: " + throwable.getMessage());
                 });
             }
             return null;

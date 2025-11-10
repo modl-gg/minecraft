@@ -11,8 +11,6 @@ import java.util.logging.Logger;
  * Prevents cascading failures when the panel is down by temporarily blocking requests.
  */
 public class CircuitBreaker {
-    private static final Logger logger = Logger.getLogger(CircuitBreaker.class.getName());
-    
     public enum State {
         CLOSED,    // Normal operation
         OPEN,      // Circuit is open, blocking requests
@@ -67,7 +65,6 @@ public class CircuitBreaker {
                 if (currentTime >= nextRetryTime.get()) {
                     // Try to transition to half-open
                     if (state.compareAndSet(State.OPEN, State.HALF_OPEN)) {
-                        logger.info(String.format("Circuit breaker [%s] transitioning to HALF_OPEN", name));
                         return true;
                     }
                 }
@@ -92,7 +89,6 @@ public class CircuitBreaker {
             // Successful request in half-open state - close the circuit
             if (state.compareAndSet(State.HALF_OPEN, State.CLOSED)) {
                 reset();
-                logger.info(String.format("Circuit breaker [%s] closed after successful request", name));
             }
         } else if (currentState == State.CLOSED) {
             // Reset failure count on success
@@ -118,13 +114,11 @@ public class CircuitBreaker {
             // Failed request in half-open state - open the circuit again
             if (state.compareAndSet(State.HALF_OPEN, State.OPEN)) {
                 nextRetryTime.set(currentTime + retryTimeoutMillis);
-                logger.warning(String.format("Circuit breaker [%s] opened again after failed retry", name));
             }
         } else if (currentState == State.CLOSED && failures >= failureThreshold) {
             // Too many failures - open the circuit
             if (state.compareAndSet(State.CLOSED, State.OPEN)) {
                 nextRetryTime.set(currentTime + timeoutMillis);
-                logger.warning(String.format("Circuit breaker [%s] opened after %d failures", name, failures));
             }
         }
     }

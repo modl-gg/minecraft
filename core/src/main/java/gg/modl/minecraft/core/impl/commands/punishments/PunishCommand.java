@@ -188,21 +188,21 @@ public class PunishCommand extends BaseCommand {
                 cacheInitialized = true;
                 platform.runOnMainThread(() -> {
                     // Log successful initialization
-                    System.out.println("[MODL] Loaded " + cachedPunishmentTypes.size() + " punishment types from API");
+                    platform.log("[MODL] Loaded " + cachedPunishmentTypes.size() + " punishment types from API");
                 });
             } else {
                 platform.runOnMainThread(() -> {
-                    System.err.println("[MODL] Failed to load punishment types from API: " + response.getStatus());
+                    platform.log("[MODL] Failed to load punishment types from API: " + response.getStatus());
                 });
             }
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 platform.runOnMainThread(() -> {
-                    System.err.println("[MODL] Panel restarting, cannot load punishment types: " + throwable.getMessage());
+                    platform.log("[MODL] Panel restarting, cannot load punishment types: " + throwable.getMessage());
                 });
             } else {
                 platform.runOnMainThread(() -> {
-                    System.err.println("[MODL] Error loading punishment types: " + throwable.getMessage());
+                    platform.log("[MODL] Error loading punishment types: " + throwable.getMessage());
                 });
             }
             return null;
@@ -226,14 +226,14 @@ public class PunishCommand extends BaseCommand {
                         cache.cacheStaffPermissions(uuid, staffMember.getStaffRole(), staffMember.getPermissions());
                     } catch (IllegalArgumentException e) {
                         platform.runOnMainThread(() -> {
-                            System.out.println("[MODL] Invalid UUID for staff member " + staffMember.getStaffUsername() + ": " + staffMember.getMinecraftUuid());
+                            platform.log("[MODL] Invalid UUID for staff member " + staffMember.getStaffUsername() + ": " + staffMember.getMinecraftUuid());
                         });
                     }
                 }
             }
             
             platform.runOnMainThread(() -> {
-                System.out.println("[MODL] Loaded permissions for " + response.getData().getStaff().size() + " staff members");
+                platform.log("[MODL] Loaded permissions for " + response.getData().getStaff().size() + " staff members");
             });
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {

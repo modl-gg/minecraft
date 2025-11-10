@@ -184,9 +184,6 @@ public class YamlConfig {
             }
         }
 
-        System.out.println("Failed to set config option: " + key + ": " + value + " | " + instance);
-        System.out.println("lolol");
-        this.logger.debug("Failed to set config option: " + key + ": " + value + " | " + instance);
         if (configFile != null) {
             File configFileBackup = new File(configFile.getParent(), configFile.getName() + "_backup_" + now);
             if (!configFileBackup.exists()) {
