@@ -202,7 +202,7 @@ public class VelocityPlatform implements Platform {
     public DatabaseProvider createLiteBansDatabaseProvider() {
         try {
             // Check if LiteBans plugin is loaded
-            if (server.getPluginManager().getPlugin("LiteBans").isPresent()) {
+            if (server.getPluginManager().getPlugin("litebans").isPresent()) {
                 // Verify LiteBans API is accessible
                 Class.forName("litebans.api.Database");
                 logger.info("[Migration] LiteBans plugin detected, using LiteBans API");
