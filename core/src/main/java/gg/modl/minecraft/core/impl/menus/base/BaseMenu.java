@@ -45,7 +45,7 @@ public abstract class BaseMenu extends SimpleMenu {
         this.viewerName = viewerName;
         this.backAction = backAction;
 
-        type(InventoryType.GENERIC_9X5);
+        type(InventoryType.GENERIC_9X6);
     }
 
     /**
@@ -58,25 +58,19 @@ public abstract class BaseMenu extends SimpleMenu {
             set(MenuItems.glassPaneFiller().slot(i));
         }
 
-        // Fill bottom row (for 5-row inventory, that's slots 36-44)
-        for (int i = 36; i <= 44; i++) {
+        // Fill bottom row (for 6-row inventory, that's slots 45-53)
+        for (int i = 45; i <= 53; i++) {
             set(MenuItems.glassPaneFiller().slot(i));
         }
     }
 
     /**
      * Fill all borders for a 6-row menu.
+     * @deprecated Use fillBorders() instead - menus now default to 6 rows.
      */
+    @Deprecated
     protected void fillBorders6Row() {
-        // Fill top row
-        for (int i = 0; i <= 8; i++) {
-            set(MenuItems.glassPaneFiller().slot(i));
-        }
-
-        // Fill bottom row (slots 45-53)
-        for (int i = 45; i <= 53; i++) {
-            set(MenuItems.glassPaneFiller().slot(i));
-        }
+        fillBorders();
     }
 
     /**

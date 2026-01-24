@@ -44,7 +44,8 @@ public class BungeePlugin extends Plugin {
                 configuration.getString("api.key"),
                 apiUrl,
                 configuration.getBoolean("api.debug", false),
-                configuration.getBoolean("api.testing-api", false)
+                configuration.getBoolean("api.testing-api", false),
+                configuration.getString("api.force-version", "auto")
         );
 
         BungeeCommandManager commandManager = new BungeeCommandManager(this);
@@ -81,10 +82,12 @@ public class BungeePlugin extends Plugin {
                 Configuration defaultConfig = new Configuration();
                 defaultConfig.set("api.key", "your-api-key-here");
                 defaultConfig.set("api.url", "https://yourserver.modl.gg");
+                defaultConfig.set("api.debug", false);
+                defaultConfig.set("api.testing-api", false);
+                defaultConfig.set("api.force-version", "auto");
                 defaultConfig.set("server.name", "Server 1");
                 defaultConfig.set("server.query_mojang", false);
                 defaultConfig.set("sync.polling_rate", 2);
-                defaultConfig.set("api.debug", false);
                 ConfigurationProvider.getProvider(YamlConfiguration.class).save(defaultConfig, file);
             } catch (IOException e) {
                 e.printStackTrace();

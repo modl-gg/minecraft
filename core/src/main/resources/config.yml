@@ -12,6 +12,12 @@ api:
   # Use testing API (api.cobl.gg) instead of production API
   # Only enable this for development/testing purposes
   testing-api: false
+  # Force a specific API version (optional, for debugging)
+  # Options: "auto" (default), "v1", "v2"
+  # - auto: Checks V2 health at startup, falls back to V1 if unavailable
+  # - v1: Always use V1 API (legacy {panel-url}/api endpoints)
+  # - v2: Always use V2 API (centralized api.modl.gg/v1 endpoints)
+  force-version: "auto"
 
 # Server Configuration
 server:

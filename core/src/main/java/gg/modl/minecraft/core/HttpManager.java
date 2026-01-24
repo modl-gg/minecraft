@@ -4,11 +4,14 @@ import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.impl.http.ModlHttpClientImpl;
 import gg.modl.minecraft.core.impl.http.ModlHttpClientV2Impl;
-import gg.modl.minecraft.core.impl.http.ModlHttpClientWithFallback;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.logging.Logger;
 
 @Getter
@@ -38,8 +41,9 @@ public class HttpManager {
     private final ApiVersion apiVersion;
 
     /**
-     * Creates an HttpManager with V2-first fallback behavior.
-     * Tries V2 API first (api.modl.gg), falls back to V1 ({panel-url}/api) on failure.
+     * Creates an HttpManager that determines API version at startup.
+     * Checks V2 health first; if V2 is down, uses V1 for the entire session.
+     * No per-request fallback - the version is determined once at startup.
      *
      * @param key API key
      * @param url Panel URL (e.g., https://yourserver.modl.gg)
@@ -50,8 +54,8 @@ public class HttpManager {
     }
 
     /**
-     * Creates an HttpManager with V2-first fallback behavior and optional testing API.
-     * Tries V2 API first, falls back to V1 on failure.
+     * Creates an HttpManager that determines API version at startup.
+     * Checks V2 health first; if V2 is down, uses V1 for the entire session.
      *
      * @param key API key
      * @param url Panel URL (e.g., https://yourserver.modl.gg)
@@ -59,10 +63,21 @@ public class HttpManager {
      * @param useTestingApi If true, uses api.cobl.gg for V2 API instead of api.modl.gg
      */
     public HttpManager(@NotNull String key, @NotNull String url, boolean debugHttp, boolean useTestingApi) {
+        this(key, url, debugHttp, useTestingApi, "auto");
+    }
+
+    /**
+     * Creates an HttpManager with configurable API version selection.
+     *
+     * @param key API key
+     * @param url Panel URL (e.g., https://yourserver.modl.gg)
+     * @param debugHttp Enable debug HTTP logging
+     * @param useTestingApi If true, uses api.cobl.gg for V2 API instead of api.modl.gg
+     * @param forceVersion "auto" for health check, "v1" to force V1, "v2" to force V2
+     */
+    public HttpManager(@NotNull String key, @NotNull String url, boolean debugHttp, boolean useTestingApi, @NotNull String forceVersion) {
         this.apiKey = key;
         this.debugHttp = debugHttp;
-        // Default to V2 - actual version used depends on fallback behavior
-        this.apiVersion = ApiVersion.V2;
 
         // Normalize URL: remove trailing slash and /api if present
         String normalizedUrl = url.replaceAll("/+$", "");
@@ -71,27 +86,56 @@ public class HttpManager {
         }
         this.panelUrl = normalizedUrl;
 
-        // Extract server domain from panel URL (e.g., "yourserver.modl.gg" from "https://yourserver.modl.gg")
+        // Extract server domain from panel URL
         String serverDomain = extractDomain(normalizedUrl);
 
-        // Create V2 client (primary)
+        // Determine which API to use at startup
         String v2BaseUrl = useTestingApi ? TESTING_API_URL : V2_API_URL;
         String v2ApiUrl = v2BaseUrl + ApiVersion.V2.getBasePath();
-        ModlHttpClient v2Client = new ModlHttpClientV2Impl(v2ApiUrl, key, serverDomain, debugHttp);
-
-        // Create V1 client (fallback)
         String v1ApiUrl = normalizedUrl + ApiVersion.V1.getBasePath();
-        ModlHttpClient v1Client = new ModlHttpClientImpl(v1ApiUrl, key, debugHttp);
 
-        // Wrap in fallback client - tries V2 first, falls back to V1 on error
-        this.httpClient = new ModlHttpClientWithFallback(v2Client, v1Client);
-        this.apiUrl = v2ApiUrl; // Primary URL is V2
+        // Determine API version based on forceVersion setting
+        boolean useV2;
+        if ("v1".equalsIgnoreCase(forceVersion)) {
+            logger.info("Force-version set to V1 - skipping V2 health check");
+            useV2 = false;
+        } else if ("v2".equalsIgnoreCase(forceVersion)) {
+            logger.info("Force-version set to V2 - skipping V2 health check");
+            useV2 = true;
+        } else {
+            // Auto-detect based on health check
+            logger.info("Checking V2 API availability at: " + v2BaseUrl + "/v1/health");
+            useV2 = checkV2Health(v2BaseUrl, key, serverDomain);
+        }
 
-        logger.info("Using V2-first API with fallback: V2=" + v2ApiUrl + (useTestingApi ? " (testing)" : "") + ", V1=" + v1ApiUrl + ", Domain=" + serverDomain);
+        if (useV2) {
+            this.apiVersion = ApiVersion.V2;
+            this.apiUrl = v2ApiUrl;
+            this.httpClient = new ModlHttpClientV2Impl(apiUrl, key, serverDomain, debugHttp);
+            logger.info("==============================================");
+            logger.info("MODL API: Using V2 API (centralized)");
+            logger.info("  Base URL: " + apiUrl);
+            logger.info("  Server Domain: " + serverDomain);
+            logger.info("  Testing API: " + useTestingApi);
+            logger.info("  Force Version: " + forceVersion);
+            logger.info("==============================================");
+        } else {
+            this.apiVersion = ApiVersion.V1;
+            this.apiUrl = v1ApiUrl;
+            this.httpClient = new ModlHttpClientImpl(apiUrl, key, debugHttp);
+            logger.warning("==============================================");
+            logger.warning("MODL API: Using V1 API (legacy)");
+            logger.warning("  Base URL: " + apiUrl);
+            logger.warning("  Force Version: " + forceVersion);
+            logger.warning("  NOTE: V1 uses different endpoint paths!");
+            logger.warning("  V1 endpoints: /api/minecraft/player/login, /api/minecraft/sync, etc.");
+            logger.warning("  If your backend expects V2 paths, requests will fail with 405!");
+            logger.warning("==============================================");
+        }
     }
 
     /**
-     * Creates an HttpManager with a specific API version (no fallback).
+     * Creates an HttpManager with a specific API version (no health check).
      *
      * @param key API key
      * @param url Panel URL
@@ -130,6 +174,44 @@ public class HttpManager {
     // Backward compatibility constructor with default debug=false
     public HttpManager(@NotNull String key, @NotNull String url) {
         this(key, url, false);
+    }
+
+    /**
+     * Checks if V2 API is available by making a health check request.
+     *
+     * @param v2BaseUrl The V2 API base URL
+     * @param apiKey The API key
+     * @param serverDomain The server domain
+     * @return true if V2 API is available, false otherwise
+     */
+    private boolean checkV2Health(String v2BaseUrl, String apiKey, String serverDomain) {
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .build();
+
+            // Try the health endpoint
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(v2BaseUrl + "/v1/health"))
+                    .header("X-API-Key", apiKey)
+                    .header("X-Server-Domain", serverDomain)
+                    .timeout(Duration.ofSeconds(5))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                logger.info("V2 API health check PASSED (status: " + response.statusCode() + ", body: " + response.body() + ")");
+                return true;
+            } else {
+                logger.warning("V2 API health check FAILED (status: " + response.statusCode() + ", body: " + response.body() + ")");
+                return false;
+            }
+        } catch (Exception e) {
+            logger.warning("V2 API health check FAILED with exception: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            return false;
+        }
     }
 
     /**
