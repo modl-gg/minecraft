@@ -61,10 +61,10 @@
             <groupId>co.aikar</groupId>
             <artifactId>acf-velocity</artifactId>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>dev.simplix.cirrus</groupId>-->
-<!--            <artifactId>cirrus-velocity</artifactId>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>dev.simplix.cirrus</groupId>
+            <artifactId>cirrus-velocity</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>

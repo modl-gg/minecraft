@@ -1,0 +1,171 @@
+package gg.modl.minecraft.core.impl.menus.staff;
+
+import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.model.Click;
+import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import dev.simplix.protocolize.api.chat.ChatElement;
+import dev.simplix.protocolize.data.ItemType;
+import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
+import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Consumer;
+
+/**
+ * Role Permission Edit Menu - edit permissions for a role.
+ * Tertiary menu accessed from RoleListMenu.
+ */
+public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEditMenu.Permission> {
+
+    // Placeholder Permission class
+    public static class Permission {
+        private final String node;
+        private boolean enabled;
+
+        public Permission(String node, boolean enabled) {
+            this.node = node;
+            this.enabled = enabled;
+        }
+
+        public String getNode() { return node; }
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    }
+
+    private final RoleListMenu.Role role;
+    private List<Permission> allPermissions = new ArrayList<>();
+    private Set<String> enabledPermissions;
+    private final String panelUrl;
+    private final Consumer<CirrusPlayerWrapper> parentBackAction;
+
+    // All available permission nodes
+    private static final List<String> AVAILABLE_PERMISSIONS = Arrays.asList(
+            "modl.inspect",
+            "modl.staff",
+            "modl.punish",
+            "modl.punish.ban",
+            "modl.punish.mute",
+            "modl.punish.kick",
+            "modl.pardon",
+            "modl.reports.view",
+            "modl.reports.handle",
+            "modl.tickets.view",
+            "modl.tickets.respond",
+            "modl.notes.create",
+            "modl.admin"
+    );
+
+    /**
+     * Create a new role permission edit menu.
+     *
+     * @param platform The platform instance
+     * @param httpClient The HTTP client for API calls
+     * @param viewerUuid The UUID of the staff viewing the menu
+     * @param viewerName The name of the staff viewing the menu
+     * @param isAdmin Whether the viewer has admin permissions
+     * @param panelUrl The panel URL
+     * @param role The role to edit
+     * @param backAction Action to return to parent menu
+     */
+    public RolePermissionEditMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
+                                   boolean isAdmin, String panelUrl, RoleListMenu.Role role, Consumer<CirrusPlayerWrapper> backAction) {
+        super("Edit: " + role.getName(), platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
+        this.role = role;
+        this.panelUrl = panelUrl;
+        this.parentBackAction = backAction;
+        activeTab = StaffTab.SETTINGS;
+
+        // Initialize permissions
+        enabledPermissions = new HashSet<>(role.getPermissions());
+        for (String node : AVAILABLE_PERMISSIONS) {
+            allPermissions.add(new Permission(node, enabledPermissions.contains(node)));
+        }
+    }
+
+    @Override
+    protected Collection<Permission> elements() {
+        return allPermissions;
+    }
+
+    @Override
+    protected CirrusItem map(Permission permission) {
+        return CirrusItem.of(
+                permission.isEnabled() ? ItemType.LIME_DYE : ItemType.GRAY_DYE,
+                ChatElement.ofLegacyText(
+                        (permission.isEnabled() ? MenuItems.COLOR_GREEN : MenuItems.COLOR_GRAY) + permission.getNode()
+                ),
+                MenuItems.lore(
+                        MenuItems.COLOR_YELLOW + "Click to toggle"
+                )
+        );
+    }
+
+    @Override
+    protected void handleClick(Click click, Permission permission) {
+        // Toggle permission
+        permission.setEnabled(!permission.isEnabled());
+
+        if (permission.isEnabled()) {
+            enabledPermissions.add(permission.getNode());
+        } else {
+            enabledPermissions.remove(permission.getNode());
+        }
+
+        // TODO: Save to API when endpoint PATCH /v1/panel/roles/{id}/permissions is available
+        sendMessage(MenuItems.COLOR_YELLOW + "Permission " + permission.getNode() + " " +
+                (permission.isEnabled() ? MenuItems.COLOR_GREEN + "enabled" : MenuItems.COLOR_RED + "disabled"));
+        sendMessage(MenuItems.COLOR_GRAY + "(Changes not saved - endpoint needed)");
+
+        // Refresh menu
+        click.clickedMenu().close();
+        new RolePermissionEditMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, role, parentBackAction)
+                .display(click.player());
+    }
+
+    @Override
+    protected void registerActionHandlers() {
+        super.registerActionHandlers();
+
+        // Override header navigation
+        registerActionHandler("openOnlinePlayers", click -> {
+            click.clickedMenu().close();
+            new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
+                    .display(click.player());
+        });
+        registerActionHandler("openReports", click -> {
+            click.clickedMenu().close();
+            new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
+                    .display(click.player());
+        });
+        registerActionHandler("openPunishments", click -> {
+            click.clickedMenu().close();
+            new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
+                    .display(click.player());
+        });
+        registerActionHandler("openTickets", click -> {
+            click.clickedMenu().close();
+            new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
+                    .display(click.player());
+        });
+        registerActionHandler("openPanel", click -> {
+            sendMessage("");
+            sendMessage(MenuItems.COLOR_GOLD + "Staff Panel:");
+            sendMessage(MenuItems.COLOR_AQUA + panelUrl);
+            sendMessage("");
+        });
+        registerActionHandler("openSettings", click -> {
+            click.clickedMenu().close();
+            new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
+                    .display(click.player());
+        });
+    }
+}

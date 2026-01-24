@@ -10,7 +10,7 @@ import gg.modl.minecraft.core.util.WebPlayer;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-//import dev.simplix.cirrus.velocity.wrapper.VelocityPlayerWrapper;
+import dev.simplix.cirrus.velocity.wrapper.VelocityPlayerWrapper;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -132,8 +132,8 @@ public class VelocityPlatform implements Platform {
 
     @Override
     public CirrusPlayerWrapper getPlayerWrapper(UUID uuid) {
-//        return new VelocityPlayerWrapper(getPlayer(uuid));
-        return null;
+        Player player = getOnlinePlayer(uuid);
+        return player != null ? new VelocityPlayerWrapper(player) : null;
     }
 
     @Override

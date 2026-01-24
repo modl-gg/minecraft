@@ -1,6 +1,7 @@
 package gg.modl.minecraft.spigot;
 
 import co.aikar.commands.BukkitCommandManager;
+import dev.simplix.cirrus.spigot.CirrusSpigot;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.service.ChatMessageCache;
@@ -38,10 +39,12 @@ public class SpigotPlugin extends JavaPlugin {
         HttpManager httpManager = new HttpManager(
                 getConfig().getString("api.key"),
                 apiUrl,
-                getConfig().getBoolean("api.debug", false)
+                getConfig().getBoolean("api.debug", false),
+                getConfig().getBoolean("api.testing-api", false)
         );
 
         BukkitCommandManager commandManager = new BukkitCommandManager(this);
+        new CirrusSpigot(this).init();
 
         SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger(), getDataFolder());
         ChatMessageCache chatMessageCache = new ChatMessageCache();

@@ -1,6 +1,7 @@
 package gg.modl.minecraft.bungee;
 
 import co.aikar.commands.BungeeCommandManager;
+import dev.simplix.cirrus.bungee.CirrusBungee;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.service.ChatMessageCache;
@@ -42,10 +43,12 @@ public class BungeePlugin extends Plugin {
         HttpManager httpManager = new HttpManager(
                 configuration.getString("api.key"),
                 apiUrl,
-                configuration.getBoolean("api.debug", false)
+                configuration.getBoolean("api.debug", false),
+                configuration.getBoolean("api.testing-api", false)
         );
 
         BungeeCommandManager commandManager = new BungeeCommandManager(this);
+        new CirrusBungee(this).init();
 
         BungeePlatform platform = new BungeePlatform(commandManager, getLogger(), getDataFolder());
         ChatMessageCache chatMessageCache = new ChatMessageCache();
@@ -55,7 +58,6 @@ public class BungeePlugin extends Plugin {
 
         this.loader = new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
         getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClient(), chatMessageCache, loader.getSyncService(), httpManager.getPanelUrl(), loader.getLocaleManager()));
-
     }
 
     @Override

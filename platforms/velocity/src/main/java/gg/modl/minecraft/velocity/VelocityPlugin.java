@@ -13,7 +13,7 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
-//import dev.simplix.cirrus.velocity.CirrusVelocity;
+import dev.simplix.cirrus.velocity.CirrusVelocity;
 import org.slf4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
@@ -69,12 +69,13 @@ public final class VelocityPlugin {
         }
         
         VelocityCommandManager commandManager = new VelocityCommandManager(this.server, this);
-//        new CirrusVelocity(this, server, server.getCommandManager()).init();
+        new CirrusVelocity(this, server, server.getCommandManager()).init();
 
         HttpManager httpManager = new HttpManager(
                 getConfigString("api.key", "your-api-key-here"),
                 apiUrl,
-                (Boolean) getNestedConfig("api.debug", false)
+                (Boolean) getNestedConfig("api.debug", false),
+                (Boolean) getNestedConfig("api.testing-api", false)
         );
 
         VelocityPlatform platform = new VelocityPlatform(this.server, commandManager, logger, folder.toFile());
@@ -141,7 +142,10 @@ public final class VelocityPlugin {
                   url: "https://yourserver.modl.gg"
                   # Enable debug HTTP logging (default: false)
                   debug: false
-                  
+                  # Use testing API (api.cobl.gg) instead of production API
+                  # Only enable this for development/testing purposes
+                  testing-api: false
+
                 # Server Configuration
                 server:
                   # Name of this server (used for identification in the panel)

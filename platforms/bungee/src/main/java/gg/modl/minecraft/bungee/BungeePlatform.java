@@ -6,6 +6,7 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import dev.simplix.cirrus.bungee.wrapper.BungeePlayerWrapper;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
@@ -113,7 +114,8 @@ public class BungeePlatform implements Platform {
 
     @Override
     public CirrusPlayerWrapper getPlayerWrapper(UUID uuid) {
-        return null;
+        ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
+        return player != null ? new BungeePlayerWrapper(player) : null;
     }
 
     @Override

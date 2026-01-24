@@ -6,6 +6,7 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import dev.simplix.cirrus.spigot.wrapper.SpigotPlayerWrapper;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
@@ -116,7 +117,8 @@ public class SpigotPlatform implements Platform {
 
     @Override
     public CirrusPlayerWrapper getPlayerWrapper(UUID uuid) {
-        return null;
+        Player player = Bukkit.getPlayer(uuid);
+        return player != null ? new SpigotPlayerWrapper(player) : null;
     }
 
     @Override

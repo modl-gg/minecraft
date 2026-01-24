@@ -12,6 +12,8 @@ import gg.modl.minecraft.core.impl.cache.LoginCache;
 import gg.modl.minecraft.core.impl.commands.TicketCommands;
 import gg.modl.minecraft.core.impl.commands.PlayerLookupCommand;
 import gg.modl.minecraft.core.impl.commands.ModlReloadCommand;
+import gg.modl.minecraft.core.impl.commands.InspectCommand;
+import gg.modl.minecraft.core.impl.commands.StaffCommand;
 import gg.modl.minecraft.core.impl.commands.player.IAmMutedCommand;
 import gg.modl.minecraft.core.impl.commands.punishments.*;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -121,6 +123,10 @@ public class PluginLoader {
         // Register player commands
         commandManager.registerCommand(new IAmMutedCommand(platform, cache, this.localeManager));
         commandManager.registerCommand(new TicketCommands(platform, httpManager.getHttpClient(), httpManager.getPanelUrl(), this.localeManager, chatMessageCache));
+
+        // Register GUI commands
+        commandManager.registerCommand(new InspectCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
+        commandManager.registerCommand(new StaffCommand(httpManager.getHttpClient(), platform, cache, this.localeManager, httpManager.getPanelUrl()));
 
     }
 

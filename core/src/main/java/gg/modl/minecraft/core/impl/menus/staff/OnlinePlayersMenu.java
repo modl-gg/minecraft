@@ -1,0 +1,212 @@
+package gg.modl.minecraft.core.impl.menus.staff;
+
+import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.model.Click;
+import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import dev.simplix.protocolize.api.chat.ChatElement;
+import dev.simplix.protocolize.data.ItemType;
+import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
+import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
+import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Consumer;
+
+/**
+ * Online Players Menu - displays all online players.
+ */
+public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.OnlinePlayer> {
+
+    // Placeholder OnlinePlayer class since no endpoint exists yet
+    public static class OnlinePlayer {
+        private final UUID uuid;
+        private final String name;
+        private final long sessionStartTime;
+        private final long totalPlaytime;
+        private final int punishmentCount;
+
+        public OnlinePlayer(UUID uuid, String name, long sessionStartTime, long totalPlaytime, int punishmentCount) {
+            this.uuid = uuid;
+            this.name = name;
+            this.sessionStartTime = sessionStartTime;
+            this.totalPlaytime = totalPlaytime;
+            this.punishmentCount = punishmentCount;
+        }
+
+        public UUID getUuid() { return uuid; }
+        public String getName() { return name; }
+        public long getSessionStartTime() { return sessionStartTime; }
+        public long getTotalPlaytime() { return totalPlaytime; }
+        public int getPunishmentCount() { return punishmentCount; }
+        public long getSessionDuration() { return System.currentTimeMillis() - sessionStartTime; }
+    }
+
+    private List<OnlinePlayer> onlinePlayers = new ArrayList<>();
+    private String currentSort = "Recent Reports";
+    private final List<String> sortOptions = Arrays.asList("Least Playtime", "Recent Reports", "Longest Session");
+    private final String panelUrl;
+    private final Consumer<CirrusPlayerWrapper> parentBackAction;
+
+    /**
+     * Create a new online players menu.
+     *
+     * @param platform The platform instance
+     * @param httpClient The HTTP client for API calls
+     * @param viewerUuid The UUID of the staff viewing the menu
+     * @param viewerName The name of the staff viewing the menu
+     * @param isAdmin Whether the viewer has admin permissions
+     * @param panelUrl The panel URL
+     * @param backAction Action to return to parent menu
+     */
+    public OnlinePlayersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
+                             boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
+        super("Online Players", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
+        this.panelUrl = panelUrl;
+        this.parentBackAction = backAction;
+        activeTab = StaffTab.ONLINE_PLAYERS;
+
+        // TODO: Fetch online players when endpoint GET /v1/minecraft/players/online is available
+        // For now, list is empty
+    }
+
+    @Override
+    protected Map<Integer, CirrusItem> intercept(int menuSize) {
+        Map<Integer, CirrusItem> items = super.intercept(menuSize);
+
+        // Add sort button
+        items.put(MenuSlots.FILTER_BUTTON, MenuItems.sortButton(currentSort, sortOptions)
+                .actionHandler("sort"));
+
+        return items;
+    }
+
+    @Override
+    protected Collection<OnlinePlayer> elements() {
+        // Sort players based on current sort option
+        List<OnlinePlayer> sorted = new ArrayList<>(onlinePlayers);
+
+        switch (currentSort) {
+            case "Least Playtime":
+                sorted.sort((p1, p2) -> Long.compare(p1.getTotalPlaytime(), p2.getTotalPlaytime()));
+                break;
+            case "Longest Session":
+                sorted.sort((p1, p2) -> Long.compare(p2.getSessionDuration(), p1.getSessionDuration()));
+                break;
+            case "Recent Reports":
+            default:
+                // Would sort by recent reports if data available
+                break;
+        }
+
+        return sorted;
+    }
+
+    @Override
+    protected CirrusItem map(OnlinePlayer player) {
+        List<String> lore = new ArrayList<>();
+
+        // Session time
+        lore.add(MenuItems.COLOR_GRAY + "Session: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(player.getSessionDuration()));
+
+        // Total playtime
+        lore.add(MenuItems.COLOR_GRAY + "Total Playtime: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(player.getTotalPlaytime()));
+
+        // Punishments
+        if (player.getPunishmentCount() > 0) {
+            lore.add(MenuItems.COLOR_GRAY + "Punishments: " + MenuItems.COLOR_RED + player.getPunishmentCount());
+        } else {
+            lore.add(MenuItems.COLOR_GRAY + "Punishments: " + MenuItems.COLOR_GREEN + "0");
+        }
+
+        // TODO: Add recent reports when data available
+
+        lore.add("");
+        lore.add(MenuItems.COLOR_YELLOW + "Click to inspect player");
+
+        return CirrusItem.of(
+                ItemType.PLAYER_HEAD,
+                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + player.getName()),
+                MenuItems.lore(lore)
+        );
+    }
+
+    @Override
+    protected void handleClick(Click click, OnlinePlayer player) {
+        // Fetch player profile and open inspect menu
+        click.clickedMenu().close();
+
+        httpClient.getPlayerProfile(player.getUuid()).thenAccept(response -> {
+            if (response.getStatus() == 200) {
+                platform.runOnMainThread(() -> {
+                    new InspectMenu(platform, httpClient, viewerUuid, viewerName, response.getProfile(),
+                            p -> new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction).display(p))
+                            .display(click.player());
+                });
+            } else {
+                sendMessage(MenuItems.COLOR_RED + "Failed to load player profile");
+            }
+        }).exceptionally(e -> {
+            sendMessage(MenuItems.COLOR_RED + "Failed to load player profile: " + e.getMessage());
+            return null;
+        });
+    }
+
+    @Override
+    protected void registerActionHandlers() {
+        super.registerActionHandlers();
+
+        // Sort handler
+        registerActionHandler("sort", this::handleSort);
+
+        // Override header navigation
+        registerActionHandler("openOnlinePlayers", click -> {
+            // Already here, do nothing
+        });
+        registerActionHandler("openReports", click -> {
+            click.clickedMenu().close();
+            new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
+                    .display(click.player());
+        });
+        registerActionHandler("openPunishments", click -> {
+            click.clickedMenu().close();
+            new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
+                    .display(click.player());
+        });
+        registerActionHandler("openTickets", click -> {
+            click.clickedMenu().close();
+            new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
+                    .display(click.player());
+        });
+        registerActionHandler("openPanel", click -> {
+            sendMessage("");
+            sendMessage(MenuItems.COLOR_GOLD + "Staff Panel:");
+            sendMessage(MenuItems.COLOR_AQUA + panelUrl);
+            sendMessage("");
+        });
+        registerActionHandler("openSettings", click -> {
+            click.clickedMenu().close();
+            new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
+                    .display(click.player());
+        });
+    }
+
+    private void handleSort(Click click) {
+        // Cycle through sort options
+        int currentIndex = sortOptions.indexOf(currentSort);
+        int nextIndex = (currentIndex + 1) % sortOptions.size();
+        currentSort = sortOptions.get(nextIndex);
+
+        // Refresh menu
+        click.clickedMenu().close();
+        new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
+                .display(click.player());
+    }
+}

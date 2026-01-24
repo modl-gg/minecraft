@@ -67,7 +67,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<PlayerProfileResponse> getPlayerProfile(@NotNull UUID uuid) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/player/" + uuid))
+                .uri(URI.create(baseUrl + "/minecraft/players/" + uuid))
                 .header("X-API-Key", apiKey)
                 .build(), PlayerProfileResponse.class);
     }
@@ -76,7 +76,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<LinkedAccountsResponse> getLinkedAccounts(@NotNull UUID uuid) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/player/" + uuid + "/linked-accounts"))
+                .uri(URI.create(baseUrl + "/minecraft/players/" + uuid + "/linked-accounts"))
                 .header("X-API-Key", apiKey)
                 .build(), LinkedAccountsResponse.class);
     }
@@ -90,7 +90,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
         }
 
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/player/login"))
+                .uri(URI.create(baseUrl + "/minecraft/players/login"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .timeout(Duration.ofSeconds(15)) // Longer timeout for login checks
@@ -102,7 +102,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> playerDisconnect(@NotNull PlayerDisconnectRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/player/disconnect"))
+                .uri(URI.create(baseUrl + "/minecraft/players/disconnect"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -143,7 +143,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> createPunishment(@NotNull CreatePunishmentRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/punishment/create"))
+                .uri(URI.create(baseUrl + "/minecraft/punishments/create"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -154,7 +154,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> createPlayerNote(@NotNull CreatePlayerNoteRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/player/note/create"))
+                .uri(URI.create(baseUrl + "/minecraft/players/notes/create"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -165,7 +165,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<PunishmentCreateResponse> createPunishmentWithResponse(@NotNull PunishmentCreateRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/punishment/dynamic"))
+                .uri(URI.create(baseUrl + "/minecraft/punishments/dynamic"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -176,7 +176,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<PlayerGetResponse> getPlayer(@NotNull PlayerGetRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/player?minecraftUuid=" + request.getMinecraftUuid()))
+                .uri(URI.create(baseUrl + "/minecraft/players?minecraftUuid=" + request.getMinecraftUuid()))
                 .header("X-API-Key", apiKey)
                 .GET()
                 .build(), PlayerGetResponse.class);
@@ -186,7 +186,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<PlayerNameResponse> getPlayer(@NotNull PlayerNameRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/player-name?username=" + request.getMinecraftUsername()))
+                .uri(URI.create(baseUrl + "/minecraft/players-name?username=" + request.getMinecraftUsername()))
                 .header("X-API-Key", apiKey)
                 .GET()
                 .build(), PlayerNameResponse.class);
@@ -196,7 +196,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<PlayerNoteCreateResponse> createPlayerNoteWithResponse(@NotNull PlayerNoteCreateRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/player/" + request.getTargetUuid() + "/notes"))
+                .uri(URI.create(baseUrl + "/minecraft/players/" + request.getTargetUuid() + "/notes"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -212,7 +212,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
         }
 
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/sync"))
+                .uri(URI.create(baseUrl + "/minecraft/players/sync"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .timeout(Duration.ofSeconds(20)) // Longer timeout for sync operations
@@ -224,7 +224,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> acknowledgePunishment(@NotNull PunishmentAcknowledgeRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/punishment/acknowledge"))
+                .uri(URI.create(baseUrl + "/minecraft/punishments/acknowledge"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -235,7 +235,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> acknowledgeNotifications(@NotNull NotificationAcknowledgeRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/notification/acknowledge"))
+                .uri(URI.create(baseUrl + "/minecraft/notifications/acknowledge"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -361,7 +361,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<PunishmentTypesResponse> getPunishmentTypes() {
         return sendAsync(HttpRequest.newBuilder()
-                        .uri(URI.create(baseUrl + "/minecraft/punishment-types"))
+                        .uri(URI.create(baseUrl + "/minecraft/punishments/types"))
                         .header("X-API-Key", apiKey)
                         .GET()
                         .build(),
@@ -371,7 +371,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<StaffPermissionsResponse> getStaffPermissions() {
         return sendAsync(HttpRequest.newBuilder()
-                        .uri(URI.create(baseUrl + "/minecraft/staff-permissions"))
+                        .uri(URI.create(baseUrl + "/minecraft/staff/permissions"))
                         .header("X-API-Key", apiKey)
                         .GET()
                         .build(),
@@ -381,7 +381,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<PlayerLookupResponse> lookupPlayer(@NotNull PlayerLookupRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                        .uri(URI.create(baseUrl + "/minecraft/player-lookup"))
+                        .uri(URI.create(baseUrl + "/minecraft/players/lookup"))
                         .header("X-API-Key", apiKey)
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -392,7 +392,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> pardonPunishment(@NotNull PardonPunishmentRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                        .uri(URI.create(baseUrl + "/minecraft/punishment/" + request.getPunishmentId() + "/pardon"))
+                        .uri(URI.create(baseUrl + "/minecraft/punishments/" + request.getPunishmentId() + "/pardon"))
                         .header("X-API-Key", apiKey)
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -402,7 +402,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> pardonPlayer(@NotNull PardonPlayerRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                        .uri(URI.create(baseUrl + "/minecraft/player/pardon"))
+                        .uri(URI.create(baseUrl + "/minecraft/players/pardon"))
                         .header("X-API-Key", apiKey)
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
