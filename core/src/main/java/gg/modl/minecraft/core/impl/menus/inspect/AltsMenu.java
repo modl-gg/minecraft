@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -14,6 +15,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -70,11 +72,22 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
 
     @Override
     protected Collection<Account> elements() {
+        // Return placeholder if empty to prevent Cirrus from shrinking inventory
+        if (linkedAccounts.isEmpty()) {
+            return Collections.singletonList(new Account(null, null,
+                    Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
+                    Collections.emptyList(), Collections.emptyList()));
+        }
         return linkedAccounts;
     }
 
     @Override
     protected CirrusItem map(Account alt) {
+        // Handle placeholder for empty list
+        if (alt.getMinecraftUuid() == null) {
+            return createEmptyPlaceholder("No linked accounts");
+        }
+
         String altName = getPlayerName(alt);
         List<String> lore = new ArrayList<>();
 
@@ -108,9 +121,14 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
 
     @Override
     protected void handleClick(Click click, Account alt) {
-        // Open inspect menu for the alt account
+        // Handle placeholder - do nothing
+        if (alt.getMinecraftUuid() == null) {
+            return;
+        }
+
+        // Open inspect menu for the alt account - this is a new primary view, no back button
         click.clickedMenu().close();
-        new InspectMenu(platform, httpClient, viewerUuid, viewerName, alt, backAction)
+        new InspectMenu(platform, httpClient, viewerUuid, viewerName, alt, null)
                 .display(click.player());
     }
 
@@ -119,28 +137,17 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         super.registerActionHandlers();
 
         // Override header navigation handlers
-        registerActionHandler("openNotes", click -> {
-            click.clickedMenu().close();
-            new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
+        // Primary tabs should NOT have back button when switching between them - pass null
+        registerActionHandler("openNotes", ActionHandlers.openMenu(
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
         registerActionHandler("openAlts", click -> {
             // Already on alts, do nothing
         });
-        registerActionHandler("openHistory", click -> {
-            click.clickedMenu().close();
-            new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openReports", click -> {
-            click.clickedMenu().close();
-            new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openPunish", click -> {
-            click.clickedMenu().close();
-            new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
+        registerActionHandler("openHistory", ActionHandlers.openMenu(
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+        registerActionHandler("openPunish", ActionHandlers.openMenu(
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
     }
 }

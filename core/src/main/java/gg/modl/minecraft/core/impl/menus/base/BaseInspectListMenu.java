@@ -176,15 +176,9 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
     @Override
     protected void registerActionHandlers() {
         super.registerActionHandlers();
-
-        // These will be overridden by subclasses to navigate to specific menus
-        // Using Consumer<Click> explicitly for clarity
-        java.util.function.Consumer<dev.simplix.cirrus.model.Click> noOp = click -> {};
-        registerActionHandler("openNotes", noOp);
-        registerActionHandler("openAlts", noOp);
-        registerActionHandler("openHistory", noOp);
-        registerActionHandler("openReports", noOp);
-        registerActionHandler("openPunish", noOp);
+        // Note: Tab navigation handlers (openNotes, openAlts, openHistory, etc.)
+        // MUST be registered by each subclass. Do not register no-op handlers here
+        // as they would take precedence over the actual handlers in subclasses.
     }
 
     /**

@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -15,6 +16,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -91,7 +93,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
-        // Add filter button
+        // Add filter button at slot 40 (y position in navigation row)
         items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions)
                 .actionHandler("filter"));
 
@@ -100,6 +102,11 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
 
     @Override
     protected Collection<Report> elements() {
+        // Return placeholder if empty to prevent Cirrus from shrinking inventory
+        if (reports.isEmpty()) {
+            return Collections.singletonList(new Report(null, null, null, null, null, null));
+        }
+
         // Filter reports based on current filter
         if (currentFilter.equals("all")) {
             return reports;
@@ -111,11 +118,22 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
                 filtered.add(report);
             }
         }
+
+        // If filtering results in empty list, return placeholder
+        if (filtered.isEmpty()) {
+            return Collections.singletonList(new Report(null, null, null, null, null, null));
+        }
+
         return filtered;
     }
 
     @Override
     protected CirrusItem map(Report report) {
+        // Handle placeholder for empty list
+        if (report.getId() == null) {
+            return createEmptyPlaceholder("No reports");
+        }
+
         List<String> lore = new ArrayList<>();
 
         lore.add(MenuItems.COLOR_GRAY + "Type: " + MenuItems.COLOR_WHITE + report.getType());
@@ -164,6 +182,10 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
 
     @Override
     protected void handleClick(Click click, Report report) {
+        // Handle placeholder - do nothing
+        if (report.getId() == null) {
+            return;
+        }
         // Reports are view-only in this menu
         // Could open a report detail view in the future
     }
@@ -176,29 +198,18 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         registerActionHandler("filter", this::handleFilter);
 
         // Override header navigation handlers
-        registerActionHandler("openNotes", click -> {
-            click.clickedMenu().close();
-            new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openAlts", click -> {
-            click.clickedMenu().close();
-            new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openHistory", click -> {
-            click.clickedMenu().close();
-            new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
+        // Primary tabs should NOT have back button when switching between them - pass null
+        registerActionHandler("openNotes", ActionHandlers.openMenu(
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+        registerActionHandler("openAlts", ActionHandlers.openMenu(
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+        registerActionHandler("openHistory", ActionHandlers.openMenu(
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
         registerActionHandler("openReports", click -> {
             // Already on reports, do nothing
         });
-        registerActionHandler("openPunish", click -> {
-            click.clickedMenu().close();
-            new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
+        registerActionHandler("openPunish", ActionHandlers.openMenu(
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
     }
 
     private void handleFilter(Click click) {
@@ -208,8 +219,8 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         currentFilter = filterOptions.get(nextIndex);
 
         // Refresh menu
-        click.clickedMenu().close();
-        new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                .display(click.player());
+        ActionHandlers.openMenu(
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction))
+                .handle(click);
     }
 }

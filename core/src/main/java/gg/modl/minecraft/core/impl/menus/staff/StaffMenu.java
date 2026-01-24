@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.http.ModlHttpClient;
@@ -43,66 +44,30 @@ public class StaffMenu extends BaseStaffMenu {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Open Online Players menu
-        registerActionHandler("openOnlinePlayers", this::openOnlinePlayers);
+        // Primary tabs should NOT have back button - they are all equivalent primary views
+        // Pass null as backAction for all primary tab menus
+        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
+                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
 
-        // Open Reports menu
-        registerActionHandler("openReports", this::openReports);
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
 
-        // Open Recent Punishments menu
-        registerActionHandler("openPunishments", this::openPunishments);
+        registerActionHandler("openPunishments", ActionHandlers.openMenu(
+                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
 
-        // Open Tickets menu
-        registerActionHandler("openTickets", this::openTickets);
+        registerActionHandler("openTickets", ActionHandlers.openMenu(
+                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
 
-        // Open Panel link
-        registerActionHandler("openPanel", this::openPanel);
+        registerActionHandler("openSettings", ActionHandlers.openMenu(
+                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
 
-        // Open Settings menu
-        registerActionHandler("openSettings", this::openSettings);
-    }
-
-    private Consumer<CirrusPlayerWrapper> getReturnToStaffAction() {
-        return player -> new StaffMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
-                .display(player);
-    }
-
-    private void openOnlinePlayers(Click click) {
-        click.clickedMenu().close();
-        new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, getReturnToStaffAction())
-                .display(click.player());
-    }
-
-    private void openReports(Click click) {
-        click.clickedMenu().close();
-        new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, getReturnToStaffAction())
-                .display(click.player());
-    }
-
-    private void openPunishments(Click click) {
-        click.clickedMenu().close();
-        new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, getReturnToStaffAction())
-                .display(click.player());
-    }
-
-    private void openTickets(Click click) {
-        click.clickedMenu().close();
-        new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, getReturnToStaffAction())
-                .display(click.player());
-    }
-
-    private void openPanel(Click click) {
-        // Send panel URL in chat
-        sendMessage("");
-        sendMessage(MenuItems.COLOR_GOLD + "Staff Panel:");
-        sendMessage(MenuItems.COLOR_AQUA + panelUrl);
-        sendMessage("");
-    }
-
-    private void openSettings(Click click) {
-        click.clickedMenu().close();
-        new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, getReturnToStaffAction())
-                .display(click.player());
+        // Panel link just sends a message, no menu transition
+        registerActionHandler("openPanel", click -> {
+            sendMessage("");
+            sendMessage(MenuItems.COLOR_GOLD + "Staff Panel:");
+            sendMessage(MenuItems.COLOR_AQUA + panelUrl);
+            sendMessage("");
+        });
     }
 
     /**

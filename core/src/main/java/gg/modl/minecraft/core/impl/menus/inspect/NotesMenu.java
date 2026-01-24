@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -17,6 +18,8 @@ import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -60,9 +63,9 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
-        // Add create note button in slot 53
-        items.put(MenuSlots.CREATE_BUTTON, CirrusItem.of(
-                ItemType.WRITABLE_BOOK,
+        // Add create note button at slot 40 (y position in navigation row)
+        items.put(MenuSlots.CREATE_NOTE_BUTTON, CirrusItem.of(
+                ItemType.OAK_SIGN,
                 ChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Create Note"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Add a new note for " + targetName
@@ -75,14 +78,25 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
     @Override
     protected Collection<Note> elements() {
         // Notes are stored in the account object
-        // Sort by date, newest first
         List<Note> notes = new ArrayList<>(targetAccount.getNotes());
+
+        // Return placeholder if empty to prevent Cirrus from shrinking inventory
+        if (notes.isEmpty()) {
+            return Collections.singletonList(new Note(null, new Date(), "", ""));
+        }
+
+        // Sort by date, newest first
         notes.sort((n1, n2) -> n2.getDate().compareTo(n1.getDate()));
         return notes;
     }
 
     @Override
     protected CirrusItem map(Note note) {
+        // Handle placeholder for empty list
+        if (note.getText() == null) {
+            return createEmptyPlaceholder("No notes");
+        }
+
         List<String> lore = new ArrayList<>();
         lore.add(MenuItems.COLOR_GRAY + "By: " + MenuItems.COLOR_WHITE + note.getIssuerName());
         lore.add("");
@@ -98,7 +112,8 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
 
     @Override
     protected void handleClick(Click click, Note note) {
-        // Notes are view-only, no action on click
+        // Handle placeholder or normal note - both are view-only
+        // No action on click
     }
 
     @Override
@@ -109,29 +124,18 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
         registerActionHandler("createNote", this::handleCreateNote);
 
         // Override header navigation handlers
+        // Primary tabs should NOT have back button when switching between them - pass null
         registerActionHandler("openNotes", click -> {
             // Already on notes, do nothing
         });
-        registerActionHandler("openAlts", click -> {
-            click.clickedMenu().close();
-            new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openHistory", click -> {
-            click.clickedMenu().close();
-            new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openReports", click -> {
-            click.clickedMenu().close();
-            new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openPunish", click -> {
-            click.clickedMenu().close();
-            new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
+        registerActionHandler("openAlts", ActionHandlers.openMenu(
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+        registerActionHandler("openHistory", ActionHandlers.openMenu(
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+        registerActionHandler("openPunish", ActionHandlers.openMenu(
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
     }
 
     private void handleCreateNote(Click click) {

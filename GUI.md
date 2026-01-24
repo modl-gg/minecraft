@@ -11,9 +11,11 @@ You will have to create a chat listener for chat prompts.
 You can reference ../../HammerV2 for GUI framework usage and ../../Cirrus-3 (notably different Cirrus version since this one uses a HashMap intercept method
 for AbstractBrowser instead of interceptBottomRow). 
 
-Beds should be placed in the Q position in all secondary and tertiary menus to return to the previous menu. Also, if an inspect menu was opened from another inspect
-menu or staff menu, the bed should first act as a back button in secondary/tertiary, then as return to the original menu button in primary menus. If in a primary menu,
-and not opened from another menu, the bed should not be present (just blank space).
+Beds should be placed in the Q position (bottom left corner) in all secondary and tertiary menus to return to the previous menu. Also, if an inspect menu was opened from another inspect
+menu or staff menu, the bed should first act as a back button in secondary/tertiary, then as return to the original menu button in primary menus.
+If in a primary menu, and not opened from another menu, the bed should not be present (just blank space). 
+Primary menus should not have a back button unless it was opened from a completely seperate menu (ex: inspect menu opened from staff menu or opened
+by another inspect menu targeting a different player). Clicking between the tabs of the staff menu should not create a back button.
 
 Inspect Menu (targeting a player):
 -

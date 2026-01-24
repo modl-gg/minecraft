@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -14,6 +15,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -83,7 +85,7 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
-        // Add filter button
+        // Add filter button at slot 40 (y position in navigation row)
         items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions)
                 .actionHandler("filter"));
 
@@ -92,6 +94,11 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
 
     @Override
     protected Collection<Ticket> elements() {
+        // Return placeholder if empty to prevent Cirrus from shrinking inventory
+        if (tickets.isEmpty()) {
+            return Collections.singletonList(new Ticket(null, null, null, null, null, false));
+        }
+
         // Filter and sort tickets (newest first)
         List<Ticket> filtered = new ArrayList<>();
 
@@ -101,12 +108,22 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
             }
         }
 
+        // If filtering results in empty list, return placeholder
+        if (filtered.isEmpty()) {
+            return Collections.singletonList(new Ticket(null, null, null, null, null, false));
+        }
+
         filtered.sort((t1, t2) -> t2.getCreated().compareTo(t1.getCreated()));
         return filtered;
     }
 
     @Override
     protected CirrusItem map(Ticket ticket) {
+        // Handle placeholder for empty list
+        if (ticket.getId() == null) {
+            return createEmptyPlaceholder("No tickets");
+        }
+
         List<String> lore = new ArrayList<>();
 
         lore.add(MenuItems.COLOR_GRAY + "Player: " + MenuItems.COLOR_WHITE + ticket.getPlayerName());
@@ -143,6 +160,11 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
 
     @Override
     protected void handleClick(Click click, Ticket ticket) {
+        // Handle placeholder - do nothing
+        if (ticket.getId() == null) {
+            return;
+        }
+
         // Open ticket link in chat
         String ticketUrl = panelUrl + "/tickets/" + ticket.getId();
         sendMessage("");
@@ -158,36 +180,29 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         // Filter handler
         registerActionHandler("filter", this::handleFilter);
 
-        // Override header navigation
-        registerActionHandler("openOnlinePlayers", click -> {
-            click.clickedMenu().close();
-            new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openReports", click -> {
-            click.clickedMenu().close();
-            new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openPunishments", click -> {
-            click.clickedMenu().close();
-            new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+        // Override header navigation - primary tabs should NOT pass backAction
+        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
+                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openPunishments", ActionHandlers.openMenu(
+                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
         registerActionHandler("openTickets", click -> {
             // Already here, do nothing
         });
+
         registerActionHandler("openPanel", click -> {
             sendMessage("");
             sendMessage(MenuItems.COLOR_GOLD + "Staff Panel:");
             sendMessage(MenuItems.COLOR_AQUA + panelUrl);
             sendMessage("");
         });
-        registerActionHandler("openSettings", click -> {
-            click.clickedMenu().close();
-            new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+
+        registerActionHandler("openSettings", ActionHandlers.openMenu(
+                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
     }
 
     private void handleFilter(Click click) {
@@ -196,9 +211,9 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         int nextIndex = (currentIndex + 1) % filterOptions.size();
         currentFilter = filterOptions.get(nextIndex);
 
-        // Refresh menu
-        click.clickedMenu().close();
-        new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                .display(click.player());
+        // Refresh menu - preserve backAction if present
+        ActionHandlers.openMenu(
+                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction))
+                .handle(click);
     }
 }

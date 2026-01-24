@@ -153,30 +153,31 @@ public class PunishMenu extends BaseInspectMenu {
         }
 
         // Override header navigation
+        // Primary tabs should NOT have back button when switching between them - pass null
         registerActionHandler("openNotes", (ActionHandler) click -> {
             click.clickedMenu().close();
-            new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
             return CallResult.DENY_GRABBING;
         });
 
         registerActionHandler("openAlts", (ActionHandler) click -> {
             click.clickedMenu().close();
-            new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
             return CallResult.DENY_GRABBING;
         });
 
         registerActionHandler("openHistory", (ActionHandler) click -> {
             click.clickedMenu().close();
-            new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
             return CallResult.DENY_GRABBING;
         });
 
         registerActionHandler("openReports", (ActionHandler) click -> {
             click.clickedMenu().close();
-            new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
             return CallResult.DENY_GRABBING;
         });
@@ -197,9 +198,9 @@ public class PunishMenu extends BaseInspectMenu {
             // For now, open severity menu anyway for consistency
         }
 
-        // Open severity selection menu with back action to return to this menu
+        // Open severity selection menu - this is a secondary menu, back button returns to PunishMenu
         new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, type,
-                player -> new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction).display(player))
+                player -> new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null).display(player))
                 .display(click.player());
     }
 }

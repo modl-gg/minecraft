@@ -4,12 +4,16 @@ import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.menus.AbstractBrowser;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import dev.simplix.protocolize.api.chat.ChatElement;
+import dev.simplix.protocolize.data.ItemType;
 import dev.simplix.protocolize.data.inventory.InventoryType;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -22,6 +26,12 @@ import java.util.function.Consumer;
  * @param <T> The type of elements displayed in the browser
  */
 public abstract class BaseListMenu<T> extends AbstractBrowser<T> {
+
+    /**
+     * Placeholder type used when the list is empty.
+     * This prevents Cirrus from shrinking the inventory to 18 slots.
+     */
+    public static final Object EMPTY_PLACEHOLDER = new Object();
 
     protected final Platform platform;
     protected final ModlHttpClient httpClient;
@@ -55,32 +65,60 @@ public abstract class BaseListMenu<T> extends AbstractBrowser<T> {
     /**
      * Override to provide static items for header and footer rows.
      * Subclasses should call super.intercept() and add their own items.
+     *
+     * Layout (6-row, 54 slots):
+     * Row 0 (0-8): blank (intercepted)
+     * Row 1 (9-17): header items (intercepted, subclass adds items)
+     * Row 2 (18-26): blank (intercepted)
+     * Row 3 (27-35): * x x x x x x x * - content at 28-34, ends intercepted
+     * Row 4 (36-44): * * < * y * > * * - navigation row (intercepted)
+     * Row 5 (45-53): Q * * * * * * * * - back button at 45 (intercepted)
+     *
+     * Content slots: 28-34 (7 items per page)
+     * All other slots are intercepted to prevent AbstractBrowser from using them.
      */
     @Override
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = new HashMap<>();
 
-        // Fill header row (slots 0-8) with glass panes
+        // Intercept ALL slots except content area (28-34)
+        // This forces AbstractBrowser to place items only in slots 28-34
+
+        // Row 0: slots 0-8 (blank)
         for (int i = 0; i <= 8; i++) {
-            items.put(i, MenuItems.glassPaneFiller());
+            items.put(i, null);
         }
 
-        // Fill second row (slots 9-17) with glass panes for header items
+        // Row 1: slots 9-17 (header - subclass will override with actual items)
         for (int i = 9; i <= 17; i++) {
-            items.put(i, MenuItems.glassPaneFiller());
+            items.put(i, null);
         }
 
-        // Fill footer row (slots 45-53) with glass panes
+        // Row 2: slots 18-26 (blank)
+        for (int i = 18; i <= 26; i++) {
+            items.put(i, null);
+        }
+
+        // Row 3: intercept slot 27 and 35 only (28-34 are content)
+        items.put(27, null);
+        items.put(35, null);
+
+        // Row 4: slots 36-44 (navigation row)
+        for (int i = 36; i <= 44; i++) {
+            items.put(i, null);
+        }
+
+        // Row 5: slots 45-53 (back button row)
         for (int i = 45; i <= 53; i++) {
-            items.put(i, MenuItems.glassPaneFiller());
+            items.put(i, null);
         }
 
-        // Add back button if there's a back action
+        // Add back button at Q position (slot 45) only if there's a back action
         if (backAction != null) {
             items.put(MenuSlots.BACK_BUTTON, MenuItems.backButton());
         }
 
-        // Add pagination controls
+        // Add pagination controls at fixed positions
         items.put(MenuSlots.PAGE_PREV, MenuItems.previousPageButton());
         items.put(MenuSlots.PAGE_NEXT, MenuItems.nextPageButton());
 
@@ -93,6 +131,26 @@ public abstract class BaseListMenu<T> extends AbstractBrowser<T> {
      */
     protected Map<Integer, CirrusItem> getHeaderItems() {
         return new HashMap<>();
+    }
+
+    /**
+     * Creates a placeholder item for empty lists.
+     * This is used to prevent Cirrus from shrinking the inventory.
+     */
+    protected CirrusItem createEmptyPlaceholder(String message) {
+        return CirrusItem.of(
+                ItemType.GRAY_STAINED_GLASS_PANE,
+                ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + message),
+                MenuItems.lore(MenuItems.COLOR_DARK_GRAY + "No items to display")
+        );
+    }
+
+    /**
+     * Override this method in subclasses to return the actual elements.
+     * The base implementation returns an empty collection.
+     */
+    protected Collection<T> getElements() {
+        return Collections.emptyList();
     }
 
     @Override

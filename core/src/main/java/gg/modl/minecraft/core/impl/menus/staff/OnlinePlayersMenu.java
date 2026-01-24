@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -15,6 +16,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -81,8 +83,8 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
-        // Add sort button
-        items.put(MenuSlots.FILTER_BUTTON, MenuItems.sortButton(currentSort, sortOptions)
+        // Add sort button at slot 40 (y position in navigation row)
+        items.put(MenuSlots.SORT_BUTTON, MenuItems.sortButton(currentSort, sortOptions)
                 .actionHandler("sort"));
 
         return items;
@@ -90,6 +92,11 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
     @Override
     protected Collection<OnlinePlayer> elements() {
+        // Return placeholder if empty to prevent Cirrus from shrinking inventory
+        if (onlinePlayers.isEmpty()) {
+            return Collections.singletonList(new OnlinePlayer(null, null, 0, 0, 0));
+        }
+
         // Sort players based on current sort option
         List<OnlinePlayer> sorted = new ArrayList<>(onlinePlayers);
 
@@ -111,6 +118,11 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
     @Override
     protected CirrusItem map(OnlinePlayer player) {
+        // Handle placeholder for empty list
+        if (player.getName() == null) {
+            return createEmptyPlaceholder("No online players");
+        }
+
         List<String> lore = new ArrayList<>();
 
         // Session time
@@ -140,14 +152,20 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
     @Override
     protected void handleClick(Click click, OnlinePlayer player) {
+        // Handle placeholder - do nothing
+        if (player.getName() == null) {
+            return;
+        }
+
         // Fetch player profile and open inspect menu
         click.clickedMenu().close();
 
         httpClient.getPlayerProfile(player.getUuid()).thenAccept(response -> {
             if (response.getStatus() == 200) {
                 platform.runOnMainThread(() -> {
+                    // Opening InspectMenu from Staff menu - back button returns to OnlinePlayersMenu
                     new InspectMenu(platform, httpClient, viewerUuid, viewerName, response.getProfile(),
-                            p -> new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction).display(p))
+                            p -> new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p))
                             .display(click.player());
                 });
             } else {
@@ -166,36 +184,29 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
         // Sort handler
         registerActionHandler("sort", this::handleSort);
 
-        // Override header navigation
+        // Override header navigation - primary tabs should NOT pass backAction
         registerActionHandler("openOnlinePlayers", click -> {
             // Already here, do nothing
         });
-        registerActionHandler("openReports", click -> {
-            click.clickedMenu().close();
-            new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openPunishments", click -> {
-            click.clickedMenu().close();
-            new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openTickets", click -> {
-            click.clickedMenu().close();
-            new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openPunishments", ActionHandlers.openMenu(
+                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openTickets", ActionHandlers.openMenu(
+                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
         registerActionHandler("openPanel", click -> {
             sendMessage("");
             sendMessage(MenuItems.COLOR_GOLD + "Staff Panel:");
             sendMessage(MenuItems.COLOR_AQUA + panelUrl);
             sendMessage("");
         });
-        registerActionHandler("openSettings", click -> {
-            click.clickedMenu().close();
-            new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+
+        registerActionHandler("openSettings", ActionHandlers.openMenu(
+                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
     }
 
     private void handleSort(Click click) {
@@ -204,9 +215,9 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
         int nextIndex = (currentIndex + 1) % sortOptions.size();
         currentSort = sortOptions.get(nextIndex);
 
-        // Refresh menu
-        click.clickedMenu().close();
-        new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                .display(click.player());
+        // Refresh menu - preserve backAction if present
+        ActionHandlers.openMenu(
+                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction))
+                .handle(click);
     }
 }

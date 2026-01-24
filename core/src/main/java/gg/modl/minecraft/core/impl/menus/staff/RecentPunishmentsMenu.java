@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -15,6 +16,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -73,6 +75,11 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
     @Override
     protected Collection<PunishmentWithPlayer> elements() {
+        // Return placeholder if empty to prevent Cirrus from shrinking inventory
+        if (recentPunishments.isEmpty()) {
+            return Collections.singletonList(new PunishmentWithPlayer(null, null, null, null));
+        }
+
         // Sort by date, newest first
         List<PunishmentWithPlayer> sorted = new ArrayList<>(recentPunishments);
         sorted.sort((p1, p2) -> p2.getPunishment().getIssued().compareTo(p1.getPunishment().getIssued()));
@@ -81,6 +88,11 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
     @Override
     protected CirrusItem map(PunishmentWithPlayer pwp) {
+        // Handle placeholder for empty list
+        if (pwp.getPunishment() == null) {
+            return createEmptyPlaceholder("No recent punishments");
+        }
+
         Punishment punishment = pwp.getPunishment();
         List<String> lore = new ArrayList<>();
 
@@ -144,11 +156,16 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
     @Override
     protected void handleClick(Click click, PunishmentWithPlayer pwp) {
+        // Handle placeholder - do nothing
+        if (pwp.getPunishment() == null) {
+            return;
+        }
+
         // Open modify punishment menu with staff menu as parent
         click.clickedMenu().close();
 
         Consumer<CirrusPlayerWrapper> returnToPunishments = p ->
-                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction).display(p);
+                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p);
 
         if (pwp.getAccount() != null) {
             new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
@@ -177,35 +194,28 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Override header navigation
-        registerActionHandler("openOnlinePlayers", click -> {
-            click.clickedMenu().close();
-            new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openReports", click -> {
-            click.clickedMenu().close();
-            new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+        // Override header navigation - primary tabs should NOT pass backAction
+        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
+                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
         registerActionHandler("openPunishments", click -> {
             // Already here, do nothing
         });
-        registerActionHandler("openTickets", click -> {
-            click.clickedMenu().close();
-            new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+
+        registerActionHandler("openTickets", ActionHandlers.openMenu(
+                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
         registerActionHandler("openPanel", click -> {
             sendMessage("");
             sendMessage(MenuItems.COLOR_GOLD + "Staff Panel:");
             sendMessage(MenuItems.COLOR_AQUA + panelUrl);
             sendMessage("");
         });
-        registerActionHandler("openSettings", click -> {
-            click.clickedMenu().close();
-            new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+
+        registerActionHandler("openSettings", ActionHandlers.openMenu(
+                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
     }
 }

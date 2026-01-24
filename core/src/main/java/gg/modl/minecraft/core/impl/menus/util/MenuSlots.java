@@ -43,13 +43,18 @@ public final class MenuSlots {
     public static final int FOOTER_6ROW_START = 45;
     public static final int FOOTER_6ROW_END = 53;
 
-    // Navigation slots (in footer row)
+    // Navigation slots
+    // Row 4 (36-44): * * < * y * > * * where < is prev, y is filter/sort, > is next
+    public static final int PAGE_PREV = 38;
+    public static final int FILTER_BUTTON = 40;
+    public static final int SORT_BUTTON = 40;  // Same position as filter
+    public static final int PAGE_NEXT = 42;
+
+    // Row 5 (45-53): Q position for back button at bottom left
     public static final int BACK_BUTTON = 45;
-    public static final int PAGE_PREV = 48;
-    public static final int PAGE_INFO = 49;
-    public static final int PAGE_NEXT = 50;
-    public static final int CREATE_BUTTON = 53;
-    public static final int FILTER_BUTTON = 49;
+
+    // For Notes menu, sign button goes in filter position
+    public static final int CREATE_NOTE_BUTTON = 40;
 
     // Modify punishment menu slots
     public static final int MODIFY_ADD_NOTE = 28;

@@ -138,34 +138,34 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Override header navigation to return to history
+        // Override header navigation - switching to primary tabs uses null (no back button)
         registerActionHandler("openHistory", click -> {
             click.clickedMenu().close();
-            new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
         });
 
         registerActionHandler("openNotes", click -> {
             click.clickedMenu().close();
-            new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
         });
 
         registerActionHandler("openAlts", click -> {
             click.clickedMenu().close();
-            new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
         });
 
         registerActionHandler("openReports", click -> {
             click.clickedMenu().close();
-            new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
         });
 
         registerActionHandler("openPunish", click -> {
             click.clickedMenu().close();
-            new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
         });
 

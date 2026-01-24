@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -14,6 +15,8 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -55,14 +58,26 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     @Override
     protected Collection<Punishment> elements() {
         // Punishments are stored in the account object
-        // Sort by date, newest first
         List<Punishment> punishments = new ArrayList<>(targetAccount.getPunishments());
+
+        // Return placeholder if empty to prevent Cirrus from shrinking inventory
+        if (punishments.isEmpty()) {
+            return Collections.singletonList(new Punishment(null, "", new Date(), null, null,
+                    Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap()));
+        }
+
+        // Sort by date, newest first
         punishments.sort((p1, p2) -> p2.getIssued().compareTo(p1.getIssued()));
         return punishments;
     }
 
     @Override
     protected CirrusItem map(Punishment punishment) {
+        // Handle placeholder for empty list
+        if (punishment.getId() == null) {
+            return createEmptyPlaceholder("No punishment history");
+        }
+
         List<String> lore = new ArrayList<>();
 
         // Type and status
@@ -125,9 +140,15 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
     @Override
     protected void handleClick(Click click, Punishment punishment) {
-        // Open modify punishment menu
+        // Handle placeholder - do nothing
+        if (punishment.getId() == null) {
+            return;
+        }
+
+        // Open modify punishment menu - this is a secondary menu, back button returns to HistoryMenu
         click.clickedMenu().close();
-        new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishment, backAction)
+        new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishment,
+                p -> new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null).display(p))
                 .display(click.player());
     }
 
@@ -136,28 +157,17 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         super.registerActionHandlers();
 
         // Override header navigation handlers
-        registerActionHandler("openNotes", click -> {
-            click.clickedMenu().close();
-            new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openAlts", click -> {
-            click.clickedMenu().close();
-            new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
+        // Primary tabs should NOT have back button when switching between them - pass null
+        registerActionHandler("openNotes", ActionHandlers.openMenu(
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+        registerActionHandler("openAlts", ActionHandlers.openMenu(
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
         registerActionHandler("openHistory", click -> {
             // Already on history, do nothing
         });
-        registerActionHandler("openReports", click -> {
-            click.clickedMenu().close();
-            new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openPunish", click -> {
-            click.clickedMenu().close();
-            new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                    .display(click.player());
-        });
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+        registerActionHandler("openPunish", ActionHandlers.openMenu(
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
     }
 }

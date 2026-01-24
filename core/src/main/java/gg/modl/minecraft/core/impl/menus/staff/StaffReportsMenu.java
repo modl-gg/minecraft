@@ -8,6 +8,7 @@ import dev.simplix.protocolize.data.ItemType;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
@@ -15,6 +16,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -88,7 +90,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
-        // Add filter button
+        // Add filter button at slot 40 (y position in navigation row)
         items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions)
                 .actionHandler("filter"));
 
@@ -97,6 +99,11 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
 
     @Override
     protected Collection<Report> elements() {
+        // Return placeholder if empty to prevent Cirrus from shrinking inventory
+        if (reports.isEmpty()) {
+            return Collections.singletonList(new Report(null, null, null, null, null, null, null));
+        }
+
         // Filter and sort reports (newest first)
         List<Report> filtered = new ArrayList<>();
 
@@ -106,12 +113,22 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
             }
         }
 
+        // If filtering results in empty list, return placeholder
+        if (filtered.isEmpty()) {
+            return Collections.singletonList(new Report(null, null, null, null, null, null, null));
+        }
+
         filtered.sort((r1, r2) -> r2.getDate().compareTo(r1.getDate()));
         return filtered;
     }
 
     @Override
     protected CirrusItem map(Report report) {
+        // Handle placeholder for empty list
+        if (report.getId() == null) {
+            return createEmptyPlaceholder("No reports");
+        }
+
         List<String> lore = new ArrayList<>();
 
         lore.add(MenuItems.COLOR_GRAY + "Type: " + MenuItems.COLOR_WHITE + report.getType());
@@ -148,6 +165,11 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
 
     @Override
     protected void handleClick(Click click, Report report) {
+        // Handle placeholder - do nothing
+        if (report.getId() == null) {
+            return;
+        }
+
         // Check click type for left/right click
         // For now, default to inspect behavior
         click.clickedMenu().close();
@@ -156,8 +178,9 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         httpClient.getPlayerProfile(report.getReportedPlayerUuid()).thenAccept(response -> {
             if (response.getStatus() == 200) {
                 platform.runOnMainThread(() -> {
+                    // Pass back action to return to reports menu
                     new InspectMenu(platform, httpClient, viewerUuid, viewerName, response.getProfile(),
-                            p -> new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction).display(p))
+                            p -> new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p))
                             .display(click.player());
                 });
             } else {
@@ -176,36 +199,29 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         // Filter handler
         registerActionHandler("filter", this::handleFilter);
 
-        // Override header navigation
-        registerActionHandler("openOnlinePlayers", click -> {
-            click.clickedMenu().close();
-            new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+        // Override header navigation - primary tabs should NOT pass backAction
+        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
+                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
         registerActionHandler("openReports", click -> {
             // Already here, do nothing
         });
-        registerActionHandler("openPunishments", click -> {
-            click.clickedMenu().close();
-            new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openTickets", click -> {
-            click.clickedMenu().close();
-            new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+
+        registerActionHandler("openPunishments", ActionHandlers.openMenu(
+                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openTickets", ActionHandlers.openMenu(
+                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
         registerActionHandler("openPanel", click -> {
             sendMessage("");
             sendMessage(MenuItems.COLOR_GOLD + "Staff Panel:");
             sendMessage(MenuItems.COLOR_AQUA + panelUrl);
             sendMessage("");
         });
-        registerActionHandler("openSettings", click -> {
-            click.clickedMenu().close();
-            new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+
+        registerActionHandler("openSettings", ActionHandlers.openMenu(
+                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
     }
 
     private void handleFilter(Click click) {
@@ -214,9 +230,9 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         int nextIndex = (currentIndex + 1) % filterOptions.size();
         currentFilter = filterOptions.get(nextIndex);
 
-        // Refresh menu
-        click.clickedMenu().close();
-        new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                .display(click.player());
+        // Refresh menu - preserve backAction if present
+        ActionHandlers.openMenu(
+                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction))
+                .handle(click);
     }
 }

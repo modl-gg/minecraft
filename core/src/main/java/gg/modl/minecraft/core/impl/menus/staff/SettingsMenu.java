@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -132,48 +133,43 @@ public class SettingsMenu extends BaseStaffMenu {
         // Ticket updates handler
         registerActionHandler("ticketUpdates", this::handleTicketUpdates);
 
-        // Admin handlers
+        // Admin handlers - secondary menus SHOULD have back action to return to Settings
         if (isAdmin) {
-            registerActionHandler("editRoles", this::handleEditRoles);
-            registerActionHandler("manageStaff", this::handleManageStaff);
+            Consumer<CirrusPlayerWrapper> returnToSettings = p ->
+                    new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p);
+
+            registerActionHandler("editRoles", ActionHandlers.openMenu(
+                    new RoleListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings)));
+
+            registerActionHandler("manageStaff", ActionHandlers.openMenu(
+                    new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings)));
+
             registerActionHandler("reloadModl", this::handleReloadModl);
         }
 
-        // Override header navigation
-        registerActionHandler("openOnlinePlayers", click -> {
-            click.clickedMenu().close();
-            new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openReports", click -> {
-            click.clickedMenu().close();
-            new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openPunishments", click -> {
-            click.clickedMenu().close();
-            new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openTickets", click -> {
-            click.clickedMenu().close();
-            new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+        // Override header navigation - primary tabs should NOT pass backAction
+        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
+                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openPunishments", ActionHandlers.openMenu(
+                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openTickets", ActionHandlers.openMenu(
+                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
         registerActionHandler("openPanel", click -> {
             sendMessage("");
             sendMessage(MenuItems.COLOR_GOLD + "Staff Panel:");
             sendMessage(MenuItems.COLOR_AQUA + panelUrl);
             sendMessage("");
         });
+
         registerActionHandler("openSettings", click -> {
             // Already here, do nothing
         });
-    }
-
-    private Consumer<CirrusPlayerWrapper> getReturnToSettingsAction() {
-        return player -> new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                .display(player);
     }
 
     private void handleToggleNotifications(Click click) {
@@ -181,27 +177,15 @@ public class SettingsMenu extends BaseStaffMenu {
         // TODO: Save preference to API when endpoint available
         sendMessage(MenuItems.COLOR_GREEN + "Report notifications " + (reportNotifications ? "enabled" : "disabled"));
 
-        // Refresh menu
-        click.clickedMenu().close();
-        new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                .display(click.player());
+        // Refresh menu - preserve backAction if present
+        ActionHandlers.openMenu(
+                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction))
+                .handle(click);
     }
 
     private void handleTicketUpdates(Click click) {
         // TODO: Cycle through subscribed tickets when data available
         sendMessage(MenuItems.COLOR_YELLOW + "No subscribed tickets to display");
-    }
-
-    private void handleEditRoles(Click click) {
-        click.clickedMenu().close();
-        new RoleListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, getReturnToSettingsAction())
-                .display(click.player());
-    }
-
-    private void handleManageStaff(Click click) {
-        click.clickedMenu().close();
-        new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, getReturnToSettingsAction())
-                .display(click.player());
     }
 
     private void handleReloadModl(Click click) {

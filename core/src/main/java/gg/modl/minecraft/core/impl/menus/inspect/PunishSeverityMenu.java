@@ -153,37 +153,38 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         registerActionHandler("toggleStatWipe", this::handleToggleStatWipe);
 
         // Override header navigation
+        // Switching to primary tabs - pass null (no back button on primary tabs)
         registerActionHandler("openNotes", (ActionHandler) click -> {
             click.clickedMenu().close();
-            new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
             return CallResult.DENY_GRABBING;
         });
 
         registerActionHandler("openAlts", (ActionHandler) click -> {
             click.clickedMenu().close();
-            new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
             return CallResult.DENY_GRABBING;
         });
 
         registerActionHandler("openHistory", (ActionHandler) click -> {
             click.clickedMenu().close();
-            new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
             return CallResult.DENY_GRABBING;
         });
 
         registerActionHandler("openReports", (ActionHandler) click -> {
             click.clickedMenu().close();
-            new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
             return CallResult.DENY_GRABBING;
         });
 
         registerActionHandler("openPunish", (ActionHandler) click -> {
             click.clickedMenu().close();
-            new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)
+            new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                     .display(click.player());
             return CallResult.DENY_GRABBING;
         });

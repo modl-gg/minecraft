@@ -39,6 +39,7 @@ public class InspectMenu extends BaseInspectMenu {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
+        // Primary tabs should NOT have back button when switching between them - pass null
         // Open Notes menu
         registerActionHandler("openNotes", this::openNotes);
 
@@ -55,38 +56,33 @@ public class InspectMenu extends BaseInspectMenu {
         registerActionHandler("openPunish", this::openPunish);
     }
 
-    private Consumer<CirrusPlayerWrapper> getReturnToInspectAction() {
-        return player -> new InspectMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                .display(player);
-    }
-
     private void openNotes(Click click) {
         click.clickedMenu().close();
-        new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, getReturnToInspectAction())
+        new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                 .display(click.player());
     }
 
     private void openAlts(Click click) {
         click.clickedMenu().close();
-        new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, getReturnToInspectAction())
+        new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                 .display(click.player());
     }
 
     private void openHistory(Click click) {
         click.clickedMenu().close();
-        new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, getReturnToInspectAction())
+        new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                 .display(click.player());
     }
 
     private void openReports(Click click) {
         click.clickedMenu().close();
-        new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, getReturnToInspectAction())
+        new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                 .display(click.player());
     }
 
     private void openPunish(Click click) {
         click.clickedMenu().close();
-        new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, getReturnToInspectAction())
+        new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
                 .display(click.player());
     }
 }

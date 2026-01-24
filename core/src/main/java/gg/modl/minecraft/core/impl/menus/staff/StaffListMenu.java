@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -13,6 +14,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -76,11 +78,20 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
 
     @Override
     protected Collection<StaffMember> elements() {
+        // Return placeholder if empty to prevent Cirrus from shrinking inventory
+        if (staffMembers.isEmpty()) {
+            return Collections.singletonList(new StaffMember(null, null, null, null));
+        }
         return staffMembers;
     }
 
     @Override
     protected CirrusItem map(StaffMember staff) {
+        // Handle placeholder for empty list
+        if (staff.getId() == null) {
+            return createEmptyPlaceholder("No staff members");
+        }
+
         List<String> lore = new ArrayList<>();
 
         // Get selected role (or current role if none selected)
@@ -112,6 +123,11 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
 
     @Override
     protected void handleClick(Click click, StaffMember staff) {
+        // Handle placeholder - do nothing
+        if (staff.getId() == null) {
+            return;
+        }
+
         // In Cirrus, we'd need to check click type
         // For now, treat all clicks as cycle
         cycleRole(click, staff);
@@ -127,9 +143,9 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         sendMessage(MenuItems.COLOR_YELLOW + "Selected role: " + MenuItems.COLOR_GREEN + nextRole +
                 MenuItems.COLOR_GRAY + " (left-click to apply)");
 
-        // Refresh menu
+        // Refresh menu - preserve backAction
         click.clickedMenu().close();
-        StaffListMenu newMenu = new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction);
+        StaffListMenu newMenu = new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         newMenu.selectedRoles.putAll(this.selectedRoles);
         newMenu.display(click.player());
     }
@@ -146,37 +162,27 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Override header navigation
-        registerActionHandler("openOnlinePlayers", click -> {
-            click.clickedMenu().close();
-            new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openReports", click -> {
-            click.clickedMenu().close();
-            new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openPunishments", click -> {
-            click.clickedMenu().close();
-            new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openTickets", click -> {
-            click.clickedMenu().close();
-            new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+        // Override header navigation - primary tabs should NOT pass backAction
+        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
+                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openPunishments", ActionHandlers.openMenu(
+                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openTickets", ActionHandlers.openMenu(
+                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
         registerActionHandler("openPanel", click -> {
             sendMessage("");
             sendMessage(MenuItems.COLOR_GOLD + "Staff Panel:");
             sendMessage(MenuItems.COLOR_AQUA + panelUrl);
             sendMessage("");
         });
-        registerActionHandler("openSettings", click -> {
-            click.clickedMenu().close();
-            new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+
+        registerActionHandler("openSettings", ActionHandlers.openMenu(
+                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
     }
 }

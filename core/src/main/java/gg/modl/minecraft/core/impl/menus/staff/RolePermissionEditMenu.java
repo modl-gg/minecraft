@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -13,6 +14,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +47,6 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
     private List<Permission> allPermissions = new ArrayList<>();
     private Set<String> enabledPermissions;
     private final String panelUrl;
-    private final Consumer<CirrusPlayerWrapper> parentBackAction;
 
     // All available permission nodes
     private static final List<String> AVAILABLE_PERMISSIONS = Arrays.asList(
@@ -81,7 +82,6 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         super("Edit: " + role.getName(), platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
         this.role = role;
         this.panelUrl = panelUrl;
-        this.parentBackAction = backAction;
         activeTab = StaffTab.SETTINGS;
 
         // Initialize permissions
@@ -93,11 +93,20 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
     @Override
     protected Collection<Permission> elements() {
+        // Return placeholder if empty to prevent Cirrus from shrinking inventory
+        if (allPermissions.isEmpty()) {
+            return Collections.singletonList(new Permission(null, false));
+        }
         return allPermissions;
     }
 
     @Override
     protected CirrusItem map(Permission permission) {
+        // Handle placeholder for empty list
+        if (permission.getNode() == null) {
+            return createEmptyPlaceholder("No permissions");
+        }
+
         return CirrusItem.of(
                 permission.isEnabled() ? ItemType.LIME_DYE : ItemType.GRAY_DYE,
                 ChatElement.ofLegacyText(
@@ -111,6 +120,11 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
     @Override
     protected void handleClick(Click click, Permission permission) {
+        // Handle placeholder - do nothing
+        if (permission.getNode() == null) {
+            return;
+        }
+
         // Toggle permission
         permission.setEnabled(!permission.isEnabled());
 
@@ -125,9 +139,9 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
                 (permission.isEnabled() ? MenuItems.COLOR_GREEN + "enabled" : MenuItems.COLOR_RED + "disabled"));
         sendMessage(MenuItems.COLOR_GRAY + "(Changes not saved - endpoint needed)");
 
-        // Refresh menu
+        // Refresh menu - preserve backAction
         click.clickedMenu().close();
-        new RolePermissionEditMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, role, parentBackAction)
+        new RolePermissionEditMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, role, backAction)
                 .display(click.player());
     }
 
@@ -135,37 +149,27 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Override header navigation
-        registerActionHandler("openOnlinePlayers", click -> {
-            click.clickedMenu().close();
-            new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openReports", click -> {
-            click.clickedMenu().close();
-            new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openPunishments", click -> {
-            click.clickedMenu().close();
-            new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
-        registerActionHandler("openTickets", click -> {
-            click.clickedMenu().close();
-            new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+        // Override header navigation - primary tabs should NOT pass backAction
+        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
+                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openPunishments", ActionHandlers.openMenu(
+                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openTickets", ActionHandlers.openMenu(
+                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
         registerActionHandler("openPanel", click -> {
             sendMessage("");
             sendMessage(MenuItems.COLOR_GOLD + "Staff Panel:");
             sendMessage(MenuItems.COLOR_AQUA + panelUrl);
             sendMessage("");
         });
-        registerActionHandler("openSettings", click -> {
-            click.clickedMenu().close();
-            new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, parentBackAction)
-                    .display(click.player());
-        });
+
+        registerActionHandler("openSettings", ActionHandlers.openMenu(
+                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
     }
 }

@@ -49,28 +49,21 @@ public abstract class BaseMenu extends SimpleMenu {
     }
 
     /**
-     * Fill border slots with glass panes.
-     * Override row parameter to customize which rows to fill.
+     * Fill border slots - now a no-op since GUI uses blank space instead of glass.
+     * @deprecated No longer needed - GUI spec uses blank space, not glass panes.
      */
+    @Deprecated
     protected void fillBorders() {
-        // Fill top row
-        for (int i = 0; i <= 8; i++) {
-            set(MenuItems.glassPaneFiller().slot(i));
-        }
-
-        // Fill bottom row (for 6-row inventory, that's slots 45-53)
-        for (int i = 45; i <= 53; i++) {
-            set(MenuItems.glassPaneFiller().slot(i));
-        }
+        // No-op - blank space is preferred per GUI spec
     }
 
     /**
      * Fill all borders for a 6-row menu.
-     * @deprecated Use fillBorders() instead - menus now default to 6 rows.
+     * @deprecated No longer needed - GUI spec uses blank space, not glass panes.
      */
     @Deprecated
     protected void fillBorders6Row() {
-        fillBorders();
+        // No-op
     }
 
     /**
