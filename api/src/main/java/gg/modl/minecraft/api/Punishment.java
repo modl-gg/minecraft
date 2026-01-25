@@ -4,6 +4,7 @@ import com.google.gson.annotations.SerializedName;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Punishment {

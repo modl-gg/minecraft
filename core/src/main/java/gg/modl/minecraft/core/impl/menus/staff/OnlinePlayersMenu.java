@@ -75,8 +75,28 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
         this.parentBackAction = backAction;
         activeTab = StaffTab.ONLINE_PLAYERS;
 
-        // TODO: Fetch online players when endpoint GET /v1/minecraft/players/online is available
-        // For now, list is empty
+        // Fetch online players from API
+        fetchOnlinePlayers();
+    }
+
+    private void fetchOnlinePlayers() {
+        httpClient.getOnlinePlayers().thenAccept(response -> {
+            if (response.isSuccess() && response.getPlayers() != null) {
+                onlinePlayers.clear();
+                for (var player : response.getPlayers()) {
+                    UUID uuid = null;
+                    try {
+                        uuid = UUID.fromString(player.getUuid());
+                    } catch (Exception ignored) {}
+
+                    long sessionStart = player.getJoinedAt() != null ? player.getJoinedAt().getTime() : System.currentTimeMillis();
+                    onlinePlayers.add(new OnlinePlayer(uuid, player.getUsername(), sessionStart, 0, 0));
+                }
+            }
+        }).exceptionally(e -> {
+            // Failed to fetch - list remains empty
+            return null;
+        });
     }
 
     @Override

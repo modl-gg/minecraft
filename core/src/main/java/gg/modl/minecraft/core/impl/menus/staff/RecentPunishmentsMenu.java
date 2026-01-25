@@ -7,6 +7,7 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.protocolize.api.chat.ChatElement;
 import dev.simplix.protocolize.data.ItemType;
 import gg.modl.minecraft.api.Account;
+import gg.modl.minecraft.api.Note;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
@@ -17,6 +18,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -69,8 +71,48 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         this.parentBackAction = backAction;
         activeTab = StaffTab.PUNISHMENTS;
 
-        // TODO: Fetch recent punishments when endpoint GET /v1/panel/punishments/recent is available
-        // For now, list is empty
+        // Fetch recent punishments from API
+        fetchRecentPunishments();
+    }
+
+    private void fetchRecentPunishments() {
+        httpClient.getRecentPunishments(48).thenAccept(response -> {
+            if (response.isSuccess() && response.getPunishments() != null) {
+                recentPunishments.clear();
+                for (var p : response.getPunishments()) {
+                    UUID playerUuid = null;
+                    try {
+                        if (p.getPlayerUuid() != null) {
+                            playerUuid = UUID.fromString(p.getPlayerUuid());
+                        }
+                    } catch (Exception ignored) {}
+
+                    // Create a simple Punishment object for display
+                    Punishment punishment = new Punishment();
+                    punishment.setId(p.getId());
+                    punishment.setIssuerName(p.getIssuerName());
+                    punishment.setIssued(p.getIssuedAt());
+
+                    // Set data map with reason and active flag
+                    Map<String, Object> dataMap = new java.util.HashMap<>();
+                    dataMap.put("reason", p.getReason());
+                    dataMap.put("active", p.isActive());
+                    dataMap.put("typeName", p.getType());
+                    punishment.setDataMap(dataMap);
+
+                    // Add first note for reason display
+                    if (p.getReason() != null) {
+                        Note reasonNote = new Note(p.getReason(), new Date(), "System", null);
+                        punishment.setNotes(Collections.singletonList(reasonNote));
+                    }
+
+                    recentPunishments.add(new PunishmentWithPlayer(punishment, playerUuid, p.getPlayerName(), null));
+                }
+            }
+        }).exceptionally(e -> {
+            // Failed to fetch - list remains empty
+            return null;
+        });
     }
 
     @Override
@@ -99,8 +141,9 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         // Player name
         lore.add(MenuItems.COLOR_GRAY + "Player: " + MenuItems.COLOR_RED + pwp.getPlayerName());
 
-        // Type and status
-        String typeName = punishment.getType() != null ? punishment.getType().name() : "Unknown";
+        // Type and status - get from dataMap or fall back to registry
+        Object typeNameObj = punishment.getDataMap().get("typeName");
+        String typeName = typeNameObj != null ? typeNameObj.toString() : punishment.getTypeCategory();
         boolean isActive = punishment.isActive();
 
         lore.add(MenuItems.COLOR_GRAY + "Type: " + (isActive ? MenuItems.COLOR_RED : MenuItems.COLOR_WHITE) + typeName);

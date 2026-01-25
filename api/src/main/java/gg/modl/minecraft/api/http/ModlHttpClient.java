@@ -76,4 +76,23 @@ public interface ModlHttpClient {
 
     @NotNull
     CompletableFuture<Void> updateMigrationStatus(@NotNull MigrationStatusUpdateRequest request);
+
+    // Staff menu endpoints
+    @NotNull
+    CompletableFuture<OnlinePlayersResponse> getOnlinePlayers();
+
+    @NotNull
+    CompletableFuture<RecentPunishmentsResponse> getRecentPunishments(int hours);
+
+    @NotNull
+    CompletableFuture<ReportsResponse> getReports(String status);
+
+    @NotNull
+    CompletableFuture<Void> dismissReport(@NotNull String reportId, String dismissedBy, String reason);
+
+    @NotNull
+    CompletableFuture<TicketsResponse> getTickets(String status, String type);
+
+    @NotNull
+    CompletableFuture<DashboardStatsResponse> getDashboardStats();
 }

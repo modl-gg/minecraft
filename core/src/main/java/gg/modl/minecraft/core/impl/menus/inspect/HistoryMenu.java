@@ -73,7 +73,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     @Override
     protected CirrusItem map(Punishment punishment) {
         // Handle placeholder for empty list
-        if (punishment.getId() == null) {
+        if (punishment.getId() == null || punishment.getId().isEmpty()) {
             return createEmptyPlaceholder("No punishment history");
         }
 
@@ -134,7 +134,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     @Override
     protected void handleClick(Click click, Punishment punishment) {
         // Handle placeholder - do nothing
-        if (punishment.getId() == null) {
+        if (punishment.getId() == null || punishment.getId().isEmpty()) {
             return;
         }
 

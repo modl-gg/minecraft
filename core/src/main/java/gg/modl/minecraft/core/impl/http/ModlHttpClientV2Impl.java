@@ -6,6 +6,8 @@ import com.google.gson.Gson;
 import gg.modl.minecraft.api.http.request.*;
 import gg.modl.minecraft.api.http.request.v2.*;
 import gg.modl.minecraft.api.http.response.*;
+import java.util.HashMap;
+import java.util.Map;
 import gg.modl.minecraft.core.util.CircuitBreaker;
 import org.jetbrains.annotations.NotNull;
 
@@ -350,6 +352,74 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
                 .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<OnlinePlayersResponse> getOnlinePlayers() {
+        return sendAsync(requestBuilder("/minecraft/players/online")
+                .GET()
+                .build(), OnlinePlayersResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<RecentPunishmentsResponse> getRecentPunishments(int hours) {
+        return sendAsync(requestBuilder("/minecraft/punishments/recent?hours=" + hours)
+                .GET()
+                .build(), RecentPunishmentsResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<ReportsResponse> getReports(String status) {
+        String endpoint = "/minecraft/reports";
+        if (status != null && !status.isEmpty()) {
+            endpoint += "?status=" + status;
+        }
+        return sendAsync(requestBuilder(endpoint)
+                .GET()
+                .build(), ReportsResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> dismissReport(@NotNull String reportId, String dismissedBy, String reason) {
+        java.util.Map<String, String> body = new java.util.HashMap<>();
+        if (dismissedBy != null) body.put("dismissedBy", dismissedBy);
+        if (reason != null) body.put("reason", reason);
+
+        return sendAsync(requestBuilder("/minecraft/reports/" + reportId + "/dismiss")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<TicketsResponse> getTickets(String status, String type) {
+        StringBuilder endpoint = new StringBuilder("/minecraft/tickets");
+        boolean hasParam = false;
+
+        if (status != null && !status.isEmpty() && !status.equals("all")) {
+            endpoint.append("?status=").append(status);
+            hasParam = true;
+        }
+        if (type != null && !type.isEmpty()) {
+            endpoint.append(hasParam ? "&" : "?").append("type=").append(type);
+        }
+
+        return sendAsync(requestBuilder(endpoint.toString())
+                .GET()
+                .build(), TicketsResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<DashboardStatsResponse> getDashboardStats() {
+        return sendAsync(requestBuilder("/minecraft/dashboard/stats")
+                .GET()
+                .build(), DashboardStatsResponse.class);
     }
 
     private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {

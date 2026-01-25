@@ -82,8 +82,37 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         this.parentBackAction = backAction;
         activeTab = StaffTab.REPORTS;
 
-        // TODO: Fetch reports when endpoint GET /v1/panel/reports is available
-        // For now, list is empty
+        // Fetch reports from API
+        fetchReports();
+    }
+
+    private void fetchReports() {
+        httpClient.getReports("open").thenAccept(response -> {
+            if (response.isSuccess() && response.getReports() != null) {
+                reports.clear();
+                for (var report : response.getReports()) {
+                    UUID reportedUuid = null;
+                    try {
+                        if (report.getReportedPlayerUuid() != null) {
+                            reportedUuid = UUID.fromString(report.getReportedPlayerUuid());
+                        }
+                    } catch (Exception ignored) {}
+
+                    reports.add(new Report(
+                            report.getId(),
+                            report.getType(),
+                            report.getReporterName(),
+                            reportedUuid,
+                            report.getReportedPlayerName(),
+                            report.getSubject(),
+                            report.getCreatedAt()
+                    ));
+                }
+            }
+        }).exceptionally(e -> {
+            // Failed to fetch - list remains empty
+            return null;
+        });
     }
 
     /**

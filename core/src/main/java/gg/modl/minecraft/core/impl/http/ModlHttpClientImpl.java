@@ -425,6 +425,86 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
+    @NotNull
+    @Override
+    public CompletableFuture<OnlinePlayersResponse> getOnlinePlayers() {
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/players/online"))
+                .header("X-API-Key", apiKey)
+                .GET()
+                .build(), OnlinePlayersResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<RecentPunishmentsResponse> getRecentPunishments(int hours) {
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/punishments/recent?hours=" + hours))
+                .header("X-API-Key", apiKey)
+                .GET()
+                .build(), RecentPunishmentsResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<ReportsResponse> getReports(String status) {
+        String endpoint = "/minecraft/reports";
+        if (status != null && !status.isEmpty()) {
+            endpoint += "?status=" + status;
+        }
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + endpoint))
+                .header("X-API-Key", apiKey)
+                .GET()
+                .build(), ReportsResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> dismissReport(@NotNull String reportId, String dismissedBy, String reason) {
+        java.util.Map<String, String> body = new java.util.HashMap<>();
+        if (dismissedBy != null) body.put("dismissedBy", dismissedBy);
+        if (reason != null) body.put("reason", reason);
+
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/reports/" + reportId + "/dismiss"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<TicketsResponse> getTickets(String status, String type) {
+        StringBuilder endpoint = new StringBuilder("/minecraft/tickets");
+        boolean hasParam = false;
+
+        if (status != null && !status.isEmpty() && !status.equals("all")) {
+            endpoint.append("?status=").append(status);
+            hasParam = true;
+        }
+        if (type != null && !type.isEmpty()) {
+            endpoint.append(hasParam ? "&" : "?").append("type=").append(type);
+        }
+
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + endpoint.toString()))
+                .header("X-API-Key", apiKey)
+                .GET()
+                .build(), TicketsResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<DashboardStatsResponse> getDashboardStats() {
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/dashboard/stats"))
+                .header("X-API-Key", apiKey)
+                .GET()
+                .build(), DashboardStatsResponse.class);
+    }
+
     private String generateRequestId() {
         return String.valueOf(System.nanoTime() % 1000000);
     }

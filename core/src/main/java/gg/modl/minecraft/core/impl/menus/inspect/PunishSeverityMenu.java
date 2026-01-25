@@ -49,9 +49,21 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     public PunishSeverityMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                Account targetAccount, PunishmentTypesResponse.PunishmentTypeData punishmentType,
                                Consumer<CirrusPlayerWrapper> backAction) {
+        this(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, backAction, false, false, false);
+    }
+
+    /**
+     * Create a new severity menu with initial toggle states.
+     */
+    public PunishSeverityMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
+                               Account targetAccount, PunishmentTypesResponse.PunishmentTypeData punishmentType,
+                               Consumer<CirrusPlayerWrapper> backAction, boolean silentMode, boolean altBlocking, boolean statWipe) {
         super(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
         this.punishmentType = punishmentType;
         this.parentBackAction = backAction;
+        this.silentMode = silentMode;
+        this.altBlocking = altBlocking;
+        this.statWipe = statWipe;
 
         title("Punish: " + punishmentType.getName());
         activeTab = InspectTab.PUNISH;
@@ -107,24 +119,24 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                 )
         ).slot(MenuSlots.SEVERITY_SILENT).actionHandler("toggleSilent"));
 
-        // Slot 42: Alt-Blocking toggle (ban types only)
-        if (isBanType && punishmentType.getCanBeAltBlocking() != null && punishmentType.getCanBeAltBlocking()) {
+        // Slot 42: Alt-Blocking toggle (if punishment type allows it)
+        if (punishmentType.getCanBeAltBlocking() != null && punishmentType.getCanBeAltBlocking()) {
             set(CirrusItem.of(
                     altBlocking ? ItemType.TORCH : ItemType.REDSTONE_TORCH,
                     ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Alt-Blocking: " + (altBlocking ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
                     MenuItems.lore(
-                            MenuItems.COLOR_GRAY + "Toggle alt-blocking for this ban"
+                            MenuItems.COLOR_GRAY + "Toggle alt-blocking for this punishment"
                     )
             ).slot(MenuSlots.SEVERITY_ALT_BLOCK).actionHandler("toggleAltBlock"));
         }
 
-        // Slot 43: Stat-Wipe toggle (ban types only)
-        if (isBanType && punishmentType.getCanBeStatWiping() != null && punishmentType.getCanBeStatWiping()) {
+        // Slot 43: Stat-Wipe toggle (if punishment type allows it)
+        if (punishmentType.getCanBeStatWiping() != null && punishmentType.getCanBeStatWiping()) {
             set(CirrusItem.of(
                     statWipe ? ItemType.EXPERIENCE_BOTTLE : ItemType.GLASS_BOTTLE,
                     ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Stat-Wipe: " + (statWipe ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
                     MenuItems.lore(
-                            MenuItems.COLOR_GRAY + "Toggle stat-wiping for this ban"
+                            MenuItems.COLOR_GRAY + "Toggle stat-wiping for this punishment"
                     )
             ).slot(MenuSlots.SEVERITY_STAT_WIPE).actionHandler("toggleStatWipe"));
         }
@@ -179,13 +191,26 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                 reason -> {
                     // Create punishment request
                     String severityStr = severityLevel == 0 ? "lenient" : severityLevel == 1 ? "regular" : "aggravated";
+
+                    // Build data map with optional flags
+                    java.util.Map<String, Object> data = new java.util.HashMap<>();
+                    if (altBlocking) {
+                        data.put("altBlocking", true);
+                    }
+                    if (statWipe) {
+                        data.put("statWipe", true);
+                    }
+                    if (silentMode) {
+                        data.put("silent", true);
+                    }
+
                     PunishmentCreateRequest request = new PunishmentCreateRequest(
                             targetUuid.toString(),
                             viewerName,
                             punishmentType.getOrdinal(),
                             reason,
                             null, // duration - let API determine from severity
-                            null, // data
+                            data.isEmpty() ? null : data,
                             null, // notes
                             null, // attachedTicketIds
                             severityStr,
@@ -218,26 +243,23 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     }
 
     private void handleToggleSilent(Click click) {
-        silentMode = !silentMode;
-        // Refresh menu
+        // Refresh menu with toggled silent state
         ActionHandlers.openMenu(
-                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction))
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction, !silentMode, altBlocking, statWipe))
                 .handle(click);
     }
 
     private void handleToggleAltBlock(Click click) {
-        altBlocking = !altBlocking;
-        // Refresh menu
+        // Refresh menu with toggled alt-blocking state
         ActionHandlers.openMenu(
-                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction))
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction, silentMode, !altBlocking, statWipe))
                 .handle(click);
     }
 
     private void handleToggleStatWipe(Click click) {
-        statWipe = !statWipe;
-        // Refresh menu
+        // Refresh menu with toggled stat-wipe state
         ActionHandlers.openMenu(
-                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction))
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction, silentMode, altBlocking, !statWipe))
                 .handle(click);
     }
 }

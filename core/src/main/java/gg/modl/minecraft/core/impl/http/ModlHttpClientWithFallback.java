@@ -279,6 +279,66 @@ public class ModlHttpClientWithFallback implements ModlHttpClient {
         );
     }
 
+    @NotNull
+    @Override
+    public CompletableFuture<OnlinePlayersResponse> getOnlinePlayers() {
+        return withFallback(
+                () -> v2Client.getOnlinePlayers(),
+                () -> v1Client.getOnlinePlayers(),
+                "getOnlinePlayers"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<RecentPunishmentsResponse> getRecentPunishments(int hours) {
+        return withFallback(
+                () -> v2Client.getRecentPunishments(hours),
+                () -> v1Client.getRecentPunishments(hours),
+                "getRecentPunishments"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<ReportsResponse> getReports(String status) {
+        return withFallback(
+                () -> v2Client.getReports(status),
+                () -> v1Client.getReports(status),
+                "getReports"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> dismissReport(@NotNull String reportId, String dismissedBy, String reason) {
+        return withFallback(
+                () -> v2Client.dismissReport(reportId, dismissedBy, reason),
+                () -> v1Client.dismissReport(reportId, dismissedBy, reason),
+                "dismissReport"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<TicketsResponse> getTickets(String status, String type) {
+        return withFallback(
+                () -> v2Client.getTickets(status, type),
+                () -> v1Client.getTickets(status, type),
+                "getTickets"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<DashboardStatsResponse> getDashboardStats() {
+        return withFallback(
+                () -> v2Client.getDashboardStats(),
+                () -> v1Client.getDashboardStats(),
+                "getDashboardStats"
+        );
+    }
+
     /**
      * Check if the client has fallen back to V1 API.
      * @return true if currently using V1 fallback

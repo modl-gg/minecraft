@@ -77,8 +77,29 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         this.parentBackAction = backAction;
         activeTab = StaffTab.TICKETS;
 
-        // TODO: Fetch tickets when endpoint GET /v1/panel/tickets is available
-        // For now, list is empty
+        // Fetch tickets from API
+        fetchTickets();
+    }
+
+    private void fetchTickets() {
+        httpClient.getTickets(null, null).thenAccept(response -> {
+            if (response.isSuccess() && response.getTickets() != null) {
+                tickets.clear();
+                for (var ticket : response.getTickets()) {
+                    tickets.add(new Ticket(
+                            ticket.getId(),
+                            ticket.getPlayerName(),
+                            ticket.getSubject(),
+                            ticket.getCreatedAt(),
+                            ticket.getStatus(),
+                            ticket.isHasStaffResponse()
+                    ));
+                }
+            }
+        }).exceptionally(e -> {
+            // Failed to fetch - list remains empty
+            return null;
+        });
     }
 
     /**
