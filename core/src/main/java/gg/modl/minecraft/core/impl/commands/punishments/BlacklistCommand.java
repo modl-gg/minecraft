@@ -10,7 +10,6 @@ import gg.modl.minecraft.api.http.request.CreatePunishmentRequest;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import lombok.RequiredArgsConstructor;
 
 import com.google.gson.JsonObject;
@@ -27,16 +26,10 @@ public class BlacklistCommand extends BaseCommand {
     @CommandCompletion("@players")
     @CommandAlias("blacklist")
     @Syntax("<target> [reason...] [-silent] [-alt-blocking] [-stat-wipe]")
+    @Conditions("permission:value=punishment.apply.blacklist")
     public void blacklist(CommandIssuer sender, @Name("target") Account target, @Default("") String args) {
         if (target == null) {
             sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", Map.of()));
-            return;
-        }
-
-        // Check permission for blacklist
-        if (!PermissionUtil.hasPermission(sender, cache, "punishment.apply.blacklist")) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.no_permission_punishment",
-                Map.of("type", "blacklist")));
             return;
         }
 

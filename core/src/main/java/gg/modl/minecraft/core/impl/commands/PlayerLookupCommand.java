@@ -87,20 +87,8 @@ public class PlayerLookupCommand extends BaseCommand {
     @CommandAlias("lookup|look|check|info")
     @Syntax("<player>")
     @Description("Look up detailed information about a player (online or offline)")
+    @Conditions("staff")
     public void lookup(CommandIssuer sender, @Name("player") String playerQuery) {
-        // Check if user is staff member - use staff permissions cache which is more reliable
-        if (sender.isPlayer()) {
-            UUID senderUuid = sender.getUniqueId();
-            boolean isStaffMember = cache.isStaffMemberByPermissions(senderUuid);
-            
-            
-            if (!isStaffMember) {
-                sender.sendMessage(localeManager.getMessage("player_lookup.permission_denied"));
-                return;
-            }
-        }
-        // Console can always use the command
-
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
@@ -285,7 +273,7 @@ public class PlayerLookupCommand extends BaseCommand {
     private String formatDate(String isoDate) {
         try {
             Date date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").parse(isoDate);
-            return new SimpleDateFormat("MMM dd, yyyy HH:mm").format(date);
+            return new SimpleDateFormat("MM/dd/yyyy HH:mm").format(date);
         } catch (Exception e) {
             return isoDate; // Fallback to original string
         }

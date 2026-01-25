@@ -11,7 +11,6 @@ import gg.modl.minecraft.api.http.request.CreatePunishmentRequest;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import lombok.RequiredArgsConstructor;
 
 import com.google.gson.JsonObject;
@@ -28,16 +27,10 @@ public class KickCommand extends BaseCommand {
     @CommandCompletion("@players")
     @CommandAlias("kick")
     @Syntax("<target> [reason...] [-silent]")
+    @Conditions("permission:value=punishment.apply.kick")
     public void kick(CommandIssuer sender, @Name("target") Account target, @Default("") String args) {
         if (target == null) {
             sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", Map.of()));
-            return;
-        }
-
-        // Check permission for kick
-        if (!PermissionUtil.hasPermission(sender, cache, "punishment.apply.kick")) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.no_permission_punishment",
-                Map.of("type", "kick")));
             return;
         }
 

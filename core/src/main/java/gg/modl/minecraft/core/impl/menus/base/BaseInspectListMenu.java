@@ -10,11 +10,9 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.locale.LocaleManager;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
@@ -128,25 +126,82 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
 
     /**
      * Create the player head item with account information.
+     * Uses the same format as BaseInspectMenu for consistency.
      */
     protected CirrusItem createPlayerHeadItem() {
+        LocaleManager locale = platform.getLocaleManager();
         List<String> lore = new ArrayList<>();
 
-        // UUID
-        lore.add(MenuItems.COLOR_GRAY + "UUID: " + MenuItems.COLOR_WHITE + targetUuid.toString());
-
-        // Active punishments
-        long activePunishments = targetAccount.getPunishments().stream()
-                .filter(Punishment::isActive)
-                .count();
-        if (activePunishments > 0) {
-            lore.add("");
-            lore.add(MenuItems.COLOR_RED + "Active Punishments: " + activePunishments);
+        // Calculate first login from earliest username date
+        String firstLogin = "Unknown";
+        if (!targetAccount.getUsernames().isEmpty()) {
+            Date earliest = targetAccount.getUsernames().stream()
+                    .map(Account.Username::getDate)
+                    .filter(d -> d != null)
+                    .min(Date::compareTo)
+                    .orElse(null);
+            if (earliest != null) {
+                firstLogin = MenuItems.formatDate(earliest);
+            }
         }
+
+        // Check online status and ban/mute status from cache
+        boolean isOnline = platform.getCache() != null && platform.getCache().isOnline(targetUuid);
+        boolean isBanned = targetAccount.getPunishments().stream()
+                .anyMatch(p -> p.isActive() && p.isBanType());
+        boolean isMuted = targetAccount.getPunishments().stream()
+                .anyMatch(p -> p.isActive() && p.isMuteType());
+
+        // Real IP logged
+        boolean realIpLogged = !targetAccount.getIpList().isEmpty();
+
+        // Session time (if online) or last seen (if offline)
+        String lastSeenOrSessionTime = "N/A";
+        if (isOnline && platform.getCache() != null) {
+            // Player is online - show session time
+            long sessionMs = platform.getCache().getSessionDuration(targetUuid);
+            lastSeenOrSessionTime = MenuItems.formatDuration(sessionMs);
+        } else if (!targetAccount.getUsernames().isEmpty()) {
+            // Player is offline - show last seen date
+            Date latest = targetAccount.getUsernames().stream()
+                    .map(Account.Username::getDate)
+                    .filter(d -> d != null)
+                    .max(Date::compareTo)
+                    .orElse(null);
+            if (latest != null) {
+                lastSeenOrSessionTime = MenuItems.formatDate(latest);
+            }
+        }
+
+        // Build variables map using HashMap to allow more entries
+        Map<String, String> vars = new HashMap<>();
+        vars.put("player_name", targetName);
+        vars.put("uuid", targetUuid.toString());
+        vars.put("first_login", firstLogin);
+        vars.put("is_online", isOnline ? "&aYes" : "&cNo");
+        vars.put("last_seen_or_session_time", lastSeenOrSessionTime);
+        vars.put("playtime", "N/A");
+        vars.put("real_ip_logged", realIpLogged ? "&aYes" : "&cNo");
+        vars.put("is_banned", isBanned ? "&cYes" : "&aNo");
+        vars.put("is_muted", isMuted ? "&cYes" : "&aNo");
+
+        // Get lore lines from locale and substitute variables
+        List<String> loreLinesRaw = locale.getMessageList("menus.player_head.lore");
+        for (String line : loreLinesRaw) {
+            String processed = line;
+            for (Map.Entry<String, String> entry : vars.entrySet()) {
+                processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
+            }
+            lore.add(processed);
+        }
+
+        // Get title from locale and translate color codes
+        String title = locale.getMessage("menus.player_head.title", Map.of("player_name", targetName));
+        title = MenuItems.translateColorCodes(title);
 
         return CirrusItem.of(
                 ItemType.PLAYER_HEAD,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + targetName + "'s Information"),
+                ChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }

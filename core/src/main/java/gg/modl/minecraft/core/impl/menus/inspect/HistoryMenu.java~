@@ -7,7 +7,6 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.protocolize.api.chat.ChatElement;
 import dev.simplix.protocolize.data.ItemType;
 import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.Note;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
@@ -169,14 +168,14 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
         // Build notes section - each note on a new line using note_format
         StringBuilder notesBuilder = new StringBuilder();
-        List<Note> notes = punishment.getNotes();
+        List<Punishment.PunishmentNote> notes = punishment.getNotes();
         if (notes != null && !notes.isEmpty()) {
             String noteFormat = locale.getMessage("menus.history_item.note_format");
             for (int i = 0; i < notes.size(); i++) {
-                Note note = notes.get(i);
-                String noteDate = MenuItems.formatDate(note.getDate());
-                String noteIssuer = note.getIssuerName();
-                String noteText = note.getText();
+                Punishment.PunishmentNote note = notes.get(i);
+                String noteDate = note.getDate() != null ? MenuItems.formatDate(note.getDate()) : "Unknown";
+                String noteIssuer = note.getIssuerName() != null ? note.getIssuerName() : "Unknown";
+                String noteText = note.getText() != null ? note.getText() : "";
                 String formattedNote = noteFormat
                         .replace("{note_date}", noteDate)
                         .replace("{note_issuer}", noteIssuer)

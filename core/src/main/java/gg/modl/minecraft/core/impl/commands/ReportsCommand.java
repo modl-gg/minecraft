@@ -34,13 +34,8 @@ public class ReportsCommand extends BaseCommand {
     @CommandAlias("reports|report")
     @Syntax("[player]")
     @Description("Open the reports menu (for a player or all reports)")
+    @Conditions("player|staff")
     public void reports(CommandIssuer sender, @Optional @Name("player") String playerQuery) {
-        // Must be a player to use this command
-        if (!sender.isPlayer()) {
-            sender.sendMessage("§cThis command can only be used by players.");
-            return;
-        }
-
         UUID senderUuid = sender.getUniqueId();
 
         // If no player specified, open staff reports menu

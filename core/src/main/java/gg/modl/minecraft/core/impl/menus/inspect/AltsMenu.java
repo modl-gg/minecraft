@@ -12,11 +12,13 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -83,38 +85,154 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
 
     @Override
     protected CirrusItem map(Account alt) {
+        LocaleManager locale = platform.getLocaleManager();
+
         // Handle placeholder for empty list
         if (alt.getMinecraftUuid() == null) {
-            return createEmptyPlaceholder("No linked accounts");
+            return createEmptyPlaceholder(locale.getMessage("menus.empty.alts"));
         }
 
         String altName = getPlayerName(alt);
-        List<String> lore = new ArrayList<>();
 
-        // UUID
-        lore.add(MenuItems.COLOR_GRAY + "UUID: " + MenuItems.COLOR_WHITE + alt.getMinecraftUuid().toString());
-
-        // Punishment count
-        long activePunishments = alt.getPunishments().stream()
+        // Check punishment status
+        List<Punishment> activePunishments = alt.getPunishments().stream()
                 .filter(Punishment::isActive)
-                .count();
-        if (activePunishments > 0) {
-            lore.add(MenuItems.COLOR_RED + "Active Punishments: " + activePunishments);
+                .collect(java.util.stream.Collectors.toList());
+        long activeCount = activePunishments.size();
+        long inactiveCount = alt.getPunishments().size() - activeCount;
+
+        // Determine color based on status
+        boolean isBanned = activePunishments.stream().anyMatch(Punishment::isBanType);
+        boolean isMuted = activePunishments.stream().anyMatch(Punishment::isMuteType);
+        String color;
+        if (isBanned) {
+            color = "&c"; // Red for banned
+        } else if (isMuted) {
+            color = "&e"; // Yellow for muted
         } else {
-            lore.add(MenuItems.COLOR_GRAY + "Punishments: " + alt.getPunishments().size());
+            color = "&a"; // Green for ok
         }
 
-        // IP info
-        if (!alt.getIpList().isEmpty()) {
-            lore.add(MenuItems.COLOR_GRAY + "Known IPs: " + alt.getIpList().size());
+        // Online status
+        boolean isOnline = platform.getCache() != null && platform.getCache().isOnline(alt.getMinecraftUuid());
+
+        // Real IP logged
+        boolean realIpLogged = !alt.getIpList().isEmpty();
+
+        // First login from earliest username date
+        String firstLogin = "Unknown";
+        if (!alt.getUsernames().isEmpty()) {
+            java.util.Date earliest = alt.getUsernames().stream()
+                    .map(Account.Username::getDate)
+                    .filter(d -> d != null)
+                    .min(java.util.Date::compareTo)
+                    .orElse(null);
+            if (earliest != null) {
+                firstLogin = MenuItems.formatDate(earliest);
+            }
         }
 
-        lore.add("");
-        lore.add(MenuItems.COLOR_YELLOW + "Click to inspect " + altName);
+        // Last seen or session time
+        String lastSeenOrSessionTime = "N/A";
+        if (!alt.getUsernames().isEmpty()) {
+            java.util.Date latest = alt.getUsernames().stream()
+                    .map(Account.Username::getDate)
+                    .filter(d -> d != null)
+                    .max(java.util.Date::compareTo)
+                    .orElse(null);
+            if (latest != null) {
+                lastSeenOrSessionTime = MenuItems.formatDate(latest);
+            }
+        }
+
+        // Build punishments section
+        StringBuilder punishmentsBuilder = new StringBuilder();
+        if (activeCount > 0) {
+            // Use punishment_line_active_true format
+            List<String> activeLines = locale.getMessageList("menus.alt_item.punishment_line_active_true");
+            String activeFormat = locale.getMessage("menus.alt_item.active_punishment_format");
+
+            // Build active punishment list
+            StringBuilder activePunishmentList = new StringBuilder();
+            for (int i = 0; i < activePunishments.size(); i++) {
+                Punishment p = activePunishments.get(i);
+                String pId = p.getId() != null ? p.getId() : "?";
+                String pDate = p.getIssued() != null ? MenuItems.formatDate(p.getIssued()) : "?";
+                String pType = p.getTypeCategory();
+                String pRemaining = "Permanent";
+                Long duration = p.getDuration();
+                if (duration != null && duration > 0) {
+                    long expiryTime = p.getIssued().getTime() + duration;
+                    long remaining = expiryTime - System.currentTimeMillis();
+                    pRemaining = MenuItems.formatDuration(remaining > 0 ? remaining : 0);
+                }
+                String formattedPunishment = activeFormat
+                        .replace("{punishment_id}", pId)
+                        .replace("{punishment_date}", pDate)
+                        .replace("{punishment_type}", pType)
+                        .replace("{punishment_remaining}", pRemaining);
+                if (i > 0) {
+                    activePunishmentList.append("\n");
+                }
+                activePunishmentList.append(formattedPunishment);
+            }
+
+            for (int i = 0; i < activeLines.size(); i++) {
+                String line = activeLines.get(i)
+                        .replace("{active_count}", String.valueOf(activeCount))
+                        .replace("{active_punishment_list}", activePunishmentList.toString());
+                if (i > 0) {
+                    punishmentsBuilder.append("\n");
+                }
+                punishmentsBuilder.append(line);
+            }
+        } else {
+            // Use punishment_line_active_false format
+            List<String> inactiveLines = locale.getMessageList("menus.alt_item.punishment_line_active_false");
+            for (int i = 0; i < inactiveLines.size(); i++) {
+                String line = inactiveLines.get(i)
+                        .replace("{inactive_count}", String.valueOf(inactiveCount));
+                if (i > 0) {
+                    punishmentsBuilder.append("\n");
+                }
+                punishmentsBuilder.append(line);
+            }
+        }
+
+        // Build variables map
+        Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("color", color);
+        vars.put("player_name", altName);
+        vars.put("uuid", alt.getMinecraftUuid().toString());
+        vars.put("is_online", isOnline ? "&aYes" : "&cNo");
+        vars.put("last_seen_or_session_time", lastSeenOrSessionTime);
+        vars.put("real_ip", realIpLogged ? "&aYes" : "&cNo");
+        vars.put("first_login", firstLogin);
+        vars.put("punishments", punishmentsBuilder.toString());
+
+        // Get lore from locale
+        List<String> lore = new ArrayList<>();
+        for (String line : locale.getMessageList("menus.alt_item.lore")) {
+            String processed = line;
+            for (Map.Entry<String, String> entry : vars.entrySet()) {
+                processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
+            }
+            // Handle multi-line punishments section
+            if (processed.contains("\n")) {
+                for (String subLine : processed.split("\n")) {
+                    lore.add(subLine);
+                }
+            } else {
+                lore.add(processed);
+            }
+        }
+
+        // Get title from locale
+        String title = locale.getMessage("menus.alt_item.title", vars);
 
         return CirrusItem.of(
                 ItemType.PLAYER_HEAD,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + altName),
+                ChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }

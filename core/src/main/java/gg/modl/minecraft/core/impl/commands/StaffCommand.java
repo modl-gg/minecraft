@@ -26,21 +26,9 @@ public class StaffCommand extends BaseCommand {
 
     @CommandAlias("staff|staffmenu|sm")
     @Description("Open the staff menu")
+    @Conditions("player|staff")
     public void staff(CommandIssuer sender) {
-        // Must be a player to use this command
-        if (!sender.isPlayer()) {
-            sender.sendMessage("§cThis command can only be used by players.");
-            return;
-        }
-
         UUID senderUuid = sender.getUniqueId();
-
-        // TODO: Re-enable staff member check when permissions are properly configured
-        // boolean isStaffMember = cache.isStaffMemberByPermissions(senderUuid);
-        // if (!isStaffMember) {
-        //     sender.sendMessage(localeManager.getMessage("player_lookup.permission_denied"));
-        //     return;
-        // }
 
         // Check if user has admin permissions
         boolean isAdmin = cache.hasPermission(senderUuid, "modl.admin");

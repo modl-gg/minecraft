@@ -2,11 +2,13 @@ package gg.modl.minecraft.core;
 
 
 import co.aikar.commands.CommandManager;
+import co.aikar.commands.ConditionFailedException;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PlayerNameRequest;
 import gg.modl.minecraft.api.http.response.PlayerNameResponse;
+import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.cache.LoginCache;
 import gg.modl.minecraft.core.impl.commands.TicketCommands;
@@ -61,13 +63,16 @@ public class PluginLoader {
         // Initialize locale manager with support for external locale files
         this.localeManager = new LocaleManager();
         Logger logger = Logger.getLogger("MODL-" + platform.getClass().getSimpleName());
-        
+
         // Try to load locale from external file if it exists
         Path localeFile = dataDirectory.resolve("locale").resolve("en_US.yml");
         if (Files.exists(localeFile)) {
             logger.info("Loading locale from external file: " + localeFile);
             this.localeManager.loadFromFile(localeFile);
         }
+
+        // Set the locale manager on the platform for menu access
+        platform.setLocaleManager(this.localeManager);
 
         // Load database configuration for migration
         DatabaseConfig databaseConfig = loadDatabaseConfig(dataDirectory, logger);
@@ -93,6 +98,9 @@ public class PluginLoader {
                 -> fetchPlayer(c.popFirstArg(), platform, httpClient));
 
         commandManager.getCommandContexts().registerContext(Account.class, (c) -> fetchPlayer(c.popFirstArg(), httpClient));
+
+        // Register ACF command conditions for permission checks
+        registerCommandConditions(commandManager, cache, this.localeManager);
 //
         // Removed duplicate - TicketCommands registered below with proper panelUrl
         
@@ -274,5 +282,65 @@ public class PluginLoader {
         if (loginCache != null) {
             loginCache.shutdown();
         }
+    }
+
+    /**
+     * Register ACF command conditions for permission checks.
+     * These conditions can be used with @Conditions annotation on commands.
+     *
+     * Available conditions:
+     * - "staff" - Requires the issuer to be a staff member
+     * - "permission:X" - Requires the issuer to have permission X (e.g., "permission:punishment.apply.ban")
+     * - "player" - Requires the issuer to be a player (not console)
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void registerCommandConditions(CommandManager commandManager, Cache cache, LocaleManager localeManager) {
+        // "staff" condition - checks if the issuer is a staff member
+        commandManager.getCommandConditions().addCondition("staff", context -> {
+            if (!context.getIssuer().isPlayer()) {
+                return; // Console is always staff
+            }
+            if (!PermissionUtil.isStaff(context.getIssuer(), cache)) {
+                throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
+            }
+        });
+
+        // "player" condition - checks if the issuer is a player (not console)
+        commandManager.getCommandConditions().addCondition("player", context -> {
+            if (!context.getIssuer().isPlayer()) {
+                throw new ConditionFailedException("This command can only be used by players.");
+            }
+        });
+
+        // "permission:X" condition - checks if the issuer has a specific permission
+        // Usage: @Conditions("permission:punishment.apply.ban")
+        commandManager.getCommandConditions().addCondition("permission", context -> {
+            String permission = context.getConfigValue("value", "");
+            if (permission.isEmpty()) {
+                return; // No permission specified, allow
+            }
+            if (!PermissionUtil.hasPermission(context.getIssuer(), cache, permission)) {
+                // Try to get a nicer message based on permission type
+                String message;
+                if (permission.startsWith("punishment.apply.")) {
+                    String type = permission.replace("punishment.apply.", "").replace("-", " ");
+                    message = localeManager.getPunishmentMessage("general.no_permission_punishment",
+                            Map.of("type", type));
+                } else {
+                    message = localeManager.getMessage("general.no_permission");
+                }
+                throw new ConditionFailedException(message);
+            }
+        });
+
+        // "admin" condition - checks if the issuer has admin permissions
+        commandManager.getCommandConditions().addCondition("admin", context -> {
+            if (!context.getIssuer().isPlayer()) {
+                return; // Console is always admin
+            }
+            if (!PermissionUtil.hasAnyPermission(context.getIssuer(), cache, "admin.settings.view", "admin.settings.modify", "admin.reload")) {
+                throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
+            }
+        });
     }
 }

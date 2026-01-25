@@ -30,13 +30,8 @@ public class HistoryCommand extends BaseCommand {
     @CommandAlias("history|hist")
     @Syntax("<player>")
     @Description("Open the punishment history menu for a player")
+    @Conditions("player|staff")
     public void history(CommandIssuer sender, @Name("player") String playerQuery) {
-        // Must be a player to use this command
-        if (!sender.isPlayer()) {
-            sender.sendMessage("§cThis command can only be used by players.");
-            return;
-        }
-
         UUID senderUuid = sender.getUniqueId();
 
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));

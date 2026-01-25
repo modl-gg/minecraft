@@ -30,6 +30,7 @@ public class TicketCommands extends BaseCommand {
     @CommandCompletion("@players")
     @Description("Report a player with a reason")
     @Syntax("<player> <reason...>")
+    @Conditions("player")
     public void report(CommandIssuer sender, AbstractPlayer targetPlayer, String reason) {
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
         
@@ -58,6 +59,7 @@ public class TicketCommands extends BaseCommand {
     @CommandCompletion("@players")
     @Description("Report a player for chat violations (automatically includes recent chat logs)")
     @Syntax("<player>")
+    @Conditions("player")
     public void chatReport(CommandIssuer sender, AbstractPlayer targetPlayer) {
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
         
@@ -93,6 +95,7 @@ public class TicketCommands extends BaseCommand {
     
     @CommandAlias("apply")
     @Description("Submit a staff application")
+    @Conditions("player")
     public void staffApplication(CommandIssuer sender) {
         AbstractPlayer applicant = platform.getAbstractPlayer(sender.getUniqueId(), false);
         
@@ -115,6 +118,7 @@ public class TicketCommands extends BaseCommand {
     @CommandAlias("bugreport")
     @Description("Report a bug")
     @Syntax("<description...>")
+    @Conditions("player")
     public void bugReport(CommandIssuer sender, String description) {
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
@@ -137,6 +141,7 @@ public class TicketCommands extends BaseCommand {
     @CommandAlias("support")
     @Description("Request support")
     @Syntax("<description...>")
+    @Conditions("player")
     public void supportRequest(CommandIssuer sender, String description) {
         AbstractPlayer requester = platform.getAbstractPlayer(sender.getUniqueId(), false);
         

@@ -402,7 +402,7 @@ public class LocaleManager {
         if (issuedDate == null) {
             return "Unknown";
         }
-        SimpleDateFormat formatter = new SimpleDateFormat("MM/dd/yy HH:mm");
+        SimpleDateFormat formatter = new SimpleDateFormat("MM/dd/yyyy HH:mm");
         return formatter.format(issuedDate);
     }
 

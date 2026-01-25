@@ -27,9 +27,9 @@ public class IAmMutedCommand extends BaseCommand {
     
     @CommandCompletion("@players")
     @CommandAlias("iammuted|iam")
-    @Syntax("<player> [message]")
+    @Syntax("<player>")
     @Description("Send a message to another player informing them you are muted (only usable if you are actually muted)")
-    public void iAmMuted(CommandIssuer sender, @Name("player") AbstractPlayer targetPlayer, @Optional @Name("message") String customMessage) {
+    public void iAmMuted(CommandIssuer sender, @Name("player") AbstractPlayer targetPlayer) {
         // Command can only be used by players
         if (!sender.isPlayer()) {
             sender.sendMessage(localeManager.getMessage("iammuted.only_players"));
@@ -83,16 +83,9 @@ public class IAmMutedCommand extends BaseCommand {
             "sender", senderPlayer.username()
         ));
         
-        String fullMessage;
-        if (customMessage != null && !customMessage.trim().isEmpty()) {
-            fullMessage = baseMessage + "\n" + localeManager.getMessage("iammuted.custom_message_prefix") + customMessage.trim();
-        } else {
-            fullMessage = baseMessage;
-        }
-        
         // Send message to target player
         UUID targetUuid = targetPlayer.uuid();
-        platform.sendMessage(targetUuid, fullMessage);
+        platform.sendMessage(targetUuid, baseMessage);
         
         // Confirm to sender
         sender.sendMessage(localeManager.getMessage("iammuted.success_message", Map.of(

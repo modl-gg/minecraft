@@ -6,6 +6,7 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.locale.LocaleManager;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.spigot.wrapper.SpigotPlayerWrapper;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
@@ -30,6 +31,8 @@ public class SpigotPlatform implements Platform {
     private final File dataFolder;
     @Setter
     private Cache cache;
+    @Setter
+    private LocaleManager localeManager;
 
     @Override
     public void broadcast(String string) {
@@ -208,5 +211,10 @@ public class SpigotPlatform implements Platform {
     @Override
     public Cache getCache() {
         return cache;
+    }
+
+    @Override
+    public LocaleManager getLocaleManager() {
+        return localeManager;
     }
 }

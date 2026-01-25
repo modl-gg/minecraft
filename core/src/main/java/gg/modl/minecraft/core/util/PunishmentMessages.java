@@ -174,7 +174,7 @@ public class PunishmentMessages {
     public static String formatTime(java.util.Date date) {
         if (date == null) return "Never";
         
-        java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("MM/dd/yy hh:mm:ss aa");
+        java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("MM/dd/yyyy HH:mm");
         return formatter.format(date);
     }
     
@@ -230,10 +230,10 @@ public class PunishmentMessages {
         // Temp - "temporarily" or "permanently"
         variables.put("temp", punishment.isPermanent() ? "permanently" : "temporarily");
 
-        // Issued date in MM/DD/YY HH:MM format
+        // Issued date in MM/DD/YYYY HH:MM format
         java.util.Date issuedDate = punishment.getIssuedAsDate();
         if (issuedDate != null) {
-            java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("MM/dd/yy HH:mm");
+            java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("MM/dd/yyyy HH:mm");
             variables.put("issued", formatter.format(issuedDate));
         } else {
             variables.put("issued", "Unknown");

@@ -169,6 +169,9 @@ public class SpigotListener implements Listener {
     
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
+        // Mark player as online
+        cache.setOnline(event.getPlayer().getUniqueId());
+
         // Get skin hash asynchronously and then cache mute status
         WebPlayer.get(event.getPlayer().getUniqueId())
             .thenAccept(webPlayer -> {
@@ -252,10 +255,13 @@ public class SpigotListener implements Listener {
         PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString());
 
         httpClient.playerDisconnect(request);
-        
+
+        // Mark player as offline
+        cache.setOffline(event.getPlayer().getUniqueId());
+
         // Remove player from punishment cache
         cache.removePlayer(event.getPlayer().getUniqueId());
-        
+
         // Remove player from chat message cache
         chatMessageCache.removePlayer(event.getPlayer().getUniqueId().toString());
     }

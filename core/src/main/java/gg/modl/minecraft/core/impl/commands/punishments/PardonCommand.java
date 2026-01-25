@@ -12,7 +12,6 @@ import gg.modl.minecraft.api.http.response.PardonResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
@@ -29,14 +28,8 @@ public class PardonCommand extends BaseCommand {
     @CommandAlias("pardon")
     @Syntax("<player/punishment_id> [reason...]")
     @Description("Pardon a player's ban/mute by player name or punishment ID")
+    @Conditions("permission:value=punishment.modify")
     public void pardon(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
-        // Check permission
-        if (!PermissionUtil.hasPermission(sender, cache, "punishment.modify")) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.no_permission_punishment",
-                Map.of("type", "pardon")));
-            return;
-        }
-
         // Get issuer information
         final String issuerName = sender.isPlayer() ? 
             platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
@@ -48,14 +41,8 @@ public class PardonCommand extends BaseCommand {
     @CommandAlias("unban")
     @Syntax("<player/punishment_id> [reason...]")
     @Description("Unban a player by name or punishment ID")
+    @Conditions("permission:value=punishment.modify")
     public void unban(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
-        // Check permission
-        if (!PermissionUtil.hasPermission(sender, cache, "punishment.modify")) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.no_permission_punishment",
-                Map.of("type", "unban")));
-            return;
-        }
-
         // Get issuer information
         final String issuerName = sender.isPlayer() ? 
             platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
@@ -67,14 +54,8 @@ public class PardonCommand extends BaseCommand {
     @CommandAlias("unmute")
     @Syntax("<player/punishment_id> [reason...]")
     @Description("Unmute a player by name or punishment ID")
+    @Conditions("permission:value=punishment.modify")
     public void unmute(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
-        // Check permission
-        if (!PermissionUtil.hasPermission(sender, cache, "punishment.modify")) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.no_permission_punishment",
-                Map.of("type", "unmute")));
-            return;
-        }
-
         // Get issuer information
         final String issuerName = sender.isPlayer() ? 
             platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";

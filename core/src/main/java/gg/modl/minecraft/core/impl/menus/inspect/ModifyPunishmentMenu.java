@@ -247,7 +247,7 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         PardonPunishmentRequest request = new PardonPunishmentRequest(
                 punishment.getId(),
                 viewerName,
-                "Pardoned via GUI",
+                null, // reason - automatic note added by backend
                 null // expectedType
         );
 

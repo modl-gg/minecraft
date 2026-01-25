@@ -4,6 +4,7 @@ import co.aikar.commands.CommandManager;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.locale.LocaleManager;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 
 import java.io.File;
@@ -51,5 +52,17 @@ public interface Platform {
      * @param cache The cache instance
      */
     void setCache(Cache cache);
+
+    /**
+     * Get the locale manager for message localization
+     * @return The locale manager instance
+     */
+    LocaleManager getLocaleManager();
+
+    /**
+     * Set the locale manager (called by PluginLoader after initialization)
+     * @param localeManager The locale manager instance
+     */
+    void setLocaleManager(LocaleManager localeManager);
 }
 

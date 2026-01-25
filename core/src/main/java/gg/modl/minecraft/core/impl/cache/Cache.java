@@ -8,13 +8,16 @@ import lombok.Setter;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 
 public class Cache {
-    
+
     private final Map<UUID, CachedPlayerData> cache = new ConcurrentHashMap<>();
     private final Map<UUID, StaffPermissions> staffPermissionsCache = new ConcurrentHashMap<>();
     // Notification storage - maps player UUID to list of pending notifications
     private final Map<UUID, List<PendingNotification>> pendingNotificationsCache = new ConcurrentHashMap<>();
+    // Online players tracking
+    private final Set<UUID> onlinePlayers = ConcurrentHashMap.newKeySet();
     
     public void cacheMute(UUID playerUuid, Punishment mute) {
         cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData()).setMute(mute);
@@ -135,7 +138,60 @@ public class Cache {
     public void removePlayer(UUID playerUuid) {
         cache.remove(playerUuid);
     }
-    
+
+    // ==================== ONLINE PLAYER TRACKING ====================
+
+    // Join time tracking - maps player UUID to join timestamp
+    private final Map<UUID, Long> joinTimes = new ConcurrentHashMap<>();
+
+    /**
+     * Mark a player as online and record join time
+     */
+    public void setOnline(UUID playerUuid) {
+        onlinePlayers.add(playerUuid);
+        joinTimes.put(playerUuid, System.currentTimeMillis());
+    }
+
+    /**
+     * Mark a player as offline and remove join time
+     */
+    public void setOffline(UUID playerUuid) {
+        onlinePlayers.remove(playerUuid);
+        joinTimes.remove(playerUuid);
+    }
+
+    /**
+     * Check if a player is online
+     */
+    public boolean isOnline(UUID playerUuid) {
+        return onlinePlayers.contains(playerUuid);
+    }
+
+    /**
+     * Get the join time for a player (when they came online)
+     * @return Join time in milliseconds, or null if not online
+     */
+    public Long getJoinTime(UUID playerUuid) {
+        return joinTimes.get(playerUuid);
+    }
+
+    /**
+     * Get session duration for an online player
+     * @return Session duration in milliseconds, or 0 if not online
+     */
+    public long getSessionDuration(UUID playerUuid) {
+        Long joinTime = joinTimes.get(playerUuid);
+        if (joinTime == null) return 0;
+        return System.currentTimeMillis() - joinTime;
+    }
+
+    /**
+     * Get all online players
+     */
+    public Set<UUID> getOnlinePlayers() {
+        return Collections.unmodifiableSet(onlinePlayers);
+    }
+
     public void cacheStaffMember(UUID playerUuid, SyncResponse.ActiveStaffMember staffMember) {
         cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData()).setStaffMember(staffMember);
     }
@@ -239,6 +295,8 @@ public class Cache {
     public void clear() {
         cache.clear();
         pendingNotificationsCache.clear();
+        onlinePlayers.clear();
+        joinTimes.clear();
     }
     
     public int size() {

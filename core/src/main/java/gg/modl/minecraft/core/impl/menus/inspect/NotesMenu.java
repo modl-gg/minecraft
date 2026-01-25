@@ -15,6 +15,7 @@ import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -92,20 +93,40 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
 
     @Override
     protected CirrusItem map(Note note) {
+        LocaleManager locale = platform.getLocaleManager();
+
         // Handle placeholder for empty list
         if (note.getText() == null) {
-            return createEmptyPlaceholder("No notes");
+            return createEmptyPlaceholder(locale.getMessage("menus.empty.notes"));
         }
 
+        // Build variables map
+        String formattedDate = MenuItems.formatDate(note.getDate());
+        String author = note.getIssuerName() != null ? note.getIssuerName() : "Unknown";
+        String content = note.getText();
+
+        Map<String, String> vars = Map.of(
+                "date", formattedDate,
+                "author", author,
+                "content", content
+        );
+
+        // Get lore from locale
         List<String> lore = new ArrayList<>();
-        lore.add(MenuItems.COLOR_GRAY + "By: " + MenuItems.COLOR_WHITE + note.getIssuerName());
-        lore.add("");
-        // Split content into lines (7 words per line)
-        lore.addAll(MenuItems.wrapText(note.getText(), 7));
+        for (String line : locale.getMessageList("menus.note_item.lore")) {
+            String processed = line;
+            for (Map.Entry<String, String> entry : vars.entrySet()) {
+                processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
+            }
+            lore.add(processed);
+        }
+
+        // Get title from locale
+        String title = locale.getMessage("menus.note_item.title", vars);
 
         return CirrusItem.of(
                 ItemType.PAPER,
-                ChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + MenuItems.formatDate(note.getDate())),
+                ChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }

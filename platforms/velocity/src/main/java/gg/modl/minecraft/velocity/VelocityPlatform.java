@@ -6,6 +6,7 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import gg.modl.minecraft.core.util.WebPlayer;
 import com.velocitypowered.api.proxy.Player;
@@ -32,6 +33,8 @@ public class VelocityPlatform implements Platform {
     private final File dataFolder;
     @Setter
     private Cache cache;
+    @Setter
+    private LocaleManager localeManager;
 
     private static Component get(String string) {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(string);
@@ -229,5 +232,10 @@ public class VelocityPlatform implements Platform {
     @Override
     public Cache getCache() {
         return cache;
+    }
+
+    @Override
+    public LocaleManager getLocaleManager() {
+        return localeManager;
     }
 }

@@ -163,6 +163,9 @@ public class JoinListener {
 
     @Subscribe
     public void onPostLogin(PostLoginEvent event) {
+        // Mark player as online
+        cache.setOnline(event.getPlayer().getUniqueId());
+
         // Deliver pending notifications
         syncService.deliverPendingNotifications(event.getPlayer().getUniqueId());
     }
@@ -172,10 +175,13 @@ public class JoinListener {
         PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString());
 
         httpClient.playerDisconnect(request);
-        
+
+        // Mark player as offline
+        cache.setOffline(event.getPlayer().getUniqueId());
+
         // Remove player from punishment cache
         cache.removePlayer(event.getPlayer().getUniqueId());
-        
+
         // Remove player from chat message cache
         chatMessageCache.removePlayer(event.getPlayer().getUniqueId().toString());
     }

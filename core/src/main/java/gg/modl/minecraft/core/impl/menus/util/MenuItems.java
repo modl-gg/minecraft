@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public final class MenuItems {
     private MenuItems() {}
 
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MMM dd, yyyy HH:mm");
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MM/dd/yyyy HH:mm");
 
     // Colors
     public static final String COLOR_GOLD = "§6";
@@ -283,6 +283,7 @@ public final class MenuItems {
      */
     public static List<ChatElement<?>> lore(String... lines) {
         return Arrays.stream(lines)
+                .map(MenuItems::translateColorCodes)
                 .map(ChatElement::ofLegacyText)
                 .collect(Collectors.toList());
     }
@@ -292,7 +293,16 @@ public final class MenuItems {
      */
     public static List<ChatElement<?>> lore(List<String> lines) {
         return lines.stream()
+                .map(MenuItems::translateColorCodes)
                 .map(ChatElement::ofLegacyText)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Translate & color codes to § color codes.
+     */
+    public static String translateColorCodes(String text) {
+        if (text == null) return "";
+        return text.replace("&", "§");
     }
 }

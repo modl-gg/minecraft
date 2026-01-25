@@ -3,6 +3,8 @@ package gg.modl.minecraft.core.impl.commands.punishments;
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
+import co.aikar.commands.annotation.Optional;
+import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
@@ -11,6 +13,7 @@ import gg.modl.minecraft.api.http.response.PunishmentCreateResponse;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.menus.inspect.PunishMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.PunishmentTypeParser;
@@ -36,15 +39,22 @@ public class PunishCommand extends BaseCommand {
 
     @CommandCompletion("@players @punishment-types")
     @CommandAlias("punish")
-    @Syntax("<target> <type> [reason...] [-lenient|regular|severe] [-ab (alt block)] [-s (silent)] [-sw (stat-wipe)]")
-    @Description("Issue a punishment to a player. Multi-word punishment types like 'Chat Abuse' are supported without quotes.")
-    public void punish(CommandIssuer sender, @Name("target") Account target, @Name("args") String[] args) {
+    @Syntax("<target> [type] [reason...] [-lenient|regular|severe] [-ab (alt block)] [-s (silent)] [-sw (stat-wipe)]")
+    @Description("Issue a punishment to a player. With no type specified and as a player, opens the punishment GUI.")
+    @Conditions("staff")
+    public void punish(CommandIssuer sender, @Name("target") Account target, @Name("args") @Optional String[] args) {
         if (target == null) {
             sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", Map.of()));
             return;
         }
 
-        // Check if we have any arguments
+        // If no args provided and sender is a player, open the punishment GUI
+        if ((args == null || args.length == 0) && sender.isPlayer()) {
+            openPunishmentGui(sender, target);
+            return;
+        }
+
+        // Console or with args: require type argument
         if (args == null || args.length == 0) {
             sender.sendMessage(localeManager.getPunishmentMessage("general.invalid_syntax", Map.of()));
             return;
@@ -172,6 +182,35 @@ public class PunishCommand extends BaseCommand {
                     Map.of("error", throwable.getMessage())));
             }
             return null;
+        });
+    }
+
+    /**
+     * Open the punishment GUI for a player target
+     */
+    private void openPunishmentGui(CommandIssuer sender, Account target) {
+        UUID senderUuid = sender.getUniqueId();
+
+        platform.runOnMainThread(() -> {
+            // Get sender name
+            String senderName = "Staff";
+            if (platform.getPlayer(senderUuid) != null) {
+                senderName = platform.getPlayer(senderUuid).username();
+            }
+
+            // Open the punish menu
+            PunishMenu menu = new PunishMenu(
+                    platform,
+                    httpClient,
+                    senderUuid,
+                    senderName,
+                    target,
+                    null // No parent menu when opened from command
+            );
+
+            // Get CirrusPlayerWrapper and display
+            CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+            menu.display(player);
         });
     }
 

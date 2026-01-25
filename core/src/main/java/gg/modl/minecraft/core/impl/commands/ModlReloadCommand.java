@@ -9,7 +9,6 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.commands.punishments.PunishCommand;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
@@ -82,13 +81,8 @@ public class ModlReloadCommand extends BaseCommand {
     @Subcommand("reload")
     @Description("Reload all MODL data including punishment types, staff permissions, and locale files")
     @Syntax("reload [component]")
+    @Conditions("admin")
     public void reload(CommandIssuer sender, @Default("all") String component) {
-        // Check if user has admin permissions to reload
-        if (!PermissionUtil.hasAnyPermission(sender, cache, "admin.settings.view", "admin.settings.modify", "admin.reload")) {
-            sender.sendMessage(localeManager.getMessage("general.no_permission"));
-            return;
-        }
-
         String validComponents = "all, punishment-types, staff-permissions, locale";
         
         switch (component.toLowerCase()) {
@@ -118,12 +112,8 @@ public class ModlReloadCommand extends BaseCommand {
 
     @Subcommand("status")
     @Description("Show MODL plugin status and loaded data")
+    @Conditions("admin")
     public void status(CommandIssuer sender) {
-        if (!PermissionUtil.hasAnyPermission(sender, cache, "admin.settings.view", "admin.status")) {
-            sender.sendMessage(localeManager.getMessage("general.no_permission"));
-            return;
-        }
-
         sender.sendMessage("§6=== MODL Plugin Status ===");
         
         // Show punishment types status

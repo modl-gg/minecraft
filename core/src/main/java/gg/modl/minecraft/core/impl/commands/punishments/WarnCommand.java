@@ -26,6 +26,7 @@ public class WarnCommand extends BaseCommand {
     @CommandCompletion("@players")
     @CommandAlias("warn")
     @Syntax("<target> <reason...> [-silent]")
+    @Conditions("staff")
     public void warn(CommandIssuer sender, @Name("target") Account target, @Default("") String args) {
         if (target == null) {
             sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", Map.of()));

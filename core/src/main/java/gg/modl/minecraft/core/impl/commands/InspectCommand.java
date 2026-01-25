@@ -30,21 +30,9 @@ public class InspectCommand extends BaseCommand {
     @CommandAlias("inspect|ins|check")
     @Syntax("<player>")
     @Description("Open the inspect menu for a player")
+    @Conditions("player|staff")
     public void inspect(CommandIssuer sender, @Name("player") String playerQuery) {
-        // Must be a player to use this command
-        if (!sender.isPlayer()) {
-            sender.sendMessage("§cThis command can only be used by players.");
-            return;
-        }
-
         UUID senderUuid = sender.getUniqueId();
-
-        // TODO: Re-enable staff member check when permissions are properly configured
-        // boolean isStaffMember = cache.isStaffMemberByPermissions(senderUuid);
-        // if (!isStaffMember) {
-        //     sender.sendMessage(localeManager.getMessage("player_lookup.permission_denied"));
-        //     return;
-        // }
 
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
 

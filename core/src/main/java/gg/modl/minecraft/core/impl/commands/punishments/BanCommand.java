@@ -10,7 +10,6 @@ import gg.modl.minecraft.api.http.request.CreatePunishmentRequest;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.TimeUtil;
 import lombok.RequiredArgsConstructor;
 
@@ -28,16 +27,10 @@ public class BanCommand extends BaseCommand {
     @CommandCompletion("@players")
     @CommandAlias("ban")
     @Syntax("<target> [duration] [reason...] [-silent] [-alt-blocking] [-stat-wipe]")
+    @Conditions("permission:value=punishment.apply.manual-ban")
     public void ban(CommandIssuer sender, @Name("target") Account target, @Default("") String args) {
         if (target == null) {
             sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", Map.of()));
-            return;
-        }
-
-        // Check permission for manual ban
-        if (!PermissionUtil.hasPermission(sender, cache, "punishment.apply.manual-ban")) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.no_permission_punishment",
-                Map.of("type", "ban")));
             return;
         }
 

@@ -350,7 +350,7 @@ config:
     permanent: "permanent"
   
   # IAmMuted command cooldown in minutes
-  iammuted_cooldown_minutes: 5
+  iammuted_cooldown_minutes: 2
   
   # Commands that are blocked when a player is muted (in addition to chat)
   blocked_by_mute:
@@ -431,34 +431,6 @@ punishment_commands:
   invalid_severity: "&cInvalid severity. Valid severities: lenient, regular, severe"
   warning_message: "&c{username} has been {punishment_type}."
 
-# Punishment notification defaults (if ordinal specific not defined)
-punishments:
-  player_notifications:
-    default: "&cYou have been punished. Reason: {reason}. If you believe this is an error, you can appeal at: {appeal_url}"
-    ban_default:
-      - "&c&lYou {tense} {temp} banned for:"
-      - ""
-      - "&f{reason}"
-      - "{duration_formatted}"
-      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}"
-    mute_default:
-      - " "
-      - "&cYou {tense} {temp} muted{mute_duration_formatted}."
-      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}"
-      - " "
-      - "&f{reason}"
-      - " "
-    kick_default:
-      - "&cYou have been kicked from the server."
-      - "&f{reason}"
-  public_notifications:
-    default: "&c{target} has been punished by staff."
-    ban_default: "&c{target} has been banned."
-    mute_default: "&c{target} has been muted."
-    kick_default: "&c{target} has been kicked."
-
-# Punishment System Messages (Player-facing)
-    
 # Missing Locale Fallbacks
 locale:
   missing: "&cMissing locale: {path}"
@@ -510,3 +482,84 @@ warn:
   success: "&aSuccessfully warned &f{target}&a for: &7{reason}"
   staff_notification: "&7&o[{issuer}: warned {target} for {reason}&7&o]"
   error: "&cFailed to create warning: {error}"
+
+# Menu Item Localization
+# These define titles and lore for items in inspect menus
+# Available placeholders vary by item type and are documented below
+menus:
+  # Player head in inspect menus
+  player_head:
+    title: "&6{player_name}'s Information"
+    lore:
+      - "&8{uuid}"
+      - "&f "
+      - "&fFirst Login: {first_login}"
+      - "&fOnline: {is_online} ({last_seen_or_session_time})"
+      - "&fPlaytime: {playtime}"
+      - "&fReal IP Logged: {real_ip_logged}"
+      - "&fBanned: {is_banned}"
+      - "&fMuted: {is_muted}"
+
+  # Punishment history items
+  history_item:
+    title_active: "&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    title_inactive: "&m&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    lore:
+      - "&7{status_line}"
+      - "&f "
+      - "{notes}"
+      - "&f "
+      - "&fID: &c{punishment_id}"
+      - "&bClick to modify this punishment."
+    status_active: "&7Expires in {expiry}."
+    status_inactive: "&7Expired {expired} ago."
+    status_permanent: "&7&7This permanent will never expire."
+    status_unstarted: "&7Punishment not yet started."
+    note_format: "&e{note_date} {note_issuer}&f: {note}"
+
+  # Note items
+  note_item:
+    title: "&e{date} {author}"
+    lore:
+      - "&f{content}"
+      - "&f "
+      - "&eClick to see note in chat"
+
+  # Report items
+  report_item:
+    title: "&f&l{type} &f({date})"
+    lore:
+      - "&7Reported by {reporter}"
+      - "&f "
+      - "&f{content}"
+      - "&f "
+      - "&eRight click to dismiss report"
+      - "&cLeft click to inspect {reported}"
+
+  # Alt account items
+  alt_item:
+    title: "{color}{player_name}"
+    lore:
+      - "&8{uuid}"
+      - "&f "
+      - "&fOnline: {is_online} ({last_seen_or_session_time})"
+      - "&fReal IP logged: {real_ip}"
+      - "&fFirst Login: &f{first_login}"
+      - "&7{punishments}"
+      - "&f "
+      - "&eClick to inspect {player_name}"
+    punishment_line_active_true:
+      - "&fActive Punishments ({active_count}): &f"
+      - "{active_punishment_list}"
+    punishment_line_active_false:
+      - "&fActive Punishments: &f0"
+      - "&fInactive Punishments: &f{inactive_count}"
+    active_punishment_format: "&7- &e#{punishment_id} {punishment_date}: {punishment_type} ({punishment_remaining})"
+
+
+  # Empty placeholders for lists
+  empty:
+    history: "No punishment history"
+    notes: "No staff notes"
+    reports: "No reports filed"
+    alts: "No linked accounts"
