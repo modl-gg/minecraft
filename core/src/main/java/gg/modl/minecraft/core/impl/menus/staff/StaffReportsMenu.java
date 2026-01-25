@@ -86,13 +86,21 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         // For now, list is empty
     }
 
+    /**
+     * Set the current filter (used when cycling filters).
+     */
+    public StaffReportsMenu withFilter(String filter) {
+        this.currentFilter = filter;
+        return this;
+    }
+
     @Override
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
         // Add filter button at slot 40 (y position in navigation row)
-        items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions)
-                .actionHandler("filter"));
+        // Note: actionHandler("filter") is already set in MenuItems.filterButton()
+        items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions));
 
         return items;
     }
@@ -228,11 +236,12 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         // Cycle through filter options
         int currentIndex = filterOptions.indexOf(currentFilter);
         int nextIndex = (currentIndex + 1) % filterOptions.size();
-        currentFilter = filterOptions.get(nextIndex);
+        String newFilter = filterOptions.get(nextIndex);
 
-        // Refresh menu - preserve backAction if present
+        // Refresh menu with new filter - preserve backAction if present
         ActionHandlers.openMenu(
-                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction))
+                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
+                        .withFilter(newFilter))
                 .handle(click);
     }
 }

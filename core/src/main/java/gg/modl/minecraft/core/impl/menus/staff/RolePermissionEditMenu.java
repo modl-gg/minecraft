@@ -62,6 +62,8 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             "modl.tickets.view",
             "modl.tickets.respond",
             "modl.notes.create",
+            "modl.settings.modify",
+            "modl.staff.manage",
             "modl.admin"
     );
 
@@ -140,9 +142,9 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         sendMessage(MenuItems.COLOR_GRAY + "(Changes not saved - endpoint needed)");
 
         // Refresh menu - preserve backAction
-        click.clickedMenu().close();
-        new RolePermissionEditMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, role, backAction)
-                .display(click.player());
+        ActionHandlers.openMenu(
+                new RolePermissionEditMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, role, backAction))
+                .handle(click);
     }
 
     @Override

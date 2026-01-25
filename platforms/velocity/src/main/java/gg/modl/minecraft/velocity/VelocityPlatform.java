@@ -5,6 +5,7 @@ import co.aikar.commands.VelocityCommandManager;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import gg.modl.minecraft.core.util.WebPlayer;
 import com.velocitypowered.api.proxy.Player;
@@ -12,6 +13,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.velocity.wrapper.VelocityPlayerWrapper;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.slf4j.Logger;
@@ -28,6 +30,8 @@ public class VelocityPlatform implements Platform {
     private final VelocityCommandManager commandManager;
     private final Logger logger;
     private final File dataFolder;
+    @Setter
+    private Cache cache;
 
     private static Component get(String string) {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(string);
@@ -220,5 +224,10 @@ public class VelocityPlatform implements Platform {
     @Override
     public void log(String msg) {
         logger.info(msg);
+    }
+
+    @Override
+    public Cache getCache() {
+        return cache;
     }
 }

@@ -260,11 +260,45 @@ public class Cache {
     public static class StaffPermissions {
         private final String staffRole;
         private final List<String> permissions;
-        
+
         public StaffPermissions(String staffRole, List<String> permissions) {
             this.staffRole = staffRole;
             this.permissions = permissions != null ? permissions : List.of();
         }
+    }
+
+    // ==================== STAFF PREFERENCES ====================
+
+    // Staff preferences storage - maps player UUID to their preferences
+    private final Map<UUID, StaffPreferences> staffPreferencesCache = new ConcurrentHashMap<>();
+
+    /**
+     * Get staff preferences for a player, creating default if not exists
+     */
+    public StaffPreferences getStaffPreferences(UUID playerUuid) {
+        return staffPreferencesCache.computeIfAbsent(playerUuid, k -> new StaffPreferences());
+    }
+
+    /**
+     * Check if report notifications are enabled for a staff member
+     */
+    public boolean isReportNotificationsEnabled(UUID playerUuid) {
+        return getStaffPreferences(playerUuid).isReportNotificationsEnabled();
+    }
+
+    /**
+     * Set report notifications preference for a staff member
+     */
+    public void setReportNotificationsEnabled(UUID playerUuid, boolean enabled) {
+        getStaffPreferences(playerUuid).setReportNotificationsEnabled(enabled);
+    }
+
+    @Getter
+    @Setter
+    public static class StaffPreferences {
+        private boolean reportNotificationsEnabled = true; // Default enabled
+
+        public StaffPreferences() {}
     }
     
     @Getter

@@ -2,6 +2,7 @@ package gg.modl.minecraft.velocity;
 
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
@@ -25,9 +26,15 @@ public class ChatListener {
     
     @Subscribe
     public void onPlayerChat(PlayerChatEvent event) {
-        // Cache the chat message first (before potentially cancelling)
+        // Check for pending menu chat input FIRST
+        if (ChatInputManager.handleChat(event.getPlayer().getUniqueId(), event.getMessage())) {
+            event.setResult(PlayerChatEvent.ChatResult.denied());
+            return;
+        }
+
+        // Cache the chat message (before potentially cancelling for mute)
         // Use the player's current server name for cross-server compatibility
-        String serverName = event.getPlayer().getCurrentServer().isPresent() ? 
+        String serverName = event.getPlayer().getCurrentServer().isPresent() ?
             event.getPlayer().getCurrentServer().get().getServerInfo().getName() : "unknown";
         chatMessageCache.addMessage(
             serverName,
@@ -35,7 +42,7 @@ public class ChatListener {
             event.getPlayer().getUsername(),
             event.getMessage()
         );
-        
+
         if (cache.isMuted(event.getPlayer().getUniqueId())) {
             // Cancel the chat event
             event.setResult(PlayerChatEvent.ChatResult.denied());

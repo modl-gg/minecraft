@@ -17,11 +17,11 @@ public final class MenuSlots {
 
     // Inspect menu primary layout
     public static final int INSPECT_PLAYER_HEAD = 10;
-    public static final int INSPECT_NOTES = 12;
-    public static final int INSPECT_ALTS = 13;
-    public static final int INSPECT_HISTORY = 14;
-    public static final int INSPECT_REPORTS = 15;
-    public static final int INSPECT_PUNISH = 17;
+    public static final int INSPECT_NOTES = 11;
+    public static final int INSPECT_ALTS = 12;
+    public static final int INSPECT_HISTORY = 13;
+    public static final int INSPECT_REPORTS = 14;
+    public static final int INSPECT_PUNISH = 16;
 
     // Staff menu primary layout
     public static final int STAFF_ONLINE_PLAYERS = 10;
@@ -68,7 +68,7 @@ public final class MenuSlots {
     public static final int SEVERITY_LENIENT = 28;
     public static final int SEVERITY_REGULAR = 30;
     public static final int SEVERITY_AGGRAVATED = 32;
-    public static final int SEVERITY_SILENT = 33;
+    public static final int SEVERITY_SILENT = 34;
     public static final int SEVERITY_ALT_BLOCK = 42;
     public static final int SEVERITY_STAT_WIPE = 43;
 

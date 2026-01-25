@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
 import dev.simplix.cirrus.actionhandler.ActionHandler;
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.CallResult;
 import dev.simplix.cirrus.model.Click;
@@ -154,33 +155,17 @@ public class PunishMenu extends BaseInspectMenu {
 
         // Override header navigation
         // Primary tabs should NOT have back button when switching between them - pass null
-        registerActionHandler("openNotes", (ActionHandler) click -> {
-            click.clickedMenu().close();
-            new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-            return CallResult.DENY_GRABBING;
-        });
+        registerActionHandler("openNotes", ActionHandlers.openMenu(
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        registerActionHandler("openAlts", (ActionHandler) click -> {
-            click.clickedMenu().close();
-            new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-            return CallResult.DENY_GRABBING;
-        });
+        registerActionHandler("openAlts", ActionHandlers.openMenu(
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        registerActionHandler("openHistory", (ActionHandler) click -> {
-            click.clickedMenu().close();
-            new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-            return CallResult.DENY_GRABBING;
-        });
+        registerActionHandler("openHistory", ActionHandlers.openMenu(
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        registerActionHandler("openReports", (ActionHandler) click -> {
-            click.clickedMenu().close();
-            new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-            return CallResult.DENY_GRABBING;
-        });
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
         registerActionHandler("openPunish", (ActionHandler) click -> {
             // Already on punish, do nothing
@@ -189,8 +174,6 @@ public class PunishMenu extends BaseInspectMenu {
     }
 
     private void handlePunishmentType(Click click, PunishmentTypesResponse.PunishmentTypeData type) {
-        click.clickedMenu().close();
-
         // Check if this type has multiple severity levels
         Boolean singleSeverity = type.getSingleSeverityPunishment();
         if (singleSeverity != null && singleSeverity) {
@@ -199,8 +182,9 @@ public class PunishMenu extends BaseInspectMenu {
         }
 
         // Open severity selection menu - this is a secondary menu, back button returns to PunishMenu
-        new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, type,
-                player -> new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null).display(player))
-                .display(click.player());
+        ActionHandlers.openMenu(
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, type,
+                        player -> new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null).display(player)))
+                .handle(click);
     }
 }

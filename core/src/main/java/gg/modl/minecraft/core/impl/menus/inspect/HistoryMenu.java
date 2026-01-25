@@ -62,8 +62,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
         // Return placeholder if empty to prevent Cirrus from shrinking inventory
         if (punishments.isEmpty()) {
-            return Collections.singletonList(new Punishment(null, "", new Date(), null, null,
-                    Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap()));
+            return Collections.singletonList(new Punishment());
         }
 
         // Sort by date, newest first
@@ -80,8 +79,8 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
         List<String> lore = new ArrayList<>();
 
-        // Type and status
-        String typeName = punishment.getType() != null ? punishment.getType().name() : "Unknown";
+        // Type and status - use type category from registry for accurate detection
+        String typeName = punishment.getTypeCategory();
         boolean isActive = punishment.isActive();
 
         lore.add(MenuItems.COLOR_GRAY + "Type: " + (isActive ? MenuItems.COLOR_RED : MenuItems.COLOR_WHITE) + typeName);
@@ -121,21 +120,15 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     }
 
     private ItemType getPunishmentItemType(Punishment punishment) {
-        if (punishment.getType() == null) return ItemType.PAPER;
-
-        switch (punishment.getType()) {
-            case BAN:
-            case SECURITY_BAN:
-            case LINKED_BAN:
-            case BLACKLIST:
-                return ItemType.BARRIER;
-            case MUTE:
-                return ItemType.PAPER;
-            case KICK:
-                return ItemType.LEATHER_BOOTS;
-            default:
-                return ItemType.PAPER;
+        // Use registry-based detection for accurate type identification
+        if (punishment.isBanType()) {
+            return ItemType.BARRIER;
+        } else if (punishment.isMuteType()) {
+            return ItemType.PAPER;
+        } else if (punishment.isKickType()) {
+            return ItemType.LEATHER_BOOTS;
         }
+        return ItemType.PAPER;
     }
 
     @Override
@@ -146,10 +139,10 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         }
 
         // Open modify punishment menu - this is a secondary menu, back button returns to HistoryMenu
-        click.clickedMenu().close();
-        new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishment,
-                p -> new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null).display(p))
-                .display(click.player());
+        ActionHandlers.openMenu(
+                new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishment,
+                        p -> new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null).display(p)))
+                .handle(click);
     }
 
     @Override

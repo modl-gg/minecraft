@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -139,35 +140,20 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         super.registerActionHandlers();
 
         // Override header navigation - switching to primary tabs uses null (no back button)
-        registerActionHandler("openHistory", click -> {
-            click.clickedMenu().close();
-            new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-        });
+        registerActionHandler("openHistory", ActionHandlers.openMenu(
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        registerActionHandler("openNotes", click -> {
-            click.clickedMenu().close();
-            new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-        });
+        registerActionHandler("openNotes", ActionHandlers.openMenu(
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        registerActionHandler("openAlts", click -> {
-            click.clickedMenu().close();
-            new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-        });
+        registerActionHandler("openAlts", ActionHandlers.openMenu(
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        registerActionHandler("openReports", click -> {
-            click.clickedMenu().close();
-            new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-        });
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        registerActionHandler("openPunish", click -> {
-            click.clickedMenu().close();
-            new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-        });
+        registerActionHandler("openPunish", ActionHandlers.openMenu(
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
         // Add note handler
         registerActionHandler("addNote", this::handleAddNote);

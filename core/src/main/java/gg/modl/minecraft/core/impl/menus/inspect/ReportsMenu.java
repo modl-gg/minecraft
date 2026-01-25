@@ -79,6 +79,14 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         // For now, reports list is empty
     }
 
+    /**
+     * Set the current filter (used when cycling filters).
+     */
+    public ReportsMenu withFilter(String filter) {
+        this.currentFilter = filter;
+        return this;
+    }
+
     private static String getPlayerNameStatic(Account account) {
         if (account.getUsernames() != null && !account.getUsernames().isEmpty()) {
             return account.getUsernames().stream()
@@ -94,8 +102,8 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
         // Add filter button at slot 40 (y position in navigation row)
-        items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions)
-                .actionHandler("filter"));
+        // Note: actionHandler("filter") is already set in MenuItems.filterButton()
+        items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions));
 
         return items;
     }
@@ -216,11 +224,12 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         // Cycle through filter options
         int currentIndex = filterOptions.indexOf(currentFilter);
         int nextIndex = (currentIndex + 1) % filterOptions.size();
-        currentFilter = filterOptions.get(nextIndex);
+        String newFilter = filterOptions.get(nextIndex);
 
-        // Refresh menu
+        // Refresh menu with new filter
         ActionHandlers.openMenu(
-                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction))
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
+                        .withFilter(newFilter))
                 .handle(click);
     }
 }

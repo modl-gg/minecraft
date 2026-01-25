@@ -176,11 +176,11 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<PunishmentCreateResponse> createPunishmentWithResponse(@NotNull PunishmentCreateRequest request) {
-        // Convert to V2 format - backend expects typeOrdinal not type_ordinal
+        // Convert to V2 format - backend expects typeOrdinal not typeOrdinal
         V2CreatePunishmentRequest v2Request = new V2CreatePunishmentRequest(
                 request.getTargetUuid(),
                 request.getIssuerName(),
-                request.getType_ordinal() != null ? request.getType_ordinal() : 0,
+                request.getTypeOrdinal() != null ? request.getTypeOrdinal() : 0,
                 request.getReason(),
                 request.getDuration(),
                 request.getData(),
@@ -206,7 +206,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<PlayerNameResponse> getPlayer(@NotNull PlayerNameRequest request) {
-        return sendAsync(requestBuilder("/minecraft/players-name?username=" + request.getMinecraftUsername())
+        return sendAsync(requestBuilder("/minecraft/players/by-name?username=" + request.getMinecraftUsername())
                 .GET()
                 .build(), PlayerNameResponse.class);
     }

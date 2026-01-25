@@ -232,10 +232,10 @@ public class MigrationService {
     private List<PunishmentData> extractPunishments(String uuid) throws SQLException {
         List<PunishmentData> punishments = new ArrayList<>();
         
-        // Extract bans (type_ordinal = 2)
+        // Extract bans (typeOrdinal = 2)
         extractPunishmentsFromTable(uuid, "{bans}", 2, "BAN", punishments);
         
-        // Extract mutes (type_ordinal = 1)
+        // Extract mutes (typeOrdinal = 1)
         extractPunishmentsFromTable(uuid, "{mutes}", 1, "MUTE", punishments);
         
         return punishments;

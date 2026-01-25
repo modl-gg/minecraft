@@ -5,10 +5,12 @@ import co.aikar.commands.CommandManager;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.cache.Cache;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.bungee.wrapper.BungeePlayerWrapper;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -28,6 +30,8 @@ public class BungeePlatform implements Platform {
     private final BungeeCommandManager commandManager;
     private final Logger logger;
     private final File dataFolder;
+    @Setter
+    private Cache cache;
 
     @Override
     public void broadcast(String string) {
@@ -201,5 +205,10 @@ public class BungeePlatform implements Platform {
     @Override
     public void log(String msg) {
         logger.info(msg);
+    }
+
+    @Override
+    public Cache getCache() {
+        return cache;
     }
 }

@@ -11,6 +11,7 @@ import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.cache.LoginCache;
+import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
@@ -261,14 +262,20 @@ public class SpigotListener implements Listener {
     
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerChat(AsyncPlayerChatEvent event) {
-        // Cache the chat message first (before potentially cancelling)
+        // Check for pending menu chat input FIRST
+        if (ChatInputManager.handleChat(event.getPlayer().getUniqueId(), event.getMessage())) {
+            event.setCancelled(true);
+            return;
+        }
+
+        // Cache the chat message (before potentially cancelling for mute)
         chatMessageCache.addMessage(
             platform.getServerName(), // Server name for cross-platform compatibility
             event.getPlayer().getUniqueId().toString(),
             event.getPlayer().getName(),
             event.getMessage()
         );
-        
+
         if (cache.isMuted(event.getPlayer().getUniqueId())) {
             // Cancel the chat event
             event.setCancelled(true);

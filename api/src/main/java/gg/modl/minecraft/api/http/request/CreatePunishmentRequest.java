@@ -14,7 +14,7 @@ public class CreatePunishmentRequest {
     private final String targetUuid;
     @NotNull
     private final String issuerName;
-    @SerializedName("type_ordinal")
+    @SerializedName("typeOrdinal")
     private final int typeOrdinal;
     @Nullable
     private final String reason;

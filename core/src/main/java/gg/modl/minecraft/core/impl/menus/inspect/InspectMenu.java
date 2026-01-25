@@ -1,6 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
-import dev.simplix.cirrus.model.Click;
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
@@ -40,49 +40,19 @@ public class InspectMenu extends BaseInspectMenu {
         super.registerActionHandlers();
 
         // Primary tabs should NOT have back button when switching between them - pass null
-        // Open Notes menu
-        registerActionHandler("openNotes", this::openNotes);
+        registerActionHandler("openNotes", ActionHandlers.openMenu(
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        // Open Alts menu
-        registerActionHandler("openAlts", this::openAlts);
+        registerActionHandler("openAlts", ActionHandlers.openMenu(
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        // Open History menu
-        registerActionHandler("openHistory", this::openHistory);
+        registerActionHandler("openHistory", ActionHandlers.openMenu(
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        // Open Reports menu
-        registerActionHandler("openReports", this::openReports);
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        // Open Punish menu
-        registerActionHandler("openPunish", this::openPunish);
-    }
-
-    private void openNotes(Click click) {
-        click.clickedMenu().close();
-        new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                .display(click.player());
-    }
-
-    private void openAlts(Click click) {
-        click.clickedMenu().close();
-        new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                .display(click.player());
-    }
-
-    private void openHistory(Click click) {
-        click.clickedMenu().close();
-        new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                .display(click.player());
-    }
-
-    private void openReports(Click click) {
-        click.clickedMenu().close();
-        new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                .display(click.player());
-    }
-
-    private void openPunish(Click click) {
-        click.clickedMenu().close();
-        new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                .display(click.player());
+        registerActionHandler("openPunish", ActionHandlers.openMenu(
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
     }
 }

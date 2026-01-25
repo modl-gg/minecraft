@@ -8,6 +8,7 @@ import dev.simplix.protocolize.api.chat.ChatElement;
 import dev.simplix.protocolize.data.ItemType;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
@@ -24,7 +25,10 @@ public class SettingsMenu extends BaseStaffMenu {
 
     private final String panelUrl;
     private final Consumer<CirrusPlayerWrapper> parentBackAction;
-    private boolean reportNotifications = true; // Default enabled
+
+    // Permission flags
+    private final boolean canModifySettings;
+    private final boolean canManageStaff;
 
     /**
      * Create a new settings menu.
@@ -43,6 +47,17 @@ public class SettingsMenu extends BaseStaffMenu {
         this.panelUrl = panelUrl;
         this.parentBackAction = backAction;
 
+        // Check specific permissions from cache
+        Cache cache = platform.getCache();
+        if (cache != null) {
+            this.canModifySettings = cache.hasPermission(viewerUuid, "modl.settings.modify");
+            this.canManageStaff = cache.hasPermission(viewerUuid, "modl.staff.manage");
+        } else {
+            // Fallback to isAdmin if cache not available
+            this.canModifySettings = isAdmin;
+            this.canManageStaff = isAdmin;
+        }
+
         title("Settings");
         activeTab = StaffTab.SETTINGS;
         buildMenu();
@@ -55,6 +70,16 @@ public class SettingsMenu extends BaseStaffMenu {
         List<String> infoLore = new ArrayList<>();
         infoLore.add(MenuItems.COLOR_GRAY + "Username: " + MenuItems.COLOR_WHITE + viewerName);
         infoLore.add(MenuItems.COLOR_GRAY + "Role: " + MenuItems.COLOR_WHITE + (isAdmin ? "Administrator" : "Staff"));
+        if (canModifySettings || canManageStaff) {
+            infoLore.add("");
+            infoLore.add(MenuItems.COLOR_GRAY + "Permissions:");
+            if (canModifySettings) {
+                infoLore.add(MenuItems.COLOR_GREEN + "  ✓ " + MenuItems.COLOR_GRAY + "Modify Settings");
+            }
+            if (canManageStaff) {
+                infoLore.add(MenuItems.COLOR_GREEN + "  ✓ " + MenuItems.COLOR_GRAY + "Manage Staff");
+            }
+        }
         if (isAdmin) {
             infoLore.add("");
             infoLore.add(MenuItems.COLOR_GRAY + "MODL Status: " + MenuItems.COLOR_GREEN + "Healthy");
@@ -68,10 +93,12 @@ public class SettingsMenu extends BaseStaffMenu {
         ).slot(MenuSlots.SETTINGS_INFO));
 
         // Slot 30: Report Notifications toggle
+        Cache cache = platform.getCache();
+        boolean reportNotificationsEnabled = cache != null && cache.isReportNotificationsEnabled(viewerUuid);
         set(CirrusItem.of(
-                reportNotifications ? ItemType.LIME_DYE : ItemType.GRAY_DYE,
+                reportNotificationsEnabled ? ItemType.LIME_DYE : ItemType.GRAY_DYE,
                 ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Report Notifications: " +
-                        (reportNotifications ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
+                        (reportNotificationsEnabled ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Toggle report notifications"
                 )
@@ -92,9 +119,9 @@ public class SettingsMenu extends BaseStaffMenu {
                 MenuItems.lore(ticketLore)
         ).slot(MenuSlots.SETTINGS_TICKETS).actionHandler("ticketUpdates"));
 
-        // Admin-only options
-        if (isAdmin) {
-            // Slot 32: Edit Roles
+        // Permission-based options
+        // Edit Roles - requires modl.settings.modify
+        if (canModifySettings) {
             set(CirrusItem.of(
                     ItemType.BLAZE_ROD,
                     ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Edit Roles"),
@@ -102,8 +129,10 @@ public class SettingsMenu extends BaseStaffMenu {
                             MenuItems.COLOR_GRAY + "Modify role permissions"
                     )
             ).slot(MenuSlots.SETTINGS_ROLES).actionHandler("editRoles"));
+        }
 
-            // Slot 33: Manage Staff
+        // Manage Staff - requires modl.staff.manage
+        if (canManageStaff) {
             set(CirrusItem.of(
                     ItemType.IRON_CHESTPLATE,
                     ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Manage Staff"),
@@ -111,8 +140,10 @@ public class SettingsMenu extends BaseStaffMenu {
                             MenuItems.COLOR_GRAY + "Manage staff roles"
                     )
             ).slot(MenuSlots.SETTINGS_STAFF).actionHandler("manageStaff"));
+        }
 
-            // Slot 34: Reload Modl
+        // Reload Modl - requires modl.settings.modify
+        if (canModifySettings) {
             set(CirrusItem.of(
                     ItemType.REDSTONE,
                     ChatElement.ofLegacyText(MenuItems.COLOR_RED + "Reload Modl"),
@@ -133,18 +164,22 @@ public class SettingsMenu extends BaseStaffMenu {
         // Ticket updates handler
         registerActionHandler("ticketUpdates", this::handleTicketUpdates);
 
-        // Admin handlers - secondary menus SHOULD have back action to return to Settings
-        if (isAdmin) {
-            Consumer<CirrusPlayerWrapper> returnToSettings = p ->
-                    new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p);
+        // Permission-based handlers - secondary menus SHOULD have back action to return to Settings
+        Consumer<CirrusPlayerWrapper> returnToSettings = p ->
+                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p);
 
+        // Edit Roles - requires modl.settings.modify
+        if (canModifySettings) {
             registerActionHandler("editRoles", ActionHandlers.openMenu(
                     new RoleListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings)));
 
+            registerActionHandler("reloadModl", this::handleReloadModl);
+        }
+
+        // Manage Staff - requires modl.staff.manage
+        if (canManageStaff) {
             registerActionHandler("manageStaff", ActionHandlers.openMenu(
                     new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings)));
-
-            registerActionHandler("reloadModl", this::handleReloadModl);
         }
 
         // Override header navigation - primary tabs should NOT pass backAction
@@ -173,9 +208,14 @@ public class SettingsMenu extends BaseStaffMenu {
     }
 
     private void handleToggleNotifications(Click click) {
-        reportNotifications = !reportNotifications;
-        // TODO: Save preference to API when endpoint available
-        sendMessage(MenuItems.COLOR_GREEN + "Report notifications " + (reportNotifications ? "enabled" : "disabled"));
+        Cache cache = platform.getCache();
+        if (cache != null) {
+            boolean currentValue = cache.isReportNotificationsEnabled(viewerUuid);
+            cache.setReportNotificationsEnabled(viewerUuid, !currentValue);
+            sendMessage(MenuItems.COLOR_GREEN + "Report notifications " + (!currentValue ? "enabled" : "disabled"));
+        } else {
+            sendMessage(MenuItems.COLOR_RED + "Unable to save preference - cache unavailable");
+        }
 
         // Refresh menu - preserve backAction if present
         ActionHandlers.openMenu(

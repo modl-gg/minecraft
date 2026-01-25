@@ -49,6 +49,9 @@ public class PluginLoader {
         cache = new Cache();
         loginCache = new LoginCache();
 
+        // Set the cache on the platform for menu access
+        platform.setCache(cache);
+
         this.httpClient = httpManager.getHttpClient();
 
         // Initialize locale manager with support for external locale files

@@ -14,40 +14,74 @@ import org.jetbrains.annotations.Nullable;
 @NoArgsConstructor
 public class SimplePunishment {
     @NotNull
-    private String type; // "BAN", "MUTE", or "KICK"
-    
+    private String type; // Punishment type name (e.g., "Manual Ban", "Chat Offense")
+
+    @Nullable
+    private String category; // Category: "BAN", "MUTE", or "OTHER"
+
     private boolean started;
-    
+
     @Nullable
     private Long expiration; // Unix timestamp in milliseconds
-    
+
     @NotNull
     private String description;
-    
+
     @NotNull
     private String id;
-    
+
     private int ordinal; // The punishment type ordinal (0=kick, 1=mute, 2+=ban)
-    
+
     /**
-     * Check if this is a ban punishment
+     * Check if this is a ban punishment.
+     * Uses PunishmentTypeRegistry (populated from server config) as primary source,
+     * with category and ordinal fallbacks for backward compatibility.
      */
     public boolean isBan() {
+        // Check registry first (populated from punishment types config)
+        if (PunishmentTypeRegistry.isInitialized()) {
+            return PunishmentTypeRegistry.isBan(ordinal);
+        }
+        // Fallback to category from backend
+        if (category != null) {
+            return "BAN".equalsIgnoreCase(category);
+        }
+        // Fallback to ordinal for legacy support (ordinals 2-5 are admin ban types)
+        if (ordinal >= 2 && ordinal <= 5) {
+            return true;
+        }
+        // Legacy fallback to type string
         return "BAN".equalsIgnoreCase(type);
     }
-    
+
     /**
-     * Check if this is a mute punishment
+     * Check if this is a mute punishment.
+     * Uses PunishmentTypeRegistry (populated from server config) as primary source,
+     * with category and ordinal fallbacks for backward compatibility.
      */
     public boolean isMute() {
+        // Check registry first (populated from punishment types config)
+        if (PunishmentTypeRegistry.isInitialized()) {
+            return PunishmentTypeRegistry.isMute(ordinal);
+        }
+        // Fallback to category from backend
+        if (category != null) {
+            return "MUTE".equalsIgnoreCase(category);
+        }
+        // Fallback to ordinal for legacy support (ordinal 1 is admin mute type)
+        if (ordinal == 1) {
+            return true;
+        }
+        // Legacy fallback to type string
         return "MUTE".equalsIgnoreCase(type);
     }
-    
+
     /**
-     * Check if this is a kick punishment
+     * Check if this is a kick punishment.
+     * Uses ordinal matching (ordinal 0 is kick type).
      */
     public boolean isKick() {
-        return "KICK".equalsIgnoreCase(type) || ordinal == 0;
+        return PunishmentTypeRegistry.isKick(ordinal) || "KICK".equalsIgnoreCase(type);
     }
     
     /**

@@ -614,18 +614,26 @@ public class SyncService {
         try {
             UUID uuid = UUID.fromString(staffMember.getMinecraftUuid());
             AbstractPlayer player = platform.getPlayer(uuid);
-            
+
             if (player != null && player.isOnline()) {
+                // Check if this is a new staff member or permissions changed
+                SyncResponse.ActiveStaffMember existing = cache.getStaffMember(uuid);
+                boolean isNew = existing == null;
+                boolean permissionsChanged = existing != null &&
+                    !existing.getPermissions().equals(staffMember.getPermissions());
+
                 // Cache staff member information for easy access
                 cache.cacheStaffMember(uuid, staffMember);
-                
-                logger.info(String.format("Updated staff member data for %s (%s) - Role: %s, Permissions: %d", 
-                        staffMember.getMinecraftUsername(), 
-                        staffMember.getStaffUsername(),
-                        staffMember.getStaffRole(),
-                        staffMember.getPermissions().size()));
 
-
+                // Only log when data is new or changed
+                if (isNew || permissionsChanged) {
+                    logger.info(String.format("Staff member data %s for %s (%s) - Role: %s, Permissions: %s",
+                            isNew ? "loaded" : "updated",
+                            staffMember.getMinecraftUsername(),
+                            staffMember.getStaffUsername(),
+                            staffMember.getStaffRole(),
+                            staffMember.getPermissions()));
+                }
             }
         } catch (Exception e) {
             logger.warning("Error processing staff member data: " + e.getMessage());

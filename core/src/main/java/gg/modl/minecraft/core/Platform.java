@@ -3,6 +3,7 @@ package gg.modl.minecraft.core;
 import co.aikar.commands.CommandManager;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
+import gg.modl.minecraft.core.impl.cache.Cache;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 
 import java.io.File;
@@ -38,5 +39,17 @@ public interface Platform {
     DatabaseProvider createLiteBansDatabaseProvider();
 
     void log(String msg);
+
+    /**
+     * Get the cache instance for permission and data caching
+     * @return The cache instance
+     */
+    Cache getCache();
+
+    /**
+     * Set the cache instance (called by PluginLoader after initialization)
+     * @param cache The cache instance
+     */
+    void setCache(Cache cache);
 }
 

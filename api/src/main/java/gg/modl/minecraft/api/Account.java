@@ -1,54 +1,75 @@
 package gg.modl.minecraft.api;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
 @Getter
-@RequiredArgsConstructor
+@NoArgsConstructor
+@AllArgsConstructor
 public class Account {
-    @NotNull
     @SerializedName("_id")
-    private final String id;
+    private String id;
 
-    @NotNull
     @SerializedName("minecraftUuid")
-    private final UUID minecraftUuid;
+    private UUID minecraftUuid;
 
-    @NotNull
     @SerializedName("usernames")
-    private final List<Username> usernames;
+    private List<Username> usernames;
 
-    @NotNull
     @SerializedName("notes")
-    private final List<Note> notes;
+    private List<Note> notes;
 
-    @NotNull
     @SerializedName("ipList")
-    private final List<IPAddress> ipList;
+    private List<IPAddress> ipList;
 
-    @NotNull
     @SerializedName("punishments")
-    private final List<Punishment> punishments;
+    private List<Punishment> punishments;
+
+    @SerializedName("pendingNotifications")
+    private List<String> pendingNotifications;
+
+    // Null-safe getters for list fields
+    @NotNull
+    public List<Username> getUsernames() {
+        return usernames != null ? usernames : Collections.emptyList();
+    }
 
     @NotNull
-    @SerializedName("pendingNotifications")
-    private final List<String> pendingNotifications;
+    public List<Note> getNotes() {
+        return notes != null ? notes : Collections.emptyList();
+    }
+
+    @NotNull
+    public List<IPAddress> getIpList() {
+        return ipList != null ? ipList : Collections.emptyList();
+    }
+
+    @NotNull
+    public List<Punishment> getPunishments() {
+        return punishments != null ? punishments : Collections.emptyList();
+    }
+
+    @NotNull
+    public List<String> getPendingNotifications() {
+        return pendingNotifications != null ? pendingNotifications : Collections.emptyList();
+    }
 
     @Getter
-    @RequiredArgsConstructor
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class Username {
-        @NotNull
         @SerializedName("username")
-        private final String username;
+        private String username;
 
-        @NotNull
         @SerializedName("date")
-        private final Date date;
+        private Date date;
     }
 }

@@ -1,28 +1,45 @@
 package gg.modl.minecraft.api;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Date;
 
-@RequiredArgsConstructor
+@NoArgsConstructor
+@AllArgsConstructor
 @Getter
 public final class Modification {
-    @NotNull
     @SerializedName("type")
-    private final Type type;
-    @NotNull
-    @SerializedName("issuerName")
-    private final String issuer;
-    @NotNull
-    @SerializedName("issued")
-    private final Date issued;
-    @SerializedName("effectiveDuration")
-    private final long effectiveDuration;
+    private Type type;
 
-    @RequiredArgsConstructor
+    @SerializedName("issuerName")
+    private String issuer;
+
+    @SerializedName("issued")
+    private Date issued;
+
+    @SerializedName("effectiveDuration")
+    private long effectiveDuration;
+
+    @Nullable
+    public Type getType() {
+        return type;
+    }
+
+    @NotNull
+    public String getIssuer() {
+        return issuer != null ? issuer : "Unknown";
+    }
+
+    @NotNull
+    public Date getIssued() {
+        return issued != null ? issued : new Date(0);
+    }
+
     public enum Type {
         MANUAL_DURATION_CHANGE,
         MANUAL_PARDON,

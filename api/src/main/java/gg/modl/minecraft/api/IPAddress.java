@@ -1,40 +1,70 @@
 package gg.modl.minecraft.api;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
 @Getter
-@RequiredArgsConstructor
+@NoArgsConstructor
+@AllArgsConstructor
 public class IPAddress {
     @SerializedName("proxy")
-    private final boolean proxy;
+    private boolean proxy;
 
-    @NotNull
+    @SerializedName("hosting")
+    private boolean hosting;
+
     @SerializedName("ipAddress")
-    private final String ipAddress;
+    private String ipAddress;
 
-    @NotNull
     @SerializedName("country")
-    private final String country;
+    private String country;
 
-    @NotNull
     @SerializedName("region")
-    private final String region;
+    private String region;
 
-    @NotNull
     @SerializedName("asn")
-    private final String asn;
+    private String asn;
 
-    @NotNull
     @SerializedName("firstLogin")
-    private final Date firstLogin;
+    private Date firstLogin;
+
+    @SerializedName("logins")
+    private List<Date> logins;
 
     @NotNull
-    @SerializedName("logins")
-    private final List<Date> logins;
+    public String getIpAddress() {
+        return ipAddress != null ? ipAddress : "";
+    }
+
+    @NotNull
+    public String getCountry() {
+        return country != null ? country : "Unknown";
+    }
+
+    @NotNull
+    public String getRegion() {
+        return region != null ? region : "Unknown";
+    }
+
+    @NotNull
+    public String getAsn() {
+        return asn != null ? asn : "";
+    }
+
+    @NotNull
+    public Date getFirstLogin() {
+        return firstLogin != null ? firstLogin : new Date(0);
+    }
+
+    @NotNull
+    public List<Date> getLogins() {
+        return logins != null ? logins : Collections.emptyList();
+    }
 }

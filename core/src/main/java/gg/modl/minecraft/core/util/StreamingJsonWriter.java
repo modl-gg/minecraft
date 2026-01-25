@@ -110,7 +110,7 @@ public class StreamingJsonWriter implements AutoCloseable {
             jsonWriter.beginObject();
             jsonWriter.name("_id").value(punishment.id);
             jsonWriter.name("type").value(punishment.type);
-            jsonWriter.name("type_ordinal").value(punishment.typeOrdinal);
+            jsonWriter.name("typeOrdinal").value(punishment.typeOrdinal);
             jsonWriter.name("reason").value(punishment.reason != null ? punishment.reason : "No reason provided");
             jsonWriter.name("issued").value(punishment.issued != null ? punishment.issued : "");
             jsonWriter.name("issuerName").value(punishment.issuerName != null ? punishment.issuerName : "Console");

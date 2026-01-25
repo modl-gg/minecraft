@@ -5,10 +5,12 @@ import co.aikar.commands.CommandManager;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.cache.Cache;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.spigot.wrapper.SpigotPlayerWrapper;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -26,6 +28,8 @@ public class SpigotPlatform implements Platform {
     private final BukkitCommandManager commandManager;
     private final Logger logger;
     private final File dataFolder;
+    @Setter
+    private Cache cache;
 
     @Override
     public void broadcast(String string) {
@@ -199,5 +203,10 @@ public class SpigotPlatform implements Platform {
     @Override
     public void log(String msg) {
         logger.info(msg);
+    }
+
+    @Override
+    public Cache getCache() {
+        return cache;
     }
 }

@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
 import dev.simplix.cirrus.actionhandler.ActionHandler;
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.CallResult;
 import dev.simplix.cirrus.model.Click;
@@ -154,40 +155,20 @@ public class PunishSeverityMenu extends BaseInspectMenu {
 
         // Override header navigation
         // Switching to primary tabs - pass null (no back button on primary tabs)
-        registerActionHandler("openNotes", (ActionHandler) click -> {
-            click.clickedMenu().close();
-            new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-            return CallResult.DENY_GRABBING;
-        });
+        registerActionHandler("openNotes", ActionHandlers.openMenu(
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        registerActionHandler("openAlts", (ActionHandler) click -> {
-            click.clickedMenu().close();
-            new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-            return CallResult.DENY_GRABBING;
-        });
+        registerActionHandler("openAlts", ActionHandlers.openMenu(
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        registerActionHandler("openHistory", (ActionHandler) click -> {
-            click.clickedMenu().close();
-            new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-            return CallResult.DENY_GRABBING;
-        });
+        registerActionHandler("openHistory", ActionHandlers.openMenu(
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        registerActionHandler("openReports", (ActionHandler) click -> {
-            click.clickedMenu().close();
-            new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-            return CallResult.DENY_GRABBING;
-        });
+        registerActionHandler("openReports", ActionHandlers.openMenu(
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
 
-        registerActionHandler("openPunish", (ActionHandler) click -> {
-            click.clickedMenu().close();
-            new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)
-                    .display(click.player());
-            return CallResult.DENY_GRABBING;
-        });
+        registerActionHandler("openPunish", ActionHandlers.openMenu(
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
     }
 
     private void issuePunishment(Click click, int severityLevel) {
@@ -239,24 +220,24 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     private void handleToggleSilent(Click click) {
         silentMode = !silentMode;
         // Refresh menu
-        click.clickedMenu().close();
-        new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction)
-                .display(click.player());
+        ActionHandlers.openMenu(
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction))
+                .handle(click);
     }
 
     private void handleToggleAltBlock(Click click) {
         altBlocking = !altBlocking;
         // Refresh menu
-        click.clickedMenu().close();
-        new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction)
-                .display(click.player());
+        ActionHandlers.openMenu(
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction))
+                .handle(click);
     }
 
     private void handleToggleStatWipe(Click click) {
         statWipe = !statWipe;
         // Refresh menu
-        click.clickedMenu().close();
-        new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction)
-                .display(click.player());
+        ActionHandlers.openMenu(
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction))
+                .handle(click);
     }
 }

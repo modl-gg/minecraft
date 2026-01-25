@@ -144,10 +144,9 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
                 MenuItems.COLOR_GRAY + " (left-click to apply)");
 
         // Refresh menu - preserve backAction
-        click.clickedMenu().close();
         StaffListMenu newMenu = new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         newMenu.selectedRoles.putAll(this.selectedRoles);
-        newMenu.display(click.player());
+        ActionHandlers.openMenu(newMenu).handle(click);
     }
 
     private void applyRole(Click click, StaffMember staff) {

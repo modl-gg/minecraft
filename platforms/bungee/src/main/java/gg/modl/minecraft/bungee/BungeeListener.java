@@ -10,6 +10,7 @@ import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
@@ -187,8 +188,14 @@ public class BungeeListener implements Listener {
         }
 
         ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
-        
-        // Cache the chat message first (before potentially cancelling)
+
+        // Check for pending menu chat input FIRST
+        if (ChatInputManager.handleChat(sender.getUniqueId(), event.getMessage())) {
+            event.setCancelled(true);
+            return;
+        }
+
+        // Cache the chat message (before potentially cancelling for mute)
         // Use the player's current server name for cross-server compatibility
         String serverName = sender.getServer() != null ? sender.getServer().getInfo().getName() : "unknown";
         chatMessageCache.addMessage(
@@ -197,7 +204,7 @@ public class BungeeListener implements Listener {
             sender.getName(),
             event.getMessage()
         );
-        
+
         if (cache.isMuted(sender.getUniqueId())) {
             // Cancel the chat event
             event.setCancelled(true);

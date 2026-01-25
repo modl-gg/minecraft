@@ -112,10 +112,10 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
         }
 
         // Open role permission edit menu - tertiary menu should have back to secondary
-        click.clickedMenu().close();
-        new RolePermissionEditMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, role,
-                player -> new RoleListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction).display(player))
-                .display(click.player());
+        ActionHandlers.openMenu(
+                new RolePermissionEditMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, role,
+                        player -> new RoleListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction).display(player)))
+                .handle(click);
     }
 
     @Override

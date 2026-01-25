@@ -127,9 +127,9 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         }
 
         // Open inspect menu for the alt account - this is a new primary view, no back button
-        click.clickedMenu().close();
-        new InspectMenu(platform, httpClient, viewerUuid, viewerName, alt, null)
-                .display(click.player());
+        ActionHandlers.openMenu(
+                new InspectMenu(platform, httpClient, viewerUuid, viewerName, alt, null))
+                .handle(click);
     }
 
     @Override

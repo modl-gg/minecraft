@@ -224,7 +224,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> acknowledgePunishment(@NotNull PunishmentAcknowledgeRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/punishment/acknowledge"))
+                .uri(URI.create(baseUrl + "/minecraft/punishments/acknowledge"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -235,7 +235,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> acknowledgeNotifications(@NotNull NotificationAcknowledgeRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/notification/acknowledge"))
+                .uri(URI.create(baseUrl + "/minecraft/notifications/acknowledge"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))

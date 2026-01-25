@@ -162,17 +162,17 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         }
 
         // Open modify punishment menu with staff menu as parent
-        click.clickedMenu().close();
-
         Consumer<CirrusPlayerWrapper> returnToPunishments = p ->
                 new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p);
 
         if (pwp.getAccount() != null) {
-            new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
-                    pwp.getAccount(), pwp.getPunishment(), returnToPunishments)
-                    .display(click.player());
+            ActionHandlers.openMenu(
+                    new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
+                            pwp.getAccount(), pwp.getPunishment(), returnToPunishments))
+                    .handle(click);
         } else {
             // Fetch the account first
+            click.clickedMenu().close();
             httpClient.getPlayerProfile(pwp.getPlayerUuid()).thenAccept(response -> {
                 if (response.getStatus() == 200) {
                     platform.runOnMainThread(() -> {

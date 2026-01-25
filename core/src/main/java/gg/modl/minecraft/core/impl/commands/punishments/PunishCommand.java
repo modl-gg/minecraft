@@ -13,6 +13,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.util.PunishmentTypeParser;
 import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.RequiredArgsConstructor;
 
@@ -181,6 +182,9 @@ public class PunishCommand extends BaseCommand {
         // Load punishment types
         httpClient.getPunishmentTypes().thenAccept(response -> {
             if (response.isSuccess()) {
+                // Populate the punishment type registry for ban/mute detection
+                PunishmentTypeParser.populateRegistry(response.getData());
+
                 // Filter out manual punishment types (ordinals 0-5: kick, manual_mute, manual_ban, security_ban, linked_ban, blacklist)
                 cachedPunishmentTypes = response.getData().stream()
                         .filter(pt -> pt.getOrdinal() > 5)
@@ -207,7 +211,7 @@ public class PunishCommand extends BaseCommand {
             }
             return null;
         });
-        
+
         // Load staff permissions
         loadStaffPermissions();
     }
@@ -263,6 +267,9 @@ public class PunishCommand extends BaseCommand {
      * Update punishment types cache (called by reload command)
      */
     public void updatePunishmentTypesCache(List<PunishmentTypesResponse.PunishmentTypeData> allTypes) {
+        // Populate the punishment type registry for ban/mute detection
+        PunishmentTypeParser.populateRegistry(allTypes);
+
         // Filter out manual punishment types (ordinals 0-5: kick, manual_mute, manual_ban, security_ban, linked_ban, blacklist)
         cachedPunishmentTypes = allTypes.stream()
                 .filter(pt -> pt.getOrdinal() > 5)
