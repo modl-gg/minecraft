@@ -12,6 +12,7 @@ import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
+import gg.modl.minecraft.api.http.response.PunishmentPreviewResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
@@ -26,6 +27,9 @@ import java.util.function.Consumer;
 /**
  * Punish Severity Menu - select severity level for a punishment.
  * Secondary menu accessed from PunishMenu.
+ * Adapts layout based on punishment type:
+ * - Single severity types show one central button
+ * - Multi-severity types show lenient/regular/aggravated options
  */
 public class PunishSeverityMenu extends BaseInspectMenu {
 
@@ -34,6 +38,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     private boolean silentMode = false;
     private boolean altBlocking = false;
     private boolean statWipe = false;
+    private PunishmentPreviewResponse previewData;
 
     /**
      * Create a new severity menu.
@@ -67,55 +72,158 @@ public class PunishSeverityMenu extends BaseInspectMenu {
 
         title("Punish: " + punishmentType.getName());
         activeTab = InspectTab.PUNISH;
+
+        // Load preview data
+        loadPreviewData();
         buildMenu();
+    }
+
+    private void loadPreviewData() {
+        try {
+            httpClient.getPunishmentPreview(targetUuid, punishmentType.getOrdinal()).thenAccept(response -> {
+                if (response.isSuccess()) {
+                    this.previewData = response;
+                }
+            }).join();
+        } catch (Exception e) {
+            // Preview failed - continue without it
+        }
     }
 
     private void buildMenu() {
         buildHeader();
 
-        boolean isBanType = punishmentType.getCategory() != null &&
-                (punishmentType.getCategory().toLowerCase().contains("ban") ||
-                 punishmentType.getCategory().toLowerCase().contains("security"));
+        // Check if this is a single-severity type
+        Boolean singleSeverity = punishmentType.getSingleSeverityPunishment();
+        Boolean permUsername = punishmentType.getPermanentUntilUsernameChange();
+        Boolean permSkin = punishmentType.getPermanentUntilSkinChange();
 
-        // Slot 28: Lenient (lime wool)
-        set(CirrusItem.of(
-                ItemType.LIME_WOOL,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Lenient"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Issue a lenient punishment",
-                        "",
-                        MenuItems.COLOR_GRAY + "Click to issue " + (silentMode ? "silent " : "public ") + "punishment"
-                )
-        ).slot(MenuSlots.SEVERITY_LENIENT).actionHandler("issueLenient"));
+        boolean isSingleType = (singleSeverity != null && singleSeverity) ||
+                               (permUsername != null && permUsername) ||
+                               (permSkin != null && permSkin);
 
-        // Slot 30: Regular (yellow wool)
+        if (isSingleType) {
+            buildSingleSeverityLayout();
+        } else {
+            buildMultiSeverityLayout();
+        }
+
+        // Add toggle buttons
+        buildToggleButtons();
+    }
+
+    private void buildSingleSeverityLayout() {
+        // Single center button at slot 31
+        PunishmentPreviewResponse.SeverityPreview preview = previewData != null ?
+                previewData.getSingleSeverity() : null;
+
+        List<String> lore = new ArrayList<>();
+
+        // Show what the punishment will be
+        if (preview != null) {
+            lore.add(MenuItems.COLOR_GRAY + "Punishment: " + MenuItems.COLOR_WHITE + preview.getDurationFormatted() +
+                    (preview.isPermanent() ? " " + MenuItems.COLOR_RED + "(Permanent)" : ""));
+            lore.add(MenuItems.COLOR_GRAY + "Type: " + MenuItems.COLOR_WHITE + capitalizeFirst(preview.getPunishmentType()));
+            lore.add(MenuItems.COLOR_GRAY + "Points: " + MenuItems.COLOR_YELLOW + "+" + preview.getPoints());
+            lore.add("");
+        }
+
+        // Show current/new status
+        if (previewData != null && preview != null) {
+            String category = punishmentType.getCategory();
+            if ("Social".equalsIgnoreCase(category)) {
+                lore.add(MenuItems.COLOR_GRAY + "Social Status: " + getStatusColor(previewData.getSocialStatus()) +
+                        previewData.getSocialStatus() + MenuItems.COLOR_GRAY + " → " +
+                        getStatusColor(preview.getNewSocialStatus()) + preview.getNewSocialStatus());
+            } else {
+                lore.add(MenuItems.COLOR_GRAY + "Gameplay Status: " + getStatusColor(previewData.getGameplayStatus()) +
+                        previewData.getGameplayStatus() + MenuItems.COLOR_GRAY + " → " +
+                        getStatusColor(preview.getNewGameplayStatus()) + preview.getNewGameplayStatus());
+            }
+            lore.add("");
+        }
+
+        // Special messages for permanent-until-change types
+        if (punishmentType.getPermanentUntilUsernameChange() != null && punishmentType.getPermanentUntilUsernameChange()) {
+            lore.add(MenuItems.COLOR_YELLOW + "Player will be restricted until");
+            lore.add(MenuItems.COLOR_YELLOW + "they change their username");
+            lore.add("");
+        } else if (punishmentType.getPermanentUntilSkinChange() != null && punishmentType.getPermanentUntilSkinChange()) {
+            lore.add(MenuItems.COLOR_YELLOW + "Player will be restricted until");
+            lore.add(MenuItems.COLOR_YELLOW + "they change their skin");
+            lore.add("");
+        }
+
+        lore.add(MenuItems.COLOR_GREEN + "Click to issue " + (silentMode ? "silent " : "") + "punishment");
+
         set(CirrusItem.of(
                 ItemType.YELLOW_WOOL,
-                ChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Regular"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Issue a regular punishment",
-                        "",
-                        MenuItems.COLOR_GRAY + "Click to issue " + (silentMode ? "silent " : "public ") + "punishment"
-                )
-        ).slot(MenuSlots.SEVERITY_REGULAR).actionHandler("issueRegular"));
+                ChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Issue Punishment"),
+                MenuItems.lore(lore)
+        ).slot(31).actionHandler("issueSingle"));
+    }
+
+    private void buildMultiSeverityLayout() {
+        // Slot 28: Lenient (lime wool)
+        set(createSeverityButton("Lenient", 0, ItemType.LIME_WOOL, MenuItems.COLOR_GREEN,
+                previewData != null ? previewData.getLenient() : null, "issueLenient", MenuSlots.SEVERITY_LENIENT));
+
+        // Slot 30: Regular (yellow wool)
+        set(createSeverityButton("Regular", 1, ItemType.YELLOW_WOOL, MenuItems.COLOR_YELLOW,
+                previewData != null ? previewData.getRegular() : null, "issueRegular", MenuSlots.SEVERITY_REGULAR));
 
         // Slot 32: Aggravated (red wool)
-        set(CirrusItem.of(
-                ItemType.RED_WOOL,
-                ChatElement.ofLegacyText(MenuItems.COLOR_RED + "Aggravated"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Issue an aggravated punishment",
-                        "",
-                        MenuItems.COLOR_GRAY + "Click to issue " + (silentMode ? "silent " : "public ") + "punishment"
-                )
-        ).slot(MenuSlots.SEVERITY_AGGRAVATED).actionHandler("issueAggravated"));
+        set(createSeverityButton("Aggravated", 2, ItemType.RED_WOOL, MenuItems.COLOR_RED,
+                previewData != null ? previewData.getAggravated() : null, "issueAggravated", MenuSlots.SEVERITY_AGGRAVATED));
+    }
 
-        // Slot 33: Silent Mode toggle
+    private CirrusItem createSeverityButton(String name, int severityLevel, ItemType itemType, String color,
+                                             PunishmentPreviewResponse.SeverityPreview preview, String action, int slot) {
+        List<String> lore = new ArrayList<>();
+
+        lore.add(MenuItems.COLOR_GRAY + "Issue a " + name.toLowerCase() + " punishment");
+        lore.add("");
+
+        // Show preview data
+        if (preview != null) {
+            lore.add(MenuItems.COLOR_GRAY + "Punishment: " + MenuItems.COLOR_WHITE + preview.getDurationFormatted() +
+                    (preview.isPermanent() ? " " + MenuItems.COLOR_RED + "(Permanent)" : ""));
+            lore.add(MenuItems.COLOR_GRAY + "Type: " + MenuItems.COLOR_WHITE + capitalizeFirst(preview.getPunishmentType()));
+            lore.add(MenuItems.COLOR_GRAY + "Points: " + MenuItems.COLOR_YELLOW + "+" + preview.getPoints());
+            lore.add("");
+
+            // Show status change
+            String category = punishmentType.getCategory();
+            if ("Social".equalsIgnoreCase(category)) {
+                lore.add(MenuItems.COLOR_GRAY + "Status: " + getStatusColor(previewData.getSocialStatus()) +
+                        previewData.getSocialStatus() + MenuItems.COLOR_GRAY + " → " +
+                        getStatusColor(preview.getNewSocialStatus()) + preview.getNewSocialStatus());
+            } else {
+                lore.add(MenuItems.COLOR_GRAY + "Status: " + getStatusColor(previewData.getGameplayStatus()) +
+                        previewData.getGameplayStatus() + MenuItems.COLOR_GRAY + " → " +
+                        getStatusColor(preview.getNewGameplayStatus()) + preview.getNewGameplayStatus());
+            }
+            lore.add("");
+        }
+
+        lore.add(MenuItems.COLOR_YELLOW + "Click to issue " + (silentMode ? "silent " : "") + "punishment");
+
+        return CirrusItem.of(
+                itemType,
+                ChatElement.ofLegacyText(color + name),
+                MenuItems.lore(lore)
+        ).slot(slot).actionHandler(action);
+    }
+
+    private void buildToggleButtons() {
+        // Slot 34: Silent Mode toggle
         set(CirrusItem.of(
                 silentMode ? ItemType.LIME_DYE : ItemType.GRAY_DYE,
                 ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Silent Mode: " + (silentMode ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
                 MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Toggle silent mode for this punishment"
+                        MenuItems.COLOR_GRAY + "Toggle silent mode for this punishment",
+                        "",
+                        silentMode ? MenuItems.COLOR_GREEN + "Punishment will be silent" : MenuItems.COLOR_GRAY + "Punishment will be public"
                 )
         ).slot(MenuSlots.SEVERITY_SILENT).actionHandler("toggleSilent"));
 
@@ -125,7 +233,9 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                     altBlocking ? ItemType.TORCH : ItemType.REDSTONE_TORCH,
                     ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Alt-Blocking: " + (altBlocking ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
                     MenuItems.lore(
-                            MenuItems.COLOR_GRAY + "Toggle alt-blocking for this punishment"
+                            MenuItems.COLOR_GRAY + "Block alt accounts from joining",
+                            "",
+                            altBlocking ? MenuItems.COLOR_GREEN + "Alt accounts will be blocked" : MenuItems.COLOR_GRAY + "Alt accounts can still join"
                     )
             ).slot(MenuSlots.SEVERITY_ALT_BLOCK).actionHandler("toggleAltBlock"));
         }
@@ -136,10 +246,28 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                     statWipe ? ItemType.EXPERIENCE_BOTTLE : ItemType.GLASS_BOTTLE,
                     ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Stat-Wipe: " + (statWipe ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
                     MenuItems.lore(
-                            MenuItems.COLOR_GRAY + "Toggle stat-wiping for this punishment"
+                            MenuItems.COLOR_GRAY + "Wipe player stats after punishment",
+                            "",
+                            statWipe ? MenuItems.COLOR_GREEN + "Stats will be wiped" : MenuItems.COLOR_GRAY + "Stats will be preserved"
                     )
             ).slot(MenuSlots.SEVERITY_STAT_WIPE).actionHandler("toggleStatWipe"));
         }
+    }
+
+    private String getStatusColor(String status) {
+        if (status == null) return MenuItems.COLOR_GRAY;
+        return switch (status.toLowerCase()) {
+            case "good" -> MenuItems.COLOR_GREEN;
+            case "warning" -> MenuItems.COLOR_YELLOW;
+            case "restricted" -> MenuItems.COLOR_GOLD;
+            case "banned" -> MenuItems.COLOR_RED;
+            default -> MenuItems.COLOR_GRAY;
+        };
+    }
+
+    private String capitalizeFirst(String str) {
+        if (str == null || str.isEmpty()) return str;
+        return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase();
     }
 
     @Override
@@ -147,6 +275,10 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         super.registerActionHandlers();
 
         // Severity handlers
+        registerActionHandler("issueSingle", (ActionHandler) click -> {
+            issuePunishment(click, 1); // Regular severity for single
+            return CallResult.DENY_GRABBING;
+        });
         registerActionHandler("issueLenient", (ActionHandler) click -> {
             issuePunishment(click, 0);
             return CallResult.DENY_GRABBING;

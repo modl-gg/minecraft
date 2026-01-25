@@ -339,6 +339,16 @@ public class ModlHttpClientWithFallback implements ModlHttpClient {
         );
     }
 
+    @NotNull
+    @Override
+    public CompletableFuture<PunishmentPreviewResponse> getPunishmentPreview(@NotNull UUID playerUuid, int typeOrdinal) {
+        return withFallback(
+                () -> v2Client.getPunishmentPreview(playerUuid, typeOrdinal),
+                () -> v1Client.getPunishmentPreview(playerUuid, typeOrdinal),
+                "getPunishmentPreview"
+        );
+    }
+
     /**
      * Check if the client has fallen back to V1 API.
      * @return true if currently using V1 fallback

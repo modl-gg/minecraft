@@ -49,3 +49,178 @@ migration:
       # Table prefix for LiteBans tables (default: "litebans_")
       # Plugin will try to read from LiteBans config first
       table_prefix: "litebans_"
+
+# Punish GUI Configuration
+# Configures the punishment menu layout (slots 28-34, 37-43 in a 6-row inventory)
+# Slot numbers 1-14 map to these positions:
+#   Row 4: [28, 29, 30, 31, 32, 33, 34] = slots 1-7
+#   Row 5: [37, 38, 39, 40, 41, 42, 43] = slots 8-14
+punish_gui:
+  # Slot 1 - Chat Abuse
+  1:
+    enabled: true
+    item: "minecraft:feather"
+    title: "Chat Abuse"
+    ordinal: 6
+    description:
+      - "&7{staff-description}"
+      - ""
+      - "&fSocial Offender Level: {social-status}"
+      - ""
+      - "&eClick to issue new punishment."
+
+  # Slot 2 - Anti Social
+  2:
+    enabled: true
+    item: "minecraft:pufferfish"
+    title: "Anti Social"
+    ordinal: 7
+    description:
+      - "&7{staff-description}"
+      - ""
+      - "&fSocial Offender Level: {social-status}"
+      - ""
+      - "&eClick to issue new punishment."
+
+  # Slot 3 - Targeting
+  3:
+    enabled: true
+    item: "minecraft:creeper_head"
+    title: "Targeting"
+    ordinal: 8
+    description:
+      - "&7{staff-description}"
+      - ""
+      - "&fSocial Offender Level: {social-status}"
+      - ""
+      - "&eClick to issue new punishment."
+
+  # Slot 4 - Disabled
+  4:
+    enabled: false
+
+  # Slot 5 - Team Abuse
+  5:
+    enabled: true
+    item: "minecraft:lava_bucket"
+    title: "Team Abuse"
+    ordinal: 12
+    description:
+      - "&7{staff-description}"
+      - ""
+      - "&fGameplay Offender Level: {gameplay-status}"
+      - ""
+      - "&eClick to issue new punishment."
+
+  # Slot 6 - Game Abuse
+  6:
+    enabled: true
+    item: "minecraft:spider_eye"
+    title: "Game Abuse"
+    ordinal: 13
+    description:
+      - "&7{staff-description}"
+      - ""
+      - "&fGameplay Offender Level: {gameplay-status}"
+      - ""
+      - "&eClick to issue new punishment."
+
+  # Slot 7 - Cheating
+  7:
+    enabled: true
+    item: "minecraft:diamond_sword"
+    title: "Cheating"
+    ordinal: 14
+    description:
+      - "&7{staff-description}"
+      - ""
+      - "&fGameplay Offender Level: {gameplay-status}"
+      - ""
+      - "&eClick to issue new punishment."
+
+  # Slot 8 - Bad Content (Row 2)
+  8:
+    enabled: true
+    item: "minecraft:ink_sac"
+    title: "Bad Content"
+    ordinal: 9
+    description:
+      - "&7{staff-description}"
+      - ""
+      - "&fSocial Offender Level: {social-status}"
+      - ""
+      - "&eClick to issue new punishment."
+
+  # Slot 9 - Bad Username
+  9:
+    enabled: true
+    item: "minecraft:name_tag"
+    title: "Bad Username"
+    ordinal: 10
+    description:
+      - "&7{staff-description}"
+      - ""
+      - "&eClick to restrict player until username is changed."
+
+  # Slot 10 - Bad Skin
+  10:
+    enabled: true
+    item: "minecraft:armor_stand"
+    title: "Bad Skin"
+    ordinal: 11
+    description:
+      - "&7{staff-description}"
+      - ""
+      - "&eClick to restrict player until skin is changed."
+
+  # Slot 11 - Disabled
+  11:
+    enabled: false
+
+  # Slot 12 - Game Trading
+  12:
+    enabled: true
+    item: "minecraft:gold_ingot"
+    title: "Game Trading"
+    ordinal: 15
+    description:
+      - "&7{staff-description}"
+      - ""
+      - "&fGameplay Offender Level: {gameplay-status}"
+      - ""
+      - "&eClick to issue new punishment."
+
+  # Slot 13 - Account Abuse
+  13:
+    enabled: true
+    item: "minecraft:experience_bottle"
+    title: "Account Abuse"
+    ordinal: 16
+    description:
+      - "&7{staff-description}"
+      - ""
+      - "&fGameplay Offender Level: {gameplay-status}"
+      - ""
+      - "&eClick to issue new punishment."
+
+  # Slot 14 - Systems Abuse
+  14:
+    enabled: true
+    item: "minecraft:barrier"
+    title: "Systems Abuse"
+    ordinal: 17
+    description:
+      - "&7{staff-description}"
+      - ""
+      - "&fGameplay Offender Level: {gameplay-status}"
+      - ""
+      - "&eClick to issue new punishment."
+
+# Placeholders available in descriptions:
+#   {staff-description} - The staff description from the punishment type configuration
+#   {social-status}     - The player's current social offender status (Good, Warning, Restricted, Banned)
+#   {gameplay-status}   - The player's current gameplay offender status (Good, Warning, Restricted, Banned)
+#   {social-points}     - The player's current social offense points
+#   {gameplay-points}   - The player's current gameplay offense points
+#
+# Color codes: &7=gray, &f=white, &c=red, &a=green, &e=yellow, &6=gold, &b=aqua

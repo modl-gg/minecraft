@@ -95,4 +95,8 @@ public interface ModlHttpClient {
 
     @NotNull
     CompletableFuture<DashboardStatsResponse> getDashboardStats();
+
+    // Punishment preview
+    @NotNull
+    CompletableFuture<PunishmentPreviewResponse> getPunishmentPreview(@NotNull UUID playerUuid, int typeOrdinal);
 }

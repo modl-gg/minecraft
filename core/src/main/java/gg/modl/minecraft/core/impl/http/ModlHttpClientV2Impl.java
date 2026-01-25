@@ -422,6 +422,15 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), DashboardStatsResponse.class);
     }
 
+    @NotNull
+    @Override
+    public CompletableFuture<PunishmentPreviewResponse> getPunishmentPreview(@NotNull UUID playerUuid, int typeOrdinal) {
+        String endpoint = "/minecraft/punishments/preview?playerUuid=" + playerUuid.toString() + "&typeOrdinal=" + typeOrdinal;
+        return sendAsync(requestBuilder(endpoint)
+                .GET()
+                .build(), PunishmentPreviewResponse.class);
+    }
+
     private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {
         return sendAsync(request, responseType, null);
     }

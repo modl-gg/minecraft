@@ -505,6 +505,17 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                 .build(), DashboardStatsResponse.class);
     }
 
+    @NotNull
+    @Override
+    public CompletableFuture<PunishmentPreviewResponse> getPunishmentPreview(@NotNull UUID playerUuid, int typeOrdinal) {
+        String endpoint = "/minecraft/punishments/preview?playerUuid=" + playerUuid.toString() + "&typeOrdinal=" + typeOrdinal;
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + endpoint))
+                .header("X-API-Key", apiKey)
+                .GET()
+                .build(), PunishmentPreviewResponse.class);
+    }
+
     private String generateRequestId() {
         return String.valueOf(System.nanoTime() % 1000000);
     }
