@@ -8,6 +8,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PardonPlayerRequest;
 import gg.modl.minecraft.api.http.request.PardonPunishmentRequest;
+import gg.modl.minecraft.api.http.response.PardonResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -92,17 +93,22 @@ public class PardonCommand extends BaseCommand {
             null // No type checking for general pardon command
         );
 
-        CompletableFuture<Void> future = httpClient.pardonPunishment(request);
-        
+        CompletableFuture<PardonResponse> future = httpClient.pardonPunishment(request);
+
         future.thenAccept(response -> {
-            sender.sendMessage(localeManager.getMessage("pardon.success_id", 
-                Map.of("id", punishmentId)));
-                
-            // Staff notification
-            String staffMessage = localeManager.getMessage("pardon.staff_notification_id",
-                Map.of("issuer", issuerName, "id", punishmentId));
-            platform.staffBroadcast(staffMessage);
-            
+            if (response.hasPardoned()) {
+                sender.sendMessage(localeManager.getMessage("pardon.success_id",
+                    Map.of("id", punishmentId)));
+
+                // Staff notification - only if something was actually pardoned
+                String staffMessage = localeManager.getMessage("pardon.staff_notification_id",
+                    Map.of("issuer", issuerName, "id", punishmentId));
+                platform.staffBroadcast(staffMessage);
+            } else {
+                sender.sendMessage(localeManager.getMessage("pardon.already_pardoned_id",
+                    Map.of("id", punishmentId)));
+            }
+
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
@@ -130,20 +136,25 @@ public class PardonCommand extends BaseCommand {
             reason.isEmpty() ? null : reason
         );
 
-        CompletableFuture<Void> future = httpClient.pardonPlayer(request);
-        
+        CompletableFuture<PardonResponse> future = httpClient.pardonPlayer(request);
+
         future.thenAccept(response -> {
-            sender.sendMessage(localeManager.getMessage("pardon.success_player", 
-                Map.of("player", playerName, "type", type)));
-                
-            // Staff notification
-            String staffMessage = localeManager.getMessage("pardon.staff_notification_player",
-                Map.of("issuer", issuerName, "player", playerName, "type", type));
-            platform.staffBroadcast(staffMessage);
-            
-            // Invalidate cache for the pardoned player
-            invalidatePlayerCache(playerName, type);
-            
+            if (response.hasPardoned()) {
+                sender.sendMessage(localeManager.getMessage("pardon.success_player",
+                    Map.of("player", playerName, "type", type)));
+
+                // Staff notification - only if something was actually pardoned
+                String staffMessage = localeManager.getMessage("pardon.staff_notification_player",
+                    Map.of("issuer", issuerName, "player", playerName, "type", type));
+                platform.staffBroadcast(staffMessage);
+
+                // Invalidate cache for the pardoned player
+                invalidatePlayerCache(playerName, type);
+            } else {
+                sender.sendMessage(localeManager.getMessage("pardon.no_active_punishment",
+                    Map.of("player", playerName, "type", type)));
+            }
+
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
@@ -166,7 +177,7 @@ public class PardonCommand extends BaseCommand {
             expectedType
         );
 
-        CompletableFuture<Void> future = httpClient.pardonPunishment(request);
+        CompletableFuture<PardonResponse> future = httpClient.pardonPunishment(request);
         
         future.thenAccept(response -> {
             sender.sendMessage(localeManager.getMessage("pardon.success_id", 
@@ -223,22 +234,28 @@ public class PardonCommand extends BaseCommand {
             expectedType
         );
 
-        CompletableFuture<Void> future = httpClient.pardonPunishment(request);
-        
+        CompletableFuture<PardonResponse> future = httpClient.pardonPunishment(request);
+
         future.thenAccept(response -> {
-            // Success - it was a punishment ID
-            sender.sendMessage(localeManager.getMessage("pardon.success_id", 
-                Map.of("id", target)));
-                
-            // Staff notification
-            String staffMessage = localeManager.getMessage("pardon.staff_notification_id",
-                Map.of("issuer", issuerName, "id", target));
-            platform.staffBroadcast(staffMessage);
-            
-            // For punishment ID pardons, we don't know the player name, so clear the entire cache
-            // This is less efficient but ensures no stale cache remains
-            cache.clear();
-            
+            if (response.hasPardoned()) {
+                // Success - it was a punishment ID and it was pardoned
+                sender.sendMessage(localeManager.getMessage("pardon.success_id",
+                    Map.of("id", target)));
+
+                // Staff notification - only if something was actually pardoned
+                String staffMessage = localeManager.getMessage("pardon.staff_notification_id",
+                    Map.of("issuer", issuerName, "id", target));
+                platform.staffBroadcast(staffMessage);
+
+                // For punishment ID pardons, we don't know the player name, so clear the entire cache
+                // This is less efficient but ensures no stale cache remains
+                cache.clear();
+            } else {
+                // Punishment ID was found but already inactive - inform user
+                sender.sendMessage(localeManager.getMessage("pardon.already_pardoned_id",
+                    Map.of("id", target)));
+            }
+
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));

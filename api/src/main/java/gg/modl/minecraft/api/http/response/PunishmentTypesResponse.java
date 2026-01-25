@@ -29,5 +29,27 @@ public class PunishmentTypesResponse {
         private final String playerDescription;
         private final Boolean permanentUntilSkinChange;
         private final Boolean permanentUntilUsernameChange;
+
+        /**
+         * Check if this punishment type is a kick.
+         * Kicks are instant punishments with no duration.
+         */
+        public boolean isKick() {
+            return "KICK".equalsIgnoreCase(category) || ordinal == 0;
+        }
+
+        /**
+         * Check if this punishment type is a ban.
+         */
+        public boolean isBan() {
+            return "BAN".equalsIgnoreCase(category);
+        }
+
+        /**
+         * Check if this punishment type is a mute.
+         */
+        public boolean isMute() {
+            return "MUTE".equalsIgnoreCase(category);
+        }
     }
 }

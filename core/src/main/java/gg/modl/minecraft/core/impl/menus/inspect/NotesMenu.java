@@ -123,19 +123,18 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
         // Create note handler
         registerActionHandler("createNote", this::handleCreateNote);
 
-        // Override header navigation handlers
-        // Primary tabs should NOT have back button when switching between them - pass null
+        // Override header navigation handlers - pass backAction to preserve the back button
         registerActionHandler("openNotes", click -> {
             // Already on notes, do nothing
         });
         registerActionHandler("openAlts", ActionHandlers.openMenu(
-                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
         registerActionHandler("openHistory", ActionHandlers.openMenu(
-                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
         registerActionHandler("openReports", ActionHandlers.openMenu(
-                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
         registerActionHandler("openPunish", ActionHandlers.openMenu(
-                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
     }
 
     private void handleCreateNote(Click click) {

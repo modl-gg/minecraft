@@ -562,9 +562,34 @@ public class SyncService {
      * Handle punishment pardon
      */
     private void handlePardon(UUID uuid, String username, String punishmentId) {
-        // Remove from cache
-        cache.removePlayer(uuid);
-        
+        // Check if this punishment matches the cached mute or ban
+        boolean wasMute = false;
+        boolean wasBan = false;
+
+        // Check cached mute
+        SimplePunishment cachedMute = cache.getSimpleMute(uuid);
+        if (cachedMute != null && cachedMute.getId().equals(punishmentId)) {
+            cache.removeMute(uuid);
+            wasMute = true;
+            logger.info(String.format("Removed cached mute for %s (punishment %s)", username, punishmentId));
+        }
+
+        // Check cached ban (in case player was banned while online)
+        SimplePunishment cachedBan = cache.getSimpleBan(uuid);
+        if (cachedBan != null && cachedBan.getId().equals(punishmentId)) {
+            cache.removeBan(uuid);
+            wasBan = true;
+            logger.info(String.format("Removed cached ban for %s (punishment %s)", username, punishmentId));
+        }
+
+        // If neither matched by ID, try removing both (fallback for older data)
+        if (!wasMute && !wasBan) {
+            // Remove any cached punishment data for safety
+            cache.removeMute(uuid);
+            cache.removeBan(uuid);
+            logger.info(String.format("Cleared all cached punishments for %s (punishment %s not found in cache)", username, punishmentId));
+        }
+
         logger.info(String.format("Pardoned punishment %s for %s", punishmentId, username));
         platform.broadcast(String.format("§a%s has been pardoned", username));
     }

@@ -284,13 +284,13 @@ public class LocaleManager {
     public String getPublicNotificationMessage(int ordinal, String punishmentType, Map<String, String> variables) {
         String path = "punishment_types.ordinal_" + ordinal + ".public_notification";
         Object value = getNestedValue(messages, path);
-        
+
         if (value instanceof String) {
             return getMessage(path, variables);
         }
-        
-        // Fallback to type-specific default based on punishment type
-        return getDefaultPublicNotificationByType(punishmentType, variables);
+
+        // Fallback to ordinal-based default (more reliable than category which may be null for kicks)
+        return getDefaultPublicNotification(ordinal, variables);
     }
     
     /**
@@ -359,16 +359,150 @@ public class LocaleManager {
     public String getPlayerNotificationMessage(int ordinal, String punishmentType, Map<String, String> baseVariables, gg.modl.minecraft.api.SimplePunishment punishment, gg.modl.minecraft.core.util.PunishmentMessages.MessageContext context) {
         // Create enhanced variables map with dynamic variables
         Map<String, String> variables = new HashMap<>(baseVariables);
-        
+
         // Add dynamic variables
         variables.put("tense", getTenseForContext(context));
         variables.put("tense2", getTense2ForContext(context));
         variables.put("temp", punishment.isPermanent() ? "permanently" : "temporarily");
         variables.put("duration_formatted", getDurationFormatted(punishment, getPunishmentTypeName(punishmentType)));
         variables.put("mute_duration_formatted", getMuteDurationFormatted(punishment));
-        
-        // Use the enhanced variables with the standard method
-        return getPlayerNotificationMessage(ordinal, punishmentType, variables);
+
+        // Add issued date in MM/DD/YY HH:MM format
+        variables.put("issued", formatIssuedDate(punishment));
+
+        // Add appeal URL (panel url + /appeal)
+        String panelUrl = getMessage("config.panel_url");
+        if (panelUrl != null && !panelUrl.startsWith("&c")) {
+            variables.put("appeal_url", panelUrl + "/appeal");
+        } else {
+            variables.put("appeal_url", getMessage("config.appeal_url"));
+        }
+
+        // Add player description from punishment type
+        String playerDesc = punishment.getPlayerDescription();
+        variables.put("player_description", playerDesc != null ? playerDesc : "");
+
+        // Add issuer name
+        String issuer = punishment.getIssuerName();
+        variables.put("issuer", issuer != null ? issuer : "Staff");
+
+        // Add will_expire - empty if permanent, or "This {type} will expire in {duration}"
+        variables.put("will_expire", getWillExpireMessage(punishment));
+
+        // Use the enhanced variables with the standard method, passing category for correct fallback
+        String category = punishment.getCategory();
+        return getPlayerNotificationMessageWithCategory(ordinal, punishmentType, category, variables);
+    }
+
+    /**
+     * Format issued date in MM/DD/YY HH:MM format
+     */
+    private String formatIssuedDate(gg.modl.minecraft.api.SimplePunishment punishment) {
+        java.util.Date issuedDate = punishment.getIssuedAsDate();
+        if (issuedDate == null) {
+            return "Unknown";
+        }
+        SimpleDateFormat formatter = new SimpleDateFormat("MM/dd/yy HH:mm");
+        return formatter.format(issuedDate);
+    }
+
+    /**
+     * Get will_expire message - empty if permanent, or newline + "This {type} will expire in {duration}"
+     */
+    private String getWillExpireMessage(gg.modl.minecraft.api.SimplePunishment punishment) {
+        if (punishment.isPermanent()) {
+            return "";
+        }
+
+        Long expiration = punishment.getExpiration();
+        if (expiration == null) {
+            return "";
+        }
+
+        long timeLeft = expiration - System.currentTimeMillis();
+        if (timeLeft <= 0) {
+            return "";
+        }
+
+        String duration = gg.modl.minecraft.core.util.PunishmentMessages.formatDuration(timeLeft);
+        String punishmentTypeWord = punishment.isBan() ? "ban" : (punishment.isMute() ? "mute" : "punishment");
+
+        return "\n&7This " + punishmentTypeWord + " will expire in &f" + duration + "&7.";
+    }
+
+    /**
+     * Get player notification message using category for fallback instead of type name
+     */
+    private String getPlayerNotificationMessageWithCategory(int ordinal, String punishmentType, String category, Map<String, String> variables) {
+        String path = "punishment_types.ordinal_" + ordinal + ".player_notification";
+        Object value = getNestedValue(messages, path);
+
+        if (value instanceof List<?>) {
+            @SuppressWarnings("unchecked")
+            List<String> lines = (List<String>) value;
+
+            // Replace variables in each line and join with newlines
+            return lines.stream()
+                    .map(line -> {
+                        // Replace placeholders
+                        for (Map.Entry<String, String> entry : variables.entrySet()) {
+                            line = line.replace("{" + entry.getKey() + "}", entry.getValue());
+                        }
+                        return colorize(line);
+                    })
+                    .collect(Collectors.joining("\n"));
+        } else if (value instanceof String) {
+            // Handle legacy single string format
+            return getMessage(path, variables);
+        }
+
+        // Fallback to category-based default (MUTE, BAN, KICK) instead of type name
+        return getDefaultPlayerNotificationByCategory(category, variables);
+    }
+
+    /**
+     * Get default player notification based on category (BAN, MUTE, KICK)
+     */
+    private String getDefaultPlayerNotificationByCategory(String category, Map<String, String> variables) {
+        String defaultPath = getDefaultPlayerPathForCategory(category);
+        Object value = getNestedValue(messages, defaultPath);
+
+        if (value instanceof List<?>) {
+            @SuppressWarnings("unchecked")
+            List<String> lines = (List<String>) value;
+
+            // Replace variables in each line and join with newlines
+            return lines.stream()
+                    .map(line -> {
+                        // Replace placeholders
+                        for (Map.Entry<String, String> entry : variables.entrySet()) {
+                            line = line.replace("{" + entry.getKey() + "}", entry.getValue());
+                        }
+                        return colorize(line);
+                    })
+                    .collect(Collectors.joining("\n"));
+        } else if (value instanceof String) {
+            return getMessage(defaultPath, variables);
+        }
+
+        // Ultimate fallback to universal default
+        return getMessage("punishments.player_notifications.default", variables);
+    }
+
+    /**
+     * Get default path based on category (BAN, MUTE, KICK)
+     */
+    private String getDefaultPlayerPathForCategory(String category) {
+        if (category == null) {
+            return "punishments.player_notifications.default";
+        }
+
+        return switch (category.toUpperCase()) {
+            case "KICK" -> "punishments.player_notifications.kick_default";
+            case "MUTE" -> "punishments.player_notifications.mute_default";
+            case "BAN" -> "punishments.player_notifications.ban_default";
+            default -> "punishments.player_notifications.default";
+        };
     }
     
     /**

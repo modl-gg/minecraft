@@ -29,7 +29,7 @@ public abstract class BaseMenu extends SimpleMenu {
     protected final Consumer<CirrusPlayerWrapper> backAction;
 
     /**
-     * Create a new base menu.
+     * Create a new base menu with default 6-row size.
      *
      * @param platform The platform instance
      * @param httpClient The HTTP client for API calls
@@ -38,6 +38,21 @@ public abstract class BaseMenu extends SimpleMenu {
      * @param backAction Action to perform when back button is clicked (null if none)
      */
     public BaseMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName, Consumer<CirrusPlayerWrapper> backAction) {
+        this(platform, httpClient, viewerUuid, viewerName, backAction, InventoryType.GENERIC_9X6);
+    }
+
+    /**
+     * Create a new base menu with custom size.
+     *
+     * @param platform The platform instance
+     * @param httpClient The HTTP client for API calls
+     * @param viewerUuid The UUID of the player viewing the menu
+     * @param viewerName The name of the player viewing the menu
+     * @param backAction Action to perform when back button is clicked (null if none)
+     * @param inventoryType The inventory type/size for this menu
+     */
+    public BaseMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
+                    Consumer<CirrusPlayerWrapper> backAction, InventoryType inventoryType) {
         super();
         this.platform = platform;
         this.httpClient = httpClient;
@@ -45,7 +60,7 @@ public abstract class BaseMenu extends SimpleMenu {
         this.viewerName = viewerName;
         this.backAction = backAction;
 
-        type(InventoryType.GENERIC_9X6);
+        type(inventoryType);
     }
 
     /**

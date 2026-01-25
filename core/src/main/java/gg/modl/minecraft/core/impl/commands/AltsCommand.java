@@ -1,0 +1,98 @@
+package gg.modl.minecraft.core.impl.commands;
+
+import co.aikar.commands.BaseCommand;
+import co.aikar.commands.CommandIssuer;
+import co.aikar.commands.annotation.*;
+import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.PanelUnavailableException;
+import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
+import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.menus.inspect.AltsMenu;
+import gg.modl.minecraft.core.locale.LocaleManager;
+import lombok.RequiredArgsConstructor;
+
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Command to open the Alts Menu GUI for a player.
+ */
+@RequiredArgsConstructor
+public class AltsCommand extends BaseCommand {
+    private final ModlHttpClient httpClient;
+    private final Platform platform;
+    private final Cache cache;
+    private final LocaleManager localeManager;
+
+    @CommandCompletion("@players")
+    @CommandAlias("alts|alt|linked")
+    @Syntax("<player>")
+    @Description("Open the alts menu for a player")
+    public void alts(CommandIssuer sender, @Name("player") String playerQuery) {
+        // Must be a player to use this command
+        if (!sender.isPlayer()) {
+            sender.sendMessage("§cThis command can only be used by players.");
+            return;
+        }
+
+        UUID senderUuid = sender.getUniqueId();
+
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
+
+        // Look up the player
+        PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
+
+        httpClient.lookupPlayer(request).thenAccept(response -> {
+            if (response.isSuccess() && response.getData() != null) {
+                UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
+
+                // Fetch full profile for the alts menu
+                httpClient.getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
+                    if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
+                        platform.runOnMainThread(() -> {
+                            // Get sender name
+                            String senderName = "Staff";
+                            if (platform.getPlayer(senderUuid) != null) {
+                                senderName = platform.getPlayer(senderUuid).username();
+                            }
+
+                            // Open the alts menu
+                            AltsMenu menu = new AltsMenu(
+                                    platform,
+                                    httpClient,
+                                    senderUuid,
+                                    senderName,
+                                    profileResponse.getProfile(),
+                                    null // No parent menu when opened from command
+                            );
+
+                            // Get CirrusPlayerWrapper and display
+                            CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+                            menu.display(player);
+                        });
+                    } else {
+                        sender.sendMessage(localeManager.getMessage("player_lookup.not_found", Map.of("player", playerQuery)));
+                    }
+                }).exceptionally(throwable -> {
+                    handleException(sender, throwable, playerQuery);
+                    return null;
+                });
+            } else {
+                sender.sendMessage(localeManager.getMessage("player_lookup.not_found", Map.of("player", playerQuery)));
+            }
+        }).exceptionally(throwable -> {
+            handleException(sender, throwable, playerQuery);
+            return null;
+        });
+    }
+
+    private void handleException(CommandIssuer sender, Throwable throwable, String playerQuery) {
+        if (throwable.getCause() instanceof PanelUnavailableException) {
+            sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+        } else {
+            sender.sendMessage(localeManager.getMessage("player_lookup.error", Map.of("error", throwable.getMessage())));
+        }
+    }
+}

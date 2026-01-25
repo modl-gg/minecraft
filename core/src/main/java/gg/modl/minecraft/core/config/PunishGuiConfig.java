@@ -64,11 +64,22 @@ public class PunishGuiConfig {
                 Map<String, Object> rootConfig = yaml.load(inputStream);
 
                 if (rootConfig != null && rootConfig.containsKey("punish_gui")) {
-                    Map<String, Object> punishGui = (Map<String, Object>) rootConfig.get("punish_gui");
+                    // YAML may return Map<Integer, Object> or Map<String, Object> depending on key format
+                    Map<?, ?> punishGui = (Map<?, ?>) rootConfig.get("punish_gui");
 
-                    for (Map.Entry<String, Object> entry : punishGui.entrySet()) {
+                    for (Map.Entry<?, ?> entry : punishGui.entrySet()) {
                         try {
-                            int slotNumber = Integer.parseInt(entry.getKey());
+                            // Handle both Integer and String keys
+                            int slotNumber;
+                            Object key = entry.getKey();
+                            if (key instanceof Integer) {
+                                slotNumber = (Integer) key;
+                            } else if (key instanceof String) {
+                                slotNumber = Integer.parseInt((String) key);
+                            } else {
+                                continue;
+                            }
+
                             if (slotNumber < 1 || slotNumber > 14) {
                                 continue;
                             }

@@ -70,13 +70,37 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
      */
     public OnlinePlayersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                              boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
+        this(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction, "Recent Reports", null);
+    }
+
+    /**
+     * Create a new online players menu with preserved state.
+     *
+     * @param platform The platform instance
+     * @param httpClient The HTTP client for API calls
+     * @param viewerUuid The UUID of the staff viewing the menu
+     * @param viewerName The name of the staff viewing the menu
+     * @param isAdmin Whether the viewer has admin permissions
+     * @param panelUrl The panel URL
+     * @param backAction Action to return to parent menu
+     * @param sortOption Current sort option to preserve
+     * @param existingPlayers Existing player list to preserve (if null, will fetch)
+     */
+    public OnlinePlayersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
+                             boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction,
+                             String sortOption, List<OnlinePlayer> existingPlayers) {
         super("Online Players", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
         this.panelUrl = panelUrl;
         this.parentBackAction = backAction;
+        this.currentSort = sortOption;
         activeTab = StaffTab.ONLINE_PLAYERS;
 
-        // Fetch online players from API
-        fetchOnlinePlayers();
+        // Use existing players if provided, otherwise fetch
+        if (existingPlayers != null) {
+            this.onlinePlayers = new ArrayList<>(existingPlayers);
+        } else {
+            fetchOnlinePlayers();
+        }
     }
 
     private void fetchOnlinePlayers() {
@@ -180,12 +204,17 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
         // Fetch player profile and open inspect menu
         click.clickedMenu().close();
 
+        // Capture current state for back action
+        final String sortState = currentSort;
+        final List<OnlinePlayer> playerState = new ArrayList<>(onlinePlayers);
+
         httpClient.getPlayerProfile(player.getUuid()).thenAccept(response -> {
             if (response.getStatus() == 200) {
                 platform.runOnMainThread(() -> {
-                    // Opening InspectMenu from Staff menu - back button returns to OnlinePlayersMenu
+                    // Opening InspectMenu from Staff menu - back button returns to OnlinePlayersMenu with preserved state
                     new InspectMenu(platform, httpClient, viewerUuid, viewerName, response.getProfile(),
-                            p -> new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p))
+                            p -> new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null,
+                                    sortState, playerState).display(p))
                             .display(click.player());
                 });
             } else {
@@ -233,11 +262,12 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
         // Cycle through sort options
         int currentIndex = sortOptions.indexOf(currentSort);
         int nextIndex = (currentIndex + 1) % sortOptions.size();
-        currentSort = sortOptions.get(nextIndex);
+        String nextSort = sortOptions.get(nextIndex);
 
-        // Refresh menu - preserve backAction if present
+        // Refresh menu - preserve backAction and existing data
         ActionHandlers.openMenu(
-                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction))
+                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction,
+                        nextSort, onlinePlayers))
                 .handle(click);
     }
 }

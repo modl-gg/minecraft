@@ -136,18 +136,17 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Override header navigation handlers
-        // Primary tabs should NOT have back button when switching between them - pass null
+        // Override header navigation handlers - pass backAction to preserve the back button
         registerActionHandler("openNotes", ActionHandlers.openMenu(
-                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
         registerActionHandler("openAlts", click -> {
             // Already on alts, do nothing
         });
         registerActionHandler("openHistory", ActionHandlers.openMenu(
-                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
         registerActionHandler("openReports", ActionHandlers.openMenu(
-                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
         registerActionHandler("openPunish", ActionHandlers.openMenu(
-                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
     }
 }

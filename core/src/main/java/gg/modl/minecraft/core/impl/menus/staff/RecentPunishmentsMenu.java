@@ -144,20 +144,29 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         // Type and status - get from dataMap or fall back to registry
         Object typeNameObj = punishment.getDataMap().get("typeName");
         String typeName = typeNameObj != null ? typeNameObj.toString() : punishment.getTypeCategory();
-        boolean isActive = punishment.isActive();
+
+        // Check if this is a kick (kicks don't have duration or active status)
+        boolean isKick = typeName != null && typeName.toLowerCase().contains("kick");
+        boolean isActive = !isKick && punishment.isActive(); // Kicks are never "active"
 
         lore.add(MenuItems.COLOR_GRAY + "Type: " + (isActive ? MenuItems.COLOR_RED : MenuItems.COLOR_WHITE) + typeName);
-        lore.add(MenuItems.COLOR_GRAY + "Status: " + (isActive ? MenuItems.COLOR_RED + "Active" : MenuItems.COLOR_GREEN + "Expired/Pardoned"));
+
+        // Only show status for non-kicks (kicks are instant)
+        if (!isKick) {
+            lore.add(MenuItems.COLOR_GRAY + "Status: " + (isActive ? MenuItems.COLOR_RED + "Active" : MenuItems.COLOR_GREEN + "Expired/Pardoned"));
+        }
 
         // Issuer
         lore.add(MenuItems.COLOR_GRAY + "Issued by: " + MenuItems.COLOR_WHITE + punishment.getIssuerName());
 
-        // Duration
-        Long duration = punishment.getDuration();
-        if (duration != null && duration > 0) {
-            lore.add(MenuItems.COLOR_GRAY + "Duration: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(duration));
-        } else {
-            lore.add(MenuItems.COLOR_GRAY + "Duration: " + MenuItems.COLOR_RED + "Permanent");
+        // Duration - don't show for kicks (they are instant)
+        if (!isKick) {
+            Long duration = punishment.getDuration();
+            if (duration != null && duration > 0) {
+                lore.add(MenuItems.COLOR_GRAY + "Duration: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(duration));
+            } else {
+                lore.add(MenuItems.COLOR_GRAY + "Duration: " + MenuItems.COLOR_RED + "Permanent");
+            }
         }
 
         // Reason
@@ -172,9 +181,11 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         // Get appropriate item type based on punishment type
         ItemType itemType = getPunishmentItemType(punishment);
 
+        // Kicks are never red since they're instant
+        String displayColor = isActive ? MenuItems.COLOR_RED : MenuItems.COLOR_GRAY;
         return CirrusItem.of(
                 itemType,
-                ChatElement.ofLegacyText((isActive ? MenuItems.COLOR_RED : MenuItems.COLOR_GRAY) + typeName + " - " + MenuItems.formatDate(punishment.getIssued())),
+                ChatElement.ofLegacyText(displayColor + typeName + " - " + MenuItems.formatDate(punishment.getIssued())),
                 MenuItems.lore(lore)
         );
     }
@@ -205,13 +216,15 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         }
 
         // Open modify punishment menu with staff menu as parent
+        // rootBackAction = return to staff menu (null since we're at top level)
+        // menuBackAction = return to this punishments list
         Consumer<CirrusPlayerWrapper> returnToPunishments = p ->
                 new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p);
 
         if (pwp.getAccount() != null) {
             ActionHandlers.openMenu(
                     new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
-                            pwp.getAccount(), pwp.getPunishment(), returnToPunishments))
+                            pwp.getAccount(), pwp.getPunishment(), null, returnToPunishments))
                     .handle(click);
         } else {
             // Fetch the account first
@@ -220,7 +233,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
                 if (response.getStatus() == 200) {
                     platform.runOnMainThread(() -> {
                         new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
-                                response.getProfile(), pwp.getPunishment(), returnToPunishments)
+                                response.getProfile(), pwp.getPunishment(), null, returnToPunishments)
                                 .display(click.player());
                     });
                 } else {

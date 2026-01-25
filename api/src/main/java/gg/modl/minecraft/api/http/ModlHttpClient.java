@@ -69,10 +69,10 @@ public interface ModlHttpClient {
 
     // Pardon methods
     @NotNull
-    CompletableFuture<Void> pardonPunishment(@NotNull PardonPunishmentRequest request);
+    CompletableFuture<PardonResponse> pardonPunishment(@NotNull PardonPunishmentRequest request);
 
     @NotNull
-    CompletableFuture<Void> pardonPlayer(@NotNull PardonPlayerRequest request);
+    CompletableFuture<PardonResponse> pardonPlayer(@NotNull PardonPlayerRequest request);
 
     @NotNull
     CompletableFuture<Void> updateMigrationStatus(@NotNull MigrationStatusUpdateRequest request);
@@ -99,4 +99,17 @@ public interface ModlHttpClient {
     // Punishment preview
     @NotNull
     CompletableFuture<PunishmentPreviewResponse> getPunishmentPreview(@NotNull UUID playerUuid, int typeOrdinal);
+
+    // Punishment modification methods
+    @NotNull
+    CompletableFuture<Void> addPunishmentNote(@NotNull AddPunishmentNoteRequest request);
+
+    @NotNull
+    CompletableFuture<Void> addPunishmentEvidence(@NotNull AddPunishmentEvidenceRequest request);
+
+    @NotNull
+    CompletableFuture<Void> changePunishmentDuration(@NotNull ChangePunishmentDurationRequest request);
+
+    @NotNull
+    CompletableFuture<Void> togglePunishmentOption(@NotNull TogglePunishmentOptionRequest request);
 }

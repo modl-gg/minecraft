@@ -141,27 +141,20 @@ public class PunishmentMessages {
     }
     
     /**
-     * Format a punishment for broadcast messages
+     * Format a punishment for broadcast messages.
+     * Uses the punishment's actual ordinal to look up the correct public_notification in locale.
+     *
+     * @param username The username of the punished player
+     * @param punishment The punishment data containing ordinal, description, etc.
+     * @param action Unused - kept for API compatibility. The ordinal from punishment is used instead.
+     * @param localeManager The locale manager for message lookups
+     * @return The formatted broadcast message
      */
     public static String formatPunishmentBroadcast(String username, SimplePunishment punishment, String action, LocaleManager localeManager) {
-        // Determine punishment type ordinal based on action (for manual punishments)
-        int ordinal;
-        switch (action.toLowerCase()) {
-            case "kicked":
-                ordinal = 0; // Kick
-                break;
-            case "muted":
-                ordinal = 1; // Manual Mute
-                break;
-            case "banned":
-                ordinal = 2; // Manual Ban
-                break;
-            default:
-                // For dynamic punishments, try to determine from punishment type
-                ordinal = punishment.getType() != null ? Integer.parseInt(punishment.getType()) : 2;
-                break;
-        }
-        
+        // Use the actual punishment ordinal from the punishment data
+        // This ensures custom punishment types (ordinal 3, 4, 5, etc.) use their own public_notification
+        int ordinal = punishment.getOrdinal();
+
         // Build variables for message formatting
         Map<String, String> variables = new HashMap<>();
         variables.put("target", username);
@@ -170,9 +163,9 @@ public class PunishmentMessages {
         variables.put("duration", punishment.isPermanent() ? "permanent" : formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
         variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
         variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");
-        
-        // Use public notification message for consistency
-        return localeManager.getPublicNotificationMessage(ordinal, punishment.getType(), variables);
+
+        // Use public notification message for the actual punishment type ordinal
+        return localeManager.getPublicNotificationMessage(ordinal, punishment.getCategory(), variables);
     }
     
     /**
@@ -218,15 +211,61 @@ public class PunishmentMessages {
      */
     private static Map<String, String> buildBasicPunishmentVariables(SimplePunishment punishment, LocaleManager localeManager) {
         Map<String, String> variables = new HashMap<>();
-        
+
         // Basic variables
         variables.put("target", "You");
         variables.put("reason", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
         variables.put("description", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
         variables.put("duration", punishment.isPermanent() ? "permanent" : formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
-        variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
         variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");
-        
+
+        // Appeal URL - try panel_url + /appeal, fall back to config.appeal_url
+        String panelUrl = localeManager.getMessage("config.panel_url");
+        if (panelUrl != null && !panelUrl.startsWith("§c") && !panelUrl.startsWith("&c")) {
+            variables.put("appeal_url", panelUrl + "/appeal");
+        } else {
+            variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
+        }
+
+        // Temp - "temporarily" or "permanently"
+        variables.put("temp", punishment.isPermanent() ? "permanently" : "temporarily");
+
+        // Issued date in MM/DD/YY HH:MM format
+        java.util.Date issuedDate = punishment.getIssuedAsDate();
+        if (issuedDate != null) {
+            java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("MM/dd/yy HH:mm");
+            variables.put("issued", formatter.format(issuedDate));
+        } else {
+            variables.put("issued", "Unknown");
+        }
+
+        // Player description from punishment type
+        String playerDesc = punishment.getPlayerDescription();
+        variables.put("player_description", playerDesc != null ? playerDesc : "");
+
+        // Issuer name
+        String issuer = punishment.getIssuerName();
+        variables.put("issuer", issuer != null ? issuer : "Staff");
+
+        // Will expire message
+        if (punishment.isPermanent()) {
+            variables.put("will_expire", "");
+        } else {
+            Long expiration = punishment.getExpiration();
+            if (expiration != null) {
+                long timeLeft = expiration - System.currentTimeMillis();
+                if (timeLeft > 0) {
+                    String durationStr = formatDuration(timeLeft);
+                    String typeWord = punishment.isBan() ? "ban" : (punishment.isMute() ? "mute" : "punishment");
+                    variables.put("will_expire", "\n§7This " + typeWord + " will expire in §f" + durationStr + "§7.");
+                } else {
+                    variables.put("will_expire", "");
+                }
+            } else {
+                variables.put("will_expire", "");
+            }
+        }
+
         return variables;
     }
     

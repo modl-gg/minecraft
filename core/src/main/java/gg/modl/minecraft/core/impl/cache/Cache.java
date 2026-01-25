@@ -65,7 +65,12 @@ public class Cache {
         CachedPlayerData data = cache.get(playerUuid);
         return data != null ? data.getMute() : null;
     }
-    
+
+    public SimplePunishment getSimpleMute(UUID playerUuid) {
+        CachedPlayerData data = cache.get(playerUuid);
+        return data != null ? data.getSimpleMute() : null;
+    }
+
     public void removeMute(UUID playerUuid) {
         CachedPlayerData data = cache.get(playerUuid);
         if (data != null) {
@@ -110,7 +115,12 @@ public class Cache {
         CachedPlayerData data = cache.get(playerUuid);
         return data != null ? data.getBan() : null;
     }
-    
+
+    public SimplePunishment getSimpleBan(UUID playerUuid) {
+        CachedPlayerData data = cache.get(playerUuid);
+        return data != null ? data.getSimpleBan() : null;
+    }
+
     public void removeBan(UUID playerUuid) {
         CachedPlayerData data = cache.get(playerUuid);
         if (data != null) {

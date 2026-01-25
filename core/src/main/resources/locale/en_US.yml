@@ -25,30 +25,6 @@ messages:
   complete_form_label: "Complete your {type}"
   console_ticket_url: "&6{message}: &b{url}"
 
-# Command-based ticket system (GUI removed)
-
-# Command Help Messages
-commands:
-  report:
-    description: "Report a player with a reason (creates finished ticket)"
-    usage: "/report <player> <reason...>"
-    
-  chatreport:
-    description: "Report a player for chat violations (automatically includes chat logs)"
-    usage: "/chatreport <player>"
-    
-  apply:
-    description: "Submit a staff application (creates unfinished ticket with web form)"
-    usage: "/apply"
-    
-  bugreport:
-    description: "Report a bug (creates unfinished report with web form)"
-    usage: "/bugreport <description...>"
-    
-  support:
-    description: "Request support (creates unfinished request with web form)"
-    usage: "/support <description...>"
-
 # Chat Log Messages
 chat_logs:
   placeholder: "(Recent chat messages would be captured here)"
@@ -129,8 +105,44 @@ validation:
 # Structure:
 #   public_notification: Single message shown to all players
 #   player_notification: List of strings shown to the punished player (joined by \n)
-#   All placeholders available: {target}, {reason}, {duration}, {expiration}, {description}, {appeal_url}, {id}
+#   Available placeholders:
+#     {target} - The player's name (usually "You" for player notifications)
+#     {reason} - The punishment reason
+#     {duration} - Duration formatted (e.g., "7d 3h" or "permanent")
+#     {description} - Same as reason
+#     {appeal_url} - Full appeal URL (panel_url + /appeal)
+#     {id} - The punishment ID
+#     {temp} - "temporarily" or "permanently"
+#     {issued} - Issue date in MM/DD/YY HH:MM format
+#     {player_description} - Player-facing description from punishment type config
+#     {will_expire} - Empty if permanent, or "\nThis ban/mute will expire in {duration}" if timed
+#     {issuer} - Staff name who issued the punishment
+#     {tense} - "have been" or "are" depending on context
+#     {tense2} - "has been" or "is" depending on context
 punishment_types:
+  ordinal_0: # Kick
+    public_notification: "&c{target} has been kicked."
+    player_notification:
+      - "&c&lYou were kicked from the server."
+      - "&f{reason} &7(#{id})"
+
+  ordinal_1: # Manual Ban
+    public_notification: "&c{target} has been banned."
+    player_notification:
+      - "&c&lYou {tense} {temp} banned for:"
+      - ""
+      - "&f{reason}"
+      - "&7{will_expire}"
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}."
+
+  ordinal_2: # Manual Mute
+    public_notification: "&c{target} has been muted."
+    player_notification:
+      - ""
+      - "&cYou {tense} {temp} muted for {duration}"
+      - "&7{issued} | #{id} | {appeal_url}"
+      - "&f{reason}"
+      - ""
   # Manual punishment types
   ordinal_3:  # Security Ban
     public_notification: "&c{target} has been banned."
@@ -154,6 +166,41 @@ punishment_types:
       - "&cYou {tense} blacklisted"
       - "&7ID: #{id}"
 
+  ordinal_6: # Chat abuse
+    public_notification: "&c{target} has been muted for chat abuse."
+    player_notification:
+      - ""
+      - "&cYou {tense} {temp} muted for {duration}"
+      - "&7{issued} | #{id} | {appeal_url}"
+      - "&f{player_description}"
+      - ""
+  ordinal_7: # Chat abuse
+    public_notification: "&c{target} has been muted for anti social behavior."
+    player_notification:
+      - ""
+      - "&cYou {tense} muted for {duration}"
+      - "&7{issued} | #{id} | {appeal_url}"
+      - "&f{player_description}"
+      - ""
+
+  ordinal_8: # targeting
+    public_notification: "&c{target} has been banned for targeting."
+    player_notification:
+      - "&c&lYou {tense} {temp} banned for:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}."
+
+  ordinal_9: # bad content
+    public_notification: "&c{target} has been banned for inappropriate content."
+    player_notification:
+      - "&c&lYou {tense} {temp} banned for:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}."
+
   ordinal_10: # Bad username
     public_notification: "&c{target} has been banned."
     player_notification:
@@ -174,7 +221,59 @@ punishment_types:
       - "&7This ban will be automatically lifted when you change your skin."
       - "&7Is this an error? Appeal at {appeal_url} using ID #{id}"
 
+  ordinal_12: # team abuse
+    public_notification: "&c{target} has been banned for team abuse."
+    player_notification:
+      - "&c&lYou {tense} {temp} banned for:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}."
 
+  ordinal_13: # game abuse
+    public_notification: "&c{target} has been banned for game abuse."
+    player_notification:
+      - "&c&lYou {tense} {temp} banned for:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}."
+
+  ordinal_14: # cheating
+    public_notification: "&c{target} has been banned for cheating."
+    player_notification:
+      - "&c&lYou {tense} {temp} banned for:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}."
+
+  ordinal_15: # game trading
+    public_notification: "&c{target} has been banned for game trading."
+    player_notification:
+      - "&c&lYou {tense} {temp} banned for:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}."
+
+  ordinal_16: # account abuse
+    public_notification: "&c{target} has been banned for account abuse."
+    player_notification:
+      - "&c&lYou {tense} {temp} banned for:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}."
+
+  ordinal_17: # systems abuse
+    public_notification: "&c{target} has been banned for system abuse."
+    player_notification:
+      - "&c&lYou {tense} {temp} banned for:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is this an error? Appeal at {appeal_url} using ID #{id}."
 # Manual command messages
 commands:
   # Existing report commands...
@@ -238,6 +337,8 @@ commands:
 
 # Configuration
 config:
+  # Panel URL (appeal_url will be panel_url + /appeal)
+  panel_url: "https://server.modl.gg"
   appeal_url: "https://server.modl.gg/appeal"
   default_reason: "No reason specified"
   date_format: "MMM dd, yyyy 'at' HH:mm"
@@ -394,6 +495,8 @@ pardon:
   processing_player: "&7Processing pardon for player: &e{player}&7..."
   success_id: "&aSuccessfully pardoned punishment &e#{id}&a."
   success_player: "&aSuccessfully pardoned {player}'s {type}."
+  already_pardoned_id: "&7Punishment &e#{id}&7 is already inactive or has been pardoned."
+  no_active_punishment: "&7{player} does not have an active {type} to pardon."
   error: "&cFailed to pardon: {error}"
   error_player: "&cFailed to pardon {player}'s {type}: {error}"
   error_wrong_type_ban: "&cPunishment &e#{id}&c is not a ban. Use &e/pardon {id}&c to pardon any punishment type."

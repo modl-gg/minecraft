@@ -205,19 +205,18 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         // Filter handler
         registerActionHandler("filter", this::handleFilter);
 
-        // Override header navigation handlers
-        // Primary tabs should NOT have back button when switching between them - pass null
+        // Override header navigation handlers - pass backAction to preserve the back button
         registerActionHandler("openNotes", ActionHandlers.openMenu(
-                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
         registerActionHandler("openAlts", ActionHandlers.openMenu(
-                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
         registerActionHandler("openHistory", ActionHandlers.openMenu(
-                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
         registerActionHandler("openReports", click -> {
             // Already on reports, do nothing
         });
         registerActionHandler("openPunish", ActionHandlers.openMenu(
-                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
     }
 
     private void handleFilter(Click click) {

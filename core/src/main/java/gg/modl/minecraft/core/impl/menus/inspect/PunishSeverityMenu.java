@@ -34,7 +34,8 @@ import java.util.function.Consumer;
 public class PunishSeverityMenu extends BaseInspectMenu {
 
     private final PunishmentTypesResponse.PunishmentTypeData punishmentType;
-    private final Consumer<CirrusPlayerWrapper> parentBackAction;
+    private final Consumer<CirrusPlayerWrapper> menuBackAction; // Goes back to PunishMenu
+    private final Consumer<CirrusPlayerWrapper> rootBackAction; // Passed to primary tabs (e.g., back to Staff Menu)
     private boolean silentMode = false;
     private boolean altBlocking = false;
     private boolean statWipe = false;
@@ -49,12 +50,13 @@ public class PunishSeverityMenu extends BaseInspectMenu {
      * @param viewerName The name of the staff viewing the menu
      * @param targetAccount The account being inspected
      * @param punishmentType The punishment type to issue
-     * @param backAction Action to return to parent menu
+     * @param rootBackAction Root back action for primary tab navigation (e.g., back to Staff Menu)
+     * @param menuBackAction Action to return to parent menu (PunishMenu)
      */
     public PunishSeverityMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                Account targetAccount, PunishmentTypesResponse.PunishmentTypeData punishmentType,
-                               Consumer<CirrusPlayerWrapper> backAction) {
-        this(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, backAction, false, false, false);
+                               Consumer<CirrusPlayerWrapper> rootBackAction, Consumer<CirrusPlayerWrapper> menuBackAction) {
+        this(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, false, false, false);
     }
 
     /**
@@ -62,10 +64,12 @@ public class PunishSeverityMenu extends BaseInspectMenu {
      */
     public PunishSeverityMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                Account targetAccount, PunishmentTypesResponse.PunishmentTypeData punishmentType,
-                               Consumer<CirrusPlayerWrapper> backAction, boolean silentMode, boolean altBlocking, boolean statWipe) {
-        super(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
+                               Consumer<CirrusPlayerWrapper> rootBackAction, Consumer<CirrusPlayerWrapper> menuBackAction,
+                               boolean silentMode, boolean altBlocking, boolean statWipe) {
+        super(platform, httpClient, viewerUuid, viewerName, targetAccount, menuBackAction);
         this.punishmentType = punishmentType;
-        this.parentBackAction = backAction;
+        this.menuBackAction = menuBackAction;
+        this.rootBackAction = rootBackAction;
         this.silentMode = silentMode;
         this.altBlocking = altBlocking;
         this.statWipe = statWipe;
@@ -117,31 +121,37 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         PunishmentPreviewResponse.SeverityPreview preview = previewData != null ?
                 previewData.getSingleSeverity() : null;
 
+        boolean restriction = (punishmentType.getPermanentUntilUsernameChange() != null && punishmentType.getPermanentUntilUsernameChange()) ||
+                              (punishmentType.getPermanentUntilSkinChange() != null && punishmentType.getPermanentUntilSkinChange());
+
         List<String> lore = new ArrayList<>();
 
-        // Show what the punishment will be
-        if (preview != null) {
-            lore.add(MenuItems.COLOR_GRAY + "Punishment: " + MenuItems.COLOR_WHITE + preview.getDurationFormatted() +
-                    (preview.isPermanent() ? " " + MenuItems.COLOR_RED + "(Permanent)" : ""));
-            lore.add(MenuItems.COLOR_GRAY + "Type: " + MenuItems.COLOR_WHITE + capitalizeFirst(preview.getPunishmentType()));
-            lore.add(MenuItems.COLOR_GRAY + "Points: " + MenuItems.COLOR_YELLOW + "+" + preview.getPoints());
-            lore.add("");
+        if (!restriction) {
+            // Show what the punishment will be
+            if (preview != null) {
+                lore.add(MenuItems.COLOR_GRAY + "Punishment: " + MenuItems.COLOR_WHITE + preview.getDurationFormatted() +
+                        (preview.isPermanent() ? " " + MenuItems.COLOR_RED + "(Permanent)" : ""));
+                lore.add(MenuItems.COLOR_GRAY + "Type: " + MenuItems.COLOR_WHITE + capitalizeFirst(preview.getPunishmentType()));
+                lore.add(MenuItems.COLOR_GRAY + "Points: " + MenuItems.COLOR_YELLOW + "+" + preview.getPoints());
+                lore.add("");
+            }
+
+            // Show current/new offender level
+            if (previewData != null && preview != null) {
+                String category = punishmentType.getCategory();
+                if ("Social".equalsIgnoreCase(category)) {
+                    lore.add(MenuItems.COLOR_GRAY + "Offender Level: " + getOffenseLevelColor(previewData.getSocialStatus()) +
+                            previewData.getSocialStatus() + MenuItems.COLOR_GRAY + " → " +
+                            getOffenseLevelColor(preview.getNewSocialStatus()) + preview.getNewSocialStatus());
+                } else {
+                    lore.add(MenuItems.COLOR_GRAY + "Offender Level: " + getOffenseLevelColor(previewData.getGameplayStatus()) +
+                            previewData.getGameplayStatus() + MenuItems.COLOR_GRAY + " → " +
+                            getOffenseLevelColor(preview.getNewGameplayStatus()) + preview.getNewGameplayStatus());
+                }
+                lore.add("");
+            }
         }
 
-        // Show current/new status
-        if (previewData != null && preview != null) {
-            String category = punishmentType.getCategory();
-            if ("Social".equalsIgnoreCase(category)) {
-                lore.add(MenuItems.COLOR_GRAY + "Social Status: " + getStatusColor(previewData.getSocialStatus()) +
-                        previewData.getSocialStatus() + MenuItems.COLOR_GRAY + " → " +
-                        getStatusColor(preview.getNewSocialStatus()) + preview.getNewSocialStatus());
-            } else {
-                lore.add(MenuItems.COLOR_GRAY + "Gameplay Status: " + getStatusColor(previewData.getGameplayStatus()) +
-                        previewData.getGameplayStatus() + MenuItems.COLOR_GRAY + " → " +
-                        getStatusColor(preview.getNewGameplayStatus()) + preview.getNewGameplayStatus());
-            }
-            lore.add("");
-        }
 
         // Special messages for permanent-until-change types
         if (punishmentType.getPermanentUntilUsernameChange() != null && punishmentType.getPermanentUntilUsernameChange()) {
@@ -192,16 +202,16 @@ public class PunishSeverityMenu extends BaseInspectMenu {
             lore.add(MenuItems.COLOR_GRAY + "Points: " + MenuItems.COLOR_YELLOW + "+" + preview.getPoints());
             lore.add("");
 
-            // Show status change
+            // Show offender level change
             String category = punishmentType.getCategory();
             if ("Social".equalsIgnoreCase(category)) {
-                lore.add(MenuItems.COLOR_GRAY + "Status: " + getStatusColor(previewData.getSocialStatus()) +
+                lore.add(MenuItems.COLOR_GRAY + "Offender Level: " + getOffenseLevelColor(previewData.getSocialStatus()) +
                         previewData.getSocialStatus() + MenuItems.COLOR_GRAY + " → " +
-                        getStatusColor(preview.getNewSocialStatus()) + preview.getNewSocialStatus());
+                        getOffenseLevelColor(preview.getNewSocialStatus()) + preview.getNewSocialStatus());
             } else {
-                lore.add(MenuItems.COLOR_GRAY + "Status: " + getStatusColor(previewData.getGameplayStatus()) +
+                lore.add(MenuItems.COLOR_GRAY + "Offender Level: " + getOffenseLevelColor(previewData.getGameplayStatus()) +
                         previewData.getGameplayStatus() + MenuItems.COLOR_GRAY + " → " +
-                        getStatusColor(preview.getNewGameplayStatus()) + preview.getNewGameplayStatus());
+                        getOffenseLevelColor(preview.getNewGameplayStatus()) + preview.getNewGameplayStatus());
             }
             lore.add("");
         }
@@ -254,13 +264,12 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         }
     }
 
-    private String getStatusColor(String status) {
-        if (status == null) return MenuItems.COLOR_GRAY;
-        return switch (status.toLowerCase()) {
-            case "good" -> MenuItems.COLOR_GREEN;
-            case "warning" -> MenuItems.COLOR_YELLOW;
-            case "restricted" -> MenuItems.COLOR_GOLD;
-            case "banned" -> MenuItems.COLOR_RED;
+    private String getOffenseLevelColor(String offenseLevel) {
+        if (offenseLevel == null) return MenuItems.COLOR_GRAY;
+        return switch (offenseLevel.toLowerCase()) {
+            case "low" -> MenuItems.COLOR_GREEN;
+            case "medium" -> MenuItems.COLOR_YELLOW;
+            case "habitual" -> MenuItems.COLOR_RED;
             default -> MenuItems.COLOR_GRAY;
         };
     }
@@ -297,22 +306,21 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         registerActionHandler("toggleAltBlock", this::handleToggleAltBlock);
         registerActionHandler("toggleStatWipe", this::handleToggleStatWipe);
 
-        // Override header navigation
-        // Switching to primary tabs - pass null (no back button on primary tabs)
+        // Override header navigation - pass rootBackAction to preserve the back button on primary tabs
         registerActionHandler("openNotes", ActionHandlers.openMenu(
-                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
 
         registerActionHandler("openAlts", ActionHandlers.openMenu(
-                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
 
         registerActionHandler("openHistory", ActionHandlers.openMenu(
-                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
 
         registerActionHandler("openReports", ActionHandlers.openMenu(
-                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
 
         registerActionHandler("openPunish", ActionHandlers.openMenu(
-                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
     }
 
     private void issuePunishment(Click click, int severityLevel) {
@@ -377,21 +385,21 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     private void handleToggleSilent(Click click) {
         // Refresh menu with toggled silent state
         ActionHandlers.openMenu(
-                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction, !silentMode, altBlocking, statWipe))
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, !silentMode, altBlocking, statWipe))
                 .handle(click);
     }
 
     private void handleToggleAltBlock(Click click) {
         // Refresh menu with toggled alt-blocking state
         ActionHandlers.openMenu(
-                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction, silentMode, !altBlocking, statWipe))
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, silentMode, !altBlocking, statWipe))
                 .handle(click);
     }
 
     private void handleToggleStatWipe(Click click) {
         // Refresh menu with toggled stat-wipe state
         ActionHandlers.openMenu(
-                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, parentBackAction, silentMode, altBlocking, !statWipe))
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, silentMode, altBlocking, !statWipe))
                 .handle(click);
     }
 }

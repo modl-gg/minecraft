@@ -143,7 +143,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> createPunishment(@NotNull CreatePunishmentRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/punishment/create"))
+                .uri(URI.create(baseUrl + "/minecraft/punishments/create"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -165,7 +165,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<PunishmentCreateResponse> createPunishmentWithResponse(@NotNull PunishmentCreateRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/punishment/dynamic"))
+                .uri(URI.create(baseUrl + "/minecraft/punishments/dynamic"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -395,23 +395,23 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     }
 
     @Override
-    public CompletableFuture<Void> pardonPunishment(@NotNull PardonPunishmentRequest request) {
+    public CompletableFuture<PardonResponse> pardonPunishment(@NotNull PardonPunishmentRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                        .uri(URI.create(baseUrl + "/minecraft/punishment/" + request.getPunishmentId() + "/pardon"))
+                        .uri(URI.create(baseUrl + "/minecraft/punishments/" + request.getPunishmentId() + "/pardon"))
                         .header("X-API-Key", apiKey)
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
-                        .build(), Void.class);
+                        .build(), PardonResponse.class);
     }
 
     @Override
-    public CompletableFuture<Void> pardonPlayer(@NotNull PardonPlayerRequest request) {
+    public CompletableFuture<PardonResponse> pardonPlayer(@NotNull PardonPlayerRequest request) {
         return sendAsync(HttpRequest.newBuilder()
                         .uri(URI.create(baseUrl + "/minecraft/player/pardon"))
                         .header("X-API-Key", apiKey)
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
-                        .build(), Void.class);
+                        .build(), PardonResponse.class);
     }
 
     @NotNull
@@ -514,6 +514,67 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                 .header("X-API-Key", apiKey)
                 .GET()
                 .build(), PunishmentPreviewResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> addPunishmentNote(@NotNull AddPunishmentNoteRequest request) {
+        java.util.Map<String, String> body = new java.util.HashMap<>();
+        body.put("issuerName", request.getIssuerName());
+        body.put("note", request.getNote());
+
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/punishments/" + request.getPunishmentId() + "/note"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> addPunishmentEvidence(@NotNull AddPunishmentEvidenceRequest request) {
+        java.util.Map<String, String> body = new java.util.HashMap<>();
+        body.put("issuerName", request.getIssuerName());
+        body.put("evidenceUrl", request.getEvidenceUrl());
+
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/punishments/" + request.getPunishmentId() + "/evidence"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> changePunishmentDuration(@NotNull ChangePunishmentDurationRequest request) {
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("issuerName", request.getIssuerName());
+        body.put("newDuration", request.getNewDuration());
+
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/punishments/" + request.getPunishmentId() + "/duration"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> togglePunishmentOption(@NotNull TogglePunishmentOptionRequest request) {
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("issuerName", request.getIssuerName());
+        body.put("option", request.getOption());
+        body.put("enabled", request.isEnabled());
+
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/punishments/" + request.getPunishmentId() + "/toggle"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
     }
 
     private String generateRequestId() {

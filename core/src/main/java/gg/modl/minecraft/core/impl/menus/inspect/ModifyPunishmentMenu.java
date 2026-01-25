@@ -9,7 +9,11 @@ import dev.simplix.protocolize.data.ItemType;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.request.AddPunishmentEvidenceRequest;
+import gg.modl.minecraft.api.http.request.AddPunishmentNoteRequest;
+import gg.modl.minecraft.api.http.request.ChangePunishmentDurationRequest;
 import gg.modl.minecraft.api.http.request.PardonPunishmentRequest;
+import gg.modl.minecraft.api.http.request.TogglePunishmentOptionRequest;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
@@ -28,7 +32,8 @@ import java.util.function.Consumer;
 public class ModifyPunishmentMenu extends BaseInspectMenu {
 
     private final Punishment punishment;
-    private final Consumer<CirrusPlayerWrapper> parentBackAction;
+    private final Consumer<CirrusPlayerWrapper> menuBackAction; // Goes back to HistoryMenu
+    private final Consumer<CirrusPlayerWrapper> rootBackAction; // Passed to primary tabs (e.g., back to Staff Menu)
 
     /**
      * Create a new modify punishment menu.
@@ -39,13 +44,16 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
      * @param viewerName The name of the staff viewing the menu
      * @param targetAccount The account being inspected
      * @param punishment The punishment to modify
-     * @param backAction Action to return to parent menu
+     * @param rootBackAction Root back action for primary tab navigation (e.g., back to Staff Menu)
+     * @param menuBackAction Action to return to parent menu (HistoryMenu)
      */
     public ModifyPunishmentMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
-                                 Account targetAccount, Punishment punishment, Consumer<CirrusPlayerWrapper> backAction) {
-        super(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
+                                 Account targetAccount, Punishment punishment, Consumer<CirrusPlayerWrapper> rootBackAction,
+                                 Consumer<CirrusPlayerWrapper> menuBackAction) {
+        super(platform, httpClient, viewerUuid, viewerName, targetAccount, menuBackAction);
         this.punishment = punishment;
-        this.parentBackAction = backAction;
+        this.menuBackAction = menuBackAction;
+        this.rootBackAction = rootBackAction;
 
         title("Modify Punishment");
         activeTab = InspectTab.HISTORY;
@@ -108,8 +116,9 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
 
         // Slot 33: Toggle Stat-Wipe (ban types only)
         if (isBanType) {
-            // TODO: Get actual stat-wipe status from punishment data
-            boolean statWipe = false;
+            // Get actual stat-wipe status from punishment data
+            boolean statWipe = punishment.getDataMap() != null &&
+                    Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
             set(CirrusItem.of(
                     statWipe ? ItemType.EXPERIENCE_BOTTLE : ItemType.GLASS_BOTTLE,
                     ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Stat-Wipe"),
@@ -121,8 +130,9 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
             ).slot(MenuSlots.MODIFY_STAT_WIPE).actionHandler("toggleStatWipe"));
 
             // Slot 34: Toggle Alt-Blocking
-            // TODO: Get actual alt-blocking status from punishment data
-            boolean altBlock = false;
+            // Get actual alt-blocking status from punishment data
+            boolean altBlock = punishment.getDataMap() != null &&
+                    Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
             set(CirrusItem.of(
                     altBlock ? ItemType.TORCH : ItemType.REDSTONE_TORCH,
                     ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Alt-Blocking"),
@@ -139,21 +149,21 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Override header navigation - switching to primary tabs uses null (no back button)
+        // Override header navigation - pass rootBackAction to preserve the back button on primary tabs
         registerActionHandler("openHistory", ActionHandlers.openMenu(
-                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
 
         registerActionHandler("openNotes", ActionHandlers.openMenu(
-                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
 
         registerActionHandler("openAlts", ActionHandlers.openMenu(
-                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
 
         registerActionHandler("openReports", ActionHandlers.openMenu(
-                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
 
         registerActionHandler("openPunish", ActionHandlers.openMenu(
-                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
 
         // Add note handler
         registerActionHandler("addNote", this::handleAddNote);
@@ -179,10 +189,20 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
 
         ChatInputManager.requestInput(platform, viewerUuid, "Enter note to add to this punishment:",
                 input -> {
-                    // TODO: Implement endpoint POST /v1/panel/punishments/{id}/notes
-                    sendMessage(MenuItems.COLOR_YELLOW + "Note adding not yet implemented - endpoint needed");
-                    sendMessage(MenuItems.COLOR_GRAY + "Note text: " + input);
-                    platform.runOnMainThread(() -> display(click.player()));
+                    AddPunishmentNoteRequest request = new AddPunishmentNoteRequest(
+                            punishment.getId(),
+                            viewerName,
+                            input
+                    );
+
+                    httpClient.addPunishmentNote(request).thenAccept(v -> {
+                        sendMessage(MenuItems.COLOR_GREEN + "Note added successfully!");
+                        platform.runOnMainThread(() -> display(click.player()));
+                    }).exceptionally(e -> {
+                        sendMessage(MenuItems.COLOR_RED + "Failed to add note: " + e.getMessage());
+                        platform.runOnMainThread(() -> display(click.player()));
+                        return null;
+                    });
                 },
                 () -> {
                     sendMessage(MenuItems.COLOR_GRAY + "Note cancelled.");
@@ -192,22 +212,29 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
     }
 
     private void handleEvidence(Click click) {
-        // Check click type
-        // For now, just show add evidence prompt
         click.clickedMenu().close();
 
         sendMessage("");
         sendMessage(MenuItems.COLOR_GOLD + "Evidence Options:");
-        sendMessage(MenuItems.COLOR_AQUA + "[Add Evidence by Link]" + MenuItems.COLOR_GRAY + " - Click to add a link");
-        sendMessage(MenuItems.COLOR_AQUA + "[Add Evidence by File Upload]" + MenuItems.COLOR_GRAY + " - Coming soon");
+        sendMessage(MenuItems.COLOR_AQUA + "[Add Evidence by Link]" + MenuItems.COLOR_GRAY + " - Enter a URL below");
         sendMessage("");
 
         ChatInputManager.requestInput(platform, viewerUuid, "Enter evidence URL:",
                 input -> {
-                    // TODO: Implement endpoint POST /v1/panel/punishments/{id}/evidence
-                    sendMessage(MenuItems.COLOR_YELLOW + "Evidence adding not yet implemented - endpoint needed");
-                    sendMessage(MenuItems.COLOR_GRAY + "URL: " + input);
-                    platform.runOnMainThread(() -> display(click.player()));
+                    AddPunishmentEvidenceRequest request = new AddPunishmentEvidenceRequest(
+                            punishment.getId(),
+                            viewerName,
+                            input
+                    );
+
+                    httpClient.addPunishmentEvidence(request).thenAccept(v -> {
+                        sendMessage(MenuItems.COLOR_GREEN + "Evidence added successfully!");
+                        platform.runOnMainThread(() -> display(click.player()));
+                    }).exceptionally(e -> {
+                        sendMessage(MenuItems.COLOR_RED + "Failed to add evidence: " + e.getMessage());
+                        platform.runOnMainThread(() -> display(click.player()));
+                        return null;
+                    });
                 },
                 () -> {
                     sendMessage(MenuItems.COLOR_GRAY + "Evidence cancelled.");
@@ -224,21 +251,25 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                 null // expectedType
         );
 
-        httpClient.pardonPunishment(request).thenAccept(v -> {
-            sendMessage(MenuItems.COLOR_GREEN + "Punishment pardoned successfully!");
-            // Return to history menu
-            platform.runOnMainThread(() -> {
-                click.clickedMenu().close();
-                httpClient.getPlayerProfile(targetUuid).thenAccept(response -> {
-                    if (response.getStatus() == 200) {
-                        platform.runOnMainThread(() -> {
-                            new HistoryMenu(platform, httpClient, viewerUuid, viewerName,
-                                    response.getProfile(), parentBackAction)
-                                    .display(click.player());
-                        });
-                    }
+        httpClient.pardonPunishment(request).thenAccept(response -> {
+            if (response.hasPardoned()) {
+                sendMessage(MenuItems.COLOR_GREEN + "Punishment pardoned successfully!");
+                // Return to history menu
+                platform.runOnMainThread(() -> {
+                    click.clickedMenu().close();
+                    httpClient.getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
+                        if (profileResponse.getStatus() == 200) {
+                            platform.runOnMainThread(() -> {
+                                new HistoryMenu(platform, httpClient, viewerUuid, viewerName,
+                                        profileResponse.getProfile(), menuBackAction)
+                                        .display(click.player());
+                            });
+                        }
+                    });
                 });
-            });
+            } else {
+                sendMessage(MenuItems.COLOR_GRAY + "Punishment is already inactive or has been pardoned.");
+            }
         }).exceptionally(e -> {
             sendMessage(MenuItems.COLOR_RED + "Failed to pardon punishment: " + e.getMessage());
             return null;
@@ -249,12 +280,30 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         click.clickedMenu().close();
 
         ChatInputManager.requestInput(platform, viewerUuid,
-                "Enter new duration (e.g., 30d2h3m4s, or 'perm' for permanent):",
+                "Enter new duration (e.g., 30d, 2h, 30m, 1d2h30m, or 'perm' for permanent):",
                 input -> {
-                    // TODO: Implement endpoint PATCH /v1/panel/punishments/{id}
-                    sendMessage(MenuItems.COLOR_YELLOW + "Duration change not yet implemented - endpoint needed");
-                    sendMessage(MenuItems.COLOR_GRAY + "New duration: " + input);
-                    platform.runOnMainThread(() -> display(click.player()));
+                    Long durationMs = parseDuration(input);
+                    if (durationMs == null && !input.equalsIgnoreCase("perm") && !input.equalsIgnoreCase("permanent")) {
+                        sendMessage(MenuItems.COLOR_RED + "Invalid duration format. Examples: 30d, 2h, 30m, 1d2h30m");
+                        platform.runOnMainThread(() -> display(click.player()));
+                        return;
+                    }
+
+                    // null duration means permanent
+                    ChangePunishmentDurationRequest request = new ChangePunishmentDurationRequest(
+                            punishment.getId(),
+                            viewerName,
+                            durationMs
+                    );
+
+                    httpClient.changePunishmentDuration(request).thenAccept(v -> {
+                        sendMessage(MenuItems.COLOR_GREEN + "Duration changed successfully!");
+                        platform.runOnMainThread(() -> display(click.player()));
+                    }).exceptionally(e -> {
+                        sendMessage(MenuItems.COLOR_RED + "Failed to change duration: " + e.getMessage());
+                        platform.runOnMainThread(() -> display(click.player()));
+                        return null;
+                    });
                 },
                 () -> {
                     sendMessage(MenuItems.COLOR_GRAY + "Duration change cancelled.");
@@ -263,13 +312,98 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         );
     }
 
+    /**
+     * Parse a duration string (e.g., "30d", "2h", "30m", "1d2h30m") to milliseconds.
+     * Returns null for "perm" or "permanent" (indicating permanent punishment).
+     */
+    private Long parseDuration(String input) {
+        if (input == null || input.isEmpty()) return null;
+        if (input.equalsIgnoreCase("perm") || input.equalsIgnoreCase("permanent")) return null;
+
+        long total = 0;
+        StringBuilder number = new StringBuilder();
+
+        for (char c : input.toLowerCase().toCharArray()) {
+            if (Character.isDigit(c)) {
+                number.append(c);
+            } else if (c == 'd' || c == 'h' || c == 'm' || c == 's') {
+                if (number.length() == 0) continue;
+                long value = Long.parseLong(number.toString());
+                number.setLength(0);
+
+                switch (c) {
+                    case 'd' -> total += value * 24 * 60 * 60 * 1000;
+                    case 'h' -> total += value * 60 * 60 * 1000;
+                    case 'm' -> total += value * 60 * 1000;
+                    case 's' -> total += value * 1000;
+                }
+            }
+        }
+
+        return total > 0 ? total : null;
+    }
+
     private void handleToggleStatWipe(Click click) {
-        // TODO: Implement endpoint PATCH /v1/panel/punishments/{id}
-        sendMessage(MenuItems.COLOR_YELLOW + "Stat-wipe toggle not yet implemented - endpoint needed");
+        // Get current status from punishment data
+        boolean currentStatus = punishment.getDataMap() != null &&
+                Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
+
+        TogglePunishmentOptionRequest request = new TogglePunishmentOptionRequest(
+                punishment.getId(),
+                viewerName,
+                "STAT_WIPE",
+                !currentStatus // Toggle to opposite
+        );
+
+        httpClient.togglePunishmentOption(request).thenAccept(v -> {
+            sendMessage(MenuItems.COLOR_GREEN + "Stat-wipe " + (!currentStatus ? "enabled" : "disabled") + " successfully!");
+            // Refresh menu to show new status
+            platform.runOnMainThread(() -> {
+                httpClient.getPlayerProfile(targetUuid).thenAccept(response -> {
+                    if (response.getStatus() == 200) {
+                        platform.runOnMainThread(() -> {
+                            new HistoryMenu(platform, httpClient, viewerUuid, viewerName,
+                                    response.getProfile(), menuBackAction)
+                                    .display(click.player());
+                        });
+                    }
+                });
+            });
+        }).exceptionally(e -> {
+            sendMessage(MenuItems.COLOR_RED + "Failed to toggle stat-wipe: " + e.getMessage());
+            return null;
+        });
     }
 
     private void handleToggleAltBlock(Click click) {
-        // TODO: Implement endpoint PATCH /v1/panel/punishments/{id}
-        sendMessage(MenuItems.COLOR_YELLOW + "Alt-blocking toggle not yet implemented - endpoint needed");
+        // Get current status from punishment data
+        boolean currentStatus = punishment.getDataMap() != null &&
+                Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
+
+        TogglePunishmentOptionRequest request = new TogglePunishmentOptionRequest(
+                punishment.getId(),
+                viewerName,
+                "ALT_BLOCKING",
+                !currentStatus // Toggle to opposite
+        );
+
+        httpClient.togglePunishmentOption(request).thenAccept(v -> {
+            sendMessage(MenuItems.COLOR_GREEN + "Alt-blocking " + (!currentStatus ? "enabled" : "disabled") + " successfully!");
+            // Refresh menu to show new status
+            platform.runOnMainThread(() -> {
+                httpClient.getPlayerProfile(targetUuid).thenAccept(response -> {
+                    if (response.getStatus() == 200) {
+                        platform.runOnMainThread(() -> {
+                            new HistoryMenu(platform, httpClient, viewerUuid, viewerName,
+                                    response.getProfile(), menuBackAction)
+                                    .display(click.player());
+                        });
+                    }
+                });
+            });
+        }).exceptionally(e -> {
+            sendMessage(MenuItems.COLOR_RED + "Failed to toggle alt-blocking: " + e.getMessage());
+            return null;
+        });
     }
 }

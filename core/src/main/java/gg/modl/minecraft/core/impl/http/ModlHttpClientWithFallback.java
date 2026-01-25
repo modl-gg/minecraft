@@ -251,7 +251,7 @@ public class ModlHttpClientWithFallback implements ModlHttpClient {
 
     @NotNull
     @Override
-    public CompletableFuture<Void> pardonPunishment(@NotNull PardonPunishmentRequest request) {
+    public CompletableFuture<PardonResponse> pardonPunishment(@NotNull PardonPunishmentRequest request) {
         return withFallback(
                 () -> v2Client.pardonPunishment(request),
                 () -> v1Client.pardonPunishment(request),
@@ -261,7 +261,7 @@ public class ModlHttpClientWithFallback implements ModlHttpClient {
 
     @NotNull
     @Override
-    public CompletableFuture<Void> pardonPlayer(@NotNull PardonPlayerRequest request) {
+    public CompletableFuture<PardonResponse> pardonPlayer(@NotNull PardonPlayerRequest request) {
         return withFallback(
                 () -> v2Client.pardonPlayer(request),
                 () -> v1Client.pardonPlayer(request),
@@ -346,6 +346,46 @@ public class ModlHttpClientWithFallback implements ModlHttpClient {
                 () -> v2Client.getPunishmentPreview(playerUuid, typeOrdinal),
                 () -> v1Client.getPunishmentPreview(playerUuid, typeOrdinal),
                 "getPunishmentPreview"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> addPunishmentNote(@NotNull AddPunishmentNoteRequest request) {
+        return withFallback(
+                () -> v2Client.addPunishmentNote(request),
+                () -> v1Client.addPunishmentNote(request),
+                "addPunishmentNote"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> addPunishmentEvidence(@NotNull AddPunishmentEvidenceRequest request) {
+        return withFallback(
+                () -> v2Client.addPunishmentEvidence(request),
+                () -> v1Client.addPunishmentEvidence(request),
+                "addPunishmentEvidence"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> changePunishmentDuration(@NotNull ChangePunishmentDurationRequest request) {
+        return withFallback(
+                () -> v2Client.changePunishmentDuration(request),
+                () -> v1Client.changePunishmentDuration(request),
+                "changePunishmentDuration"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> togglePunishmentOption(@NotNull TogglePunishmentOptionRequest request) {
+        return withFallback(
+                () -> v2Client.togglePunishmentOption(request),
+                () -> v1Client.togglePunishmentOption(request),
+                "togglePunishmentOption"
         );
     }
 

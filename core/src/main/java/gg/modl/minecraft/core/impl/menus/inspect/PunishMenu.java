@@ -270,19 +270,18 @@ public class PunishMenu extends BaseInspectMenu {
             });
         }
 
-        // Override header navigation
-        // Primary tabs should NOT have back button when switching between them - pass null
+        // Override header navigation - pass parentBackAction to preserve the back button
         registerActionHandler("openNotes", ActionHandlers.openMenu(
-                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)));
 
         registerActionHandler("openAlts", ActionHandlers.openMenu(
-                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)));
 
         registerActionHandler("openHistory", ActionHandlers.openMenu(
-                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)));
 
         registerActionHandler("openReports", ActionHandlers.openMenu(
-                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction)));
 
         registerActionHandler("openPunish", (ActionHandler) click -> {
             // Already on punish, do nothing
@@ -292,9 +291,10 @@ public class PunishMenu extends BaseInspectMenu {
 
     private void handlePunishmentType(Click click, PunishmentTypesResponse.PunishmentTypeData type) {
         // Open severity selection menu - this is a secondary menu, back button returns to PunishMenu
+        // Pass parentBackAction so when navigating back to primary tabs, the original back button is preserved
         ActionHandlers.openMenu(
-                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, type,
-                        player -> new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null).display(player)))
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, type, parentBackAction,
+                        player -> new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction).display(player)))
                 .handle(click);
     }
 }

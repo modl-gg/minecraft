@@ -80,6 +80,28 @@ public final class MenuSlots {
     public static final int SETTINGS_STAFF = 33;
     public static final int SETTINGS_RELOAD = 34;
 
+    // Compact (3-row) menu slots - for initial /staff and /inspect menus
+    // Row 0: Empty/decorative
+    // Row 1: Navigation items
+    // Row 2: Back button (if any)
+    public static final int COMPACT_BACK_BUTTON = 18;
+
+    // Compact staff menu layout (centered in row 1)
+    public static final int COMPACT_STAFF_ONLINE = 10;
+    public static final int COMPACT_STAFF_REPORTS = 11;
+    public static final int COMPACT_STAFF_PUNISHMENTS = 12;
+    public static final int COMPACT_STAFF_TICKETS = 13;
+    public static final int COMPACT_STAFF_PANEL = 15;
+    public static final int COMPACT_STAFF_SETTINGS = 16;
+
+    // Compact inspect menu layout (centered in row 1)
+    public static final int COMPACT_INSPECT_HEAD = 10;
+    public static final int COMPACT_INSPECT_NOTES = 11;
+    public static final int COMPACT_INSPECT_ALTS = 12;
+    public static final int COMPACT_INSPECT_HISTORY = 13;
+    public static final int COMPACT_INSPECT_REPORTS = 14;
+    public static final int COMPACT_INSPECT_PUNISH = 16;
+
     /**
      * Check if a slot is in the header row.
      */

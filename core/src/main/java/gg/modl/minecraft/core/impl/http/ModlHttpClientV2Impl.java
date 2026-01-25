@@ -168,10 +168,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<Void> createPlayerNote(@NotNull CreatePlayerNoteRequest request) {
-        // Note: This endpoint uses the old V1 path format - see createPlayerNoteWithResponse
-        return sendAsync(requestBuilder("/minecraft/players/notes/create")
+        // Build body without targetUuid since it's in the path
+        Map<String, String> body = new HashMap<>();
+        body.put("issuerName", request.getIssuerName());
+        body.put("text", request.getText());
+
+        return sendAsync(requestBuilder("/minecraft/players/" + request.getTargetUuid() + "/notes")
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
 
@@ -316,7 +320,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
 
     @NotNull
     @Override
-    public CompletableFuture<Void> pardonPunishment(@NotNull PardonPunishmentRequest request) {
+    public CompletableFuture<PardonResponse> pardonPunishment(@NotNull PardonPunishmentRequest request) {
         // Convert to V2 format - backend expects issuerName, reason, expectedType in body
         V2PardonPunishmentRequest v2Request = new V2PardonPunishmentRequest(
                 request.getIssuerName(),
@@ -326,12 +330,12 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/pardon")
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
-                .build(), Void.class);
+                .build(), PardonResponse.class);
     }
 
     @NotNull
     @Override
-    public CompletableFuture<Void> pardonPlayer(@NotNull PardonPlayerRequest request) {
+    public CompletableFuture<PardonResponse> pardonPlayer(@NotNull PardonPlayerRequest request) {
         // Convert to V2 format
         V2PardonPlayerRequest v2Request = new V2PardonPlayerRequest(
                 request.getPlayerName(),
@@ -342,7 +346,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         return sendAsync(requestBuilder("/minecraft/players/pardon")
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
-                .build(), Void.class);
+                .build(), PardonResponse.class);
     }
 
     @NotNull
@@ -429,6 +433,59 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         return sendAsync(requestBuilder(endpoint)
                 .GET()
                 .build(), PunishmentPreviewResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> addPunishmentNote(@NotNull AddPunishmentNoteRequest request) {
+        Map<String, String> body = new HashMap<>();
+        body.put("issuerName", request.getIssuerName());
+        body.put("note", request.getNote());
+
+        return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/note")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> addPunishmentEvidence(@NotNull AddPunishmentEvidenceRequest request) {
+        Map<String, String> body = new HashMap<>();
+        body.put("issuerName", request.getIssuerName());
+        body.put("evidenceUrl", request.getEvidenceUrl());
+
+        return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/evidence")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> changePunishmentDuration(@NotNull ChangePunishmentDurationRequest request) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("issuerName", request.getIssuerName());
+        body.put("newDuration", request.getNewDuration());
+
+        return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/duration")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> togglePunishmentOption(@NotNull TogglePunishmentOptionRequest request) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("issuerName", request.getIssuerName());
+        body.put("option", request.getOption());
+        body.put("enabled", request.isEnabled());
+
+        return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/toggle")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
     }
 
     private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {

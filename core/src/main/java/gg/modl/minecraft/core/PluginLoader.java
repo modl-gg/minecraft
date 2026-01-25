@@ -14,6 +14,10 @@ import gg.modl.minecraft.core.impl.commands.PlayerLookupCommand;
 import gg.modl.minecraft.core.impl.commands.ModlReloadCommand;
 import gg.modl.minecraft.core.impl.commands.InspectCommand;
 import gg.modl.minecraft.core.impl.commands.StaffCommand;
+import gg.modl.minecraft.core.impl.commands.HistoryCommand;
+import gg.modl.minecraft.core.impl.commands.AltsCommand;
+import gg.modl.minecraft.core.impl.commands.NotesCommand;
+import gg.modl.minecraft.core.impl.commands.ReportsCommand;
 import gg.modl.minecraft.core.impl.commands.player.IAmMutedCommand;
 import gg.modl.minecraft.core.impl.commands.punishments.*;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -130,6 +134,10 @@ public class PluginLoader {
         // Register GUI commands
         commandManager.registerCommand(new InspectCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
         commandManager.registerCommand(new StaffCommand(httpManager.getHttpClient(), platform, cache, this.localeManager, httpManager.getPanelUrl()));
+        commandManager.registerCommand(new HistoryCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
+        commandManager.registerCommand(new AltsCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
+        commandManager.registerCommand(new NotesCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
+        commandManager.registerCommand(new ReportsCommand(httpManager.getHttpClient(), platform, cache, this.localeManager, httpManager.getPanelUrl()));
 
     }
 

@@ -32,6 +32,15 @@ public class SimplePunishment {
 
     private int ordinal; // The punishment type ordinal (0=kick, 1=mute, 2+=ban)
 
+    @Nullable
+    private String issuerName; // Name of the staff who issued the punishment
+
+    @Nullable
+    private Long issuedAt; // Unix timestamp in milliseconds when punishment was issued
+
+    @Nullable
+    private String playerDescription; // Player-facing description from punishment type config
+
     /**
      * Check if this is a ban punishment.
      * Uses PunishmentTypeRegistry (populated from server config) as primary source,
@@ -103,6 +112,13 @@ public class SimplePunishment {
      */
     public java.util.Date getExpirationAsDate() {
         return expiration != null ? new java.util.Date(expiration) : null;
+    }
+
+    /**
+     * Get issued timestamp as Date object
+     */
+    public java.util.Date getIssuedAsDate() {
+        return issuedAt != null ? new java.util.Date(issuedAt) : null;
     }
 
 }

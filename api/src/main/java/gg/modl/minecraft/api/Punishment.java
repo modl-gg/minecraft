@@ -33,7 +33,7 @@ public class Punishment {
     @SerializedName("type")
     private Type type;
 
-    @SerializedName("type_ordinal")
+    @SerializedName("typeOrdinal")
     private Integer typeOrdinal;
 
     @SerializedName("modifications")
@@ -112,8 +112,16 @@ public class Punishment {
 
     /**
      * Get a display-friendly type category name.
+     * First tries to get from dataMap (typeName), then falls back to registry detection.
      */
     public String getTypeCategory() {
+        // First try to get the type name from the data map
+        Object typeName = getDataMap().get("typeName");
+        if (typeName instanceof String && !((String) typeName).isEmpty()) {
+            return (String) typeName;
+        }
+
+        // Fall back to registry-based detection
         if (isBanType()) return "Ban";
         if (isMuteType()) return "Mute";
         if (isKickType()) return "Kick";

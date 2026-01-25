@@ -2,6 +2,7 @@ package gg.modl.minecraft.core.impl.menus.inspect;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import dev.simplix.protocolize.data.inventory.InventoryType;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
@@ -28,31 +29,31 @@ public class InspectMenu extends BaseInspectMenu {
      */
     public InspectMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                        Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
-        super(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
+        super(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, InventoryType.GENERIC_9X3);
 
         title("Inspect: " + targetName);
         activeTab = InspectTab.NONE;
-        buildHeader();
+        buildCompactHeader();
     }
 
     @Override
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Primary tabs should NOT have back button when switching between them - pass null
+        // Pass the backAction to all tabs so the back button persists
         registerActionHandler("openNotes", ActionHandlers.openMenu(
-                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
 
         registerActionHandler("openAlts", ActionHandlers.openMenu(
-                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
 
         registerActionHandler("openHistory", ActionHandlers.openMenu(
-                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
 
         registerActionHandler("openReports", ActionHandlers.openMenu(
-                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
 
         registerActionHandler("openPunish", ActionHandlers.openMenu(
-                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, null)));
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
     }
 }

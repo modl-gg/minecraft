@@ -50,8 +50,8 @@ public class SettingsMenu extends BaseStaffMenu {
         // Check specific permissions from cache
         Cache cache = platform.getCache();
         if (cache != null) {
-            this.canModifySettings = cache.hasPermission(viewerUuid, "modl.settings.modify");
-            this.canManageStaff = cache.hasPermission(viewerUuid, "modl.staff.manage");
+            this.canModifySettings = cache.hasPermission(viewerUuid, "admin.settings.modify");
+            this.canManageStaff = cache.hasPermission(viewerUuid, "admin.staff.manage");
         } else {
             // Fallback to isAdmin if cache not available
             this.canModifySettings = isAdmin;
