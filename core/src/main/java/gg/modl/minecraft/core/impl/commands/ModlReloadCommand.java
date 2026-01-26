@@ -3,47 +3,36 @@ package gg.modl.minecraft.core.impl.commands;
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
-import gg.modl.minecraft.api.http.ModlHttpClient;
-import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
-import gg.modl.minecraft.core.impl.commands.punishments.PunishCommand;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @RequiredArgsConstructor
 @CommandAlias("modl")
 public class ModlReloadCommand extends BaseCommand {
-    private final ModlHttpClient httpClient;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
-    private final PunishCommand punishCommand;
-    private final PlayerLookupCommand playerLookupCommand;
 
     @Default
     @Description("Show available MODL commands")
     public void showHelp(CommandIssuer sender) {
-        // No permission check - help is available to everyone
         displayHelp(sender);
     }
 
     @Subcommand("help")
     @Description("Show available MODL commands")
     public void help(CommandIssuer sender) {
-        // No permission check - help is available to everyone
         displayHelp(sender);
     }
-    
+
     private void displayHelp(CommandIssuer sender) {
         sender.sendMessage("§6=== MODL Commands ===");
         sender.sendMessage("");
-        
+
         sender.sendMessage("§e§lPunishment Commands:");
         sender.sendMessage("§7/punish <player> <type> [reason]§f - Issue a punishment");
         sender.sendMessage("§7/ban <player> [duration] [reason]§f - Ban a player");
@@ -54,12 +43,12 @@ public class ModlReloadCommand extends BaseCommand {
         sender.sendMessage("§7/unban <player>§f - Unban a player");
         sender.sendMessage("§7/unmute <player>§f - Unmute a player");
         sender.sendMessage("");
-        
+
         sender.sendMessage("§e§lInformation Commands:");
         sender.sendMessage("§7/lookup <player>§f - View player information");
         sender.sendMessage("§7/modl status§f - Show plugin status");
         sender.sendMessage("");
-        
+
         sender.sendMessage("§e§lPlayer Commands:");
         sender.sendMessage("§7/iammuted <player>§f - Tell someone you are muted");
         sender.sendMessage("§7/report <player> <reason>§f - Report a player");
@@ -68,45 +57,31 @@ public class ModlReloadCommand extends BaseCommand {
         sender.sendMessage("§7/bugreport <description>§f - Report a bug");
         sender.sendMessage("§7/support <message>§f - Contact support");
         sender.sendMessage("");
-        
+
         sender.sendMessage("§e§lAdmin Commands:");
         sender.sendMessage("§7/modl status§f - Check plugin status");
-        sender.sendMessage("§7/modl reload [component]§f - Reload plugin data");
-        sender.sendMessage("§7  Components: all, punishment-types, staff-permissions, locale");
+        sender.sendMessage("§7/modl reload§f - Reload locale files");
+        sender.sendMessage("§7  Note: Staff permissions and punishment types sync automatically");
         sender.sendMessage("");
-        
+
         sender.sendMessage("§6========================");
     }
 
     @Subcommand("reload")
-    @Description("Reload all MODL data including punishment types, staff permissions, and locale files")
+    @Description("Reload MODL locale files")
     @Syntax("reload [component]")
     @Conditions("admin")
-    public void reload(CommandIssuer sender, @Default("all") String component) {
-        String validComponents = "all, punishment-types, staff-permissions, locale";
-        
+    public void reload(CommandIssuer sender, @Default("locale") String component) {
         switch (component.toLowerCase()) {
             case "all":
-                reloadAll(sender);
-                break;
-            case "punishment-types":
-            case "punishments":
-            case "types":
-                reloadPunishmentTypes(sender);
-                break;
-            case "staff-permissions":
-            case "staff":
-            case "permissions":
-                reloadStaffPermissions(sender);
-                break;
             case "locale":
             case "locales":
             case "messages":
                 reloadLocale(sender);
                 break;
             default:
-                sender.sendMessage(localeManager.getMessage("reload.invalid_component", 
-                    Map.of("component", component, "valid", validComponents)));
+                sender.sendMessage(localeManager.getMessage("reload.invalid_component",
+                    Map.of("component", component, "valid", "locale")));
         }
     }
 
@@ -115,154 +90,22 @@ public class ModlReloadCommand extends BaseCommand {
     @Conditions("admin")
     public void status(CommandIssuer sender) {
         sender.sendMessage("§6=== MODL Plugin Status ===");
-        
-        // Show punishment types status
-        int punishmentTypeCount = punishCommand.getPunishmentTypeNames().size();
-        sender.sendMessage("§ePunishment Types: §f" + punishmentTypeCount + " loaded");
-        
-        // Show staff permissions status
-        int staffCount = cache.getStaffCount();
-        sender.sendMessage("§eStaff Permissions: §f" + staffCount + " staff members cached");
-        
-        // Show online players with cached data
-        int onlinePlayersWithCache = cache.getCachedPlayerCount();
-        sender.sendMessage("§eCached Players: §f" + onlinePlayersWithCache + " players with punishment data");
-        
-        // Show locale status
-        String localeFile = localeManager.getCurrentLocale();
-        sender.sendMessage("§eLocale: §f" + localeFile);
-        
+
+        sender.sendMessage("§eStaff Permissions: §f" + cache.getStaffCount() + " staff members cached");
+        sender.sendMessage("§eCached Players: §f" + cache.getCachedPlayerCount() + " players with punishment data");
+        sender.sendMessage("§eLocale: §f" + localeManager.getCurrentLocale());
+        sender.sendMessage("§7Note: Staff permissions and punishment types sync automatically");
+
         sender.sendMessage("§6========================");
-    }
-
-    private void reloadAll(CommandIssuer sender) {
-        sender.sendMessage("§6[MODL] §eStarting full reload...");
-        
-        AtomicInteger completed = new AtomicInteger(0);
-        AtomicInteger total = new AtomicInteger(3); // punishment types, staff permissions, locale
-        
-        // Reload punishment types
-        reloadPunishmentTypesAsync(sender, () -> {
-            if (completed.incrementAndGet() == total.get()) {
-                sender.sendMessage("§6[MODL] §aFull reload completed successfully!");
-            }
-        });
-        
-        // Reload staff permissions
-        reloadStaffPermissionsAsync(sender, () -> {
-            if (completed.incrementAndGet() == total.get()) {
-                sender.sendMessage("§6[MODL] §aFull reload completed successfully!");
-            }
-        });
-        
-        // Reload locale
-        reloadLocaleSync(sender);
-        if (completed.incrementAndGet() == total.get()) {
-            sender.sendMessage("§6[MODL] §aFull reload completed successfully!");
-        }
-    }
-
-    private void reloadPunishmentTypes(CommandIssuer sender) {
-        sender.sendMessage("§6[MODL] §eReloading punishment types...");
-        reloadPunishmentTypesAsync(sender, () -> {
-            sender.sendMessage("§6[MODL] §aPunishment types reload completed!");
-        });
-    }
-
-    private void reloadStaffPermissions(CommandIssuer sender) {
-        sender.sendMessage("§6[MODL] §eReloading staff permissions...");
-        reloadStaffPermissionsAsync(sender, () -> {
-            sender.sendMessage("§6[MODL] §aStaff permissions reload completed!");
-        });
     }
 
     private void reloadLocale(CommandIssuer sender) {
         sender.sendMessage("§6[MODL] §eReloading locale files...");
-        reloadLocaleSync(sender);
-        sender.sendMessage("§6[MODL] §aLocale reload completed!");
-    }
-
-    private void reloadPunishmentTypesAsync(CommandIssuer sender, Runnable onComplete) {
-        CompletableFuture.allOf(
-            // Reload punishment types for punish command
-            reloadPunishCommandTypes(sender),
-            // Reload punishment types for player lookup command
-            reloadPlayerLookupTypes(sender)
-        ).thenRun(() -> {
-            sender.sendMessage("§aPunishment types reloaded successfully");
-            if (onComplete != null) onComplete.run();
-        }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) {
-                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-            } else {
-                sender.sendMessage("§cFailed to reload punishment types: " + throwable.getMessage());
-            }
-            if (onComplete != null) onComplete.run();
-            return null;
-        });
-    }
-
-    private CompletableFuture<Void> reloadPunishCommandTypes(CommandIssuer sender) {
-        return httpClient.getPunishmentTypes().thenAccept(response -> {
-            if (response.isSuccess()) {
-                punishCommand.updatePunishmentTypesCache(response.getData());
-                sender.sendMessage("§7- Punish command types: §a" + 
-                    punishCommand.getPunishmentTypeNames().size() + " loaded");
-            } else {
-                sender.sendMessage("§7- Punish command types: §cFailed (Status: " + response.getStatus() + ")");
-            }
-        });
-    }
-
-    private CompletableFuture<Void> reloadPlayerLookupTypes(CommandIssuer sender) {
-        return httpClient.getPunishmentTypes().thenAccept(response -> {
-            if (response.isSuccess()) {
-                playerLookupCommand.updatePunishmentTypesCache(response.getData());
-                sender.sendMessage("§7- Player lookup types: §a" + 
-                    response.getData().size() + " loaded");
-            } else {
-                sender.sendMessage("§7- Player lookup types: §cFailed (Status: " + response.getStatus() + ")");
-            }
-        });
-    }
-
-    private void reloadStaffPermissionsAsync(CommandIssuer sender, Runnable onComplete) {
-        httpClient.getStaffPermissions().thenAccept(response -> {
-            cache.clearStaffPermissions();
-            
-            int loadedCount = 0;
-            for (var staffMember : response.getData().getStaff()) {
-                if (staffMember.getMinecraftUuid() != null) {
-                    try {
-                        UUID uuid = UUID.fromString(staffMember.getMinecraftUuid());
-                        cache.cacheStaffPermissions(uuid, staffMember.getStaffRole(), staffMember.getPermissions());
-                        loadedCount++;
-                    } catch (IllegalArgumentException e) {
-                        sender.sendMessage("§7- Invalid UUID for staff member " + 
-                            staffMember.getStaffUsername() + ": " + staffMember.getMinecraftUuid());
-                    }
-                }
-            }
-            
-            sender.sendMessage("§aStaff permissions reloaded: " + loadedCount + " staff members");
-            if (onComplete != null) onComplete.run();
-        }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) {
-                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-            } else {
-                sender.sendMessage("§cFailed to reload staff permissions: " + throwable.getMessage());
-            }
-            if (onComplete != null) onComplete.run();
-            return null;
-        });
-    }
-
-    private void reloadLocaleSync(CommandIssuer sender) {
         try {
             localeManager.reloadLocale();
-            sender.sendMessage("§aLocale files reloaded successfully");
+            sender.sendMessage("§6[MODL] §aLocale files reloaded successfully!");
         } catch (Exception e) {
-            sender.sendMessage("§cFailed to reload locale: " + e.getMessage());
+            sender.sendMessage("§c[MODL] Failed to reload locale: " + e.getMessage());
         }
     }
 }

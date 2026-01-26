@@ -7,6 +7,7 @@ import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.NotificationAcknowledgeRequest;
 import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.request.SyncRequest;
+import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
@@ -61,6 +62,18 @@ public class SyncService {
     private ScheduledExecutorService syncExecutor;
     private boolean isRunning = false;
     private MigrationService migrationService;
+
+    private Long lastKnownStaffPermissionsTimestamp = null;
+    private Long lastKnownPunishmentTypesTimestamp = null;
+    private final List<PunishmentTypesRefreshListener> punishmentTypesListeners = new ArrayList<>();
+
+    public interface PunishmentTypesRefreshListener {
+        void onPunishmentTypesRefreshed(List<PunishmentTypesResponse.PunishmentTypeData> types);
+    }
+
+    public void addPunishmentTypesListener(PunishmentTypesRefreshListener listener) {
+        punishmentTypesListeners.add(listener);
+    }
     
     /**
      * Start the sync service with configurable polling interval
@@ -321,8 +334,72 @@ public class SyncService {
         if (data.getMigrationTask() != null) {
             processMigrationTask(data.getMigrationTask());
         }
+
+        // Check for staff permissions updates
+        Long newStaffTimestamp = data.getStaffPermissionsUpdatedAt();
+        if (newStaffTimestamp != null && !newStaffTimestamp.equals(lastKnownStaffPermissionsTimestamp)) {
+            logger.info("Staff permissions changed (timestamp: " + newStaffTimestamp + "), refreshing...");
+            refreshStaffPermissions();
+            lastKnownStaffPermissionsTimestamp = newStaffTimestamp;
+        }
+
+        // Check for punishment types updates
+        Long newPunishmentTypesTimestamp = data.getPunishmentTypesUpdatedAt();
+        if (newPunishmentTypesTimestamp != null && !newPunishmentTypesTimestamp.equals(lastKnownPunishmentTypesTimestamp)) {
+            logger.info("Punishment types changed (timestamp: " + newPunishmentTypesTimestamp + "), refreshing...");
+            refreshPunishmentTypes();
+            lastKnownPunishmentTypesTimestamp = newPunishmentTypesTimestamp;
+        }
     }
-    
+
+    private void refreshStaffPermissions() {
+        httpClient.getStaffPermissions().thenAccept(response -> {
+            cache.clearStaffPermissions();
+            int loadedCount = 0;
+            for (var staffMember : response.getData().getStaff()) {
+                if (staffMember.getMinecraftUuid() != null) {
+                    try {
+                        UUID uuid = UUID.fromString(staffMember.getMinecraftUuid());
+                        cache.cacheStaffPermissions(uuid, staffMember.getStaffRole(), staffMember.getPermissions());
+                        loadedCount++;
+                    } catch (IllegalArgumentException e) {
+                        logger.warning("Invalid UUID for staff member: " + staffMember.getMinecraftUuid());
+                    }
+                }
+            }
+            logger.info("Staff permissions refreshed: " + loadedCount + " staff members");
+        }).exceptionally(throwable -> {
+            if (throwable.getCause() instanceof PanelUnavailableException) {
+                logger.warning("Failed to refresh staff permissions: Panel temporarily unavailable");
+            } else {
+                logger.warning("Failed to refresh staff permissions: " + throwable.getMessage());
+            }
+            return null;
+        });
+    }
+
+    private void refreshPunishmentTypes() {
+        httpClient.getPunishmentTypes().thenAccept(response -> {
+            if (response.isSuccess()) {
+                for (PunishmentTypesRefreshListener listener : punishmentTypesListeners) {
+                    try {
+                        listener.onPunishmentTypesRefreshed(response.getData());
+                    } catch (Exception e) {
+                        logger.warning("Error notifying punishment types listener: " + e.getMessage());
+                    }
+                }
+                logger.info("Punishment types refreshed: " + response.getData().size() + " types");
+            }
+        }).exceptionally(throwable -> {
+            if (throwable.getCause() instanceof PanelUnavailableException) {
+                logger.warning("Failed to refresh punishment types: Panel temporarily unavailable");
+            } else {
+                logger.warning("Failed to refresh punishment types: " + throwable.getMessage());
+            }
+            return null;
+        });
+    }
+
     /**
      * Process migration task from sync response
      */

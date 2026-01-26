@@ -24,20 +24,24 @@ public class SyncResponse {
     public static class SyncData {
         @NotNull
         private List<PendingPunishment> pendingPunishments;
-        
+
         @NotNull
         private List<PendingPunishment> recentlyStartedPunishments;
-        
+
         @NotNull
         private List<ModifiedPunishment> recentlyModifiedPunishments;
-        
+
         @NotNull
         private List<PlayerNotification> playerNotifications;
-        
+
         @NotNull
         private List<ActiveStaffMember> activeStaffMembers;
-        
+
         private MigrationTask migrationTask;
+
+        private Long staffPermissionsUpdatedAt;
+
+        private Long punishmentTypesUpdatedAt;
     }
     
     @Data

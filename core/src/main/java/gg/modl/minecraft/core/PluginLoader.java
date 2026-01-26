@@ -119,13 +119,19 @@ public class PluginLoader {
         
         // Initialize punishment types cache
         punishCommand.initializePunishmentTypes();
-        
+
         // Initialize punishment types cache for player lookup
         playerLookupCommand.initializePunishmentTypes();
-        
+
+        // Register punishment types listeners for auto-refresh
+        syncService.addPunishmentTypesListener(punishCommand::updatePunishmentTypesCache);
+        syncService.addPunishmentTypesListener(playerLookupCommand::updatePunishmentTypesCache);
+
+        // Initialize staff permissions cache at startup
+        initializeStaffPermissions(httpManager.getHttpClient(), cache, logger);
+
         // Register reload command
-        commandManager.registerCommand(new ModlReloadCommand(
-            httpManager.getHttpClient(), platform, cache, this.localeManager, punishCommand, playerLookupCommand));
+        commandManager.registerCommand(new ModlReloadCommand(platform, cache, this.localeManager));
         
         // Register manual punishment commands
         commandManager.registerCommand(new BanCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
@@ -341,6 +347,28 @@ public class PluginLoader {
             if (!PermissionUtil.hasAnyPermission(context.getIssuer(), cache, "admin.settings.view", "admin.settings.modify", "admin.reload")) {
                 throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
             }
+        });
+    }
+
+    private static void initializeStaffPermissions(ModlHttpClient httpClient, Cache cache, Logger logger) {
+        logger.info("Initializing staff permissions cache...");
+        httpClient.getStaffPermissions().thenAccept(response -> {
+            int loadedCount = 0;
+            for (var staffMember : response.getData().getStaff()) {
+                if (staffMember.getMinecraftUuid() != null) {
+                    try {
+                        java.util.UUID uuid = java.util.UUID.fromString(staffMember.getMinecraftUuid());
+                        cache.cacheStaffPermissions(uuid, staffMember.getStaffRole(), staffMember.getPermissions());
+                        loadedCount++;
+                    } catch (IllegalArgumentException e) {
+                        logger.warning("Invalid UUID for staff member: " + staffMember.getMinecraftUuid());
+                    }
+                }
+            }
+            logger.info("Staff permissions initialized: " + loadedCount + " staff members cached");
+        }).exceptionally(throwable -> {
+            logger.warning("Failed to initialize staff permissions: " + throwable.getMessage());
+            return null;
         });
     }
 }
