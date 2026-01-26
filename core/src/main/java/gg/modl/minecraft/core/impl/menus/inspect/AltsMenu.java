@@ -161,8 +161,9 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
                 String pType = p.getTypeCategory();
                 String pRemaining = "Permanent";
                 Long duration = p.getDuration();
-                if (duration != null && duration > 0) {
-                    long expiryTime = p.getIssued().getTime() + duration;
+                if (duration != null && duration > 0 && p.getStarted() != null) {
+                    // Use started date (when punishment was enforced) for expiry calculation
+                    long expiryTime = p.getStarted().getTime() + duration;
                     long remaining = expiryTime - System.currentTimeMillis();
                     pRemaining = MenuItems.formatDuration(remaining > 0 ? remaining : 0);
                 }

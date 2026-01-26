@@ -145,8 +145,8 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
                 // Permanent
                 statusLine = locale.getMessage("menus.history_item.status_permanent");
             } else {
-                // Calculate remaining time
-                long expiryTime = punishment.getIssued().getTime() + duration;
+                // Calculate remaining time - use started date (when punishment was enforced)
+                long expiryTime = punishment.getStarted().getTime() + duration;
                 long remaining = expiryTime - System.currentTimeMillis();
                 String expiryFormatted = MenuItems.formatDuration(remaining > 0 ? remaining : 0);
                 statusLine = locale.getMessage("menus.history_item.status_active",
@@ -155,8 +155,9 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         } else {
             // Inactive - calculate time since expired
             Long duration = punishment.getDuration();
-            if (duration != null && duration > 0) {
-                long expiryTime = punishment.getIssued().getTime() + duration;
+            if (duration != null && duration > 0 && punishment.getStarted() != null) {
+                // Use started date for expiry calculation
+                long expiryTime = punishment.getStarted().getTime() + duration;
                 long expiredAgo = System.currentTimeMillis() - expiryTime;
                 String expiredFormatted = MenuItems.formatDuration(expiredAgo > 0 ? expiredAgo : 0);
                 statusLine = locale.getMessage("menus.history_item.status_inactive",
