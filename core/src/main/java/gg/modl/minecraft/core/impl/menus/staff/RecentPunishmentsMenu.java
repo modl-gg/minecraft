@@ -136,7 +136,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
         // Handle placeholder for empty list
         if (pwp.getPunishment() == null) {
-            return createEmptyPlaceholder(locale.getMessage("menus.empty.recent_punishments"));
+            return createEmptyPlaceholder(locale.getMessage("menus.empty.history"));
         }
 
         Punishment punishment = pwp.getPunishment();
@@ -147,47 +147,108 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
         // Check if this is a kick (kicks don't have duration or active status)
         boolean isKick = typeName != null && typeName.toLowerCase().contains("kick");
+        boolean isBan = typeName != null && (typeName.toLowerCase().contains("ban") || typeName.toLowerCase().contains("blacklist"));
+        boolean isMute = typeName != null && typeName.toLowerCase().contains("mute");
         boolean isActive = !isKick && punishment.isActive();
 
-        // Build variables map
-        Map<String, String> vars = new HashMap<>();
-        vars.put("punishment_id", punishment.getId() != null ? punishment.getId() : "Unknown");
-        vars.put("punishment_type", typeName);
-        vars.put("player", pwp.getPlayerName() != null ? pwp.getPlayerName() : "Unknown");
-        vars.put("date", MenuItems.formatDate(punishment.getIssued()));
-        vars.put("issuer", punishment.getIssuerName() != null ? punishment.getIssuerName() : "Unknown");
-
-        // Status line
-        String statusLine = isActive ?
-                locale.getMessage("menus.recent_punishment_item.status_active") :
-                locale.getMessage("menus.recent_punishment_item.status_inactive");
-        vars.put("status_line", statusLine);
-
-        // Duration
-        if (isKick) {
-            vars.put("duration", "&7Kick");
-        } else {
+        // Calculate initial duration (empty for kicks)
+        String initialDuration = "";
+        if (!isKick) {
             Long duration = punishment.getDuration();
-            if (duration != null && duration > 0) {
-                vars.put("duration", "&f" + MenuItems.formatDuration(duration));
+            if (duration == null || duration <= 0) {
+                initialDuration = "Permanent";
             } else {
-                vars.put("duration", "&cPermanent");
+                initialDuration = MenuItems.formatDuration(duration);
             }
         }
 
-        // Reason - wrap text
-        String reason = punishment.getReason();
-        List<String> wrappedReason = MenuItems.wrapText(reason, 6);
-        vars.put("reason", String.join("\n", wrappedReason));
+        // Determine type category for title
+        String spaceBanMuteOrKick = "";
+        if (isKick) {
+            spaceBanMuteOrKick = "Kick";
+        } else if (isBan) {
+            spaceBanMuteOrKick = " Ban";
+        } else if (isMute) {
+            spaceBanMuteOrKick = " Mute";
+        }
 
-        // Get lore from locale
+        // Build status line using history_item locale keys
+        String statusLine;
+        if (isKick) {
+            statusLine = ""; // Don't show status for kicks
+        } else if (isActive) {
+            Long duration = punishment.getDuration();
+            if (duration == null || duration <= 0) {
+                // Permanent
+                statusLine = locale.getMessage("menus.history_item.status_permanent");
+            } else {
+                // Calculate remaining time
+                Date started = punishment.getStarted() != null ? punishment.getStarted() : punishment.getIssued();
+                long expiryTime = started.getTime() + duration;
+                long remaining = expiryTime - System.currentTimeMillis();
+                String expiryFormatted = MenuItems.formatDuration(remaining > 0 ? remaining : 0);
+                statusLine = locale.getMessage("menus.history_item.status_active",
+                        Map.of("expiry", expiryFormatted));
+            }
+        } else {
+            // Inactive
+            Long duration = punishment.getDuration();
+            if (duration != null && duration > 0) {
+                Date started = punishment.getStarted() != null ? punishment.getStarted() : punishment.getIssued();
+                long expiryTime = started.getTime() + duration;
+                long expiredAgo = System.currentTimeMillis() - expiryTime;
+                String expiredFormatted = MenuItems.formatDuration(expiredAgo > 0 ? expiredAgo : 0);
+                statusLine = locale.getMessage("menus.history_item.status_inactive",
+                        Map.of("expired", expiredFormatted));
+            } else {
+                statusLine = locale.getMessage("menus.history_item.status_inactive",
+                        Map.of("expired", "N/A"));
+            }
+        }
+
+        // Build notes section - each note on a new line using note_format
+        StringBuilder notesBuilder = new StringBuilder();
+        List<Note> notes = punishment.getNotes();
+        if (notes != null && !notes.isEmpty()) {
+            String noteFormat = locale.getMessage("menus.history_item.note_format");
+            for (int i = 0; i < notes.size(); i++) {
+                Note note = notes.get(i);
+                String noteDate = MenuItems.formatDate(note.getDate());
+                String noteIssuer = note.getIssuerName();
+                String noteText = note.getText();
+                String formattedNote = noteFormat
+                        .replace("{note_date}", noteDate)
+                        .replace("{note_issuer}", noteIssuer)
+                        .replace("{note}", noteText);
+                if (i > 0) {
+                    notesBuilder.append("\n");
+                }
+                notesBuilder.append(formattedNote);
+            }
+        }
+
+        // Build variables map using HashMap to allow more than 10 entries
+        Map<String, String> vars = new HashMap<>();
+        vars.put("punishment_id", punishment.getId() != null ? punishment.getId() : "Unknown");
+        vars.put("punishment_type", typeName);
+        vars.put("initial_duration_if_not_kick", initialDuration);
+        vars.put("space_ban_mute_or_kick", spaceBanMuteOrKick);
+        vars.put("status_line", statusLine);
+        vars.put("notes", notesBuilder.toString());
+        vars.put("reason", punishment.getReason() != null ? punishment.getReason() : "No reason");
+        vars.put("issuer", punishment.getIssuerName() != null ? punishment.getIssuerName() : "Unknown");
+        vars.put("issued_date", MenuItems.formatDate(punishment.getIssued()));
+        // Additional variable for recent punishments - player name
+        vars.put("player", pwp.getPlayerName() != null ? pwp.getPlayerName() : "Unknown");
+
+        // Get lore from locale - use history_item format
         List<String> lore = new ArrayList<>();
-        for (String line : locale.getMessageList("menus.recent_punishment_item.lore")) {
+        for (String line : locale.getMessageList("menus.history_item.lore")) {
             String processed = line;
             for (Map.Entry<String, String> entry : vars.entrySet()) {
                 processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
             }
-            // Handle {reason} which may contain newlines
+            // Handle {notes} which may contain newlines - split into multiple lore lines
             if (processed.contains("\n")) {
                 for (String subLine : processed.split("\n")) {
                     lore.add(subLine);
@@ -197,8 +258,8 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
             }
         }
 
-        // Get title from locale
-        String titleKey = isActive ? "menus.recent_punishment_item.title_active" : "menus.recent_punishment_item.title_inactive";
+        // Get title from locale - use history_item format
+        String titleKey = isActive ? "menus.history_item.title_active" : "menus.history_item.title_inactive";
         String title = locale.getMessage(titleKey, vars);
 
         // Get appropriate item type based on punishment type

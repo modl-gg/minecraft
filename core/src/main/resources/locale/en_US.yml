@@ -413,27 +413,7 @@ menus:
     reports: "No reports filed"
     alts: "No linked accounts"
     tickets: "No tickets"
-    recent_punishments: "No recent punishments"
     staff_reports: "No reports"
-
-  # Staff menu - Recent Punishments (uses same format as history_item)
-  recent_punishment_item:
-    title_active: "&c{punishment_type} - {date}"
-    title_inactive: "&7{punishment_type} - {date}"
-    lore:
-      - "&7Player: &c{player}"
-      - "&7{status_line}"
-      - "&f "
-      - "&fID: &c{punishment_id}"
-      - "&fIssued by: &f{issuer}"
-      - "&fDuration: {duration}"
-      - "&f "
-      - "&fReason:"
-      - "{reason}"
-      - "&f "
-      - "&bClick to modify this punishment."
-    status_active: "Status: &cActive"
-    status_inactive: "Status: &aExpired/Pardoned"
 
   # Staff menu - Tickets
   ticket_item:
