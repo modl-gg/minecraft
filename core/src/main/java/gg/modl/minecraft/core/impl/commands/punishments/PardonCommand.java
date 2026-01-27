@@ -94,8 +94,9 @@ public class PardonCommand extends BaseCommand {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
             } else {
+                Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
                 sender.sendMessage(localeManager.getMessage("pardon.error",
-                    Map.of("error", throwable.getMessage())));
+                    Map.of("error", cause.getMessage())));
             }
             return null;
         });
@@ -140,8 +141,9 @@ public class PardonCommand extends BaseCommand {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
             } else {
+                Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
                 sender.sendMessage(localeManager.getMessage("pardon.error_player",
-                    Map.of("player", playerName, "type", type, "error", throwable.getMessage())));
+                    Map.of("player", playerName, "type", type, "error", cause.getMessage())));
             }
             return null;
         });
@@ -173,15 +175,16 @@ public class PardonCommand extends BaseCommand {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
             } else {
-                String errorMessage = throwable.getMessage();
-                
+                Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
+                String errorMessage = cause.getMessage();
+
                 // Check if it's a type mismatch error and provide helpful message
                 if (errorMessage != null && errorMessage.toLowerCase().contains("type")) {
                     if ("ban".equals(expectedType)) {
-                        sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_ban", 
+                        sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_ban",
                             Map.of("id", punishmentId)));
                     } else if ("mute".equals(expectedType)) {
-                        sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_mute", 
+                        sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_mute",
                             Map.of("id", punishmentId)));
                     } else {
                         sender.sendMessage(localeManager.getMessage("pardon.error",
@@ -197,13 +200,13 @@ public class PardonCommand extends BaseCommand {
     }
 
     private void tryPunishmentIdThenPlayerName(CommandIssuer sender, String target, String issuerName, String reason, String expectedType) {
-        // First, try as punishment ID
-        if (expectedType != null) {
-            // Use type checking for specific commands (unban/unmute)
+        // Check if the target looks like a punishment ID (8-char uppercase hex)
+        if (isPunishmentId(target)) {
+            // Try as punishment ID with fallback to player name
             tryPunishmentIdWithFallback(sender, target, issuerName, reason, expectedType);
         } else {
-            // No type checking for general pardon command
-            tryPunishmentIdWithFallback(sender, target, issuerName, reason, null);
+            // Treat as player name directly - no need to try punishment ID endpoint
+            pardonByPlayerName(sender, target, issuerName, reason, expectedType);
         }
     }
 
@@ -241,11 +244,13 @@ public class PardonCommand extends BaseCommand {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
             } else {
-                String errorMessage = throwable.getMessage();
-                
+                // Get the actual error message from the cause (CompletionException wraps the actual exception)
+                Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
+                String errorMessage = cause.getMessage();
+
                 // Check if it's a "not found" error (meaning not a valid punishment ID)
-                if (errorMessage != null && (errorMessage.contains("No player found with punishment ID") || 
-                    errorMessage.contains("Punishment with ID") || errorMessage.contains("not found") || 
+                if (errorMessage != null && (errorMessage.contains("No player found with punishment ID") ||
+                    errorMessage.contains("Punishment with ID") || errorMessage.contains("not found") ||
                     errorMessage.contains("404"))) {
                     // Fall back to player name
                     if (expectedType != null) {

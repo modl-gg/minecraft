@@ -25,33 +25,6 @@ messages:
   complete_form_label: "Complete your {type}"
   console_ticket_url: "&6{message}: &b{url}"
 
-# Chat Log Messages
-chat_logs:
-  placeholder: "(Recent chat messages would be captured here)"
-  system_note: "Chat logs automatically saved for review"
-  auto_reason: "Inappropriate chat"
-
-# Form Data
-form_data:
-  server_name: "Minecraft Server"
-  automatic_chat_log: true
-
-# Ticket Tags
-tags:
-  player_report: "player-report"
-  chat_report: "chat-report"
-  bug_report: "bug-report"
-  support: "support"
-  minecraft: "minecraft"
-  auto_logs: "auto-logs"
-
-# Ticket Priorities
-priorities:
-  chat: "high"
-  player: "medium"
-  bug: "medium"
-  support: "low"
-
 # Punishment System Messages
 # Available variables: {player}, {target}, {reason}, {duration}, {type}, {id}, {issuer}, {punishment_type}, {expiration}, {server}
 # General punishment messages
@@ -126,7 +99,16 @@ punishment_types:
       - "&c&lYou were kicked from the server."
       - "&f{reason} &7(#{id})"
 
-  ordinal_1: # Manual Ban
+  ordinal_1: # Manual Mute
+    public_notification: "&c{target} has been muted."
+    player_notification:
+      - ""
+      - "&cYou {tense} {temp} muted for {duration}"
+      - "&7{issued} | #{id} | {appeal_url}"
+      - "&f{reason}"
+      - ""
+
+  ordinal_2: # Manual Ban
     public_notification: "&c{target} has been banned."
     player_notification:
       - "&c&lYou {tense} {temp} banned for:"
@@ -135,14 +117,6 @@ punishment_types:
       - "&7{will_expire}"
       - "&7Is this an error? Appeal at {appeal_url} using ID #{id}."
 
-  ordinal_2: # Manual Mute
-    public_notification: "&c{target} has been muted."
-    player_notification:
-      - ""
-      - "&cYou {tense} {temp} muted for {duration}"
-      - "&7{issued} | #{id} | {appeal_url}"
-      - "&f{reason}"
-      - ""
   # Manual punishment types
   ordinal_3:  # Security Ban
     public_notification: "&c{target} has been banned."
@@ -274,102 +248,6 @@ punishment_types:
       - "&f{player_description}"
       - "&7{will_expire}"
       - "&7Is this an error? Appeal at {appeal_url} using ID #{id}."
-# Manual command messages
-commands:
-  # Existing report commands...
-  report:
-    description: "Report a player - opens a GUI with customizable options"
-    usage: "/report <player> [reason]"
-    
-  chatreport:
-    description: "Report a player for inappropriate chat and save chat logs"
-    usage: "/chatreport <player> [reason]"
-    
-  bugreport:
-    description: "Report a bug - creates an unfinished report with a form link"
-    usage: "/bugreport <title>"
-    
-  support:
-    description: "Request support - creates an unfinished request with a form link"
-    usage: "/support <title>"
-    
-  # New punishment commands
-  punish:
-    description: "Issue a dynamic punishment based on player history"
-    usage: "/punish <player> <type> [reason...] [flags]"
-    
-  ban:
-    description: "Ban a player from the server"
-    usage: "/ban <player> [duration] [reason...] [flags]"
-    
-  mute:
-    description: "Mute a player"
-    usage: "/mute <player> [duration] [reason...] [flags]"
-    
-  kick:
-    description: "Kick a player from the server"
-    usage: "/kick <player> [reason...] [flags]"
-    
-  blacklist:
-    description: "Blacklist a player from the network"
-    usage: "/blacklist <player> [reason...] [flags]"
-    
-  warn:
-    description: "Warn a player and add a note to their profile"
-    usage: "/warn <player> <reason...> [-silent]"
-
-  pardon:
-    description: "Pardon a player's ban by name or punishment ID (for bans only)"
-    usage: "/pardon <player/punishment_id> [reason...]"
-    
-  unban:
-    description: "Unban a player by name or punishment ID"
-    usage: "/unban <player/punishment_id> [reason...]"
-    
-  unmute:
-    description: "Unmute a player by name or punishment ID"
-    usage: "/unmute <player/punishment_id> [reason...]"
-    
-  modl:
-    reload:
-      description: "Reload punishment types and staff permissions"
-      usage: "/modl reload"
-
-# Configuration
-config:
-  # Panel URL (appeal_url will be panel_url + /appeal)
-  panel_url: "https://server.modl.gg"
-  appeal_url: "https://server.modl.gg/appeal"
-  default_reason: "No reason specified"
-  date_format: "MMM dd, yyyy 'at' HH:mm"
-  duration_format:
-    days: "{days}d"
-    hours: "{hours}h" 
-    minutes: "{minutes}m"
-    seconds: "{seconds}s"
-    permanent: "permanent"
-  
-  # IAmMuted command cooldown in minutes
-  iammuted_cooldown_minutes: 2
-  
-  # Commands that are blocked when a player is muted (in addition to chat)
-  blocked_by_mute:
-    - "msg"
-    - "tell"
-    - "whisper"
-    - "w"
-    - "m"
-    - "message"
-    - "reply"
-    - "r"
-    - "mail"
-    - "email"
-    - "helpop"
-    - "ac"
-    - "adminchat"
-    - "shout"
-    - "broadcast"
-    - "announce"
 
 # Notifications
 notification:
@@ -397,8 +275,6 @@ player_lookup:
   looking_up: "&7Looking up player &e{player}&7..."
   not_found: "&cPlayer not found: &e{player}"
   error: "&cError looking up player: {error}"
-  header: "&8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  footer: "&8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   title: "&6&lPlayer Lookup: &e{username}"
   uuid: "&7UUID: &f{uuid}"
   currently_banned: "&7Currently Banned: {status}"
@@ -421,31 +297,10 @@ player_lookup:
     muted: " &e(currently muted)"
     no_punishments: " &7(no active punishments)"
 
-# Constants Messages
-constants:
-  mojang_api_no_player: "&cNo player with that username exists (queried Mojang API)"
-  never_joined_server: "&cNo player with that username has never joined the server."
-
 # Punishment Command Messages
 punishment_commands:
   invalid_severity: "&cInvalid severity. Valid severities: lenient, regular, severe"
   warning_message: "&c{username} has been {punishment_type}."
-
-# Missing Locale Fallbacks
-locale:
-  missing: "&cMissing locale: {path}"
-  missing_list: "&cMissing locale list: {path}"
-
-# Console/Debug Messages (for consistency)
-console:
-  punishment_types_loaded: "[MODL] Loaded {count} punishment types from API"
-  punishment_types_failed: "[MODL] Failed to load punishment types from API: {status}"
-  punishment_types_error: "[MODL] Error loading punishment types: {error}"
-  permissions_loaded: "[MODL] Loaded permissions for {count} staff members"
-  permissions_error: "[MODL] Error loading staff permissions: {error}"
-  config_error: "Failed to set config option: {key}: {value}"
-  config_empty: "Configuration file is empty, using defaults"
-  locale_resource_missing: "Default locale resource not found in JAR"
 
 # API Error Handling
 api_errors:
@@ -453,13 +308,6 @@ api_errors:
   panel_unavailable: "&cThe panel is temporarily unavailable. Please try again shortly."
   connection_failed: "&cConnection to panel failed. Please try again in a moment."
   ban_check_failed: "&cUnable to verify ban status. Login temporarily restricted for safety."
-  
-  # Logging messages (for console)
-  log:
-    panel_502: "[MODL] Panel returned 502 (Bad Gateway) - likely restarting. Command: {command}"
-    panel_502_login: "[MODL] Panel 502 during login check for {player} - blocking login for safety"
-    panel_502_sync: "[MODL] Panel 502 during sync - will retry on next cycle"
-    panel_502_command: "[MODL] Panel 502 during {command} execution - user notified to retry"
 
 # Pardon Command Messages
 pardon:
@@ -513,6 +361,7 @@ menus:
       - "&bClick to modify this punishment."
     status_active: "&7Expires in {expiry}."
     status_inactive: "&7Expired {expired} ago."
+    status_pardoned: "&7Pardoned {pardoned} ago."
     status_permanent: "&7&7This permanent will never expire."
     status_unstarted: "&7Punishment not yet started."
     note_format: "&e{note_date} {note_issuer}&f: {note}"

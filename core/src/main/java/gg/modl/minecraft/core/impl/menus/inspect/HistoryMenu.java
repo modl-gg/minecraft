@@ -7,6 +7,7 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.protocolize.api.chat.ChatElement;
 import dev.simplix.protocolize.data.ItemType;
 import gg.modl.minecraft.api.Account;
+import gg.modl.minecraft.api.Modification;
 import gg.modl.minecraft.api.Note;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
@@ -109,7 +110,12 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         boolean isKick = typeData != null && typeData.isKick();
         boolean isBan = typeData != null && typeData.isBan();
         boolean isMute = typeData != null && typeData.isMute();
-        boolean isActive = !isKick && punishment.isActive(); // Kicks are never "active"
+
+        // Get effective duration (considering modifications)
+        Long effectiveDuration = getEffectiveDuration(punishment);
+
+        // Check if punishment is truly active (considering duration modifications and pardons)
+        boolean isActive = !isKick && isPunishmentEffectivelyActive(punishment, effectiveDuration);
 
         // Calculate initial duration (empty for kicks)
         String initialDuration = "";
@@ -140,31 +146,38 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
             // Punishment not yet started
             statusLine = locale.getMessage("menus.history_item.status_unstarted");
         } else if (isActive) {
-            Long duration = punishment.getDuration();
-            if (duration == null || duration <= 0) {
+            if (effectiveDuration == null || effectiveDuration <= 0) {
                 // Permanent
                 statusLine = locale.getMessage("menus.history_item.status_permanent");
             } else {
-                // Calculate remaining time - use started date (when punishment was enforced)
-                long expiryTime = punishment.getStarted().getTime() + duration;
+                // Calculate remaining time using effective duration
+                long expiryTime = punishment.getStarted().getTime() + effectiveDuration;
                 long remaining = expiryTime - System.currentTimeMillis();
                 String expiryFormatted = MenuItems.formatDuration(remaining > 0 ? remaining : 0);
                 statusLine = locale.getMessage("menus.history_item.status_active",
                         Map.of("expiry", expiryFormatted));
             }
         } else {
-            // Inactive - calculate time since expired
-            Long duration = punishment.getDuration();
-            if (duration != null && duration > 0 && punishment.getStarted() != null) {
-                // Use started date for expiry calculation
-                long expiryTime = punishment.getStarted().getTime() + duration;
-                long expiredAgo = System.currentTimeMillis() - expiryTime;
-                String expiredFormatted = MenuItems.formatDuration(expiredAgo > 0 ? expiredAgo : 0);
-                statusLine = locale.getMessage("menus.history_item.status_inactive",
-                        Map.of("expired", expiredFormatted));
+            // Inactive - check if pardoned or naturally expired
+            Date pardonDate = findPardonDate(punishment);
+            if (pardonDate != null) {
+                // Punishment was pardoned - show time since pardon
+                long pardonedAgo = System.currentTimeMillis() - pardonDate.getTime();
+                String pardonedFormatted = MenuItems.formatDuration(pardonedAgo > 0 ? pardonedAgo : 0);
+                statusLine = locale.getMessage("menus.history_item.status_pardoned",
+                        Map.of("pardoned", pardonedFormatted));
             } else {
-                statusLine = locale.getMessage("menus.history_item.status_inactive",
-                        Map.of("expired", "N/A"));
+                // Naturally expired - calculate time since expired using effective duration
+                if (effectiveDuration != null && effectiveDuration > 0 && punishment.getStarted() != null) {
+                    long expiryTime = punishment.getStarted().getTime() + effectiveDuration;
+                    long expiredAgo = System.currentTimeMillis() - expiryTime;
+                    String expiredFormatted = MenuItems.formatDuration(expiredAgo > 0 ? expiredAgo : 0);
+                    statusLine = locale.getMessage("menus.history_item.status_inactive",
+                            Map.of("expired", expiredFormatted));
+                } else {
+                    statusLine = locale.getMessage("menus.history_item.status_inactive",
+                            Map.of("expired", "N/A"));
+                }
             }
         }
 
@@ -305,5 +318,82 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
                 new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
         registerActionHandler("openPunish", ActionHandlers.openMenu(
                 new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
+    }
+
+    /**
+     * Find the date when a punishment was pardoned by looking for MANUAL_PARDON or APPEAL_ACCEPT modifications.
+     * @param punishment The punishment to check
+     * @return The pardon date, or null if not pardoned
+     */
+    private Date findPardonDate(Punishment punishment) {
+        List<Modification> modifications = punishment.getModifications();
+        if (modifications == null || modifications.isEmpty()) {
+            return null;
+        }
+
+        // Look for pardon modifications
+        for (Modification mod : modifications) {
+            if (mod.getType() == Modification.Type.MANUAL_PARDON ||
+                mod.getType() == Modification.Type.APPEAL_ACCEPT) {
+                return mod.getIssued();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get the effective duration of a punishment, considering any duration change modifications.
+     * @param punishment The punishment to check
+     * @return The effective duration in milliseconds, or null for permanent
+     */
+    private Long getEffectiveDuration(Punishment punishment) {
+        List<Modification> modifications = punishment.getModifications();
+        if (modifications == null || modifications.isEmpty()) {
+            return punishment.getDuration();
+        }
+
+        // Look for the most recent duration change modification
+        Long effectiveDuration = punishment.getDuration();
+        for (Modification mod : modifications) {
+            if (mod.getType() == Modification.Type.MANUAL_DURATION_CHANGE ||
+                mod.getType() == Modification.Type.APPEAL_DURATION_CHANGE) {
+                // Get effective duration from modification (0 or negative means permanent)
+                long modDuration = mod.getEffectiveDuration();
+                effectiveDuration = modDuration <= 0 ? null : modDuration;
+            }
+        }
+        return effectiveDuration;
+    }
+
+    /**
+     * Check if a punishment is effectively active, considering duration modifications and pardons.
+     * @param punishment The punishment to check
+     * @param effectiveDuration The effective duration (from getEffectiveDuration)
+     * @return True if the punishment is effectively active
+     */
+    private boolean isPunishmentEffectivelyActive(Punishment punishment, Long effectiveDuration) {
+        // First check if it was pardoned
+        if (findPardonDate(punishment) != null) {
+            return false;
+        }
+
+        // Check if the data.active flag is false
+        if (!punishment.isActive()) {
+            return false;
+        }
+
+        // Check if it has a started date
+        if (punishment.getStarted() == null) {
+            return true; // Not started yet, considered active
+        }
+
+        // If permanent (null or <= 0 duration), it's active
+        if (effectiveDuration == null || effectiveDuration <= 0) {
+            return true;
+        }
+
+        // Check if the effective duration has expired
+        long expiryTime = punishment.getStarted().getTime() + effectiveDuration;
+        return System.currentTimeMillis() < expiryTime;
     }
 }

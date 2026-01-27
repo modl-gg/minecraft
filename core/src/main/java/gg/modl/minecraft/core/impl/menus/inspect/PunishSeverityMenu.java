@@ -18,6 +18,7 @@ import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -359,14 +360,24 @@ public class PunishSeverityMenu extends BaseInspectMenu {
 
                     httpClient.createPunishmentWithResponse(request).thenAccept(response -> {
                         if (response.isSuccess()) {
-                            sendMessage(MenuItems.COLOR_GREEN + "Punishment issued successfully!");
+                            LocaleManager localeManager = platform.getLocaleManager();
 
-                            // Show post-punishment options
-                            sendMessage("");
-                            sendMessage(MenuItems.COLOR_GOLD + "Add additional information:");
-                            sendMessage(MenuItems.COLOR_AQUA + "[Add Evidence by Link]" + MenuItems.COLOR_GRAY + " - Type 'evidence' followed by URL");
-                            sendMessage(MenuItems.COLOR_AQUA + "[Add Note]" + MenuItems.COLOR_GRAY + " - Type 'note' followed by text");
-                            sendMessage("");
+                            // Success message to issuer (same as command)
+                            String successMessage = localeManager.punishment()
+                                .type(punishmentType.getName())
+                                .target(targetName)
+                                .punishmentId(response.getPunishmentId())
+                                .get("general.punishment_issued");
+                            sendMessage(successMessage);
+
+                            // Staff notification (same as command)
+                            String staffMessage = localeManager.punishment()
+                                .issuer(viewerName)
+                                .type(punishmentType.getName())
+                                .target(targetName)
+                                .punishmentId(response.getPunishmentId())
+                                .get("general.staff_notification");
+                            platform.staffBroadcast(staffMessage);
                         } else {
                             sendMessage(MenuItems.COLOR_RED + "Failed to issue punishment: " + response.getMessage());
                         }

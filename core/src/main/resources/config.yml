@@ -216,6 +216,27 @@ punish_gui:
       - ""
       - "&eClick to issue new punishment."
 
+# Locale Configuration
+# These values are used by the locale system for URLs, formatting, etc.
+locale_config:
+  # Panel URL (used for appeal links)
+  panel_url: "https://server.modl.gg"
+  appeal_url: "https://server.modl.gg/appeal"
+
+  # Default reason when none is specified
+  default_reason: "No reason specified"
+
+  # Date format for displaying dates
+  date_format: "MMM dd, yyyy 'at' HH:mm"
+
+  # Duration format templates
+  duration_format:
+    days: "{days}d"
+    hours: "{hours}h"
+    minutes: "{minutes}m"
+    seconds: "{seconds}s"
+    permanent: "permanent"
+
 # Placeholders available in descriptions:
 #   {staff-description} - The staff description from the punishment type configuration
 #   {social-status}     - The player's current social offender status (Good, Warning, Restricted, Banned)

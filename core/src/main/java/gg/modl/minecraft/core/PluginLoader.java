@@ -71,6 +71,9 @@ public class PluginLoader {
             this.localeManager.loadFromFile(localeFile);
         }
 
+        // Load locale config values from config.yml
+        loadLocaleConfig(dataDirectory, logger);
+
         // Set the locale manager on the platform for menu access
         platform.setLocaleManager(this.localeManager);
 
@@ -184,6 +187,33 @@ public class PluginLoader {
         return null;
     }
     
+    /**
+     * Load locale config values from config.yml and pass to LocaleManager
+     */
+    @SuppressWarnings("unchecked")
+    private void loadLocaleConfig(Path dataDirectory, Logger logger) {
+        try {
+            Path configFile = dataDirectory.resolve("config.yml");
+            if (!Files.exists(configFile)) {
+                logger.info("Config file not found, using default locale config values");
+                return;
+            }
+
+            Yaml yaml = new Yaml();
+            try (InputStream inputStream = new FileInputStream(configFile.toFile())) {
+                Map<String, Object> config = yaml.load(inputStream);
+
+                if (config != null && config.containsKey("locale_config")) {
+                    Map<String, Object> localeConfig = (Map<String, Object>) config.get("locale_config");
+                    this.localeManager.setConfigValues(localeConfig);
+                    logger.info("Loaded locale config values from config.yml");
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("Failed to load locale config: " + e.getMessage());
+        }
+    }
+
     /**
      * Load database configuration from config.yml
      */

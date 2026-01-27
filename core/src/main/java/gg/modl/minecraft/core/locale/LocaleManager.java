@@ -15,19 +15,29 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class LocaleManager {
-    
+
     @Getter
     private Map<String, Object> messages;
+    private Map<String, Object> configValues;
     private final String currentLocale;
-    
+
     public LocaleManager(String locale) {
         this.currentLocale = locale;
         this.messages = new HashMap<>();
+        this.configValues = new HashMap<>();
         loadLocale(locale);
     }
-    
+
     public LocaleManager() {
         this("en_US");
+    }
+
+    /**
+     * Set config values from external config.yml
+     * These values are used for "config.*" paths instead of locale messages
+     */
+    public void setConfigValues(Map<String, Object> config) {
+        this.configValues = config != null ? config : new HashMap<>();
     }
     
     private void loadLocale(String locale) {
@@ -62,17 +72,29 @@ public class LocaleManager {
     public String getMessage(String path) {
         return getMessage(path, new HashMap<>());
     }
-    
+
     public String getMessage(String path, Map<String, String> placeholders) {
-        Object value = getNestedValue(messages, path);
+        // Check if path is for config values
+        Object value;
+        if (path.startsWith("config.")) {
+            String configPath = path.substring(7); // Remove "config." prefix
+            value = getNestedValue(configValues, configPath);
+            // Fall back to messages if not found in config (for backwards compatibility)
+            if (value == null) {
+                value = getNestedValue(messages, path);
+            }
+        } else {
+            value = getNestedValue(messages, path);
+        }
+
         if (value instanceof String) {
             String message = (String) value;
-            
+
             // Replace placeholders
             for (Map.Entry<String, String> entry : placeholders.entrySet()) {
                 message = message.replace("{" + entry.getKey() + "}", entry.getValue());
             }
-            
+
             // Convert color codes
             return colorize(message);
         }

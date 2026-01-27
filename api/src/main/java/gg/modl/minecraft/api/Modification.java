@@ -19,7 +19,7 @@ public final class Modification {
     @SerializedName("issuerName")
     private String issuer;
 
-    @SerializedName("issued")
+    @SerializedName("date")
     private Date issued;
 
     @SerializedName("effectiveDuration")

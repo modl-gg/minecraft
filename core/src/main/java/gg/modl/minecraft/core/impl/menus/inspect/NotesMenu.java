@@ -133,8 +133,25 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
 
     @Override
     protected void handleClick(Click click, Note note) {
-        // Handle placeholder or normal note - both are view-only
-        // No action on click
+        // Handle placeholder - do nothing
+        if (note.getText() == null) {
+            return;
+        }
+
+        // Paste note content to player's chat input
+        // Uses JSON component with suggest_command click event to put text in chat
+        String noteText = note.getText();
+        // Escape quotes for JSON
+        String escapedText = noteText.replace("\\", "\\\\").replace("\"", "\\\"");
+
+        // Create JSON component that suggests the note text as a command (puts in chat input)
+        String json = "[{\"text\":\"" + MenuItems.COLOR_GRAY + "Note copied to chat: " + MenuItems.COLOR_WHITE +
+                noteText.substring(0, Math.min(30, noteText.length())) +
+                (noteText.length() > 30 ? "..." : "") +
+                "\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"" + escapedText + "\"}}]";
+
+        platform.sendJsonMessage(viewerUuid, json);
+        sendMessage(MenuItems.COLOR_GREEN + "Click the message above to paste the note to your chat!");
     }
 
     @Override

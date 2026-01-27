@@ -197,7 +197,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
 
                     httpClient.addPunishmentNote(request).thenAccept(v -> {
                         sendMessage(MenuItems.COLOR_GREEN + "Note added successfully!");
-                        platform.runOnMainThread(() -> display(click.player()));
+                        // Refresh by fetching updated player profile
+                        refreshMenu(click);
                     }).exceptionally(e -> {
                         sendMessage(MenuItems.COLOR_RED + "Failed to add note: " + e.getMessage());
                         platform.runOnMainThread(() -> display(click.player()));
@@ -229,7 +230,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
 
                     httpClient.addPunishmentEvidence(request).thenAccept(v -> {
                         sendMessage(MenuItems.COLOR_GREEN + "Evidence added successfully!");
-                        platform.runOnMainThread(() -> display(click.player()));
+                        // Refresh by fetching updated player profile
+                        refreshMenu(click);
                     }).exceptionally(e -> {
                         sendMessage(MenuItems.COLOR_RED + "Failed to add evidence: " + e.getMessage());
                         platform.runOnMainThread(() -> display(click.player()));
@@ -254,19 +256,11 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         httpClient.pardonPunishment(request).thenAccept(response -> {
             if (response.hasPardoned()) {
                 sendMessage(MenuItems.COLOR_GREEN + "Punishment pardoned successfully!");
+                // Invalidate cache so the pardon takes effect immediately
+                invalidateCache();
                 // Return to history menu
-                platform.runOnMainThread(() -> {
-                    click.clickedMenu().close();
-                    httpClient.getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
-                        if (profileResponse.getStatus() == 200) {
-                            platform.runOnMainThread(() -> {
-                                new HistoryMenu(platform, httpClient, viewerUuid, viewerName,
-                                        profileResponse.getProfile(), menuBackAction)
-                                        .display(click.player());
-                            });
-                        }
-                    });
-                });
+                click.clickedMenu().close();
+                refreshMenu(click);
             } else {
                 sendMessage(MenuItems.COLOR_GRAY + "Punishment is already inactive or has been pardoned.");
             }
@@ -298,7 +292,10 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
 
                     httpClient.changePunishmentDuration(request).thenAccept(v -> {
                         sendMessage(MenuItems.COLOR_GREEN + "Duration changed successfully!");
-                        platform.runOnMainThread(() -> display(click.player()));
+                        // Invalidate cache so the new duration takes effect
+                        invalidateCache();
+                        // Refresh by fetching updated player profile
+                        refreshMenu(click);
                     }).exceptionally(e -> {
                         sendMessage(MenuItems.COLOR_RED + "Failed to change duration: " + e.getMessage());
                         platform.runOnMainThread(() -> display(click.player()));
@@ -358,17 +355,7 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         httpClient.togglePunishmentOption(request).thenAccept(v -> {
             sendMessage(MenuItems.COLOR_GREEN + "Stat-wipe " + (!currentStatus ? "enabled" : "disabled") + " successfully!");
             // Refresh menu to show new status
-            platform.runOnMainThread(() -> {
-                httpClient.getPlayerProfile(targetUuid).thenAccept(response -> {
-                    if (response.getStatus() == 200) {
-                        platform.runOnMainThread(() -> {
-                            new HistoryMenu(platform, httpClient, viewerUuid, viewerName,
-                                    response.getProfile(), menuBackAction)
-                                    .display(click.player());
-                        });
-                    }
-                });
-            });
+            refreshMenu(click);
         }).exceptionally(e -> {
             sendMessage(MenuItems.COLOR_RED + "Failed to toggle stat-wipe: " + e.getMessage());
             return null;
@@ -390,20 +377,38 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         httpClient.togglePunishmentOption(request).thenAccept(v -> {
             sendMessage(MenuItems.COLOR_GREEN + "Alt-blocking " + (!currentStatus ? "enabled" : "disabled") + " successfully!");
             // Refresh menu to show new status
-            platform.runOnMainThread(() -> {
-                httpClient.getPlayerProfile(targetUuid).thenAccept(response -> {
-                    if (response.getStatus() == 200) {
-                        platform.runOnMainThread(() -> {
-                            new HistoryMenu(platform, httpClient, viewerUuid, viewerName,
-                                    response.getProfile(), menuBackAction)
-                                    .display(click.player());
-                        });
-                    }
-                });
-            });
+            refreshMenu(click);
         }).exceptionally(e -> {
             sendMessage(MenuItems.COLOR_RED + "Failed to toggle alt-blocking: " + e.getMessage());
             return null;
         });
+    }
+
+    /**
+     * Refresh the menu by fetching the updated player profile and returning to history menu.
+     */
+    private void refreshMenu(Click click) {
+        platform.runOnMainThread(() -> {
+            httpClient.getPlayerProfile(targetUuid).thenAccept(response -> {
+                if (response.getStatus() == 200) {
+                    platform.runOnMainThread(() -> {
+                        new HistoryMenu(platform, httpClient, viewerUuid, viewerName,
+                                response.getProfile(), menuBackAction)
+                                .display(click.player());
+                    });
+                }
+            });
+        });
+    }
+
+    /**
+     * Invalidate the cache for the target player to ensure updated punishment data takes effect.
+     */
+    private void invalidateCache() {
+        if (platform.getCache() != null) {
+            // Clear both ban and mute cache for this player since we don't know which type the punishment is
+            platform.getCache().removeBan(targetUuid);
+            platform.getCache().removeMute(targetUuid);
+        }
     }
 }
