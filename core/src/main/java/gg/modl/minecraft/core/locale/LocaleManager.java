@@ -235,8 +235,13 @@ public class LocaleManager {
     public String getPunishmentMessage(String path, Map<String, String> variables) {
         Map<String, String> allVariables = new HashMap<>(variables);
         
-        // Add config variables
-        allVariables.putIfAbsent("appeal_url", getMessage("config.appeal_url"));
+        // Add config variables - appeal_url is derived from panel_url
+        String panelUrl = getMessage("config.panel_url");
+        if (panelUrl != null && !panelUrl.startsWith("&c") && !panelUrl.startsWith("§c")) {
+            allVariables.putIfAbsent("appeal_url", panelUrl + "/appeal");
+        } else {
+            allVariables.putIfAbsent("appeal_url", "https://server.modl.gg/appeal");
+        }
         allVariables.putIfAbsent("default_reason", getMessage("config.default_reason"));
         
         return getMessage(path, allVariables);
@@ -394,10 +399,10 @@ public class LocaleManager {
 
         // Add appeal URL (panel url + /appeal)
         String panelUrl = getMessage("config.panel_url");
-        if (panelUrl != null && !panelUrl.startsWith("&c")) {
+        if (panelUrl != null && !panelUrl.startsWith("&c") && !panelUrl.startsWith("§c")) {
             variables.put("appeal_url", panelUrl + "/appeal");
         } else {
-            variables.put("appeal_url", getMessage("config.appeal_url"));
+            variables.put("appeal_url", "https://server.modl.gg/appeal");
         }
 
         // Add player description from punishment type

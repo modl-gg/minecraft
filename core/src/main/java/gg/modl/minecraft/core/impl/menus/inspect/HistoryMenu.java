@@ -357,9 +357,13 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         for (Modification mod : modifications) {
             if (mod.getType() == Modification.Type.MANUAL_DURATION_CHANGE ||
                 mod.getType() == Modification.Type.APPEAL_DURATION_CHANGE) {
-                // Get effective duration from modification (0 or negative means permanent)
-                long modDuration = mod.getEffectiveDuration();
-                effectiveDuration = modDuration <= 0 ? null : modDuration;
+                // Get effective duration from modification (null or <= 0 means permanent)
+                Long modDuration = mod.getEffectiveDuration();
+                if (modDuration == null || modDuration <= 0) {
+                    effectiveDuration = null;
+                } else {
+                    effectiveDuration = modDuration;
+                }
             }
         }
         return effectiveDuration;

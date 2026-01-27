@@ -161,7 +161,13 @@ public class PunishmentMessages {
         variables.put("reason", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
         variables.put("description", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
         variables.put("duration", punishment.isPermanent() ? "permanent" : formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
-        variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
+        // Appeal URL - derive from panel_url
+        String panelUrl = localeManager.getMessage("config.panel_url");
+        if (panelUrl != null && !panelUrl.startsWith("§c") && !panelUrl.startsWith("&c")) {
+            variables.put("appeal_url", panelUrl + "/appeal");
+        } else {
+            variables.put("appeal_url", "https://server.modl.gg/appeal");
+        }
         variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");
 
         // Use public notification message for the actual punishment type ordinal
@@ -219,12 +225,12 @@ public class PunishmentMessages {
         variables.put("duration", punishment.isPermanent() ? "permanent" : formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
         variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");
 
-        // Appeal URL - try panel_url + /appeal, fall back to config.appeal_url
+        // Appeal URL - derive from panel_url
         String panelUrl = localeManager.getMessage("config.panel_url");
         if (panelUrl != null && !panelUrl.startsWith("§c") && !panelUrl.startsWith("&c")) {
             variables.put("appeal_url", panelUrl + "/appeal");
         } else {
-            variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
+            variables.put("appeal_url", "https://server.modl.gg/appeal");
         }
 
         // Temp - "temporarily" or "permanently"

@@ -23,7 +23,7 @@ public final class Modification {
     private Date issued;
 
     @SerializedName("effectiveDuration")
-    private long effectiveDuration;
+    private Long effectiveDuration;
 
     @Nullable
     public Type getType() {
@@ -38,6 +38,15 @@ public final class Modification {
     @NotNull
     public Date getIssued() {
         return issued != null ? issued : new Date(0);
+    }
+
+    /**
+     * Get the effective duration in milliseconds.
+     * Returns null for permanent punishments.
+     */
+    @Nullable
+    public Long getEffectiveDuration() {
+        return effectiveDuration;
     }
 
     public enum Type {

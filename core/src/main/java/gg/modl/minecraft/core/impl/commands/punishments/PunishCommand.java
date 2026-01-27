@@ -331,7 +331,13 @@ public class PunishCommand extends BaseCommand {
         variables.put("duration", localeManager.formatDuration(duration));
         variables.put("reason", reason != null ? reason : "No reason specified");
         variables.put("description", punishmentType != null ? punishmentType.getName() : punishmentTypeName);
-        variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
+        // Appeal URL - derive from panel_url
+        String panelUrl = localeManager.getMessage("config.panel_url");
+        if (panelUrl != null && !panelUrl.startsWith("§c") && !panelUrl.startsWith("&c")) {
+            variables.put("appeal_url", panelUrl + "/appeal");
+        } else {
+            variables.put("appeal_url", "https://server.modl.gg/appeal");
+        }
         
         // Get public notification using new locale format
         return localeManager.getPublicNotificationMessage(ordinal, variables);
