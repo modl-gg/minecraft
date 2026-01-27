@@ -51,12 +51,12 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         public Account getAccount() { return account; }
     }
 
-    private List<PunishmentWithPlayer> recentPunishments = new ArrayList<>();
+    private final List<PunishmentWithPlayer> recentPunishments;
     private final String panelUrl;
     private final Consumer<CirrusPlayerWrapper> parentBackAction;
 
     /**
-     * Create a new recent punishments menu.
+     * Create a new recent punishments menu (fetches data from API).
      *
      * @param platform The platform instance
      * @param httpClient The HTTP client for API calls
@@ -68,13 +68,34 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
      */
     public RecentPunishmentsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                   boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
+        this(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction, null);
+    }
+
+    /**
+     * Create a new recent punishments menu with pre-loaded data.
+     *
+     * @param platform The platform instance
+     * @param httpClient The HTTP client for API calls
+     * @param viewerUuid The UUID of the staff viewing the menu
+     * @param viewerName The name of the staff viewing the menu
+     * @param isAdmin Whether the viewer has admin permissions
+     * @param panelUrl The panel URL
+     * @param backAction Action to return to parent menu
+     * @param preloadedData Pre-loaded punishment data (null to fetch from API)
+     */
+    public RecentPunishmentsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
+                                  boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction,
+                                  List<PunishmentWithPlayer> preloadedData) {
         super("Recent Punishments", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
         this.panelUrl = panelUrl;
         this.parentBackAction = backAction;
+        this.recentPunishments = preloadedData != null ? new ArrayList<>(preloadedData) : new ArrayList<>();
         activeTab = StaffTab.PUNISHMENTS;
 
-        // Fetch recent punishments from API
-        fetchRecentPunishments();
+        // Only fetch if no preloaded data
+        if (preloadedData == null) {
+            fetchRecentPunishments();
+        }
     }
 
     private void fetchRecentPunishments() {
@@ -115,6 +136,13 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
             // Failed to fetch - list remains empty
             return null;
         });
+    }
+
+    /**
+     * Get the current list of punishments (for passing to back actions).
+     */
+    public List<PunishmentWithPlayer> getPunishments() {
+        return recentPunishments;
     }
 
     @Override
@@ -312,8 +340,10 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         }
 
         // Open staff modify punishment menu with staff menu header
+        // Pass current data so back button doesn't need to re-fetch
+        List<PunishmentWithPlayer> currentData = new ArrayList<>(recentPunishments);
         Consumer<CirrusPlayerWrapper> returnToPunishments = p ->
-                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p);
+                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null, currentData).display(p);
 
         if (pwp.getAccount() != null) {
             ActionHandlers.openMenu(
