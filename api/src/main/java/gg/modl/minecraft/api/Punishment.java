@@ -42,6 +42,9 @@ public class Punishment {
     @SerializedName("notes")
     private List<Note> notes;
 
+    @SerializedName("evidence")
+    private List<Evidence> evidence;
+
     @SerializedName("attachedTicketIds")
     private List<String> attachedTicketIds;
 
@@ -136,6 +139,11 @@ public class Punishment {
     @NotNull
     public List<Note> getNotes() {
         return notes != null ? notes : Collections.emptyList();
+    }
+
+    @NotNull
+    public List<Evidence> getEvidence() {
+        return evidence != null ? evidence : Collections.emptyList();
     }
 
     @NotNull

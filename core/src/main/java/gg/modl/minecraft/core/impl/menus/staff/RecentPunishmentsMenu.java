@@ -14,8 +14,10 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.inspect.ModifyPunishmentMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -130,16 +132,14 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
     @Override
     protected CirrusItem map(PunishmentWithPlayer pwp) {
+        LocaleManager locale = platform.getLocaleManager();
+
         // Handle placeholder for empty list
         if (pwp.getPunishment() == null) {
-            return createEmptyPlaceholder("No recent punishments");
+            return createEmptyPlaceholder(locale.getMessage("menus.empty.recent_punishments"));
         }
 
         Punishment punishment = pwp.getPunishment();
-        List<String> lore = new ArrayList<>();
-
-        // Player name
-        lore.add(MenuItems.COLOR_GRAY + "Player: " + MenuItems.COLOR_RED + pwp.getPlayerName());
 
         // Type and status - get from dataMap or fall back to registry
         Object typeNameObj = punishment.getDataMap().get("typeName");
@@ -147,45 +147,66 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
         // Check if this is a kick (kicks don't have duration or active status)
         boolean isKick = typeName != null && typeName.toLowerCase().contains("kick");
-        boolean isActive = !isKick && punishment.isActive(); // Kicks are never "active"
+        boolean isActive = !isKick && punishment.isActive();
 
-        lore.add(MenuItems.COLOR_GRAY + "Type: " + (isActive ? MenuItems.COLOR_RED : MenuItems.COLOR_WHITE) + typeName);
+        // Build variables map
+        Map<String, String> vars = new HashMap<>();
+        vars.put("punishment_id", punishment.getId() != null ? punishment.getId() : "Unknown");
+        vars.put("punishment_type", typeName);
+        vars.put("player", pwp.getPlayerName() != null ? pwp.getPlayerName() : "Unknown");
+        vars.put("date", MenuItems.formatDate(punishment.getIssued()));
+        vars.put("issuer", punishment.getIssuerName() != null ? punishment.getIssuerName() : "Unknown");
 
-        // Only show status for non-kicks (kicks are instant)
-        if (!isKick) {
-            lore.add(MenuItems.COLOR_GRAY + "Status: " + (isActive ? MenuItems.COLOR_RED + "Active" : MenuItems.COLOR_GREEN + "Expired/Pardoned"));
-        }
+        // Status line
+        String statusLine = isActive ?
+                locale.getMessage("menus.recent_punishment_item.status_active") :
+                locale.getMessage("menus.recent_punishment_item.status_inactive");
+        vars.put("status_line", statusLine);
 
-        // Issuer
-        lore.add(MenuItems.COLOR_GRAY + "Issued by: " + MenuItems.COLOR_WHITE + punishment.getIssuerName());
-
-        // Duration - don't show for kicks (they are instant)
-        if (!isKick) {
+        // Duration
+        if (isKick) {
+            vars.put("duration", "&7Kick");
+        } else {
             Long duration = punishment.getDuration();
             if (duration != null && duration > 0) {
-                lore.add(MenuItems.COLOR_GRAY + "Duration: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(duration));
+                vars.put("duration", "&f" + MenuItems.formatDuration(duration));
             } else {
-                lore.add(MenuItems.COLOR_GRAY + "Duration: " + MenuItems.COLOR_RED + "Permanent");
+                vars.put("duration", "&cPermanent");
             }
         }
 
-        // Reason
-        lore.add("");
-        lore.add(MenuItems.COLOR_GRAY + "Reason:");
-        lore.addAll(MenuItems.wrapText(punishment.getReason(), 6));
+        // Reason - wrap text
+        String reason = punishment.getReason();
+        List<String> wrappedReason = MenuItems.wrapText(reason, 6);
+        vars.put("reason", String.join("\n", wrappedReason));
 
-        // Action hint
-        lore.add("");
-        lore.add(MenuItems.COLOR_YELLOW + "Click to modify punishment");
+        // Get lore from locale
+        List<String> lore = new ArrayList<>();
+        for (String line : locale.getMessageList("menus.recent_punishment_item.lore")) {
+            String processed = line;
+            for (Map.Entry<String, String> entry : vars.entrySet()) {
+                processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
+            }
+            // Handle {reason} which may contain newlines
+            if (processed.contains("\n")) {
+                for (String subLine : processed.split("\n")) {
+                    lore.add(subLine);
+                }
+            } else if (!processed.isEmpty()) {
+                lore.add(processed);
+            }
+        }
+
+        // Get title from locale
+        String titleKey = isActive ? "menus.recent_punishment_item.title_active" : "menus.recent_punishment_item.title_inactive";
+        String title = locale.getMessage(titleKey, vars);
 
         // Get appropriate item type based on punishment type
         ItemType itemType = getPunishmentItemType(punishment);
 
-        // Kicks are never red since they're instant
-        String displayColor = isActive ? MenuItems.COLOR_RED : MenuItems.COLOR_GRAY;
         return CirrusItem.of(
                 itemType,
-                ChatElement.ofLegacyText(displayColor + typeName + " - " + MenuItems.formatDate(punishment.getIssued())),
+                ChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }

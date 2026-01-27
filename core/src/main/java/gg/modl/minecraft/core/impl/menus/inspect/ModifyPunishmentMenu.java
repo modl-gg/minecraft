@@ -4,9 +4,11 @@ import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import dev.simplix.protocolize.api.ClickType;
 import dev.simplix.protocolize.api.chat.ChatElement;
 import dev.simplix.protocolize.data.ItemType;
 import gg.modl.minecraft.api.Account;
+import gg.modl.minecraft.api.Evidence;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.AddPunishmentEvidenceRequest;
@@ -80,15 +82,31 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
 
         // Slot 29: Evidence
         List<String> evidenceLore = new ArrayList<>();
-        evidenceLore.add(MenuItems.COLOR_GRAY + "Current evidence:");
-        // TODO: Fetch evidence from punishment data when endpoint available
-        evidenceLore.add(MenuItems.COLOR_DARK_GRAY + "(No evidence attached)");
+        List<Evidence> evidenceList = punishment.getEvidence();
+        if (evidenceList.isEmpty()) {
+            evidenceLore.add(MenuItems.COLOR_DARK_GRAY + "(No evidence attached)");
+        } else {
+            evidenceLore.add(MenuItems.COLOR_GRAY + "Current evidence (" + evidenceList.size() + "):");
+            for (int i = 0; i < Math.min(evidenceList.size(), 5); i++) {
+                Evidence ev = evidenceList.get(i);
+                String display = ev.getDisplayText();
+                if (display.length() > 40) {
+                    display = display.substring(0, 37) + "...";
+                }
+                evidenceLore.add(MenuItems.COLOR_WHITE + "- " + display);
+            }
+            if (evidenceList.size() > 5) {
+                evidenceLore.add(MenuItems.COLOR_DARK_GRAY + "... and " + (evidenceList.size() - 5) + " more");
+            }
+        }
         evidenceLore.add("");
         evidenceLore.add(MenuItems.COLOR_YELLOW + "Left-click to add evidence");
-        evidenceLore.add(MenuItems.COLOR_YELLOW + "Right-click to view in chat");
+        if (!evidenceList.isEmpty()) {
+            evidenceLore.add(MenuItems.COLOR_YELLOW + "Right-click to view in chat");
+        }
 
         set(CirrusItem.of(
-                ItemType.ARROW,
+                evidenceList.isEmpty() ? ItemType.ARROW : ItemType.SPECTRAL_ARROW,
                 ChatElement.ofLegacyText(MenuItems.COLOR_AQUA + "Evidence"),
                 MenuItems.lore(evidenceLore)
         ).slot(MenuSlots.MODIFY_EVIDENCE).actionHandler("evidence"));
@@ -213,12 +231,28 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
     }
 
     private void handleEvidence(Click click) {
-        click.clickedMenu().close();
+        // Right-click: View evidence in chat
+        if (click.clickType().equals(ClickType.RIGHT_CLICK)) {
+            List<Evidence> evidenceList = punishment.getEvidence();
+            if (evidenceList.isEmpty()) {
+                sendMessage(MenuItems.COLOR_GRAY + "No evidence attached to this punishment.");
+                return;
+            }
 
-        sendMessage("");
-        sendMessage(MenuItems.COLOR_GOLD + "Evidence Options:");
-        sendMessage(MenuItems.COLOR_AQUA + "[Add Evidence by Link]" + MenuItems.COLOR_GRAY + " - Enter a URL below");
-        sendMessage("");
+            sendMessage("");
+            sendMessage(MenuItems.COLOR_GOLD + "Evidence for punishment #" + punishment.getId() + ":");
+            for (int i = 0; i < evidenceList.size(); i++) {
+                Evidence ev = evidenceList.get(i);
+                String display = ev.getDisplayText();
+                sendMessage(MenuItems.COLOR_WHITE + (i + 1) + ". " + display);
+                sendMessage(MenuItems.COLOR_GRAY + "   Added by " + ev.getUploadedBy() + " on " + MenuItems.formatDate(ev.getUploadedAt()));
+            }
+            sendMessage("");
+            return;
+        }
+
+        // Left-click: Add evidence
+        click.clickedMenu().close();
 
         ChatInputManager.requestInput(platform, viewerUuid, "Enter evidence URL:",
                 input -> {

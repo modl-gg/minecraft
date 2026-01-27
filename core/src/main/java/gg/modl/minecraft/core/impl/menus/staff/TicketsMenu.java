@@ -11,8 +11,10 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -148,26 +150,40 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
 
     @Override
     protected CirrusItem map(Ticket ticket) {
+        LocaleManager locale = platform.getLocaleManager();
+
         // Handle placeholder for empty list
         if (ticket.getId() == null) {
-            return createEmptyPlaceholder("No tickets");
+            return createEmptyPlaceholder(locale.getMessage("menus.empty.tickets"));
         }
 
-        List<String> lore = new ArrayList<>();
+        // Build variables map
+        Map<String, String> vars = new HashMap<>();
+        vars.put("id", ticket.getId());
+        vars.put("player", ticket.getPlayerName() != null ? ticket.getPlayerName() : "Unknown");
+        vars.put("title", ticket.getTitle() != null ? ticket.getTitle() : "No title");
+        vars.put("date", MenuItems.formatDate(ticket.getCreated()));
+        vars.put("status", getStatusColor(ticket.getStatus()) + ticket.getStatus());
 
-        lore.add(MenuItems.COLOR_GRAY + "Player: " + MenuItems.COLOR_WHITE + ticket.getPlayerName());
-        lore.add(MenuItems.COLOR_GRAY + "Title: " + MenuItems.COLOR_WHITE + ticket.getTitle());
-        lore.add(MenuItems.COLOR_GRAY + "Created: " + MenuItems.COLOR_WHITE + MenuItems.formatDate(ticket.getCreated()));
-        lore.add(MenuItems.COLOR_GRAY + "Status: " + getStatusColor(ticket.getStatus()) + ticket.getStatus());
-        lore.add("");
-        lore.add(MenuItems.COLOR_YELLOW + "Click to open in panel");
+        // Get lore from locale
+        List<String> lore = new ArrayList<>();
+        for (String line : locale.getMessageList("menus.ticket_item.lore")) {
+            String processed = line;
+            for (Map.Entry<String, String> entry : vars.entrySet()) {
+                processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
+            }
+            lore.add(processed);
+        }
+
+        // Get title from locale
+        String title = locale.getMessage("menus.ticket_item.title", vars);
 
         // Use book if no staff response, writable book if has response
         ItemType itemType = ticket.hasStaffResponse() ? ItemType.WRITABLE_BOOK : ItemType.BOOK;
 
         return CirrusItem.of(
                 itemType,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Ticket #" + ticket.getId()),
+                ChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }

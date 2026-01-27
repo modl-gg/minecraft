@@ -12,8 +12,10 @@ import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -161,27 +163,50 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
 
     @Override
     protected CirrusItem map(Report report) {
+        LocaleManager locale = platform.getLocaleManager();
+
         // Handle placeholder for empty list
         if (report.getId() == null) {
-            return createEmptyPlaceholder("No reports");
+            return createEmptyPlaceholder(locale.getMessage("menus.empty.staff_reports"));
         }
 
-        List<String> lore = new ArrayList<>();
+        // Build variables map
+        Map<String, String> vars = new HashMap<>();
+        vars.put("type", report.getType() != null ? report.getType() : "Unknown");
+        vars.put("reporter", report.getReporterName() != null ? report.getReporterName() : "Unknown");
+        vars.put("reported", report.getReportedPlayerName() != null ? report.getReportedPlayerName() : "Unknown");
+        vars.put("date", MenuItems.formatDate(report.getDate()));
 
-        lore.add(MenuItems.COLOR_GRAY + "Type: " + MenuItems.COLOR_WHITE + report.getType());
-        lore.add(MenuItems.COLOR_GRAY + "Reporter: " + MenuItems.COLOR_WHITE + report.getReporterName());
-        lore.add(MenuItems.COLOR_GRAY + "Reported: " + MenuItems.COLOR_RED + report.getReportedPlayerName());
-        lore.add("");
-        lore.addAll(MenuItems.wrapText(report.getContent(), 7));
-        lore.add("");
-        lore.add(MenuItems.COLOR_YELLOW + "Left-click to inspect player");
-        lore.add(MenuItems.COLOR_RED + "Right-click to dismiss report");
+        // Content - wrap text
+        String content = report.getContent() != null ? report.getContent() : "";
+        List<String> wrappedContent = MenuItems.wrapText(content, 7);
+        vars.put("content", String.join("\n", wrappedContent));
+
+        // Get lore from locale
+        List<String> lore = new ArrayList<>();
+        for (String line : locale.getMessageList("menus.staff_report_item.lore")) {
+            String processed = line;
+            for (Map.Entry<String, String> entry : vars.entrySet()) {
+                processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
+            }
+            // Handle {content} which may contain newlines
+            if (processed.contains("\n")) {
+                for (String subLine : processed.split("\n")) {
+                    lore.add(subLine);
+                }
+            } else if (!processed.isEmpty()) {
+                lore.add(processed);
+            }
+        }
+
+        // Get title from locale
+        String title = locale.getMessage("menus.staff_report_item.title", vars);
 
         ItemType itemType = getReportItemType(report.getType());
 
         return CirrusItem.of(
                 itemType,
-                ChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + MenuItems.formatDate(report.getDate())),
+                ChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }
