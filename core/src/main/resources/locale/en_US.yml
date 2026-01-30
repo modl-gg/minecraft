@@ -311,6 +311,7 @@ api_errors:
   panel_unavailable: "&cThe panel is temporarily unavailable. Please try again shortly."
   connection_failed: "&cConnection to panel failed. Please try again in a moment."
   ban_check_failed: "&cUnable to verify ban status. Login temporarily restricted for safety."
+  menus_require_v2: "&cIn-game menus require the V2 API. Please update your server configuration to use the centralized API."
 
 # Pardon Command Messages
 pardon:

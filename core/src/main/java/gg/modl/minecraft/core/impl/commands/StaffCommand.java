@@ -4,6 +4,7 @@ import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
@@ -23,11 +24,17 @@ public class StaffCommand extends BaseCommand {
     private final Cache cache;
     private final LocaleManager localeManager;
     private final String panelUrl;
+    private final ApiVersion apiVersion;
 
     @CommandAlias("staff|staffmenu|sm")
     @Description("Open the staff menu")
     @Conditions("player|staff")
     public void staff(CommandIssuer sender) {
+        // Menus require V2 API
+        if (apiVersion == ApiVersion.V1) {
+            sender.sendMessage(localeManager.getMessage("api_errors.menus_require_v2"));
+            return;
+        }
         UUID senderUuid = sender.getUniqueId();
 
         // Check if user has admin permissions

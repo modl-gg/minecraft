@@ -4,6 +4,7 @@ import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
@@ -29,6 +30,7 @@ public class ReportsCommand extends BaseCommand {
     private final Cache cache;
     private final LocaleManager localeManager;
     private final String panelUrl;
+    private final ApiVersion apiVersion;
 
     @CommandCompletion("@players")
     @CommandAlias("reports|report")
@@ -36,6 +38,11 @@ public class ReportsCommand extends BaseCommand {
     @Description("Open the reports menu (for a player or all reports)")
     @Conditions("player|staff")
     public void reports(CommandIssuer sender, @Optional @Name("player") String playerQuery) {
+        // Menus require V2 API
+        if (apiVersion == ApiVersion.V1) {
+            sender.sendMessage(localeManager.getMessage("api_errors.menus_require_v2"));
+            return;
+        }
         UUID senderUuid = sender.getUniqueId();
 
         // If no player specified, open staff reports menu
