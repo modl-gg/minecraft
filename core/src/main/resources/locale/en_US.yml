@@ -24,6 +24,9 @@ messages:
   view_ticket_label: "View your ticket"
   complete_form_label: "Complete your {type}"
   console_ticket_url: "&6{message}: &b{url}"
+  claiming_ticket: "&eLinking ticket &f{ticketId}&e to your account..."
+  ticket_claimed_success: "&aTicket &f{ticketId}&a successfully linked to your account!"
+  ticket_claim_failed: "&cFailed to link ticket: {error}"
 
 # Punishment System Messages
 # Available variables: {player}, {target}, {reason}, {duration}, {type}, {id}, {issuer}, {punishment_type}, {expiration}, {server}

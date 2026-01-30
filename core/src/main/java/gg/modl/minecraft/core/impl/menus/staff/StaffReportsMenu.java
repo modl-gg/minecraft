@@ -62,7 +62,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
 
     private List<Report> reports = new ArrayList<>();
     private String currentFilter = "all";
-    private final List<String> filterOptions = Arrays.asList("all", "chat", "cheating", "behavior", "other");
+    private final List<String> filterOptions = Arrays.asList("all", "player", "chat", "cheating", "behavior", "other");
     private final String panelUrl;
     private final Consumer<CirrusPlayerWrapper> parentBackAction;
 
@@ -89,32 +89,34 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
     }
 
     private void fetchReports() {
-        httpClient.getReports("open").thenAccept(response -> {
-            if (response.isSuccess() && response.getReports() != null) {
-                reports.clear();
-                for (var report : response.getReports()) {
-                    UUID reportedUuid = null;
-                    try {
-                        if (report.getReportedPlayerUuid() != null) {
-                            reportedUuid = UUID.fromString(report.getReportedPlayerUuid());
-                        }
-                    } catch (Exception ignored) {}
+        try {
+            httpClient.getReports("Open").thenAccept(response -> {
+                if (response.isSuccess() && response.getReports() != null) {
+                    reports.clear();
+                    for (var report : response.getReports()) {
+                        UUID reportedUuid = null;
+                        try {
+                            if (report.getReportedPlayerUuid() != null) {
+                                reportedUuid = UUID.fromString(report.getReportedPlayerUuid());
+                            }
+                        } catch (Exception ignored) {}
 
-                    reports.add(new Report(
-                            report.getId(),
-                            report.getType(),
-                            report.getReporterName(),
-                            reportedUuid,
-                            report.getReportedPlayerName(),
-                            report.getSubject(),
-                            report.getCreatedAt()
-                    ));
+                        reports.add(new Report(
+                                report.getId(),
+                                report.getType() != null ? report.getType() : report.getCategory(),
+                                report.getReporterName(),
+                                reportedUuid,
+                                report.getReportedPlayerName(),
+                                report.getContent() != null ? report.getContent() : report.getSubject(),
+                                report.getCreatedAt()
+                        ));
+                    }
                 }
-            }
-        }).exceptionally(e -> {
+            }).join();
+        } catch (Exception e) {
+            e.printStackTrace();
             // Failed to fetch - list remains empty
-            return null;
-        });
+        }
     }
 
     /**
@@ -214,12 +216,14 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
     private ItemType getReportItemType(String type) {
         if (type == null) return ItemType.PAPER;
         switch (type.toLowerCase()) {
+            case "player":
+                return ItemType.PLAYER_HEAD;
             case "chat":
                 return ItemType.WRITABLE_BOOK;
             case "cheating":
                 return ItemType.DIAMOND_SWORD;
             case "behavior":
-                return ItemType.PLAYER_HEAD;
+                return ItemType.SKELETON_SKULL;
             default:
                 return ItemType.PAPER;
         }

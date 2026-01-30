@@ -57,7 +57,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
 
     private List<Report> reports = new ArrayList<>();
     private String currentFilter = "all";
-    private final List<String> filterOptions = Arrays.asList("all", "chat", "cheating", "behavior", "other");
+    private final List<String> filterOptions = Arrays.asList("all", "player", "chat", "cheating", "behavior", "other");
     private final Consumer<CirrusPlayerWrapper> backAction;
 
     /**
@@ -76,8 +76,31 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         this.backAction = backAction;
         activeTab = InspectTab.REPORTS;
 
-        // TODO: Fetch reports when endpoint GET /v1/panel/players/{uuid}/reports is available
-        // For now, reports list is empty
+        // Fetch reports filed against this player
+        fetchReports();
+    }
+
+    private void fetchReports() {
+        try {
+            httpClient.getPlayerReports(targetAccount.getMinecraftUuid(), "all").thenAccept(response -> {
+                if (response.isSuccess() && response.getReports() != null) {
+                    reports.clear();
+                    for (var report : response.getReports()) {
+                        reports.add(new Report(
+                                report.getId(),
+                                report.getType() != null ? report.getType() : report.getCategory(),
+                                report.getReporterName(),
+                                report.getContent() != null ? report.getContent() : report.getSubject(),
+                                report.getCreatedAt(),
+                                report.getStatus()
+                        ));
+                    }
+                }
+            }).join();
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Failed to fetch - list remains empty
+        }
     }
 
     /**
@@ -199,12 +222,14 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
     private ItemType getReportItemType(String type) {
         if (type == null) return ItemType.PAPER;
         switch (type.toLowerCase()) {
+            case "player":
+                return ItemType.PLAYER_HEAD;
             case "chat":
                 return ItemType.WRITABLE_BOOK;
             case "cheating":
                 return ItemType.DIAMOND_SWORD;
             case "behavior":
-                return ItemType.PLAYER_HEAD;
+                return ItemType.SKELETON_SKULL;
             default:
                 return ItemType.PAPER;
         }

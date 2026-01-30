@@ -88,6 +88,9 @@ public interface ModlHttpClient {
     CompletableFuture<ReportsResponse> getReports(String status);
 
     @NotNull
+    CompletableFuture<ReportsResponse> getPlayerReports(@NotNull UUID playerUuid, String status);
+
+    @NotNull
     CompletableFuture<Void> dismissReport(@NotNull String reportId, String dismissedBy, String reason);
 
     @NotNull
@@ -112,4 +115,8 @@ public interface ModlHttpClient {
 
     @NotNull
     CompletableFuture<Void> togglePunishmentOption(@NotNull TogglePunishmentOptionRequest request);
+
+    // Ticket claim method
+    @NotNull
+    CompletableFuture<ClaimTicketResponse> claimTicket(@NotNull ClaimTicketRequest request);
 }

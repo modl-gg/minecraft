@@ -461,6 +461,20 @@ public class ModlHttpClientImpl implements ModlHttpClient {
 
     @NotNull
     @Override
+    public CompletableFuture<ReportsResponse> getPlayerReports(@NotNull java.util.UUID playerUuid, String status) {
+        String endpoint = "/minecraft/reports/player/" + playerUuid.toString();
+        if (status != null && !status.isEmpty()) {
+            endpoint += "?status=" + status;
+        }
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + endpoint))
+                .header("X-API-Key", apiKey)
+                .GET()
+                .build(), ReportsResponse.class);
+    }
+
+    @NotNull
+    @Override
     public CompletableFuture<Void> dismissReport(@NotNull String reportId, String dismissedBy, String reason) {
         java.util.Map<String, String> body = new java.util.HashMap<>();
         if (dismissedBy != null) body.put("dismissedBy", dismissedBy);
@@ -575,6 +589,21 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<ClaimTicketResponse> claimTicket(@NotNull ClaimTicketRequest request) {
+        java.util.Map<String, String> body = new java.util.HashMap<>();
+        body.put("playerUuid", request.getPlayerUuid());
+        body.put("playerName", request.getPlayerName());
+
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/tickets/" + request.getTicketId() + "/claim"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), ClaimTicketResponse.class);
     }
 
     private String generateRequestId() {

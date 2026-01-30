@@ -24,14 +24,17 @@ public class ReportsResponse {
     public static class Report {
         private String id;
         private String type;
+        private String category;
         private String reporterName;
         private String reporterUuid;
         private String reportedPlayerUuid;
         private String reportedPlayerName;
         private String subject;
+        private String content;
         private String status;
         private String priority;
         private Date createdAt;
         private String assignedTo;
+        private List<Object> chatMessages; // Chat messages for chat reports
     }
 }

@@ -62,34 +62,43 @@ public class TicketCommands extends BaseCommand {
     @Conditions("player")
     public void chatReport(CommandIssuer sender, AbstractPlayer targetPlayer) {
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
-        
+
         if (targetPlayer.username().equalsIgnoreCase(reporter.username())) {
             sender.sendMessage(localeManager.getMessage("messages.cannot_report_self"));
             return;
         }
-        
-        // Get the last 30 chat messages from the server where the reporter is located
-        List<String> chatLogs = chatMessageCache.getRecentMessages(reporter.uuid().toString(), 30);
-        
+
+        // Get chat log for the report - all messages from all players on the server
+        // between the reported player's 10th last message and now
+        String chatLog = chatMessageCache.getChatLogForReport(
+            targetPlayer.uuid().toString(),
+            reporter.uuid().toString()
+        );
+
         // If no messages are cached, show error and return
-        if (chatLogs.isEmpty()) {
+        if (chatLog.isEmpty()) {
             sender.sendMessage(localeManager.getMessage("messages.no_chat_logs_available", Map.of("player", targetPlayer.username())));
             return;
         }
+
+        // Build the report description with the chat log
+        String description = "**Chat Report for " + targetPlayer.username() + "**\n\n" +
+                             "Reported by: " + reporter.username() + "\n\n" +
+                             "**Chat Log:**\n```\n" + chatLog + "\n```";
 
         CreateTicketRequest request = new CreateTicketRequest(
             reporter.uuid().toString(),
             reporter.username(),
             "chat",
             "Chat Report: " + targetPlayer.username(),
-            "Chat violation report for: " + targetPlayer.username() + "\nAutomatic chat log capture included.",
+            description,
             targetPlayer.uuid().toString(),
             targetPlayer.username(),
-            chatLogs,
+            null, // No separate chatMessages field - chat is included in description
             List.of(),
             "normal"
         );
-        
+
         submitFinishedTicket(sender, request, "Chat report");
     }
     
@@ -144,7 +153,7 @@ public class TicketCommands extends BaseCommand {
     @Conditions("player")
     public void supportRequest(CommandIssuer sender, String description) {
         AbstractPlayer requester = platform.getAbstractPlayer(sender.getUniqueId(), false);
-        
+
         CreateTicketRequest request = new CreateTicketRequest(
             requester.uuid().toString(),
             requester.username(),
@@ -157,8 +166,46 @@ public class TicketCommands extends BaseCommand {
             List.of(),
             "normal"
         );
-        
+
         submitUnfinishedTicket(sender, request, "Support request");
+    }
+
+    @CommandAlias("tclaim|claimticket")
+    @Description("Link an unlinked ticket to your account")
+    @Syntax("<ticket-id>")
+    @Conditions("player")
+    public void claimTicket(CommandIssuer sender, String ticketId) {
+        AbstractPlayer player = platform.getAbstractPlayer(sender.getUniqueId(), false);
+
+        sender.sendMessage(localeManager.getMessage("messages.claiming_ticket", Map.of("ticketId", ticketId)));
+
+        gg.modl.minecraft.api.http.request.ClaimTicketRequest request =
+            new gg.modl.minecraft.api.http.request.ClaimTicketRequest(
+                ticketId,
+                player.uuid().toString(),
+                player.username()
+            );
+
+        httpClient.claimTicket(request).thenAccept(response -> {
+            if (response.isSuccess()) {
+                sender.sendMessage(localeManager.getMessage("messages.ticket_claimed_success",
+                    Map.of("ticketId", ticketId, "subject", response.getSubject() != null ? response.getSubject() : "Unknown")));
+
+                String ticketUrl = panelUrl + "/ticket/" + ticketId;
+                sendClickableTicketMessage(sender, localeManager.getMessage("messages.view_ticket_label"), ticketUrl, ticketId);
+            } else {
+                sender.sendMessage(localeManager.getMessage("messages.ticket_claim_failed",
+                    Map.of("error", response.getMessage() != null ? response.getMessage() : "Unknown error")));
+            }
+        }).exceptionally(throwable -> {
+            String errorMessage = throwable.getMessage();
+            if (throwable.getCause() != null) {
+                errorMessage = throwable.getCause().getMessage();
+            }
+            sender.sendMessage(localeManager.getMessage("messages.ticket_claim_failed",
+                Map.of("error", errorMessage != null ? errorMessage : "Unknown error")));
+            return null;
+        });
     }
     
     private void submitFinishedTicket(CommandIssuer sender, CreateTicketRequest request, String ticketType) {

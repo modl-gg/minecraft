@@ -22,7 +22,7 @@ public class ChatMessageCache {
     private final Map<String, String> playerToServer = new ConcurrentHashMap<>();
     
     public ChatMessageCache() {
-        this(30, 300_000); // Default: 30 messages, 5 minutes
+        this(100, 600_000); // Default: 100 messages per server, 10 minutes TTL
     }
     
     /**
@@ -141,8 +141,90 @@ public class ChatMessageCache {
     }
     
     /**
+     * Get all chat messages from all players on the server between the reported player's
+     * 10th last message and now. This is used for chat reports.
+     *
+     * @param reportedPlayerUuid The UUID of the player being reported
+     * @param reporterUuid The UUID of the player making the report
+     * @return Formatted chat log string with "{date} {player}: {message}" format, newline separated
+     */
+    public String getChatLogForReport(String reportedPlayerUuid, String reporterUuid) {
+        String serverName = playerToServer.get(reporterUuid);
+        if (serverName == null) {
+            serverName = playerToServer.get(reportedPlayerUuid);
+        }
+        if (serverName == null) {
+            return "";
+        }
+
+        ConcurrentLinkedQueue<ChatMessage> messageQueue = serverMessages.get(serverName);
+        if (messageQueue == null || messageQueue.isEmpty()) {
+            return "";
+        }
+
+        // Clean up old messages first
+        cleanupOldMessages(messageQueue);
+
+        List<ChatMessage> allMessages = new ArrayList<>(messageQueue);
+
+        // Find the reported player's messages
+        List<ChatMessage> reportedPlayerMessages = allMessages.stream()
+                .filter(msg -> msg.getPlayerUuid().equals(reportedPlayerUuid))
+                .collect(Collectors.toList());
+
+        // Get the 10th last message timestamp (or earliest if less than 10)
+        Instant startTimestamp;
+        if (reportedPlayerMessages.isEmpty()) {
+            // No messages from reported player, use last 2 minutes of all messages
+            startTimestamp = Instant.now().minusSeconds(120);
+        } else {
+            int startIndex = Math.max(0, reportedPlayerMessages.size() - 10);
+            startTimestamp = reportedPlayerMessages.get(startIndex).getTimestamp();
+        }
+
+        // Get all messages from all players between startTimestamp and now
+        List<ChatMessage> relevantMessages = allMessages.stream()
+                .filter(msg -> !msg.getTimestamp().isBefore(startTimestamp))
+                .sorted(Comparator.comparing(ChatMessage::getTimestamp))
+                .collect(Collectors.toList());
+
+        if (relevantMessages.isEmpty()) {
+            return "";
+        }
+
+        // Format as "{date} {player}: {message}"
+        StringBuilder chatLog = new StringBuilder();
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+                .ofPattern("HH:mm:ss")
+                .withZone(java.time.ZoneId.systemDefault());
+
+        for (ChatMessage msg : relevantMessages) {
+            String time = formatter.format(msg.getTimestamp());
+            chatLog.append(time)
+                   .append(" ")
+                   .append(msg.getPlayerName())
+                   .append(": ")
+                   .append(msg.getMessage())
+                   .append("\n");
+        }
+
+        return chatLog.toString().trim();
+    }
+
+    /**
+     * Update a player's server mapping without adding a message.
+     * This should be called when players join or switch servers.
+     *
+     * @param serverName The server name
+     * @param playerUuid The player's UUID
+     */
+    public void updatePlayerServer(String serverName, String playerUuid) {
+        playerToServer.put(playerUuid, serverName);
+    }
+
+    /**
      * Remove a player from the cache when they disconnect
-     * 
+     *
      * @param playerUuid The player's UUID
      */
     public void removePlayer(String playerUuid) {

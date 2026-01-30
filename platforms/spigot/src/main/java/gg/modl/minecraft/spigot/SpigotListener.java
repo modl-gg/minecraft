@@ -172,6 +172,12 @@ public class SpigotListener implements Listener {
         // Mark player as online
         cache.setOnline(event.getPlayer().getUniqueId());
 
+        // Update chat message cache with player's server (for chat reports)
+        chatMessageCache.updatePlayerServer(
+            platform.getServerName(),
+            event.getPlayer().getUniqueId().toString()
+        );
+
         // Get skin hash asynchronously and then cache mute status
         WebPlayer.get(event.getPlayer().getUniqueId())
             .thenAccept(webPlayer -> {

@@ -311,6 +311,16 @@ public class ModlHttpClientWithFallback implements ModlHttpClient {
 
     @NotNull
     @Override
+    public CompletableFuture<ReportsResponse> getPlayerReports(@NotNull java.util.UUID playerUuid, String status) {
+        return withFallback(
+                () -> v2Client.getPlayerReports(playerUuid, status),
+                () -> v1Client.getPlayerReports(playerUuid, status),
+                "getPlayerReports"
+        );
+    }
+
+    @NotNull
+    @Override
     public CompletableFuture<Void> dismissReport(@NotNull String reportId, String dismissedBy, String reason) {
         return withFallback(
                 () -> v2Client.dismissReport(reportId, dismissedBy, reason),
@@ -386,6 +396,16 @@ public class ModlHttpClientWithFallback implements ModlHttpClient {
                 () -> v2Client.togglePunishmentOption(request),
                 () -> v1Client.togglePunishmentOption(request),
                 "togglePunishmentOption"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<ClaimTicketResponse> claimTicket(@NotNull ClaimTicketRequest request) {
+        return withFallback(
+                () -> v2Client.claimTicket(request),
+                () -> v1Client.claimTicket(request),
+                "claimTicket"
         );
     }
 
