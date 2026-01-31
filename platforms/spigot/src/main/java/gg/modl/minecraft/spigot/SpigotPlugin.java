@@ -54,7 +54,7 @@ public class SpigotPlugin extends JavaPlugin {
         int syncPollingRate = Math.max(1, getConfig().getInt("sync.polling_rate", 2));
 
         this.loader = new PluginLoader(platform, new SpigotCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
-        getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClient(), chatMessageCache, loader.getSyncService(), httpManager.getPanelUrl(), loader.getLocaleManager(), loader.getLoginCache()), this);
+        getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), httpManager.getPanelUrl(), loader.getLocaleManager(), loader.getLoginCache()), this);
 
     }
 

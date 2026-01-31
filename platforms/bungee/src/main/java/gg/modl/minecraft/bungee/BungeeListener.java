@@ -9,6 +9,7 @@ import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
+import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
@@ -39,11 +40,18 @@ public class BungeeListener implements Listener {
 
     private final BungeePlatform platform;
     private final Cache cache;
-    private final ModlHttpClient httpClient;
+    private final HttpClientHolder httpClientHolder;
     private final ChatMessageCache chatMessageCache;
     private final SyncService syncService;
     private final String panelUrl;
     private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
+
+    /**
+     * Get the current HTTP client from the holder.
+     */
+    private ModlHttpClient getHttpClient() {
+        return httpClientHolder.getClient();
+    }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(LoginEvent event) {
@@ -87,7 +95,7 @@ public class BungeeListener implements Listener {
 
         try {
             // Check for active punishments and prevent login if banned
-            CompletableFuture<PlayerLoginResponse> loginFuture = httpClient.playerLogin(request);
+            CompletableFuture<PlayerLoginResponse> loginFuture = getHttpClient().playerLogin(request);
             PlayerLoginResponse response = loginFuture.get(5, TimeUnit.SECONDS); // 5 second timeout
             
             if (response.hasActiveBan()) {
@@ -147,7 +155,7 @@ public class BungeeListener implements Listener {
                 platform.getServerName()
         );
         
-        httpClient.playerLogin(request).thenAccept(response -> {
+        getHttpClient().playerLogin(request).thenAccept(response -> {
             if (response.hasActiveMute()) {
                 cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
             }
@@ -175,7 +183,7 @@ public class BungeeListener implements Listener {
     public void onPlayerDisconnect(PlayerDisconnectEvent event) {
         PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString());
 
-        httpClient.playerDisconnect(request);
+        getHttpClient().playerDisconnect(request);
 
         // Mark player as offline
         cache.setOffline(event.getPlayer().getUniqueId());
@@ -279,7 +287,7 @@ public class BungeeListener implements Listener {
                     null // no error message
             );
             
-            httpClient.acknowledgePunishment(request).thenAccept(response -> {
+            getHttpClient().acknowledgePunishment(request).thenAccept(response -> {
                 platform.getLogger().info("Successfully acknowledged ban enforcement for punishment " + ban.getId());
             }).exceptionally(throwable -> {
                 platform.getLogger().severe("Failed to acknowledge ban enforcement for punishment " + ban.getId() + ": " + throwable.getMessage());

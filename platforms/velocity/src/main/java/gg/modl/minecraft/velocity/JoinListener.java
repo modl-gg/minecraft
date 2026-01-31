@@ -8,6 +8,7 @@ import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
+import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.service.ChatMessageCache;
@@ -34,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class JoinListener {
 
-    private final ModlHttpClient httpClient;
+    private final HttpClientHolder httpClientHolder;
     private final Cache cache;
     private final Logger logger;
     private final ChatMessageCache chatMessageCache;
@@ -42,6 +43,13 @@ public class JoinListener {
     private final SyncService syncService;
     private final String panelUrl;
     private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
+
+    /**
+     * Get the current HTTP client from the holder.
+     */
+    private ModlHttpClient getHttpClient() {
+        return httpClientHolder.getClient();
+    }
 
     @Subscribe
     public void onLogin(LoginEvent event) {
@@ -81,7 +89,7 @@ public class JoinListener {
         try {
             // Check for active punishments and prevent login if banned
             // Note: Velocity LoginEvent is synchronous and requires immediate decision
-            CompletableFuture<PlayerLoginResponse> loginFuture = httpClient.playerLogin(request);
+            CompletableFuture<PlayerLoginResponse> loginFuture = getHttpClient().playerLogin(request);
             PlayerLoginResponse response = loginFuture.get(5, TimeUnit.SECONDS); // 5 second timeout
 
             logger.info(String.format("Login response for %s: status=%d, punishments=%s",
@@ -174,7 +182,7 @@ public class JoinListener {
     public void onDisconnect(DisconnectEvent event) {
         PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString());
 
-        httpClient.playerDisconnect(request);
+        getHttpClient().playerDisconnect(request);
 
         // Mark player as offline
         cache.setOffline(event.getPlayer().getUniqueId());
@@ -208,7 +216,7 @@ public class JoinListener {
                     null // no error message
             );
             
-            httpClient.acknowledgePunishment(request).thenAccept(response -> {
+            getHttpClient().acknowledgePunishment(request).thenAccept(response -> {
                 logger.info("Successfully acknowledged ban enforcement for punishment " + ban.getId());
             }).exceptionally(throwable -> {
                 logger.error("Failed to acknowledge ban enforcement for punishment " + ban.getId(), throwable);

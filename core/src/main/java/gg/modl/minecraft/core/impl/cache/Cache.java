@@ -212,12 +212,31 @@ public class Cache {
         if (staffPerms != null) {
             return staffPerms.getPermissions().contains(permission);
         }
-        
+
         // Fallback to old sync-based staff member (for backward compatibility)
         SyncResponse.ActiveStaffMember staffMember = getStaffMember(playerUuid);
         return staffMember != null && staffMember.getPermissions().contains(permission);
     }
-    
+
+    /**
+     * Check if a player has any punishment.apply permission
+     */
+    public boolean hasAnyPunishmentPermission(UUID playerUuid) {
+        StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
+        if (staffPerms != null) {
+            return staffPerms.getPermissions().stream()
+                    .anyMatch(p -> p.startsWith("punishment.apply."));
+        }
+
+        SyncResponse.ActiveStaffMember staffMember = getStaffMember(playerUuid);
+        if (staffMember != null) {
+            return staffMember.getPermissions().stream()
+                    .anyMatch(p -> p.startsWith("punishment.apply."));
+        }
+
+        return false;
+    }
+
     public void cacheStaffPermissions(UUID playerUuid, String staffRole, List<String> permissions) {
         staffPermissionsCache.put(playerUuid, new StaffPermissions(staffRole, permissions));
     }

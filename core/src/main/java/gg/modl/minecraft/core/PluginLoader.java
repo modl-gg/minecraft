@@ -39,12 +39,20 @@ import java.util.logging.Logger;
 // import static gg.modl.minecraft.core.Constants.QUERY_MOJANG; // Moved to config
 @Getter
 public class PluginLoader {
-    private final ModlHttpClient httpClient;
+    private final HttpClientHolder httpClientHolder;
     private final Cache cache;
     private final SyncService syncService;
     private final ChatMessageCache chatMessageCache;
     private final LocaleManager localeManager;
     private final LoginCache loginCache;
+
+    /**
+     * Get the current HTTP client from the holder.
+     * Use this for components that need the client but don't need dynamic switching.
+     */
+    public ModlHttpClient getHttpClient() {
+        return httpClientHolder.getClient();
+    }
 
     public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache) {
         throw new UnsupportedOperationException("This constructor is deprecated. Use the HttpManager overload instead.");
@@ -58,7 +66,7 @@ public class PluginLoader {
         // Set the cache on the platform for menu access
         platform.setCache(cache);
 
-        this.httpClient = httpManager.getHttpClient();
+        this.httpClientHolder = httpManager.getHttpClientHolder();
 
         // Initialize locale manager with support for external locale files
         this.localeManager = new LocaleManager();
@@ -80,9 +88,10 @@ public class PluginLoader {
         // Load database configuration for migration
         DatabaseConfig databaseConfig = loadDatabaseConfig(dataDirectory, logger);
 
-        // Initialize sync service with configurable polling rate
-        this.syncService = new SyncService(platform, httpClient, cache, logger, this.localeManager,
-                httpManager.getApiUrl(), httpManager.getApiKey(), syncPollingRateSeconds, dataDirectory.toFile(), databaseConfig, httpManager.getApiVersion());
+        // Initialize sync service with configurable polling rate and V2 upgrade support
+        this.syncService = new SyncService(platform, httpClientHolder, cache, logger, this.localeManager,
+                httpManager.getApiUrl(), httpManager.getApiKey(), syncPollingRateSeconds, dataDirectory.toFile(), databaseConfig,
+                httpManager.getServerDomain(), httpManager.isUseTestingApi());
         
         // Log configuration details
         logger.info("MODL Configuration:");
@@ -98,9 +107,9 @@ public class PluginLoader {
         commandManager.enableUnstableAPI("help");
 
         commandManager.getCommandContexts().registerContext(AbstractPlayer.class, (c)
-                -> fetchPlayer(c.popFirstArg(), platform, httpClient));
+                -> fetchPlayer(c.popFirstArg(), platform, getHttpClient()));
 
-        commandManager.getCommandContexts().registerContext(Account.class, (c) -> fetchPlayer(c.popFirstArg(), httpClient));
+        commandManager.getCommandContexts().registerContext(Account.class, (c) -> fetchPlayer(c.popFirstArg(), getHttpClient()));
 
         // Register ACF command conditions for permission checks
         registerCommandConditions(commandManager, cache, this.localeManager);
@@ -113,6 +122,7 @@ public class PluginLoader {
         
         // Register punishment command with tab completion
         PunishCommand punishCommand = new PunishCommand(httpManager.getHttpClient(), platform, cache, this.localeManager);
+        punishCommand.setApiVersion(httpManager.getApiVersion());
         commandManager.registerCommand(punishCommand);
         
         // Set up punishment types tab completion

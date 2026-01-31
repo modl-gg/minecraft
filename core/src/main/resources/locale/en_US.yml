@@ -145,7 +145,7 @@ punishment_types:
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{player_description}"
       - ""
-  ordinal_7: # Chat abuse
+  ordinal_7: # anti social
     public_notification: "&c{target} has been muted for anti social behavior."
     player_notification:
       - ""
@@ -298,7 +298,7 @@ api_errors:
   panel_unavailable: "&cThe panel is temporarily unavailable. Please try again shortly."
   connection_failed: "&cConnection to panel failed. Please try again in a moment."
   ban_check_failed: "&cUnable to verify ban status. Login temporarily restricted for safety."
-  menus_require_v2: "&cIn-game menus require the V2 API. Please update your server configuration to use the centralized API."
+  menus_require_v2: "&cIn-game menus require the V2 API. The new API will become available on 2/1/2026."
 
 # Pardon Command Messages
 pardon:

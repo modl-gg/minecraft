@@ -6,6 +6,7 @@ import co.aikar.commands.annotation.*;
 import co.aikar.commands.annotation.Optional;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
+import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
@@ -19,6 +20,7 @@ import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.PunishmentTypeParser;
 import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -30,7 +32,11 @@ public class PunishCommand extends BaseCommand {
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
-    
+
+    // API version - set after construction to support V1/V2 switching
+    @Setter
+    private ApiVersion apiVersion = ApiVersion.V2;
+
     // Cache for punishment types - loaded once at startup and manually refreshed
     private volatile List<PunishmentTypesResponse.PunishmentTypeData> cachedPunishmentTypes = new ArrayList<>();
     private volatile boolean cacheInitialized = false;
@@ -145,14 +151,68 @@ public class PunishCommand extends BaseCommand {
         // Make copies for lambda usage
         final String punishmentTypeName = punishmentType.getName();
         final boolean silentPunishment = punishmentArgs.silent;
+        final int ordinal = punishmentType.getOrdinal();
 
-        // Send punishment request
+        // For V1 API with manual punishment types (ordinals 0-5), use the manual endpoint
+        if (apiVersion == ApiVersion.V1 && ordinal <= 5) {
+            // Convert to CreatePunishmentRequest for manual endpoint
+            com.google.gson.JsonObject dataJson = new com.google.gson.JsonObject();
+            dataJson.addProperty("reason", punishmentArgs.reason.isEmpty() ? "No reason specified" : punishmentArgs.reason);
+            dataJson.addProperty("silent", punishmentArgs.silent);
+            dataJson.addProperty("altBlocking", punishmentArgs.altBlocking);
+            dataJson.addProperty("wipeAfterExpiry", punishmentArgs.statWipe);
+            if (punishmentArgs.duration > 0) {
+                dataJson.addProperty("duration", punishmentArgs.duration);
+            }
+
+            gg.modl.minecraft.api.http.request.CreatePunishmentRequest manualRequest =
+                new gg.modl.minecraft.api.http.request.CreatePunishmentRequest(
+                    target.getMinecraftUuid().toString(),
+                    issuerName,
+                    ordinal,
+                    punishmentArgs.reason.isEmpty() ? "No reason specified" : punishmentArgs.reason,
+                    punishmentArgs.duration,
+                    dataJson,
+                    new ArrayList<>(),
+                    new ArrayList<>()
+                );
+
+            httpClient.createPunishment(manualRequest).thenAccept(response -> {
+                String targetName = target.getUsernames().get(0).getUsername();
+
+                // Success message
+                sender.sendMessage(localeManager.punishment()
+                    .type(punishmentTypeName)
+                    .target(targetName)
+                    .get("general.punishment_issued"));
+
+                // Staff notification
+                String staffMessage = localeManager.punishment()
+                    .issuer(issuerName)
+                    .type(punishmentTypeName)
+                    .target(targetName)
+                    .get("general.staff_notification");
+                platform.staffBroadcast(staffMessage);
+
+            }).exceptionally(throwable -> {
+                if (throwable.getCause() instanceof PanelUnavailableException) {
+                    sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+                } else {
+                    sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
+                        Map.of("error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
+                }
+                return null;
+            });
+            return;
+        }
+
+        // For V2 or dynamic punishments (ordinals > 5), use the dynamic endpoint
         CompletableFuture<PunishmentCreateResponse> future = httpClient.createPunishmentWithResponse(request);
-        
+
         future.thenAccept(response -> {
             if (response.isSuccess()) {
                 String targetName = target.getUsernames().get(0).getUsername();
-                
+
                 // Success message to issuer
                 sender.sendMessage(localeManager.punishment()
                     .type(punishmentTypeName)
@@ -160,7 +220,7 @@ public class PunishCommand extends BaseCommand {
                     .punishmentId(response.getPunishmentId())
                     .get("general.punishment_issued"));
 
-                
+
                 // Staff notification
                 String staffMessage = localeManager.punishment()
                     .issuer(issuerName)
@@ -169,7 +229,7 @@ public class PunishCommand extends BaseCommand {
                     .punishmentId(response.getPunishmentId())
                     .get("general.staff_notification");
                 platform.staffBroadcast(staffMessage);
-                
+
             } else {
                 sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
                     Map.of("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
@@ -189,6 +249,12 @@ public class PunishCommand extends BaseCommand {
      * Open the punishment GUI for a player target
      */
     private void openPunishmentGui(CommandIssuer sender, Account target) {
+        // Menus require V2 API
+        if (apiVersion == ApiVersion.V1) {
+            sender.sendMessage(localeManager.getMessage("api_errors.menus_require_v2"));
+            return;
+        }
+
         UUID senderUuid = sender.getUniqueId();
 
         platform.runOnMainThread(() -> {

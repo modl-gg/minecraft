@@ -11,8 +11,11 @@ import gg.modl.minecraft.api.http.request.SyncRequest;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.api.DatabaseProvider;
+import gg.modl.minecraft.core.HttpClientHolder;
+import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.http.ModlHttpClientV2Impl;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.database.DatabaseConfig;
 import gg.modl.minecraft.core.service.database.JdbcDatabaseProvider;
@@ -24,7 +27,12 @@ import java.io.File;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,12 +46,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-@RequiredArgsConstructor
 public class SyncService {
     @NotNull
     private final Platform platform;
     @NotNull
-    private final ModlHttpClient httpClient;
+    private final HttpClientHolder httpClientHolder; // Shared holder for dynamic V1->V2 upgrade
     @NotNull
     private final Cache cache;
     @NotNull
@@ -58,9 +65,14 @@ public class SyncService {
     @NotNull
     private final File dataFolder;
     private final DatabaseConfig databaseConfig;
-    @NotNull
-    private final ApiVersion apiVersion;
-    
+
+    // V2 upgrade settings
+    private final String serverDomain;
+    private final boolean useTestingApi;
+    private boolean hasUpgradedToV2 = false;
+    private int v2CheckCounter = 0;
+    private static final int V2_CHECK_INTERVAL = 30; // Check V2 every 30 sync cycles
+
     private String lastSyncTimestamp;
     private ScheduledExecutorService syncExecutor;
     private boolean isRunning = false;
@@ -69,6 +81,39 @@ public class SyncService {
     private Long lastKnownStaffPermissionsTimestamp = null;
     private Long lastKnownPunishmentTypesTimestamp = null;
     private final List<PunishmentTypesRefreshListener> punishmentTypesListeners = new ArrayList<>();
+
+    /**
+     * Create a new SyncService.
+     */
+    public SyncService(@NotNull Platform platform, @NotNull HttpClientHolder httpClientHolder, @NotNull Cache cache,
+                       @NotNull Logger logger, @NotNull LocaleManager localeManager, @NotNull String apiUrl,
+                       @NotNull String apiKey, int pollingRateSeconds, @NotNull File dataFolder,
+                       DatabaseConfig databaseConfig) {
+        this(platform, httpClientHolder, cache, logger, localeManager, apiUrl, apiKey, pollingRateSeconds,
+             dataFolder, databaseConfig, null, false);
+    }
+
+    /**
+     * Create a new SyncService with V2 upgrade support.
+     */
+    public SyncService(@NotNull Platform platform, @NotNull HttpClientHolder httpClientHolder, @NotNull Cache cache,
+                       @NotNull Logger logger, @NotNull LocaleManager localeManager, @NotNull String apiUrl,
+                       @NotNull String apiKey, int pollingRateSeconds, @NotNull File dataFolder,
+                       DatabaseConfig databaseConfig,
+                       String serverDomain, boolean useTestingApi) {
+        this.platform = platform;
+        this.httpClientHolder = httpClientHolder;
+        this.cache = cache;
+        this.logger = logger;
+        this.localeManager = localeManager;
+        this.apiUrl = apiUrl;
+        this.apiKey = apiKey;
+        this.pollingRateSeconds = pollingRateSeconds;
+        this.dataFolder = dataFolder;
+        this.databaseConfig = databaseConfig;
+        this.serverDomain = serverDomain;
+        this.useTestingApi = useTestingApi;
+    }
 
     public interface PunishmentTypesRefreshListener {
         void onPunishmentTypesRefreshed(List<PunishmentTypesResponse.PunishmentTypeData> types);
@@ -101,13 +146,13 @@ public class SyncService {
         });
         
         // Perform initial diagnostic check only for V1 API (V2 already validated during HttpManager init)
-        if (apiVersion == ApiVersion.V1) {
+        if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
             logger.info("MODL Sync service starting - performing initial diagnostic check...");
             performDiagnosticCheck();
         }
 
         // Start sync task with configurable rate (delayed by 5 seconds for V2, 10 seconds for V1 to allow diagnostic check)
-        int initialDelay = apiVersion == ApiVersion.V2 ? 5 : 10;
+        int initialDelay = httpClientHolder.getApiVersion() == ApiVersion.V2 ? 5 : 10;
         syncExecutor.scheduleAtFixedRate(this::performSync, initialDelay, actualPollingRate, TimeUnit.SECONDS);
         isRunning = true;
         
@@ -167,7 +212,7 @@ public class SyncService {
                 Instant.now().toString()
             ));
             
-            CompletableFuture<SyncResponse> testFuture = httpClient.sync(testRequest);
+            CompletableFuture<SyncResponse> testFuture = httpClientHolder.getClient().sync(testRequest);
             testFuture.thenAccept(response -> {
                 logger.info("Diagnostic: API connectivity test PASSED");
                 logger.info("Diagnostic: Server response timestamp: " + response.getTimestamp());
@@ -240,9 +285,18 @@ public class SyncService {
      */
     private void performSync() {
         try {
+            // Check if we should try upgrading to V2 (only for V1 clients)
+            if (httpClientHolder.getApiVersion() == ApiVersion.V1 && !hasUpgradedToV2 && serverDomain != null) {
+                v2CheckCounter++;
+                if (v2CheckCounter >= V2_CHECK_INTERVAL) {
+                    v2CheckCounter = 0;
+                    tryUpgradeToV2();
+                }
+            }
+
             // Get online players
             Collection<AbstractPlayer> onlinePlayers = platform.getOnlinePlayers();
-            
+
             // Build sync request
             SyncRequest request = new SyncRequest();
             request.setLastSyncTimestamp(lastSyncTimestamp);
@@ -251,8 +305,8 @@ public class SyncService {
 
 
             // Send sync request
-            CompletableFuture<SyncResponse> syncFuture = httpClient.sync(request);
-            
+            CompletableFuture<SyncResponse> syncFuture = httpClientHolder.getClient().sync(request);
+
             syncFuture.thenAccept(response -> {
                 try {
                     handleSyncResponse(response);
@@ -268,10 +322,76 @@ public class SyncService {
                 }
                 return null;
             });
-            
+
         } catch (Exception e) {
             logger.severe("Error during sync: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Check if V2 API is available and switch to it if so.
+     */
+    private void tryUpgradeToV2() {
+        try {
+            String v2BaseUrl = useTestingApi ? HttpManager.TESTING_API_URL : HttpManager.V2_API_URL;
+            String healthUrl = v2BaseUrl + "/v1/health";
+
+            logger.info("Checking V2 API availability at: " + healthUrl);
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .build();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(healthUrl))
+                    .header("X-API-Key", apiKey)
+                    .header("X-Server-Domain", serverDomain)
+                    .timeout(Duration.ofSeconds(5))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                logger.info("V2 API health check PASSED - upgrading from V1 to V2");
+                upgradeToV2(v2BaseUrl);
+            } else {
+                logger.fine("V2 API health check failed (status: " + response.statusCode() + ") - staying on V1");
+            }
+        } catch (Exception e) {
+            logger.fine("V2 API health check failed: " + e.getMessage() + " - staying on V1");
+        }
+    }
+
+    /**
+     * Upgrade to V2 API client.
+     * Updates the shared HttpClientHolder so all components automatically use the new V2 client.
+     */
+    private void upgradeToV2(String v2BaseUrl) {
+        try {
+            String v2ApiUrl = v2BaseUrl + ApiVersion.V2.getBasePath();
+
+            // Create new V2 client
+            ModlHttpClient v2Client = new ModlHttpClientV2Impl(v2ApiUrl, apiKey, serverDomain, false);
+
+            // Update the shared holder - this makes all components use V2
+            httpClientHolder.update(v2Client, ApiVersion.V2);
+            this.hasUpgradedToV2 = true;
+
+            logger.info("==============================================");
+            logger.info("MODL API: Successfully upgraded to V2 API!");
+            logger.info("  Base URL: " + v2ApiUrl);
+            logger.info("  Server Domain: " + serverDomain);
+            logger.info("  All components now using V2 client");
+            logger.info("==============================================");
+
+            // Refresh staff permissions and punishment types with new client
+            refreshStaffPermissions();
+            refreshPunishmentTypes();
+
+        } catch (Exception e) {
+            logger.warning("Failed to upgrade to V2 API: " + e.getMessage());
         }
     }
     
@@ -359,7 +479,7 @@ public class SyncService {
     }
 
     private void refreshStaffPermissions() {
-        httpClient.getStaffPermissions().thenAccept(response -> {
+        httpClientHolder.getClient().getStaffPermissions().thenAccept(response -> {
             cache.clearStaffPermissions();
             int loadedCount = 0;
             for (var staffMember : response.getData().getStaff()) {
@@ -385,7 +505,7 @@ public class SyncService {
     }
 
     private void refreshPunishmentTypes() {
-        httpClient.getPunishmentTypes().thenAccept(response -> {
+        httpClientHolder.getClient().getPunishmentTypes().thenAccept(response -> {
             if (response.isSuccess()) {
                 for (PunishmentTypesRefreshListener listener : punishmentTypesListeners) {
                     try {
@@ -426,7 +546,7 @@ public class SyncService {
                         databaseProvider = new JdbcDatabaseProvider(databaseConfig, logger);
                     }
                     
-                    migrationService = new MigrationService(logger, httpClient, apiUrl, apiKey, dataFolder, databaseProvider);
+                    migrationService = new MigrationService(logger, httpClientHolder.getClient(), apiUrl, apiKey, dataFolder, databaseProvider);
                 } catch (Exception e) {
                     logger.severe("[Migration] Failed to initialize migration service: " + e.getMessage());
                     e.printStackTrace();
@@ -700,7 +820,7 @@ public class SyncService {
                 errorMessage
         );
         
-        httpClient.acknowledgePunishment(request)
+        httpClientHolder.getClient().acknowledgePunishment(request)
                 .thenAccept(response -> {
                     logger.info(String.format("Acknowledged punishment %s execution: %s", 
                             punishmentId, success ? "SUCCESS" : "FAILED"));
@@ -1093,7 +1213,7 @@ public class SyncService {
                     Instant.now().toString()
             );
             
-            httpClient.acknowledgeNotifications(request)
+            httpClientHolder.getClient().acknowledgeNotifications(request)
                     .thenAccept(response -> {
                         logger.info(String.format("Acknowledged %d notifications for player %s", 
                                 notificationIds.size(), playerUuid));

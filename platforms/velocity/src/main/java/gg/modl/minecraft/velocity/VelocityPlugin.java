@@ -87,7 +87,7 @@ public final class VelocityPlugin {
         
         this.pluginLoader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder, chatMessageCache, httpManager, syncPollingRate);
 
-        server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClient(), pluginLoader.getCache(), logger, chatMessageCache, platform, pluginLoader.getSyncService(), httpManager.getPanelUrl(), pluginLoader.getLocaleManager()));
+        server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClientHolder(), pluginLoader.getCache(), logger, chatMessageCache, platform, pluginLoader.getSyncService(), httpManager.getPanelUrl(), pluginLoader.getLocaleManager()));
 
         server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache(), chatMessageCache, pluginLoader.getLocaleManager()));
     }

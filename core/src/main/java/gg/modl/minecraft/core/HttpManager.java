@@ -31,6 +31,8 @@ public class HttpManager {
     @NotNull
     private final ModlHttpClient httpClient;
     @NotNull
+    private final HttpClientHolder httpClientHolder;
+    @NotNull
     private final String apiKey;
     @NotNull
     private final String apiUrl;
@@ -39,6 +41,9 @@ public class HttpManager {
     private final boolean debugHttp;
     @NotNull
     private final ApiVersion apiVersion;
+    @NotNull
+    private final String serverDomain;
+    private final boolean useTestingApi;
 
     /**
      * Creates an HttpManager that determines API version at startup.
@@ -78,6 +83,7 @@ public class HttpManager {
     public HttpManager(@NotNull String key, @NotNull String url, boolean debugHttp, boolean useTestingApi, @NotNull String forceVersion) {
         this.apiKey = key;
         this.debugHttp = debugHttp;
+        this.useTestingApi = useTestingApi;
 
         // Normalize URL: remove trailing slash and /api if present
         String normalizedUrl = url.replaceAll("/+$", "");
@@ -87,7 +93,7 @@ public class HttpManager {
         this.panelUrl = normalizedUrl;
 
         // Extract server domain from panel URL
-        String serverDomain = extractDomain(normalizedUrl);
+        this.serverDomain = extractDomain(normalizedUrl);
 
         // Determine which API to use at startup
         String v2BaseUrl = useTestingApi ? TESTING_API_URL : V2_API_URL;
@@ -105,17 +111,18 @@ public class HttpManager {
         } else {
             // Auto-detect based on health check
             logger.info("Checking V2 API availability at: " + v2BaseUrl + "/v1/health");
-            useV2 = checkV2Health(v2BaseUrl, key, serverDomain);
+            useV2 = checkV2Health(v2BaseUrl, key, this.serverDomain);
         }
 
         if (useV2) {
             this.apiVersion = ApiVersion.V2;
             this.apiUrl = v2ApiUrl;
-            this.httpClient = new ModlHttpClientV2Impl(apiUrl, key, serverDomain, debugHttp);
+            this.httpClient = new ModlHttpClientV2Impl(apiUrl, key, this.serverDomain, debugHttp);
+            this.httpClientHolder = new HttpClientHolder(this.httpClient, this.apiVersion);
             logger.info("==============================================");
             logger.info("MODL API: Using V2 API (centralized)");
             logger.info("  Base URL: " + apiUrl);
-            logger.info("  Server Domain: " + serverDomain);
+            logger.info("  Server Domain: " + this.serverDomain);
             logger.info("  Testing API: " + useTestingApi);
             logger.info("  Force Version: " + forceVersion);
             logger.info("==============================================");
@@ -123,6 +130,7 @@ public class HttpManager {
             this.apiVersion = ApiVersion.V1;
             this.apiUrl = v1ApiUrl;
             this.httpClient = new ModlHttpClientImpl(apiUrl, key, debugHttp);
+            this.httpClientHolder = new HttpClientHolder(this.httpClient, this.apiVersion);
             logger.warning("==============================================");
             logger.warning("MODL API: Using V1 API (legacy)");
             logger.warning("  Base URL: " + apiUrl);
@@ -148,6 +156,7 @@ public class HttpManager {
         this.apiKey = key;
         this.debugHttp = debugHttp;
         this.apiVersion = version;
+        this.useTestingApi = useTestingApi;
 
         // Normalize URL
         String normalizedUrl = url.replaceAll("/+$", "");
@@ -157,16 +166,18 @@ public class HttpManager {
         this.panelUrl = normalizedUrl;
 
         // Extract server domain from panel URL
-        String serverDomain = extractDomain(normalizedUrl);
+        this.serverDomain = extractDomain(normalizedUrl);
 
         if (version == ApiVersion.V2) {
             String v2BaseUrl = useTestingApi ? TESTING_API_URL : V2_API_URL;
             this.apiUrl = v2BaseUrl + ApiVersion.V2.getBasePath();
-            this.httpClient = new ModlHttpClientV2Impl(apiUrl, key, serverDomain, debugHttp);
-            logger.info("Using V2 API at: " + apiUrl + (useTestingApi ? " (testing)" : "") + ", Domain=" + serverDomain);
+            this.httpClient = new ModlHttpClientV2Impl(apiUrl, key, this.serverDomain, debugHttp);
+            this.httpClientHolder = new HttpClientHolder(this.httpClient, this.apiVersion);
+            logger.info("Using V2 API at: " + apiUrl + (useTestingApi ? " (testing)" : "") + ", Domain=" + this.serverDomain);
         } else {
             this.apiUrl = normalizedUrl + ApiVersion.V1.getBasePath();
             this.httpClient = new ModlHttpClientImpl(apiUrl, key, debugHttp);
+            this.httpClientHolder = new HttpClientHolder(this.httpClient, this.apiVersion);
             logger.info("Using V1 API at: " + apiUrl);
         }
     }

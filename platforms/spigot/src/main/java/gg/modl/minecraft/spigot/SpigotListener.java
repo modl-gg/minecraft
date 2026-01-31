@@ -9,6 +9,7 @@ import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
+import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.cache.LoginCache;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
@@ -39,12 +40,19 @@ public class SpigotListener implements Listener {
 
     private final SpigotPlatform platform;
     private final Cache cache;
-    private final ModlHttpClient httpClient;
+    private final HttpClientHolder httpClientHolder;
     private final ChatMessageCache chatMessageCache;
     private final SyncService syncService;
     private final String panelUrl;
     private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
     private final LoginCache loginCache;
+
+    /**
+     * Get the current HTTP client from the holder.
+     */
+    private ModlHttpClient getHttpClient() {
+        return httpClientHolder.getClient();
+    }
 
     /**
      * Async pre-login event - performs all HTTP operations on background thread
@@ -93,7 +101,7 @@ public class SpigotListener implements Listener {
                 String skinHash = (String) data[2];
 
                 // Perform login check
-                return httpClient.playerLogin(request)
+                return getHttpClient().playerLogin(request)
                     .thenAccept(response -> {
                         // Cache the result
                         loginCache.cacheLoginResult(event.getUniqueId(), response, ipInfo, skinHash);
@@ -196,7 +204,7 @@ public class SpigotListener implements Listener {
                         platform.getServerName()
                 );
 
-                httpClient.playerLogin(request).thenAccept(response -> {
+                getHttpClient().playerLogin(request).thenAccept(response -> {
                     if (response.hasActiveMute()) {
                         cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
                     }
@@ -229,7 +237,7 @@ public class SpigotListener implements Listener {
                         platform.getServerName()
                 );
 
-                httpClient.playerLogin(request).thenAccept(response -> {
+                getHttpClient().playerLogin(request).thenAccept(response -> {
                     if (response.hasActiveMute()) {
                         cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
                     }
@@ -260,7 +268,7 @@ public class SpigotListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString());
 
-        httpClient.playerDisconnect(request);
+        getHttpClient().playerDisconnect(request);
 
         // Mark player as offline
         cache.setOffline(event.getPlayer().getUniqueId());
@@ -354,7 +362,7 @@ public class SpigotListener implements Listener {
                     null // no error message
             );
             
-            httpClient.acknowledgePunishment(request).thenAccept(response -> {
+            getHttpClient().acknowledgePunishment(request).thenAccept(response -> {
                 platform.getLogger().info("Successfully acknowledged ban enforcement for punishment " + ban.getId());
             }).exceptionally(throwable -> {
                 platform.getLogger().severe("Failed to acknowledge ban enforcement for punishment " + ban.getId() + ": " + throwable.getMessage());

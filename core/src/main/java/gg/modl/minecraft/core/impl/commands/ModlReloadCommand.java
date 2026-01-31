@@ -33,22 +33,44 @@ public class ModlReloadCommand extends BaseCommand {
         sender.sendMessage("§6=== Commands ===");
         sender.sendMessage("");
 
-        sender.sendMessage("§e§lPunishment Commands:");
-        sender.sendMessage("§7/punish <player> <type> [reason]§f - Issue a punishment");
-        sender.sendMessage("§7/ban <player> [duration] [reason]§f - Ban a player");
-        sender.sendMessage("§7/mute <player> [duration] [reason]§f - Mute a player");
-        sender.sendMessage("§7/kick <player> [reason]§f - Kick a player");
-        sender.sendMessage("§7/blacklist <player> [reason]§f - Blacklist a player");
-        sender.sendMessage("§7/pardon <player> [type]§f - Remove a punishment");
-        sender.sendMessage("§7/unban <player>§f - Unban a player");
-        sender.sendMessage("§7/unmute <player>§f - Unmute a player");
-        sender.sendMessage("");
+        java.util.UUID senderUuid = sender.isPlayer() ? sender.getUniqueId() : null;
+        boolean isStaff = senderUuid != null && cache.isStaffMember(senderUuid);
+        boolean isAdmin = senderUuid != null && cache.hasPermission(senderUuid, "modl.admin");
 
-        sender.sendMessage("§e§lInformation Commands:");
-        sender.sendMessage("§7/lookup <player>§f - View player information");
-        sender.sendMessage("§7/modl status§f - Show plugin status");
-        sender.sendMessage("");
+        // Punishment Commands - show if staff
+        if (isStaff) {
+            sender.sendMessage("§e§lPunishment Commands:");
+            if (cache.hasPermission(senderUuid, "punishment.apply.dynamic") ||
+                cache.hasAnyPunishmentPermission(senderUuid)) {
+                sender.sendMessage("§7/punish <player> <type> [reason]§f - Issue a punishment");
+            }
+            if (cache.hasPermission(senderUuid, "punishment.apply.manual-ban")) {
+                sender.sendMessage("§7/ban <player> [duration] [reason]§f - Ban a player");
+            }
+            if (cache.hasPermission(senderUuid, "punishment.apply.manual-mute")) {
+                sender.sendMessage("§7/mute <player> [duration] [reason]§f - Mute a player");
+            }
+            if (cache.hasPermission(senderUuid, "punishment.apply.kick")) {
+                sender.sendMessage("§7/kick <player> [reason]§f - Kick a player");
+            }
+            if (cache.hasPermission(senderUuid, "punishment.apply.blacklist")) {
+                sender.sendMessage("§7/blacklist <player> [reason]§f - Blacklist a player");
+            }
+            if (cache.hasPermission(senderUuid, "punishment.modify.pardon")) {
+                sender.sendMessage("§7/pardon <player> [type]§f - Remove a punishment");
+                sender.sendMessage("§7/unban <player>§f - Unban a player");
+                sender.sendMessage("§7/unmute <player>§f - Unmute a player");
+            }
+            sender.sendMessage("");
 
+            sender.sendMessage("§e§lInformation Commands:");
+            sender.sendMessage("§7/lookup <player>§f - View player information");
+            sender.sendMessage("§7/inspect <player>§f - Open player inspection menu");
+            sender.sendMessage("§7/staff§f - Open staff menu");
+            sender.sendMessage("");
+        }
+
+        // Player Commands - always show
         sender.sendMessage("§e§lPlayer Commands:");
         sender.sendMessage("§7/iammuted <player>§f - Tell someone you are muted");
         sender.sendMessage("§7/report <player> <reason>§f - Report a player");
@@ -58,10 +80,13 @@ public class ModlReloadCommand extends BaseCommand {
         sender.sendMessage("§7/support <message>§f - Contact support");
         sender.sendMessage("");
 
-        sender.sendMessage("§e§lAdmin Commands:");
-        sender.sendMessage("§7/modl status§f - Check plugin status");
-        sender.sendMessage("§7/modl reload§f - Reload configuration");
-        sender.sendMessage("");
+        // Admin Commands - show if admin
+        if (isAdmin || !sender.isPlayer()) {
+            sender.sendMessage("§e§lAdmin Commands:");
+            sender.sendMessage("§7/modl status§f - Check plugin status");
+            sender.sendMessage("§7/modl reload§f - Reload configuration");
+            sender.sendMessage("");
+        }
 
         sender.sendMessage("§6========================");
     }
