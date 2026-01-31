@@ -81,7 +81,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 11: Reports (eye of ender)
         CirrusItem reportsItem = createItem(
-            CirrusItemType.of("minecraft:ender_eye"),
+            CirrusItemType.ENDER_EYE,
                 MenuItems.COLOR_GOLD + "Reports",
                 "openReports",
                 MenuItems.COLOR_GRAY + "View unresolved reports",
@@ -93,7 +93,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 12: Recent Punishments (sword)
         CirrusItem punishmentsItem = createItem(
-            CirrusItemType.of("minecraft:iron_sword"),
+            CirrusItemType.IRON_SWORD,
                 MenuItems.COLOR_GOLD + "Recent Punishments",
                 "openPunishments",
                 MenuItems.COLOR_GRAY + "View recent punishments issued",
@@ -123,7 +123,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 16: Settings (command block)
         CirrusItem settingsItem = createItem(
-                CirrusItemType.of("minecraft:command_block"),
+                CirrusItemType.COMMAND_BLOCK,
                 MenuItems.COLOR_GOLD + "Settings",
                 "openSettings",
                 MenuItems.COLOR_GRAY + "Modify staff settings"
@@ -151,7 +151,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 11: Reports (eye of ender)
         CirrusItem reportsItem = createItem(
-            CirrusItemType.of("minecraft:ender_eye"),
+            CirrusItemType.ENDER_EYE,
                 MenuItems.COLOR_GOLD + "Reports",
                 "openReports",
                 MenuItems.COLOR_GRAY + "View unresolved reports"
@@ -161,7 +161,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 12: Recent Punishments (sword)
         CirrusItem punishmentsItem = createItem(
-            CirrusItemType.of("minecraft:iron_sword"),
+            CirrusItemType.IRON_SWORD,
                 MenuItems.COLOR_GOLD + "Recent Punishments",
                 "openPunishments",
                 MenuItems.COLOR_GRAY + "View recent punishments"
@@ -189,7 +189,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 16: Settings (command block)
         CirrusItem settingsItem = createItem(
-            CirrusItemType.of("minecraft:command_block"),
+            CirrusItemType.COMMAND_BLOCK,
                 MenuItems.COLOR_GOLD + "Settings",
                 "openSettings",
                 MenuItems.COLOR_GRAY + "Modify staff settings"

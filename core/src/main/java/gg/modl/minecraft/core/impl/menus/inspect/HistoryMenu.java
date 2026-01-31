@@ -282,7 +282,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         } else if (punishment.isMuteType()) {
             return CirrusItemType.PAPER;
         } else if (punishment.isKickType()) {
-            return CirrusItemType.of("minecraft:leather_boots");
+            return CirrusItemType.LEATHER_BOOTS;
         }
         return CirrusItemType.PAPER;
     }

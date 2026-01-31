@@ -87,7 +87,7 @@ public class SettingsMenu extends BaseStaffMenu {
         }
 
         set(CirrusItem.of(
-                CirrusItemType.of("minecraft:anvil"),
+                CirrusItemType.ANVIL,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Information"),
                 MenuItems.lore(infoLore)
         ).slot(MenuSlots.SETTINGS_INFO));
@@ -96,7 +96,7 @@ public class SettingsMenu extends BaseStaffMenu {
         Cache cache = platform.getCache();
         boolean reportNotificationsEnabled = cache != null && cache.isReportNotificationsEnabled(viewerUuid);
         set(CirrusItem.of(
-                reportNotificationsEnabled ? CirrusItemType.of("minecraft:lime_dye") : CirrusItemType.of("minecraft:gray_dye"),
+                reportNotificationsEnabled ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Report Notifications: " +
                         (reportNotificationsEnabled ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
                 MenuItems.lore(
@@ -123,7 +123,7 @@ public class SettingsMenu extends BaseStaffMenu {
         // Edit Roles - requires modl.settings.modify
         if (canModifySettings) {
             set(CirrusItem.of(
-                    CirrusItemType.of("minecraft:blaze_rod"),
+                    CirrusItemType.BLAZE_ROD,
                     CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Edit Roles"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "Modify role permissions"
@@ -134,7 +134,7 @@ public class SettingsMenu extends BaseStaffMenu {
         // Manage Staff - requires modl.staff.manage
         if (canManageStaff) {
             set(CirrusItem.of(
-                    CirrusItemType.of("minecraft:iron_chestplate"),
+                    CirrusItemType.IRON_CHESTPLATE,
                     CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Manage Staff"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "Manage staff roles"

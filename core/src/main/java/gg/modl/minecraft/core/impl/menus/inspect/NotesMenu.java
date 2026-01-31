@@ -66,7 +66,7 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
 
         // Add create note button at slot 40 (y position in navigation row)
         items.put(MenuSlots.CREATE_NOTE_BUTTON, CirrusItem.of(
-                CirrusItemType.of("minecraft:oak_sign"),
+                CirrusItemType.OAK_SIGN,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Create Note"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Add a new note for " + targetName

@@ -326,7 +326,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
             case MUTE:
                 return CirrusItemType.PAPER;
             case KICK:
-                return CirrusItemType.of("minecraft:leather_boots");
+                return CirrusItemType.LEATHER_BOOTS;
             default:
                 return CirrusItemType.PAPER;
         }

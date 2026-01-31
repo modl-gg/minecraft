@@ -42,7 +42,7 @@ public final class MenuItems {
      */
     public static CirrusItem backButton() {
         return CirrusItem.of(
-                CirrusItemType.of("minecraft:red_bed"),
+                CirrusItemType.RED_BED,
                 CirrusChatElement.ofLegacyText(COLOR_RED + "Back"),
                 lore(COLOR_GRAY + "Return to previous menu")
         ).actionHandler("back");
@@ -148,7 +148,7 @@ public final class MenuItems {
         loreLines.add(COLOR_YELLOW + "Click to cycle filters");
 
         return CirrusItem.of(
-                CirrusItemType.of("minecraft:anvil"),
+                CirrusItemType.ANVIL,
                 CirrusChatElement.ofLegacyText(COLOR_GOLD + "Filter"),
                 lore(loreLines)
         ).actionHandler("filter");
@@ -172,7 +172,7 @@ public final class MenuItems {
         loreLines.add(COLOR_YELLOW + "Click to cycle sort");
 
         return CirrusItem.of(
-                CirrusItemType.of("minecraft:anvil"),
+                CirrusItemType.ANVIL,
                 CirrusChatElement.ofLegacyText(COLOR_GOLD + "Sort"),
                 lore(loreLines)
         ).actionHandler("sort");
@@ -187,7 +187,7 @@ public final class MenuItems {
         return switch (punishmentType.toUpperCase()) {
             case "BAN", "SECURITY_BAN", "LINKED_BAN", "BLACKLIST" -> CirrusItemType.BARRIER;
             case "MUTE" -> CirrusItemType.PAPER;
-            case "KICK" -> CirrusItemType.of("minecraft:leather_boots");
+            case "KICK" -> CirrusItemType.LEATHER_BOOTS;
             default -> CirrusItemType.PAPER;
         };
     }
@@ -207,7 +207,7 @@ public final class MenuItems {
      */
     public static CirrusItem toggleItem(String title, String description, boolean enabled) {
         return CirrusItem.of(
-                enabled ? CirrusItemType.of("minecraft:lime_dye") : CirrusItemType.of("minecraft:gray_dye"),
+                enabled ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
                 CirrusChatElement.ofLegacyText((enabled ? COLOR_GREEN : COLOR_GRAY) + title + ": " + (enabled ? "Enabled" : "Disabled")),
                 lore(COLOR_GRAY + description)
         );

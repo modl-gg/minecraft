@@ -67,7 +67,7 @@ public abstract class BaseStaffListMenu<T> extends BaseListMenu<T> {
 
         // Slot 11: Reports
         CirrusItem reportsItem = CirrusItem.of(
-                CirrusItemType.of("minecraft:ender_eye"),
+                CirrusItemType.ENDER_EYE,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Reports"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View unresolved reports",
@@ -79,7 +79,7 @@ public abstract class BaseStaffListMenu<T> extends BaseListMenu<T> {
 
         // Slot 12: Recent Punishments
         CirrusItem punishmentsItem = CirrusItem.of(
-                CirrusItemType.of("minecraft:iron_sword"),
+                CirrusItemType.IRON_SWORD,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Recent Punishments"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View recent punishments issued",
@@ -111,7 +111,7 @@ public abstract class BaseStaffListMenu<T> extends BaseListMenu<T> {
 
         // Slot 16: Settings
         CirrusItem settingsItem = CirrusItem.of(
-                CirrusItemType.of("minecraft:command_block"),
+                CirrusItemType.COMMAND_BLOCK,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Settings"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Modify staff settings"

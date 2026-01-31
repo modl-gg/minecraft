@@ -99,7 +99,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
         // Slot 13: Alts (vine item)
         int altCount = 0; // Would need to fetch linked accounts
         CirrusItem altsItem = createItem(
-                CirrusItemType.of("minecraft:vine"),
+                CirrusItemType.VINE,
                 MenuItems.COLOR_GOLD + "Alts",
                 "openAlts",
                 MenuItems.COLOR_GRAY + "View " + targetName + "'s known alternate accounts",
@@ -121,7 +121,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
 
         // Slot 15: Reports (eye of ender)
         CirrusItem reportsItem = createItem(
-                CirrusItemType.of("minecraft:ender_eye"),
+                CirrusItemType.ENDER_EYE,
                 MenuItems.COLOR_GOLD + "Reports",
                 "openReports",
                 MenuItems.COLOR_GRAY + "View and handle reports against " + targetName
@@ -133,7 +133,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
         // Slot 17: Punish (mace for 1.21+, bow for older)
         // Using bow as a safe fallback
         CirrusItem punishItem = createItem(
-                CirrusItemType.of("minecraft:bow"),
+                CirrusItemType.BOW,
                 MenuItems.COLOR_RED + "Punish",
                 "openPunish",
                 MenuItems.COLOR_GRAY + "Issue a new punishment against " + targetName
@@ -164,7 +164,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
 
         // Slot 12: Alts
         CirrusItem altsItem = createItem(
-                CirrusItemType.of("minecraft:vine"),
+                CirrusItemType.VINE,
                 MenuItems.COLOR_GOLD + "Alts",
                 "openAlts",
                 MenuItems.COLOR_GRAY + "Known alternate accounts"
@@ -184,7 +184,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
 
         // Slot 14: Reports
         CirrusItem reportsItem = createItem(
-                CirrusItemType.of("minecraft:ender_eye"),
+                CirrusItemType.ENDER_EYE,
                 MenuItems.COLOR_GOLD + "Reports",
                 "openReports",
                 MenuItems.COLOR_GRAY + "Reports against " + targetName
@@ -194,7 +194,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
 
         // Slot 16: Punish
         CirrusItem punishItem = createItem(
-                CirrusItemType.of("minecraft:bow"),
+                CirrusItemType.BOW,
                 MenuItems.COLOR_RED + "Punish",
                 "openPunish",
                 MenuItems.COLOR_GRAY + "Issue a new punishment"

@@ -168,7 +168,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         lore.add(MenuItems.COLOR_GREEN + "Click to issue " + (silentMode ? "silent " : "") + "punishment");
 
         set(CirrusItem.of(
-                CirrusItemType.of("minecraft:yellow_wool"),
+                CirrusItemType.YELLOW_WOOL,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Issue Punishment"),
                 MenuItems.lore(lore)
         ).slot(31).actionHandler("issueSingle"));
@@ -176,15 +176,15 @@ public class PunishSeverityMenu extends BaseInspectMenu {
 
     private void buildMultiSeverityLayout() {
         // Slot 28: Lenient (lime wool)
-        set(createSeverityButton("Lenient", 0, CirrusItemType.of("minecraft:lime_wool"), MenuItems.COLOR_GREEN,
+        set(createSeverityButton("Lenient", 0, CirrusItemType.LIME_WOOL, MenuItems.COLOR_GREEN,
                 previewData != null ? previewData.getLenient() : null, "issueLenient", MenuSlots.SEVERITY_LENIENT));
 
         // Slot 30: Regular (yellow wool)
-        set(createSeverityButton("Regular", 1, CirrusItemType.of("minecraft:yellow_wool"), MenuItems.COLOR_YELLOW,
+        set(createSeverityButton("Regular", 1, CirrusItemType.YELLOW_WOOL, MenuItems.COLOR_YELLOW,
                 previewData != null ? previewData.getRegular() : null, "issueRegular", MenuSlots.SEVERITY_REGULAR));
 
         // Slot 32: Aggravated (red wool)
-        set(createSeverityButton("Aggravated", 2, CirrusItemType.of("minecraft:red_wool"), MenuItems.COLOR_RED,
+        set(createSeverityButton("Aggravated", 2, CirrusItemType.RED_WOOL, MenuItems.COLOR_RED,
                 previewData != null ? previewData.getAggravated() : null, "issueAggravated", MenuSlots.SEVERITY_AGGRAVATED));
     }
 
@@ -229,7 +229,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     private void buildToggleButtons() {
         // Slot 34: Silent Mode toggle
         set(CirrusItem.of(
-                silentMode ? CirrusItemType.of("minecraft:lime_dye") : CirrusItemType.of("minecraft:gray_dye"),
+                silentMode ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Silent Mode: " + (silentMode ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED +
                                                                                                                                      "Disabled")),
                 MenuItems.lore(
@@ -242,7 +242,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         // Slot 42: Alt-Blocking toggle (if punishment type allows it)
         if (punishmentType.getCanBeAltBlocking() != null && punishmentType.getCanBeAltBlocking()) {
             set(CirrusItem.of(
-                    altBlocking ? CirrusItemType.of("minecraft:torch") : CirrusItemType.of("minecraft:redstone_torch"),
+                    altBlocking ? CirrusItemType.TORCH : CirrusItemType.REDSTONE_TORCH,
                     CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Alt-Blocking: " + (altBlocking ? MenuItems.COLOR_GREEN + "Enabled" :
                                                                                          MenuItems.COLOR_RED + "Disabled")),
                     MenuItems.lore(
@@ -256,7 +256,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         // Slot 43: Stat-Wipe toggle (if punishment type allows it)
         if (punishmentType.getCanBeStatWiping() != null && punishmentType.getCanBeStatWiping()) {
             set(CirrusItem.of(
-                    statWipe ? CirrusItemType.of("minecraft:experience_bottle") : CirrusItemType.of("minecraft:glass_bottle"),
+                    statWipe ? CirrusItemType.EXPERIENCE_BOTTLE : CirrusItemType.GLASS_BOTTLE,
                     CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Stat-Wipe: " + (statWipe ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED +
                                                                                                                                      "Disabled")),
                     MenuItems.lore(

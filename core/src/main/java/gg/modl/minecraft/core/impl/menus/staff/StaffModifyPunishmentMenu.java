@@ -78,7 +78,7 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
 
         // Slot 28: Add Note
         set(CirrusItem.of(
-                CirrusItemType.of("minecraft:oak_sign"),
+                CirrusItemType.OAK_SIGN,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Add Note"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Add a staff note to this punishment"
@@ -111,14 +111,14 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
         }
 
         set(CirrusItem.of(
-                evidenceList.isEmpty() ? CirrusItemType.ARROW : CirrusItemType.of("minecraft:spectral_arrow"),
+                evidenceList.isEmpty() ? CirrusItemType.ARROW : CirrusItemType.SPECTRAL_ARROW,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_AQUA + "Evidence"),
                 MenuItems.lore(evidenceLore)
         ).slot(MenuSlots.MODIFY_EVIDENCE).actionHandler("evidence"));
 
         // Slot 30: Pardon Punishment
         set(CirrusItem.of(
-                CirrusItemType.of("minecraft:golden_apple"),
+                CirrusItemType.GOLDEN_APPLE,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Pardon Punishment"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Remove punishment and clear",
@@ -128,7 +128,7 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
 
         // Slot 31: Change Duration
         set(CirrusItem.of(
-                CirrusItemType.of("minecraft:anvil"),
+                CirrusItemType.ANVIL,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Change Duration"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Shorten or lengthen punishment duration",
@@ -142,7 +142,7 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
             boolean statWipe = punishment.getDataMap() != null &&
                     Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
             set(CirrusItem.of(
-                    statWipe ? CirrusItemType.of("minecraft:experience_bottle") : CirrusItemType.of("minecraft:glass_bottle"),
+                    statWipe ? CirrusItemType.EXPERIENCE_BOTTLE : CirrusItemType.GLASS_BOTTLE,
                     CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Stat-Wipe"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + (statWipe ? "Disable" : "Enable") + " stat-wiping for this ban",
@@ -155,7 +155,7 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
             boolean altBlock = punishment.getDataMap() != null &&
                     Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
             set(CirrusItem.of(
-                    altBlock ? CirrusItemType.of("minecraft:torch") : CirrusItemType.of("minecraft:redstone_torch"),
+                    altBlock ? CirrusItemType.TORCH : CirrusItemType.REDSTONE_TORCH,
                     CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Alt-Blocking"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + (altBlock ? "Disable" : "Enable") + " alt-blocking for this ban",

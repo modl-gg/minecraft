@@ -77,7 +77,7 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
 
         // Slot 13: Alts
         CirrusItem altsItem = CirrusItem.of(
-            CirrusItemType.of("minecraft:vine"),
+            CirrusItemType.VINE,
             CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Alts"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View " + targetName + "'s known alternate accounts"
@@ -100,7 +100,7 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
 
         // Slot 15: Reports
         CirrusItem reportsItem = CirrusItem.of(
-            CirrusItemType.of("minecraft:ender_eye"),
+            CirrusItemType.ENDER_EYE,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Reports"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View and handle reports against " + targetName
@@ -111,7 +111,7 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
 
         // Slot 17: Punish
         CirrusItem punishItem = CirrusItem.of(
-                CirrusItemType.of("minecraft:bow"),
+                CirrusItemType.BOW,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + "Punish"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Issue a new punishment against " + targetName

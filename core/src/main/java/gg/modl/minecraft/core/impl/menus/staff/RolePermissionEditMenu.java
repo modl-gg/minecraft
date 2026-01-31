@@ -129,7 +129,7 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         }
 
         return CirrusItem.of(
-                permission.isEnabled() ? CirrusItemType.of("minecraft:lime_dye") : CirrusItemType.of("minecraft:gray_dye"),
+                permission.isEnabled() ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
             CirrusChatElement.ofLegacyText(
                         (permission.isEnabled() ? MenuItems.COLOR_GREEN : MenuItems.COLOR_GRAY) + permission.getNode()
                 ),

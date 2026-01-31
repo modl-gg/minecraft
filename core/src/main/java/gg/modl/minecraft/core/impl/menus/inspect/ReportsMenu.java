@@ -227,9 +227,9 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
             case "chat":
                 return CirrusItemType.WRITABLE_BOOK;
             case "cheating":
-                return CirrusItemType.of("minecraft:diamond_sword");
+                return CirrusItemType.DIAMOND_SWORD;
             case "behavior":
-                return CirrusItemType.of("minecraft:skeleton_skull");
+                return CirrusItemType.SKELETON_SKULL;
             default:
                 return CirrusItemType.PAPER;
         }
