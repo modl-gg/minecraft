@@ -2,10 +2,10 @@ package gg.modl.minecraft.core.impl.menus.inspect;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
@@ -13,7 +13,6 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.locale.LocaleManager;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -232,8 +231,8 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         String title = locale.getMessage("menus.alt_item.title", vars);
 
         return CirrusItem.of(
-                ItemType.PLAYER_HEAD,
-                ChatElement.ofLegacyText(title),
+                CirrusItemType.PLAYER_HEAD,
+                CirrusChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }

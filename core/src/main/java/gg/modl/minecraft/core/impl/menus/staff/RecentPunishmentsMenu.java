@@ -2,10 +2,10 @@ package gg.modl.minecraft.core.impl.menus.staff;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Modification;
 import gg.modl.minecraft.api.Note;
@@ -305,30 +305,30 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         String title = locale.getMessage(titleKey, vars);
 
         // Get appropriate item type based on punishment type
-        ItemType itemType = getPunishmentItemType(punishment);
+        CirrusItemType itemType = getPunishmentItemType(punishment);
 
         return CirrusItem.of(
                 itemType,
-                ChatElement.ofLegacyText(title),
+                CirrusChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }
 
-    private ItemType getPunishmentItemType(Punishment punishment) {
-        if (punishment.getType() == null) return ItemType.PAPER;
+    private CirrusItemType getPunishmentItemType(Punishment punishment) {
+        if (punishment.getType() == null) return CirrusItemType.PAPER;
 
         switch (punishment.getType()) {
             case BAN:
             case SECURITY_BAN:
             case LINKED_BAN:
             case BLACKLIST:
-                return ItemType.BARRIER;
+                return CirrusItemType.BARRIER;
             case MUTE:
-                return ItemType.PAPER;
+                return CirrusItemType.PAPER;
             case KICK:
-                return ItemType.LEATHER_BOOTS;
+                return CirrusItemType.of("minecraft:leather_boots");
             default:
-                return ItemType.PAPER;
+                return CirrusItemType.PAPER;
         }
     }
 

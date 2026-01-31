@@ -3,11 +3,11 @@ package gg.modl.minecraft.core.impl.menus.inspect;
 import dev.simplix.cirrus.actionhandler.ActionHandler;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.CallResult;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
@@ -168,27 +168,27 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         lore.add(MenuItems.COLOR_GREEN + "Click to issue " + (silentMode ? "silent " : "") + "punishment");
 
         set(CirrusItem.of(
-                ItemType.YELLOW_WOOL,
-                ChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Issue Punishment"),
+                CirrusItemType.of("minecraft:yellow_wool"),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Issue Punishment"),
                 MenuItems.lore(lore)
         ).slot(31).actionHandler("issueSingle"));
     }
 
     private void buildMultiSeverityLayout() {
         // Slot 28: Lenient (lime wool)
-        set(createSeverityButton("Lenient", 0, ItemType.LIME_WOOL, MenuItems.COLOR_GREEN,
+        set(createSeverityButton("Lenient", 0, CirrusItemType.of("minecraft:lime_wool"), MenuItems.COLOR_GREEN,
                 previewData != null ? previewData.getLenient() : null, "issueLenient", MenuSlots.SEVERITY_LENIENT));
 
         // Slot 30: Regular (yellow wool)
-        set(createSeverityButton("Regular", 1, ItemType.YELLOW_WOOL, MenuItems.COLOR_YELLOW,
+        set(createSeverityButton("Regular", 1, CirrusItemType.of("minecraft:yellow_wool"), MenuItems.COLOR_YELLOW,
                 previewData != null ? previewData.getRegular() : null, "issueRegular", MenuSlots.SEVERITY_REGULAR));
 
         // Slot 32: Aggravated (red wool)
-        set(createSeverityButton("Aggravated", 2, ItemType.RED_WOOL, MenuItems.COLOR_RED,
+        set(createSeverityButton("Aggravated", 2, CirrusItemType.of("minecraft:red_wool"), MenuItems.COLOR_RED,
                 previewData != null ? previewData.getAggravated() : null, "issueAggravated", MenuSlots.SEVERITY_AGGRAVATED));
     }
 
-    private CirrusItem createSeverityButton(String name, int severityLevel, ItemType itemType, String color,
+    private CirrusItem createSeverityButton(String name, int severityLevel, CirrusItemType itemType, String color,
                                              PunishmentPreviewResponse.SeverityPreview preview, String action, int slot) {
         List<String> lore = new ArrayList<>();
 
@@ -221,7 +221,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
 
         return CirrusItem.of(
                 itemType,
-                ChatElement.ofLegacyText(color + name),
+                CirrusChatElement.ofLegacyText(color + name),
                 MenuItems.lore(lore)
         ).slot(slot).actionHandler(action);
     }
@@ -229,8 +229,9 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     private void buildToggleButtons() {
         // Slot 34: Silent Mode toggle
         set(CirrusItem.of(
-                silentMode ? ItemType.LIME_DYE : ItemType.GRAY_DYE,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Silent Mode: " + (silentMode ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
+                silentMode ? CirrusItemType.of("minecraft:lime_dye") : CirrusItemType.of("minecraft:gray_dye"),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Silent Mode: " + (silentMode ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED +
+                                                                                                                                     "Disabled")),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Toggle silent mode for this punishment",
                         "",
@@ -241,8 +242,9 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         // Slot 42: Alt-Blocking toggle (if punishment type allows it)
         if (punishmentType.getCanBeAltBlocking() != null && punishmentType.getCanBeAltBlocking()) {
             set(CirrusItem.of(
-                    altBlocking ? ItemType.TORCH : ItemType.REDSTONE_TORCH,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Alt-Blocking: " + (altBlocking ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
+                    altBlocking ? CirrusItemType.of("minecraft:torch") : CirrusItemType.of("minecraft:redstone_torch"),
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Alt-Blocking: " + (altBlocking ? MenuItems.COLOR_GREEN + "Enabled" :
+                                                                                         MenuItems.COLOR_RED + "Disabled")),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "Block alt accounts from joining",
                             "",
@@ -254,8 +256,9 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         // Slot 43: Stat-Wipe toggle (if punishment type allows it)
         if (punishmentType.getCanBeStatWiping() != null && punishmentType.getCanBeStatWiping()) {
             set(CirrusItem.of(
-                    statWipe ? ItemType.EXPERIENCE_BOTTLE : ItemType.GLASS_BOTTLE,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Stat-Wipe: " + (statWipe ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
+                    statWipe ? CirrusItemType.of("minecraft:experience_bottle") : CirrusItemType.of("minecraft:glass_bottle"),
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Stat-Wipe: " + (statWipe ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED +
+                                                                                                                                     "Disabled")),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "Wipe player stats after punishment",
                             "",

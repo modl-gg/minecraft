@@ -53,7 +53,7 @@
             <artifactId>acf-bukkit</artifactId>
         </dependency>
         <dependency>
-            <groupId>dev.simplix.cirrus</groupId>
+            <groupId>gg.modl.minecraft.cirrus</groupId>
             <artifactId>cirrus-spigot</artifactId>
         </dependency>
     </dependencies>

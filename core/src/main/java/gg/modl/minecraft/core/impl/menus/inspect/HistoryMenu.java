@@ -2,10 +2,10 @@ package gg.modl.minecraft.core.impl.menus.inspect;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Modification;
 import gg.modl.minecraft.api.Note;
@@ -236,11 +236,11 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         String title = locale.getMessage(titleKey, vars);
 
         // Get appropriate item type based on punishment type
-        ItemType itemType = getPunishmentItemType(punishment);
+        CirrusItemType itemType = getPunishmentItemType(punishment);
 
         return CirrusItem.of(
                 itemType,
-                ChatElement.ofLegacyText(title),
+                CirrusChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }
@@ -263,28 +263,28 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         return punishment.getTypeCategory();
     }
 
-    private ItemType getPunishmentItemType(Punishment punishment) {
+    private CirrusItemType getPunishmentItemType(Punishment punishment) {
         // First check loaded punishment type category
         int ordinal = punishment.getTypeOrdinal();
         PunishmentTypesResponse.PunishmentTypeData typeData = typesByOrdinal.get(ordinal);
         if (typeData != null && typeData.getCategory() != null) {
             String category = typeData.getCategory().toLowerCase();
             if (category.contains("ban") || category.contains("security")) {
-                return ItemType.BARRIER;
+                return CirrusItemType.BARRIER;
             } else if (category.contains("mute") || category.contains("social")) {
-                return ItemType.PAPER;
+                return CirrusItemType.PAPER;
             }
         }
 
         // Fall back to registry-based detection
         if (punishment.isBanType()) {
-            return ItemType.BARRIER;
+            return CirrusItemType.BARRIER;
         } else if (punishment.isMuteType()) {
-            return ItemType.PAPER;
+            return CirrusItemType.PAPER;
         } else if (punishment.isKickType()) {
-            return ItemType.LEATHER_BOOTS;
+            return CirrusItemType.of("minecraft:leather_boots");
         }
-        return ItemType.PAPER;
+        return CirrusItemType.PAPER;
     }
 
     @Override

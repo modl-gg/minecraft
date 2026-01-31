@@ -3,11 +3,11 @@ package gg.modl.minecraft.core.impl.menus.inspect;
 import dev.simplix.cirrus.actionhandler.ActionHandler;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.CallResult;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
@@ -142,8 +142,8 @@ public class PunishMenu extends BaseInspectMenu {
         // If no punishment types loaded and no config, show error placeholder
         if (punishmentTypes.isEmpty() && guiConfig.getEnabledSlots().isEmpty()) {
             set(CirrusItem.of(
-                    ItemType.BARRIER,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_RED + "No Punishment Types"),
+                    CirrusItemType.BARRIER,
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + "No Punishment Types"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "Failed to load punishment types",
                             MenuItems.COLOR_GRAY + "from the API"
@@ -181,11 +181,11 @@ public class PunishMenu extends BaseInspectMenu {
         }
 
         // Determine item type from config or fallback
-        ItemType itemType = parseItemType(slotConfig.getItem());
+        CirrusItemType itemType = parseItemType(slotConfig.getItem());
 
         return CirrusItem.of(
                 itemType,
-                ChatElement.ofLegacyText(MenuItems.COLOR_RED + slotConfig.getTitle()),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + slotConfig.getTitle()),
                 MenuItems.lore(lore)
         ).actionHandler("punishType_" + type.getOrdinal());
     }
@@ -193,11 +193,11 @@ public class PunishMenu extends BaseInspectMenu {
     private CirrusItem createDisabledPunishmentTypeItem(PunishmentTypesResponse.PunishmentTypeData type,
                                                           PunishGuiConfig.PunishSlotConfig slotConfig) {
         // Determine item type from config or fallback
-        ItemType itemType = parseItemType(slotConfig.getItem());
+        CirrusItemType itemType = parseItemType(slotConfig.getItem());
 
         return CirrusItem.of(
                 itemType,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + slotConfig.getTitle()),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GRAY + slotConfig.getTitle()),
                 MenuItems.lore(
                         MenuItems.COLOR_RED + "No Permission",
                         MenuItems.COLOR_GRAY + "You don't have permission",
@@ -208,11 +208,11 @@ public class PunishMenu extends BaseInspectMenu {
     }
 
     private CirrusItem createPlaceholderItem(PunishGuiConfig.PunishSlotConfig slotConfig) {
-        ItemType itemType = parseItemType(slotConfig.getItem());
+        CirrusItemType itemType = parseItemType(slotConfig.getItem());
 
         return CirrusItem.of(
                 itemType,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + slotConfig.getTitle()),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GRAY + slotConfig.getTitle()),
                 MenuItems.lore(
                         MenuItems.COLOR_RED + "Punishment type not found",
                         MenuItems.COLOR_GRAY + "Ordinal: " + slotConfig.getOrdinal()
@@ -256,35 +256,12 @@ public class PunishMenu extends BaseInspectMenu {
         return result;
     }
 
-    private ItemType parseItemType(String itemString) {
+    private CirrusItemType parseItemType(String itemString) {
         if (itemString == null || itemString.isEmpty()) {
-            return ItemType.PAPER;
+            return CirrusItemType.PAPER;
         }
 
-        // Remove minecraft: prefix if present
-        String typeName = itemString.replace("minecraft:", "").toUpperCase();
-
-        try {
-            return ItemType.valueOf(typeName);
-        } catch (IllegalArgumentException e) {
-            // Try common mappings
-            return switch (typeName.toLowerCase()) {
-                case "feather" -> ItemType.FEATHER;
-                case "pufferfish" -> ItemType.PUFFERFISH;
-                case "creeper_head" -> ItemType.CREEPER_HEAD;
-                case "lava_bucket" -> ItemType.LAVA_BUCKET;
-                case "spider_eye" -> ItemType.SPIDER_EYE;
-                case "diamond_sword" -> ItemType.DIAMOND_SWORD;
-                case "ink_sac" -> ItemType.INK_SAC;
-                case "name_tag" -> ItemType.NAME_TAG;
-                case "armor_stand" -> ItemType.ARMOR_STAND;
-                case "gold_ingot" -> ItemType.GOLD_INGOT;
-                case "experience_bottle" -> ItemType.EXPERIENCE_BOTTLE;
-                case "barrier" -> ItemType.BARRIER;
-                case "paper" -> ItemType.PAPER;
-                default -> ItemType.PAPER;
-            };
-        }
+        return CirrusItemType.of(itemString);
     }
 
     @Override

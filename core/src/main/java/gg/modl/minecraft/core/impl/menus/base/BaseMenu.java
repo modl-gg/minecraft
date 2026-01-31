@@ -1,17 +1,16 @@
 package gg.modl.minecraft.core.impl.menus.base;
 
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
+import dev.simplix.cirrus.menu.CirrusInventoryType;
 import dev.simplix.cirrus.menus.SimpleMenu;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
-import dev.simplix.protocolize.data.inventory.InventoryType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
-
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -38,7 +37,7 @@ public abstract class BaseMenu extends SimpleMenu {
      * @param backAction Action to perform when back button is clicked (null if none)
      */
     public BaseMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName, Consumer<CirrusPlayerWrapper> backAction) {
-        this(platform, httpClient, viewerUuid, viewerName, backAction, InventoryType.GENERIC_9X6);
+        this(platform, httpClient, viewerUuid, viewerName, backAction, CirrusInventoryType.GENERIC_9X6);
     }
 
     /**
@@ -52,7 +51,7 @@ public abstract class BaseMenu extends SimpleMenu {
      * @param inventoryType The inventory type/size for this menu
      */
     public BaseMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
-                    Consumer<CirrusPlayerWrapper> backAction, InventoryType inventoryType) {
+                    Consumer<CirrusPlayerWrapper> backAction, CirrusInventoryType inventoryType) {
         super();
         this.platform = platform;
         this.httpClient = httpClient;
@@ -100,8 +99,8 @@ public abstract class BaseMenu extends SimpleMenu {
     /**
      * Create an item with click handler.
      */
-    protected CirrusItem createItem(ItemType type, String title, String actionHandler, String... lore) {
-        return CirrusItem.of(type, ChatElement.ofLegacyText(title), MenuItems.lore(lore))
+    protected CirrusItem createItem(CirrusItemType type, String title, String actionHandler, String... lore) {
+        return CirrusItem.of(type, CirrusChatElement.ofLegacyText(title), MenuItems.lore(lore))
                 .actionHandler(actionHandler);
     }
 

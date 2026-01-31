@@ -153,27 +153,22 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>dev.simplix</groupId>
-                <artifactId>protocolize-api</artifactId>
-                <version>${protocolize.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>dev.simplix.cirrus</groupId>
+                <groupId>gg.modl.minecraft.cirrus</groupId>
                 <artifactId>cirrus-api</artifactId>
                 <version>${cirrus.version}</version>
             </dependency>
             <dependency>
-                <groupId>dev.simplix.cirrus</groupId>
+                <groupId>gg.modl.minecraft.cirrus</groupId>
                 <artifactId>cirrus-velocity</artifactId>
                 <version>${cirrus.version}</version>
             </dependency>
             <dependency>
-                <groupId>dev.simplix.cirrus</groupId>
+                <groupId>gg.modl.minecraft.cirrus</groupId>
                 <artifactId>cirrus-spigot</artifactId>
                 <version>${cirrus.version}</version>
             </dependency>
             <dependency>
-                <groupId>dev.simplix.cirrus</groupId>
+                <groupId>gg.modl.minecraft.cirrus</groupId>
                 <artifactId>cirrus-bungeecord</artifactId>
                 <version>${cirrus.version}</version>
             </dependency>
@@ -242,10 +237,6 @@
             <url>https://repo.aikar.co/content/groups/aikar/</url>
         </repository>
         <repository>
-            <id>exceptionflug</id>
-            <url>https://mvn.exceptionflug.de/repository/exceptionflug-public/</url>
-        </repository>
-        <repository>
             <id>sonatype-oss</id>
             <url>https://oss.sonatype.org/content/repositories/snapshots</url>
         </repository>
@@ -256,6 +247,10 @@
         <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
+        </repository>
+        <repository>
+            <id>modl-gg</id>
+            <url>https://maven.pkg.github.com/modl-gg/*</url>
         </repository>
     </repositories>
 

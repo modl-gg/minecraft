@@ -2,21 +2,19 @@ package gg.modl.minecraft.core.impl.menus.staff;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -92,8 +90,8 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
         // Handle no permission placeholder
         if ("no_permission".equals(role.getId())) {
             return CirrusItem.of(
-                    ItemType.BARRIER,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_RED + "No Permission"),
+                    CirrusItemType.BARRIER,
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + "No Permission"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "You don't have permission",
                             MenuItems.COLOR_GRAY + "to edit roles"
@@ -119,8 +117,8 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
         lore.add(MenuItems.COLOR_YELLOW + "Click to edit permissions");
 
         return CirrusItem.of(
-                ItemType.PAPER,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + role.getName()),
+            CirrusItemType.PAPER,
+            CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + role.getName()),
                 MenuItems.lore(lore)
         );
     }

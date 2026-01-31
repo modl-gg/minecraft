@@ -1,5 +1,8 @@
 package gg.modl.minecraft.core.impl.menus;
 
+import dev.simplix.cirrus.item.CirrusItemType;
+import dev.simplix.cirrus.menu.CirrusInventoryType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
@@ -8,9 +11,6 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.menus.SimpleMenu;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
-import dev.simplix.protocolize.data.inventory.InventoryType;
 
 import java.util.List;
 import java.util.Map;
@@ -39,7 +39,7 @@ public class ReportMenu extends SimpleMenu {
         this.panelUrl = panelUrl;
         
         title(locale.getMessage("report_gui.title", Map.of("$villain", villain.username())));
-        type(InventoryType.GENERIC_9X3); // Fixed size from locale
+        type(CirrusInventoryType.GENERIC_9X3); // Fixed size from locale
         buildMenu();
     }
     
@@ -55,12 +55,12 @@ public class ReportMenu extends SimpleMenu {
         
         // Close button
         LocaleManager.ReportCategory closeButton = locale.getCloseButton();
-        List<ChatElement<?>> closeLore = closeButton.getLore().stream()
-            .map(ChatElement::ofLegacyText)
+        List<CirrusChatElement> closeLore = closeButton.getLore().stream()
+            .map(CirrusChatElement::ofLegacyText)
             .collect(Collectors.toList());
         set(CirrusItem.of(
-                ItemType.valueOf(closeButton.getItemType()),
-                ChatElement.ofLegacyText(closeButton.getName()),
+                CirrusItemType.of(closeButton.getItemType()),
+                CirrusChatElement.ofLegacyText(closeButton.getName()),
                 closeLore
             )
             .slot(closeButton.getSlot())
@@ -70,12 +70,12 @@ public class ReportMenu extends SimpleMenu {
     private void createCategoryItem(String categoryName, String actionHandler) {
         LocaleManager.ReportCategory category = locale.getReportCategory(categoryName, villain.username());
         
-        List<ChatElement<?>> lore = category.getLore().stream()
-            .map(ChatElement::ofLegacyText)
+        List<CirrusChatElement> lore = category.getLore().stream()
+            .map(CirrusChatElement::ofLegacyText)
             .collect(Collectors.toList());
         set(CirrusItem.of(
-                ItemType.valueOf(category.getItemType()),
-                ChatElement.ofLegacyText(category.getName()),
+                CirrusItemType.of(category.getItemType()),
+                CirrusChatElement.ofLegacyText(category.getName()),
                 lore
             )
             .slot(category.getSlot())

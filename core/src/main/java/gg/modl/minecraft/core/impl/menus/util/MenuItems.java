@@ -1,8 +1,8 @@
 package gg.modl.minecraft.core.impl.menus.util;
 
 import dev.simplix.cirrus.item.CirrusItem;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.item.CirrusItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -34,7 +34,7 @@ public final class MenuItems {
      * Create a glass pane filler item.
      */
     public static CirrusItem glassPaneFiller() {
-        return CirrusItem.of(ItemType.GRAY_STAINED_GLASS_PANE, ChatElement.ofLegacyText(" "));
+        return CirrusItem.of(CirrusItemType.GRAY_STAINED_GLASS_PANE, CirrusChatElement.ofLegacyText(" "));
     }
 
     /**
@@ -42,8 +42,8 @@ public final class MenuItems {
      */
     public static CirrusItem backButton() {
         return CirrusItem.of(
-                ItemType.RED_BED,
-                ChatElement.ofLegacyText(COLOR_RED + "Back"),
+                CirrusItemType.of("minecraft:red_bed"),
+                CirrusChatElement.ofLegacyText(COLOR_RED + "Back"),
                 lore(COLOR_GRAY + "Return to previous menu")
         ).actionHandler("back");
     }
@@ -53,8 +53,8 @@ public final class MenuItems {
      */
     public static CirrusItem previousPageButton() {
         return CirrusItem.of(
-                ItemType.ARROW,
-                ChatElement.ofLegacyText(COLOR_YELLOW + "Previous Page")
+                CirrusItemType.ARROW,
+                CirrusChatElement.ofLegacyText(COLOR_YELLOW + "Previous Page")
         ).actionHandler("previousPage");
     }
 
@@ -63,8 +63,8 @@ public final class MenuItems {
      */
     public static CirrusItem nextPageButton() {
         return CirrusItem.of(
-                ItemType.ARROW,
-                ChatElement.ofLegacyText(COLOR_YELLOW + "Next Page")
+                CirrusItemType.ARROW,
+                CirrusChatElement.ofLegacyText(COLOR_YELLOW + "Next Page")
         ).actionHandler("nextPage");
     }
 
@@ -73,8 +73,8 @@ public final class MenuItems {
      */
     public static CirrusItem pageInfo(int current, int total) {
         return CirrusItem.of(
-                ItemType.PAPER,
-                ChatElement.ofLegacyText(COLOR_GOLD + "Page " + current + "/" + total)
+                CirrusItemType.PAPER,
+                CirrusChatElement.ofLegacyText(COLOR_GOLD + "Page " + current + "/" + total)
         );
     }
 
@@ -85,8 +85,8 @@ public final class MenuItems {
         // Note: Skull texture setting would require additional NBT handling
         // For now, we create a basic player head
         return CirrusItem.of(
-                ItemType.PLAYER_HEAD,
-                ChatElement.ofLegacyText(COLOR_GOLD + playerName + "'s Information"),
+                CirrusItemType.PLAYER_HEAD,
+                CirrusChatElement.ofLegacyText(COLOR_GOLD + playerName + "'s Information"),
                 lore(loreLines)
         );
     }
@@ -96,8 +96,8 @@ public final class MenuItems {
      */
     public static CirrusItem playerHead(String playerName, String title, List<String> loreLines) {
         return CirrusItem.of(
-                ItemType.PLAYER_HEAD,
-                ChatElement.ofLegacyText(title),
+                CirrusItemType.PLAYER_HEAD,
+                CirrusChatElement.ofLegacyText(title),
                 lore(loreLines)
         );
     }
@@ -113,8 +113,8 @@ public final class MenuItems {
         loreLines.addAll(wrapText(content, 7));
 
         return CirrusItem.of(
-                ItemType.PAPER,
-                ChatElement.ofLegacyText(COLOR_YELLOW + formatDate(date)),
+                CirrusItemType.PAPER,
+                CirrusChatElement.ofLegacyText(COLOR_YELLOW + formatDate(date)),
                 lore(loreLines)
         );
     }
@@ -124,8 +124,8 @@ public final class MenuItems {
      */
     public static CirrusItem createNoteButton(String playerName) {
         return CirrusItem.of(
-                ItemType.WRITABLE_BOOK,
-                ChatElement.ofLegacyText(COLOR_GREEN + "Create Note"),
+                CirrusItemType.WRITABLE_BOOK,
+                CirrusChatElement.ofLegacyText(COLOR_GREEN + "Create Note"),
                 lore(COLOR_GRAY + "Add a new note for " + COLOR_WHITE + playerName)
         ).actionHandler("createNote");
     }
@@ -148,8 +148,8 @@ public final class MenuItems {
         loreLines.add(COLOR_YELLOW + "Click to cycle filters");
 
         return CirrusItem.of(
-                ItemType.ANVIL,
-                ChatElement.ofLegacyText(COLOR_GOLD + "Filter"),
+                CirrusItemType.of("minecraft:anvil"),
+                CirrusChatElement.ofLegacyText(COLOR_GOLD + "Filter"),
                 lore(loreLines)
         ).actionHandler("filter");
     }
@@ -172,8 +172,8 @@ public final class MenuItems {
         loreLines.add(COLOR_YELLOW + "Click to cycle sort");
 
         return CirrusItem.of(
-                ItemType.ANVIL,
-                ChatElement.ofLegacyText(COLOR_GOLD + "Sort"),
+                CirrusItemType.of("minecraft:anvil"),
+                CirrusChatElement.ofLegacyText(COLOR_GOLD + "Sort"),
                 lore(loreLines)
         ).actionHandler("sort");
     }
@@ -181,21 +181,15 @@ public final class MenuItems {
     /**
      * Create punishment item based on type.
      */
-    public static ItemType getPunishmentItemType(String punishmentType) {
-        if (punishmentType == null) return ItemType.PAPER;
-        switch (punishmentType.toUpperCase()) {
-            case "BAN":
-            case "SECURITY_BAN":
-            case "LINKED_BAN":
-            case "BLACKLIST":
-                return ItemType.BARRIER;
-            case "MUTE":
-                return ItemType.PAPER;
-            case "KICK":
-                return ItemType.LEATHER_BOOTS;
-            default:
-                return ItemType.PAPER;
-        }
+    public static CirrusItemType getPunishmentItemType(String punishmentType) {
+        if (punishmentType == null) return CirrusItemType.PAPER;
+
+        return switch (punishmentType.toUpperCase()) {
+            case "BAN", "SECURITY_BAN", "LINKED_BAN", "BLACKLIST" -> CirrusItemType.BARRIER;
+            case "MUTE" -> CirrusItemType.PAPER;
+            case "KICK" -> CirrusItemType.of("minecraft:leather_boots");
+            default -> CirrusItemType.PAPER;
+        };
     }
 
     /**
@@ -213,8 +207,8 @@ public final class MenuItems {
      */
     public static CirrusItem toggleItem(String title, String description, boolean enabled) {
         return CirrusItem.of(
-                enabled ? ItemType.LIME_DYE : ItemType.GRAY_DYE,
-                ChatElement.ofLegacyText((enabled ? COLOR_GREEN : COLOR_GRAY) + title + ": " + (enabled ? "Enabled" : "Disabled")),
+                enabled ? CirrusItemType.of("minecraft:lime_dye") : CirrusItemType.of("minecraft:gray_dye"),
+                CirrusChatElement.ofLegacyText((enabled ? COLOR_GREEN : COLOR_GRAY) + title + ": " + (enabled ? "Enabled" : "Disabled")),
                 lore(COLOR_GRAY + description)
         );
     }
@@ -281,20 +275,20 @@ public final class MenuItems {
     /**
      * Create lore from strings.
      */
-    public static List<ChatElement<?>> lore(String... lines) {
+    public static List<CirrusChatElement> lore(String... lines) {
         return Arrays.stream(lines)
                 .map(MenuItems::translateColorCodes)
-                .map(ChatElement::ofLegacyText)
+                .map(CirrusChatElement::ofLegacyText)
                 .collect(Collectors.toList());
     }
 
     /**
      * Create lore from string list.
      */
-    public static List<ChatElement<?>> lore(List<String> lines) {
+    public static List<CirrusChatElement> lore(List<String> lines) {
         return lines.stream()
                 .map(MenuItems::translateColorCodes)
-                .map(ChatElement::ofLegacyText)
+                .map(CirrusChatElement::ofLegacyText)
                 .collect(Collectors.toList());
     }
 

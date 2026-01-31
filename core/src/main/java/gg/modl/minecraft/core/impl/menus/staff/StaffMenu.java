@@ -1,9 +1,8 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
-import dev.simplix.cirrus.model.Click;
+import dev.simplix.cirrus.menu.CirrusInventoryType;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.data.inventory.InventoryType;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffMenu;
@@ -33,7 +32,7 @@ public class StaffMenu extends BaseStaffMenu {
      */
     public StaffMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                      boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
-        super(platform, httpClient, viewerUuid, viewerName, isAdmin, backAction, InventoryType.GENERIC_9X3);
+        super(platform, httpClient, viewerUuid, viewerName, isAdmin, backAction, CirrusInventoryType.GENERIC_9X3);
         this.panelUrl = panelUrl;
 
         title("Staff Panel");

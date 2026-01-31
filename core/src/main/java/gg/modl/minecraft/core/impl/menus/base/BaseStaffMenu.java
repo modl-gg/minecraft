@@ -1,17 +1,14 @@
 package gg.modl.minecraft.core.impl.menus.base;
 
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
+import dev.simplix.cirrus.menu.CirrusInventoryType;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
-import dev.simplix.protocolize.data.inventory.InventoryType;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -59,7 +56,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
      * @param inventoryType The inventory type/size for this menu
      */
     public BaseStaffMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
-                         boolean isAdmin, Consumer<CirrusPlayerWrapper> backAction, InventoryType inventoryType) {
+                         boolean isAdmin, Consumer<CirrusPlayerWrapper> backAction, CirrusInventoryType inventoryType) {
         super(platform, httpClient, viewerUuid, viewerName, backAction, inventoryType);
         this.isAdmin = isAdmin;
     }
@@ -73,7 +70,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 10: Online Players (player head)
         CirrusItem onlineItem = createItem(
-                ItemType.PLAYER_HEAD,
+                CirrusItemType.PLAYER_HEAD,
                 MenuItems.COLOR_GOLD + "Online Players",
                 "openOnlinePlayers",
                 MenuItems.COLOR_GRAY + "View players currently online",
@@ -84,7 +81,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 11: Reports (eye of ender)
         CirrusItem reportsItem = createItem(
-                ItemType.ENDER_EYE,
+            CirrusItemType.of("minecraft:ender_eye"),
                 MenuItems.COLOR_GOLD + "Reports",
                 "openReports",
                 MenuItems.COLOR_GRAY + "View unresolved reports",
@@ -96,7 +93,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 12: Recent Punishments (sword)
         CirrusItem punishmentsItem = createItem(
-                ItemType.IRON_SWORD,
+            CirrusItemType.of("minecraft:iron_sword"),
                 MenuItems.COLOR_GOLD + "Recent Punishments",
                 "openPunishments",
                 MenuItems.COLOR_GRAY + "View recent punishments issued",
@@ -107,7 +104,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 13: Support Tickets (paper)
         CirrusItem ticketsItem = createItem(
-                ItemType.PAPER,
+                CirrusItemType.PAPER,
                 MenuItems.COLOR_GOLD + "Support Tickets",
                 "openTickets",
                 MenuItems.COLOR_GRAY + "View unresolved support tickets"
@@ -118,7 +115,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 15: Go to Panel (compass)
         set(createItem(
-                ItemType.COMPASS,
+                CirrusItemType.COMPASS,
                 MenuItems.COLOR_AQUA + "Go to Panel",
                 "openPanel",
                 MenuItems.COLOR_GRAY + "Get the link to the staff panel"
@@ -126,7 +123,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 16: Settings (command block)
         CirrusItem settingsItem = createItem(
-                ItemType.COMMAND_BLOCK,
+                CirrusItemType.of("minecraft:command_block"),
                 MenuItems.COLOR_GOLD + "Settings",
                 "openSettings",
                 MenuItems.COLOR_GRAY + "Modify staff settings"
@@ -144,7 +141,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
     protected void buildCompactHeader() {
         // Slot 10: Online Players (player head)
         CirrusItem onlineItem = createItem(
-                ItemType.PLAYER_HEAD,
+                CirrusItemType.PLAYER_HEAD,
                 MenuItems.COLOR_GOLD + "Online Players",
                 "openOnlinePlayers",
                 MenuItems.COLOR_GRAY + "View players currently online"
@@ -154,7 +151,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 11: Reports (eye of ender)
         CirrusItem reportsItem = createItem(
-                ItemType.ENDER_EYE,
+            CirrusItemType.of("minecraft:ender_eye"),
                 MenuItems.COLOR_GOLD + "Reports",
                 "openReports",
                 MenuItems.COLOR_GRAY + "View unresolved reports"
@@ -164,7 +161,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 12: Recent Punishments (sword)
         CirrusItem punishmentsItem = createItem(
-                ItemType.IRON_SWORD,
+            CirrusItemType.of("minecraft:iron_sword"),
                 MenuItems.COLOR_GOLD + "Recent Punishments",
                 "openPunishments",
                 MenuItems.COLOR_GRAY + "View recent punishments"
@@ -174,7 +171,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 13: Support Tickets (paper)
         CirrusItem ticketsItem = createItem(
-                ItemType.PAPER,
+            CirrusItemType.PAPER,
                 MenuItems.COLOR_GOLD + "Support Tickets",
                 "openTickets",
                 MenuItems.COLOR_GRAY + "View support tickets"
@@ -184,7 +181,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 15: Go to Panel (compass)
         set(createItem(
-                ItemType.COMPASS,
+            CirrusItemType.COMPASS,
                 MenuItems.COLOR_AQUA + "Go to Panel",
                 "openPanel",
                 MenuItems.COLOR_GRAY + "Get the link to staff panel"
@@ -192,7 +189,7 @@ public abstract class BaseStaffMenu extends BaseMenu {
 
         // Slot 16: Settings (command block)
         CirrusItem settingsItem = createItem(
-                ItemType.COMMAND_BLOCK,
+            CirrusItemType.of("minecraft:command_block"),
                 MenuItems.COLOR_GOLD + "Settings",
                 "openSettings",
                 MenuItems.COLOR_GRAY + "Modify staff settings"

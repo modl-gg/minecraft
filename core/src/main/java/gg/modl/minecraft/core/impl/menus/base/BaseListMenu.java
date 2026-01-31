@@ -1,12 +1,12 @@
 package gg.modl.minecraft.core.impl.menus.base;
 
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
+import dev.simplix.cirrus.menu.CirrusInventoryType;
 import dev.simplix.cirrus.menus.AbstractBrowser;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
-import dev.simplix.protocolize.data.inventory.InventoryType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -59,7 +59,7 @@ public abstract class BaseListMenu<T> extends AbstractBrowser<T> {
         this.backAction = backAction;
 
         title(title);
-        fixedSize(InventoryType.GENERIC_9X6);
+        fixedSize(CirrusInventoryType.GENERIC_9X6);
     }
 
     /**
@@ -139,8 +139,8 @@ public abstract class BaseListMenu<T> extends AbstractBrowser<T> {
      */
     protected CirrusItem createEmptyPlaceholder(String message) {
         return CirrusItem.of(
-                ItemType.GRAY_STAINED_GLASS_PANE,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + message),
+                CirrusItemType.GRAY_STAINED_GLASS_PANE,
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GRAY + message),
                 MenuItems.lore(MenuItems.COLOR_DARK_GRAY + "No items to display")
         );
     }

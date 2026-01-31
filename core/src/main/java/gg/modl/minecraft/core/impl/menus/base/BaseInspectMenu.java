@@ -1,19 +1,22 @@
 package gg.modl.minecraft.core.impl.menus.base;
 
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
+import dev.simplix.cirrus.menu.CirrusInventoryType;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
-import dev.simplix.protocolize.data.inventory.InventoryType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.locale.LocaleManager;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
@@ -65,7 +68,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
      * @param inventoryType The inventory type/size for this menu
      */
     public BaseInspectMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
-                           Account targetAccount, Consumer<CirrusPlayerWrapper> backAction, InventoryType inventoryType) {
+                           Account targetAccount, Consumer<CirrusPlayerWrapper> backAction, CirrusInventoryType inventoryType) {
         super(platform, httpClient, viewerUuid, viewerName, backAction, inventoryType);
         this.targetAccount = targetAccount;
         this.targetName = getPlayerName(targetAccount);
@@ -84,7 +87,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
 
         // Slot 12: Notes
         CirrusItem notesItem = createItem(
-                ItemType.PAPER,
+                CirrusItemType.PAPER,
                 MenuItems.COLOR_GOLD + "Notes",
                 "openNotes",
                 MenuItems.COLOR_GRAY + "View and edit " + targetName + "'s staff notes",
@@ -96,7 +99,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
         // Slot 13: Alts (vine item)
         int altCount = 0; // Would need to fetch linked accounts
         CirrusItem altsItem = createItem(
-                ItemType.VINE,
+                CirrusItemType.of("minecraft:vine"),
                 MenuItems.COLOR_GOLD + "Alts",
                 "openAlts",
                 MenuItems.COLOR_GRAY + "View " + targetName + "'s known alternate accounts",
@@ -107,7 +110,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
 
         // Slot 14: History (book and quill)
         CirrusItem historyItem = createItem(
-                ItemType.WRITABLE_BOOK,
+                CirrusItemType.WRITABLE_BOOK,
                 MenuItems.COLOR_GOLD + "History",
                 "openHistory",
                 MenuItems.COLOR_GRAY + "View " + targetName + "'s past punishments",
@@ -118,7 +121,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
 
         // Slot 15: Reports (eye of ender)
         CirrusItem reportsItem = createItem(
-                ItemType.ENDER_EYE,
+                CirrusItemType.of("minecraft:ender_eye"),
                 MenuItems.COLOR_GOLD + "Reports",
                 "openReports",
                 MenuItems.COLOR_GRAY + "View and handle reports against " + targetName
@@ -130,7 +133,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
         // Slot 17: Punish (mace for 1.21+, bow for older)
         // Using bow as a safe fallback
         CirrusItem punishItem = createItem(
-                ItemType.BOW,
+                CirrusItemType.of("minecraft:bow"),
                 MenuItems.COLOR_RED + "Punish",
                 "openPunish",
                 MenuItems.COLOR_GRAY + "Issue a new punishment against " + targetName
@@ -151,7 +154,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
 
         // Slot 11: Notes
         CirrusItem notesItem = createItem(
-                ItemType.PAPER,
+                CirrusItemType.PAPER,
                 MenuItems.COLOR_GOLD + "Notes",
                 "openNotes",
                 MenuItems.COLOR_GRAY + "Staff notes (" + targetAccount.getNotes().size() + ")"
@@ -161,7 +164,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
 
         // Slot 12: Alts
         CirrusItem altsItem = createItem(
-                ItemType.VINE,
+                CirrusItemType.of("minecraft:vine"),
                 MenuItems.COLOR_GOLD + "Alts",
                 "openAlts",
                 MenuItems.COLOR_GRAY + "Known alternate accounts"
@@ -171,7 +174,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
 
         // Slot 13: History
         CirrusItem historyItem = createItem(
-                ItemType.WRITABLE_BOOK,
+                CirrusItemType.WRITABLE_BOOK,
                 MenuItems.COLOR_GOLD + "History",
                 "openHistory",
                 MenuItems.COLOR_GRAY + "Punishments (" + targetAccount.getPunishments().size() + ")"
@@ -181,7 +184,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
 
         // Slot 14: Reports
         CirrusItem reportsItem = createItem(
-                ItemType.ENDER_EYE,
+                CirrusItemType.of("minecraft:ender_eye"),
                 MenuItems.COLOR_GOLD + "Reports",
                 "openReports",
                 MenuItems.COLOR_GRAY + "Reports against " + targetName
@@ -191,7 +194,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
 
         // Slot 16: Punish
         CirrusItem punishItem = createItem(
-                ItemType.BOW,
+                CirrusItemType.of("minecraft:bow"),
                 MenuItems.COLOR_RED + "Punish",
                 "openPunish",
                 MenuItems.COLOR_GRAY + "Issue a new punishment"
@@ -287,8 +290,8 @@ public abstract class BaseInspectMenu extends BaseMenu {
         title = MenuItems.translateColorCodes(title);
 
         return CirrusItem.of(
-                ItemType.PLAYER_HEAD,
-                ChatElement.ofLegacyText(title),
+                CirrusItemType.PLAYER_HEAD,
+                CirrusChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }

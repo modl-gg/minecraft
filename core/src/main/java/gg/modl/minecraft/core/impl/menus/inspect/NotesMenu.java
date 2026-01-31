@@ -2,10 +2,10 @@ package gg.modl.minecraft.core.impl.menus.inspect;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Note;
 import gg.modl.minecraft.api.http.ModlHttpClient;
@@ -66,8 +66,8 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
 
         // Add create note button at slot 40 (y position in navigation row)
         items.put(MenuSlots.CREATE_NOTE_BUTTON, CirrusItem.of(
-                ItemType.OAK_SIGN,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Create Note"),
+                CirrusItemType.of("minecraft:oak_sign"),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Create Note"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Add a new note for " + targetName
                 )
@@ -125,8 +125,8 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
         String title = locale.getMessage("menus.note_item.title", vars);
 
         return CirrusItem.of(
-                ItemType.PAPER,
-                ChatElement.ofLegacyText(title),
+                CirrusItemType.PAPER,
+                CirrusChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }

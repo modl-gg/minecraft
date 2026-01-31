@@ -2,10 +2,10 @@ package gg.modl.minecraft.core.impl.menus.staff;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
@@ -87,8 +87,8 @@ public class SettingsMenu extends BaseStaffMenu {
         }
 
         set(CirrusItem.of(
-                ItemType.ANVIL,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Information"),
+                CirrusItemType.of("minecraft:anvil"),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Information"),
                 MenuItems.lore(infoLore)
         ).slot(MenuSlots.SETTINGS_INFO));
 
@@ -96,8 +96,8 @@ public class SettingsMenu extends BaseStaffMenu {
         Cache cache = platform.getCache();
         boolean reportNotificationsEnabled = cache != null && cache.isReportNotificationsEnabled(viewerUuid);
         set(CirrusItem.of(
-                reportNotificationsEnabled ? ItemType.LIME_DYE : ItemType.GRAY_DYE,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Report Notifications: " +
+                reportNotificationsEnabled ? CirrusItemType.of("minecraft:lime_dye") : CirrusItemType.of("minecraft:gray_dye"),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Report Notifications: " +
                         (reportNotificationsEnabled ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Toggle report notifications"
@@ -114,8 +114,8 @@ public class SettingsMenu extends BaseStaffMenu {
         ticketLore.add(MenuItems.COLOR_YELLOW + "Left-click to open selected");
 
         set(CirrusItem.of(
-                ItemType.BOOK,
-                ChatElement.ofLegacyText(MenuItems.COLOR_AQUA + "Recent Ticket Updates"),
+                CirrusItemType.BOOK,
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_AQUA + "Recent Ticket Updates"),
                 MenuItems.lore(ticketLore)
         ).slot(MenuSlots.SETTINGS_TICKETS).actionHandler("ticketUpdates"));
 
@@ -123,8 +123,8 @@ public class SettingsMenu extends BaseStaffMenu {
         // Edit Roles - requires modl.settings.modify
         if (canModifySettings) {
             set(CirrusItem.of(
-                    ItemType.BLAZE_ROD,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Edit Roles"),
+                    CirrusItemType.of("minecraft:blaze_rod"),
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Edit Roles"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "Modify role permissions"
                     )
@@ -134,8 +134,8 @@ public class SettingsMenu extends BaseStaffMenu {
         // Manage Staff - requires modl.staff.manage
         if (canManageStaff) {
             set(CirrusItem.of(
-                    ItemType.IRON_CHESTPLATE,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Manage Staff"),
+                    CirrusItemType.of("minecraft:iron_chestplate"),
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Manage Staff"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "Manage staff roles"
                     )
@@ -145,8 +145,8 @@ public class SettingsMenu extends BaseStaffMenu {
         // Reload Modl - requires modl.settings.modify
         if (canModifySettings) {
             set(CirrusItem.of(
-                    ItemType.REDSTONE,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_RED + "Reload Modl"),
+                    CirrusItemType.REDSTONE,
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + "Reload Modl"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "Reload messages config"
                     )

@@ -23,18 +23,13 @@
             <artifactId>api</artifactId>
         </dependency>
         <dependency>
-            <groupId>dev.simplix</groupId>
-            <artifactId>protocolize-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>32.0.1-jre</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>dev.simplix.cirrus</groupId>
+            <groupId>gg.modl.minecraft.cirrus</groupId>
             <artifactId>cirrus-api</artifactId>
         </dependency>
         <dependency>

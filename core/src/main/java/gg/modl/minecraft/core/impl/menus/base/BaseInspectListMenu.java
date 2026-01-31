@@ -1,11 +1,10 @@
 package gg.modl.minecraft.core.impl.menus.base;
 
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -66,8 +65,8 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
 
         // Slot 12: Notes
         CirrusItem notesItem = CirrusItem.of(
-                ItemType.PAPER,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Notes"),
+            CirrusItemType.PAPER,
+            CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Notes"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View and edit " + targetName + "'s staff notes",
                         MenuItems.COLOR_GRAY + "(" + targetAccount.getNotes().size() + " notes)"
@@ -78,8 +77,8 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
 
         // Slot 13: Alts
         CirrusItem altsItem = CirrusItem.of(
-                ItemType.VINE,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Alts"),
+            CirrusItemType.of("minecraft:vine"),
+            CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Alts"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View " + targetName + "'s known alternate accounts"
                 )
@@ -89,8 +88,8 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
 
         // Slot 14: History
         CirrusItem historyItem = CirrusItem.of(
-                ItemType.WRITABLE_BOOK,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "History"),
+            CirrusItemType.WRITABLE_BOOK,
+            CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "History"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View " + targetName + "'s past punishments",
                         MenuItems.COLOR_GRAY + "(" + targetAccount.getPunishments().size() + " punishments)"
@@ -101,8 +100,8 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
 
         // Slot 15: Reports
         CirrusItem reportsItem = CirrusItem.of(
-                ItemType.ENDER_EYE,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Reports"),
+            CirrusItemType.of("minecraft:ender_eye"),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Reports"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View and handle reports against " + targetName
                 )
@@ -112,8 +111,8 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
 
         // Slot 17: Punish
         CirrusItem punishItem = CirrusItem.of(
-                ItemType.BOW,
-                ChatElement.ofLegacyText(MenuItems.COLOR_RED + "Punish"),
+                CirrusItemType.of("minecraft:bow"),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + "Punish"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Issue a new punishment against " + targetName
                 )
@@ -200,8 +199,8 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
         title = MenuItems.translateColorCodes(title);
 
         return CirrusItem.of(
-                ItemType.PLAYER_HEAD,
-                ChatElement.ofLegacyText(title),
+                CirrusItemType.PLAYER_HEAD,
+                CirrusChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }

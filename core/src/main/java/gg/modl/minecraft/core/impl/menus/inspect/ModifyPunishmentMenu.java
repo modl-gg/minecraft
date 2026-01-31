@@ -2,11 +2,11 @@ package gg.modl.minecraft.core.impl.menus.inspect;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
+import dev.simplix.cirrus.model.CirrusClickType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.ClickType;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Evidence;
 import gg.modl.minecraft.api.Punishment;
@@ -22,7 +22,6 @@ import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -82,16 +81,16 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         // Slot 28: Add Note
         if (canModifyNote) {
             set(CirrusItem.of(
-                    ItemType.OAK_SIGN,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Add Note"),
+                    CirrusItemType.of("minecraft:oak_sign"),
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Add Note"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "Add a staff note to this punishment"
                     )
             ).slot(MenuSlots.MODIFY_ADD_NOTE).actionHandler("addNote"));
         } else {
             set(CirrusItem.of(
-                    ItemType.OAK_SIGN,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Add Note"),
+                    CirrusItemType.of("minecraft:oak_sign"),
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Add Note"),
                     MenuItems.lore(
                             MenuItems.COLOR_RED + "No Permission"
                     )
@@ -126,8 +125,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
             }
 
             set(CirrusItem.of(
-                    evidenceList.isEmpty() ? ItemType.ARROW : ItemType.SPECTRAL_ARROW,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_AQUA + "Evidence"),
+                    evidenceList.isEmpty() ? CirrusItemType.ARROW : CirrusItemType.of("minecraft:spectral_arrow"),
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_AQUA + "Evidence"),
                     MenuItems.lore(evidenceLore)
             ).slot(MenuSlots.MODIFY_EVIDENCE).actionHandler("evidence"));
         } else {
@@ -135,8 +134,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
             evidenceLore.add(MenuItems.COLOR_RED + "No Permission to modify");
 
             set(CirrusItem.of(
-                    evidenceList.isEmpty() ? ItemType.ARROW : ItemType.SPECTRAL_ARROW,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Evidence"),
+                    evidenceList.isEmpty() ? CirrusItemType.ARROW : CirrusItemType.of("minecraft:spectral_arrow"),
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Evidence"),
                     MenuItems.lore(evidenceLore)
             ).slot(MenuSlots.MODIFY_EVIDENCE));
         }
@@ -144,8 +143,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         // Slot 30: Pardon Punishment
         if (canPardon) {
             set(CirrusItem.of(
-                    ItemType.GOLDEN_APPLE,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Pardon Punishment"),
+                    CirrusItemType.of("minecraft:golden_apple"),
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Pardon Punishment"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "Remove punishment and clear",
                             MenuItems.COLOR_GRAY + "associated points"
@@ -153,8 +152,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
             ).slot(MenuSlots.MODIFY_PARDON).actionHandler("pardon"));
         } else {
             set(CirrusItem.of(
-                    ItemType.GOLDEN_APPLE,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Pardon Punishment"),
+                    CirrusItemType.of("minecraft:golden_apple"),
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Pardon Punishment"),
                     MenuItems.lore(
                             MenuItems.COLOR_RED + "No Permission"
                     )
@@ -164,8 +163,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         // Slot 31: Change Duration
         if (canModifyDuration) {
             set(CirrusItem.of(
-                    ItemType.ANVIL,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Change Duration"),
+                    CirrusItemType.of("minecraft:anvil"),
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Change Duration"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "Shorten or lengthen punishment duration",
                             "",
@@ -174,8 +173,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
             ).slot(MenuSlots.MODIFY_DURATION).actionHandler("changeDuration"));
         } else {
             set(CirrusItem.of(
-                    ItemType.ANVIL,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Change Duration"),
+                    CirrusItemType.of("minecraft:anvil"),
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Change Duration"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "Current: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(punishment.getDuration()),
                             "",
@@ -192,8 +191,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
 
             if (canModifyOptions) {
                 set(CirrusItem.of(
-                        statWipe ? ItemType.EXPERIENCE_BOTTLE : ItemType.GLASS_BOTTLE,
-                        ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Stat-Wipe"),
+                        statWipe ? CirrusItemType.of("minecraft:experience_bottle") : CirrusItemType.of("minecraft:glass_bottle"),
+                        CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Stat-Wipe"),
                         MenuItems.lore(
                                 MenuItems.COLOR_GRAY + (statWipe ? "Disable" : "Enable") + " stat-wiping for this ban",
                                 "",
@@ -202,8 +201,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                 ).slot(MenuSlots.MODIFY_STAT_WIPE).actionHandler("toggleStatWipe"));
             } else {
                 set(CirrusItem.of(
-                        statWipe ? ItemType.EXPERIENCE_BOTTLE : ItemType.GLASS_BOTTLE,
-                        ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Toggle Stat-Wipe"),
+                        statWipe ? CirrusItemType.of("minecraft:experience_bottle") : CirrusItemType.of("minecraft:glass_bottle"),
+                        CirrusChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Toggle Stat-Wipe"),
                         MenuItems.lore(
                                 MenuItems.COLOR_GRAY + "Current: " + (statWipe ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled"),
                                 "",
@@ -219,8 +218,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
 
             if (canModifyOptions) {
                 set(CirrusItem.of(
-                        altBlock ? ItemType.TORCH : ItemType.REDSTONE_TORCH,
-                        ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Alt-Blocking"),
+                        altBlock ? CirrusItemType.of("minecraft:torch") : CirrusItemType.of("minecraft:redstone_torch"),
+                        CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Alt-Blocking"),
                         MenuItems.lore(
                                 MenuItems.COLOR_GRAY + (altBlock ? "Disable" : "Enable") + " alt-blocking for this ban",
                                 "",
@@ -229,8 +228,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                 ).slot(MenuSlots.MODIFY_ALT_BLOCK).actionHandler("toggleAltBlock"));
             } else {
                 set(CirrusItem.of(
-                        altBlock ? ItemType.TORCH : ItemType.REDSTONE_TORCH,
-                        ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Toggle Alt-Blocking"),
+                        altBlock ? CirrusItemType.of("minecraft:torch") : CirrusItemType.of("minecraft:redstone_torch"),
+                        CirrusChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Toggle Alt-Blocking"),
                         MenuItems.lore(
                                 MenuItems.COLOR_GRAY + "Current: " + (altBlock ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled"),
                                 "",
@@ -310,7 +309,7 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
 
     private void handleEvidence(Click click) {
         // Right-click: View evidence in chat
-        if (click.clickType().equals(ClickType.RIGHT_CLICK)) {
+        if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
             List<Evidence> evidenceList = punishment.getEvidence();
             if (evidenceList.isEmpty()) {
                 sendMessage(MenuItems.COLOR_GRAY + "No evidence attached to this punishment.");

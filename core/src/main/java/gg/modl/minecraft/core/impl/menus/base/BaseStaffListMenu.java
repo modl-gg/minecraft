@@ -1,14 +1,13 @@
 package gg.modl.minecraft.core.impl.menus.base;
 
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
-
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -56,8 +55,8 @@ public abstract class BaseStaffListMenu<T> extends BaseListMenu<T> {
         // Add staff menu header items in the second row
         // Slot 10: Online Players
         CirrusItem onlineItem = CirrusItem.of(
-                ItemType.PLAYER_HEAD,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Online Players"),
+                CirrusItemType.PLAYER_HEAD,
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Online Players"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View players currently online",
                         MenuItems.COLOR_GRAY + "Click to view online players"
@@ -68,8 +67,8 @@ public abstract class BaseStaffListMenu<T> extends BaseListMenu<T> {
 
         // Slot 11: Reports
         CirrusItem reportsItem = CirrusItem.of(
-                ItemType.ENDER_EYE,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Reports"),
+                CirrusItemType.of("minecraft:ender_eye"),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Reports"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View unresolved reports",
                         MenuItems.COLOR_GRAY + "Click to view reports"
@@ -80,8 +79,8 @@ public abstract class BaseStaffListMenu<T> extends BaseListMenu<T> {
 
         // Slot 12: Recent Punishments
         CirrusItem punishmentsItem = CirrusItem.of(
-                ItemType.IRON_SWORD,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Recent Punishments"),
+                CirrusItemType.of("minecraft:iron_sword"),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Recent Punishments"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View recent punishments issued",
                         MenuItems.COLOR_GRAY + "across the server"
@@ -92,8 +91,8 @@ public abstract class BaseStaffListMenu<T> extends BaseListMenu<T> {
 
         // Slot 13: Support Tickets
         CirrusItem ticketsItem = CirrusItem.of(
-                ItemType.PAPER,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Support Tickets"),
+                CirrusItemType.PAPER,
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Support Tickets"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View unresolved support tickets"
                 )
@@ -103,8 +102,8 @@ public abstract class BaseStaffListMenu<T> extends BaseListMenu<T> {
 
         // Slot 15: Go to Panel
         items.put(MenuSlots.STAFF_PANEL_LINK, CirrusItem.of(
-                ItemType.COMPASS,
-                ChatElement.ofLegacyText(MenuItems.COLOR_AQUA + "Go to Panel"),
+                CirrusItemType.COMPASS,
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_AQUA + "Go to Panel"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Get the link to the staff panel"
                 )
@@ -112,8 +111,8 @@ public abstract class BaseStaffListMenu<T> extends BaseListMenu<T> {
 
         // Slot 16: Settings
         CirrusItem settingsItem = CirrusItem.of(
-                ItemType.COMMAND_BLOCK,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Settings"),
+                CirrusItemType.of("minecraft:command_block"),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Settings"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Modify staff settings"
                 )

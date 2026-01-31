@@ -2,10 +2,10 @@ package gg.modl.minecraft.core.impl.menus.staff;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
@@ -179,11 +179,11 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         String title = locale.getMessage("menus.ticket_item.title", vars);
 
         // Use book if no staff response, writable book if has response
-        ItemType itemType = ticket.hasStaffResponse() ? ItemType.WRITABLE_BOOK : ItemType.BOOK;
+        CirrusItemType itemType = ticket.hasStaffResponse() ? CirrusItemType.WRITABLE_BOOK : CirrusItemType.BOOK;
 
         return CirrusItem.of(
                 itemType,
-                ChatElement.ofLegacyText(title),
+                CirrusChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }

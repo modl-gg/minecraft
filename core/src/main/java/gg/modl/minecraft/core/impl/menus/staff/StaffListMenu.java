@@ -2,10 +2,10 @@ package gg.modl.minecraft.core.impl.menus.staff;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
@@ -100,8 +100,8 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         // Handle no permission placeholder
         if ("no_permission".equals(staff.getId())) {
             return CirrusItem.of(
-                    ItemType.BARRIER,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_RED + "No Permission"),
+                    CirrusItemType.BARRIER,
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + "No Permission"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "You don't have permission",
                             MenuItems.COLOR_GRAY + "to manage staff members"
@@ -136,8 +136,8 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         lore.add(MenuItems.COLOR_YELLOW + "Left-click to apply selected role");
 
         return CirrusItem.of(
-                ItemType.PLAYER_HEAD,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + staff.getUsername()),
+                CirrusItemType.PLAYER_HEAD,
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + staff.getUsername()),
                 MenuItems.lore(lore)
         );
     }

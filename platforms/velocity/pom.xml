@@ -62,7 +62,7 @@
             <artifactId>acf-velocity</artifactId>
         </dependency>
         <dependency>
-            <groupId>dev.simplix.cirrus</groupId>
+            <groupId>gg.modl.minecraft.cirrus</groupId>
             <artifactId>cirrus-velocity</artifactId>
         </dependency>
         <dependency>

@@ -69,7 +69,7 @@ public final class VelocityPlugin {
         }
         
         VelocityCommandManager commandManager = new VelocityCommandManager(this.server, this);
-        new CirrusVelocity(this, server, server.getCommandManager()).init();
+        new CirrusVelocity(this, server).init();
 
         HttpManager httpManager = new HttpManager(
                 getConfigString("api.key", "your-api-key-here"),

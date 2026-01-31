@@ -2,23 +2,21 @@ package gg.modl.minecraft.core.impl.menus.staff;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -117,8 +115,8 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         // Handle no permission placeholder
         if ("no_permission".equals(permission.getNode())) {
             return CirrusItem.of(
-                    ItemType.BARRIER,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_RED + "No Permission"),
+                CirrusItemType.BARRIER,
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + "No Permission"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "You don't have permission",
                             MenuItems.COLOR_GRAY + "to edit role permissions"
@@ -131,8 +129,8 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         }
 
         return CirrusItem.of(
-                permission.isEnabled() ? ItemType.LIME_DYE : ItemType.GRAY_DYE,
-                ChatElement.ofLegacyText(
+                permission.isEnabled() ? CirrusItemType.of("minecraft:lime_dye") : CirrusItemType.of("minecraft:gray_dye"),
+            CirrusChatElement.ofLegacyText(
                         (permission.isEnabled() ? MenuItems.COLOR_GREEN : MenuItems.COLOR_GRAY) + permission.getNode()
                 ),
                 MenuItems.lore(

@@ -52,7 +52,7 @@
             <artifactId>acf-bungee</artifactId>
         </dependency>
         <dependency>
-            <groupId>dev.simplix.cirrus</groupId>
+            <groupId>gg.modl.minecraft.cirrus</groupId>
             <artifactId>cirrus-bungeecord</artifactId>
         </dependency>
     </dependencies>

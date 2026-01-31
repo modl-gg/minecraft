@@ -1,13 +1,12 @@
 package gg.modl.minecraft.core.util;
 
-import dev.simplix.protocolize.api.chat.ChatElement;
-
+import dev.simplix.cirrus.text.CirrusChatElement;
 import java.util.Date;
 import java.util.List;
 
 public class Colors {
-    public static ChatElement<?> of(String string) {
-        return ChatElement.ofLegacyText(translate(string));
+    public static CirrusChatElement of(String string) {
+        return CirrusChatElement.ofLegacyText(translate(string));
     }
 
     public static String translate(String string) {

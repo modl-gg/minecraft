@@ -1,10 +1,10 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
 import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.protocolize.api.chat.ChatElement;
-import dev.simplix.protocolize.data.ItemType;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
@@ -204,28 +204,28 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         // Get title from locale
         String title = locale.getMessage("menus.staff_report_item.title", vars);
 
-        ItemType itemType = getReportItemType(report.getType());
+        CirrusItemType itemType = getReportItemType(report.getType());
 
         return CirrusItem.of(
                 itemType,
-                ChatElement.ofLegacyText(title),
+                CirrusChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
     }
 
-    private ItemType getReportItemType(String type) {
-        if (type == null) return ItemType.PAPER;
+    private CirrusItemType getReportItemType(String type) {
+        if (type == null) return CirrusItemType.PAPER;
         switch (type.toLowerCase()) {
             case "player":
-                return ItemType.PLAYER_HEAD;
+                return CirrusItemType.PLAYER_HEAD;
             case "chat":
-                return ItemType.WRITABLE_BOOK;
+                return CirrusItemType.WRITABLE_BOOK;
             case "cheating":
-                return ItemType.DIAMOND_SWORD;
+                return CirrusItemType.of("minecraft:diamond_sword");
             case "behavior":
-                return ItemType.SKELETON_SKULL;
+                return CirrusItemType.of("minecraft:skeleton_skull");
             default:
-                return ItemType.PAPER;
+                return CirrusItemType.PAPER;
         }
     }
 
