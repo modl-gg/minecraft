@@ -14,6 +14,7 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.ReportsMenu;
 import gg.modl.minecraft.core.impl.menus.staff.StaffReportsMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.MenuUtil;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
@@ -47,6 +48,13 @@ public class ReportsCommand extends BaseCommand {
             sender.sendMessage(localeManager.getMessage("api_errors.menus_require_v2"));
             return;
         }
+
+        // Check if Protocolize is available (required for menus on BungeeCord)
+        if (!MenuUtil.isProtocolizeAvailable()) {
+            sender.sendMessage(MenuUtil.getMenuUnavailableMessage());
+            return;
+        }
+
         UUID senderUuid = sender.getUniqueId();
 
         // If no player specified, open staff reports menu

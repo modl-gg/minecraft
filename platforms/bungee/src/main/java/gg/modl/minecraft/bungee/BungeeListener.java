@@ -31,6 +31,7 @@ import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.event.EventHandler;
 import net.md_5.bungee.event.EventPriority;
 
+import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.Map;
@@ -55,12 +56,8 @@ public class BungeeListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(LoginEvent event) {
-        // Extract clean IP address from socket address (removes port)
-        String socketAddress = event.getConnection().getSocketAddress().toString();
-        String ipAddress = socketAddress.startsWith("/") ? socketAddress.substring(1) : socketAddress;
-        if (ipAddress.contains(":")) {
-            ipAddress = ipAddress.substring(0, ipAddress.indexOf(":"));
-        }
+        // Extract clean IP address from socket address
+        String ipAddress = extractIpAddress(event.getConnection().getSocketAddress());
         
         // Get IP information asynchronously but wait for it (with timeout)
         JsonObject ipInfo = null;
@@ -145,11 +142,14 @@ public class BungeeListener implements Listener {
             // Continue without skin hash
         }
         
+        // Extract clean IP address
+        String ipAddress = extractIpAddress(event.getPlayer().getSocketAddress());
+
         // Cache mute status after successful join
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getName(),
-                event.getPlayer().getSocketAddress().toString(),
+                ipAddress,
                 skinHash,
                 null,
                 platform.getServerName()
@@ -307,13 +307,13 @@ public class BungeeListener implements Listener {
             notification.setId((String) data.get("id"));
             notification.setMessage((String) data.get("message"));
             notification.setType((String) data.get("type"));
-            
+
             if (data.get("timestamp") instanceof Number) {
                 notification.setTimestamp(((Number) data.get("timestamp")).longValue());
             }
-            
+
             notification.setTargetPlayerUuid((String) data.get("targetPlayerUuid"));
-            
+
             // Handle nested data map
             Object nestedData = data.get("data");
             if (nestedData instanceof Map) {
@@ -321,11 +321,30 @@ public class BungeeListener implements Listener {
                 Map<String, Object> dataMap = (Map<String, Object>) nestedData;
                 notification.setData(dataMap);
             }
-            
+
             return notification;
         } catch (Exception e) {
             platform.getLogger().warning("Failed to convert notification data: " + e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * Extract clean IP address from a socket address.
+     * Removes leading slash and port number.
+     */
+    private String extractIpAddress(java.net.SocketAddress socketAddress) {
+        if (socketAddress instanceof InetSocketAddress) {
+            return ((InetSocketAddress) socketAddress).getAddress().getHostAddress();
+        }
+        // Fallback: parse from string representation
+        String addr = socketAddress.toString();
+        if (addr.startsWith("/")) {
+            addr = addr.substring(1);
+        }
+        if (addr.contains(":")) {
+            addr = addr.substring(0, addr.indexOf(":"));
+        }
+        return addr;
     }
 }

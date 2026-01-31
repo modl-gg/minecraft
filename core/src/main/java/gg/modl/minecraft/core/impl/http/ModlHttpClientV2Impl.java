@@ -577,8 +577,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                         String errorMessage;
                         try {
                             com.google.gson.JsonObject errorResponse = gson.fromJson(response.body(), com.google.gson.JsonObject.class);
-                            if (errorResponse != null && errorResponse.has("message")) {
-                                errorMessage = errorResponse.get("message").getAsString();
+                            if (errorResponse != null) {
+                                String msg = errorResponse.has("message") ? errorResponse.get("message").getAsString() : "";
+                                String errors = errorResponse.has("errors") ? errorResponse.get("errors").getAsString() : "";
+                                errorMessage = !errors.isEmpty() ? msg + " Details: " + errors : msg;
+                                if (errorMessage.isEmpty()) {
+                                    errorMessage = String.format("V2 request failed with status code %d: %s",
+                                            response.statusCode(), response.body());
+                                }
                             } else {
                                 errorMessage = String.format("V2 request failed with status code %d: %s",
                                         response.statusCode(), response.body());

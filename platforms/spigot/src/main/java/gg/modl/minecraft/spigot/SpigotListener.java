@@ -198,7 +198,7 @@ public class SpigotListener implements Listener {
                 PlayerLoginRequest request = new PlayerLoginRequest(
                         event.getPlayer().getUniqueId().toString(),
                         event.getPlayer().getName(),
-                        event.getPlayer().getAddress().getHostName(),
+                        event.getPlayer().getAddress().getAddress().getHostAddress(),
                         skinHash,
                         null,
                         platform.getServerName()
@@ -231,7 +231,7 @@ public class SpigotListener implements Listener {
                 PlayerLoginRequest request = new PlayerLoginRequest(
                         event.getPlayer().getUniqueId().toString(),
                         event.getPlayer().getName(),
-                        event.getPlayer().getAddress().getHostName(),
+                        event.getPlayer().getAddress().getAddress().getHostAddress(),
                         null,
                         null,
                         platform.getServerName()

@@ -73,5 +73,11 @@
             <groupId>gg.modl</groupId>
             <artifactId>velocity</artifactId>
         </dependency>
+        <!-- Cirrus transitive dependencies - must be explicitly included for shading -->
+<!--        <dependency>-->
+<!--            <groupId>com.github.Querz</groupId>-->
+<!--            <artifactId>NBT</artifactId>-->
+<!--            <version>6.1</version>-->
+<!--        </dependency>-->
     </dependencies>
 </project>

@@ -17,6 +17,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.PunishMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.MenuUtil;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.PunishmentTypeParser;
 import gg.modl.minecraft.core.util.WebPlayer;
@@ -253,6 +254,12 @@ public class PunishCommand extends BaseCommand {
         // Menus require V2 API
         if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
             sender.sendMessage(localeManager.getMessage("api_errors.menus_require_v2"));
+            return;
+        }
+
+        // Check if Protocolize is available (required for menus on BungeeCord)
+        if (!MenuUtil.isProtocolizeAvailable()) {
+            sender.sendMessage(MenuUtil.getMenuUnavailableMessage());
             return;
         }
 
