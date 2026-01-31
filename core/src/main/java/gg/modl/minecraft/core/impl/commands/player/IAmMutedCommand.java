@@ -62,7 +62,7 @@ public class IAmMutedCommand extends BaseCommand {
         
         // Check if target player exists and is online
         if (targetPlayer == null) {
-            sender.sendMessage(localeManager.getMessage("iammuted.player_not_found"));
+            sender.sendMessage(localeManager.getMessage("general.player_not_found"));
             return;
         }
         

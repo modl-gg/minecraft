@@ -86,14 +86,14 @@ public class ReportsCommand extends BaseCommand {
                             menu.display(player);
                         });
                     } else {
-                        sender.sendMessage(localeManager.getMessage("player_lookup.not_found", Map.of("player", playerQuery)));
+                        sender.sendMessage(localeManager.getMessage("general.player_not_found"));
                     }
                 }).exceptionally(throwable -> {
                     handleException(sender, throwable, playerQuery);
                     return null;
                 });
             } else {
-                sender.sendMessage(localeManager.getMessage("player_lookup.not_found", Map.of("player", playerQuery)));
+                sender.sendMessage(localeManager.getMessage("general.player_not_found"));
             }
         }).exceptionally(throwable -> {
             handleException(sender, throwable, playerQuery);
@@ -133,7 +133,7 @@ public class ReportsCommand extends BaseCommand {
         if (throwable.getCause() instanceof PanelUnavailableException) {
             sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
         } else {
-            sender.sendMessage(localeManager.getMessage("player_lookup.error", Map.of("error", throwable.getMessage())));
+            sender.sendMessage(localeManager.getMessage("player_lookup.error", Map.of("error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
         }
     }
 }

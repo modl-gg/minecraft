@@ -14,8 +14,10 @@ import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.api.http.response.PunishmentPreviewResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.PunishGuiConfig;
+import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.util.PermissionUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -106,6 +108,8 @@ public class PunishMenu extends BaseInspectMenu {
     }
 
     private void buildPunishmentGrid() {
+        Cache cache = platform.getCache();
+
         // Use config to place items
         for (int configSlot = 1; configSlot <= 14; configSlot++) {
             PunishGuiConfig.PunishSlotConfig slotConfig = guiConfig.getSlot(configSlot);
@@ -120,7 +124,15 @@ public class PunishMenu extends BaseInspectMenu {
             PunishmentTypesResponse.PunishmentTypeData type = typesByOrdinal.get(slotConfig.getOrdinal());
 
             if (type != null) {
-                set(createPunishmentTypeItem(type, slotConfig).slot(guiSlot));
+                // Check if user has permission for this punishment type
+                String permission = PermissionUtil.formatPunishmentPermission(type.getName());
+                boolean hasPermission = cache != null && cache.hasPermission(viewerUuid, permission);
+
+                if (hasPermission) {
+                    set(createPunishmentTypeItem(type, slotConfig).slot(guiSlot));
+                } else {
+                    set(createDisabledPunishmentTypeItem(type, slotConfig).slot(guiSlot));
+                }
             } else {
                 // Show placeholder for missing type
                 set(createPlaceholderItem(slotConfig).slot(guiSlot));
@@ -176,6 +188,23 @@ public class PunishMenu extends BaseInspectMenu {
                 ChatElement.ofLegacyText(MenuItems.COLOR_RED + slotConfig.getTitle()),
                 MenuItems.lore(lore)
         ).actionHandler("punishType_" + type.getOrdinal());
+    }
+
+    private CirrusItem createDisabledPunishmentTypeItem(PunishmentTypesResponse.PunishmentTypeData type,
+                                                          PunishGuiConfig.PunishSlotConfig slotConfig) {
+        // Determine item type from config or fallback
+        ItemType itemType = parseItemType(slotConfig.getItem());
+
+        return CirrusItem.of(
+                itemType,
+                ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + slotConfig.getTitle()),
+                MenuItems.lore(
+                        MenuItems.COLOR_RED + "No Permission",
+                        MenuItems.COLOR_GRAY + "You don't have permission",
+                        MenuItems.COLOR_GRAY + "to issue this punishment type"
+                )
+        );
+        // No action handler - item is not clickable
     }
 
     private CirrusItem createPlaceholderItem(PunishGuiConfig.PunishSlotConfig slotConfig) {

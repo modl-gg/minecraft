@@ -17,6 +17,7 @@ import gg.modl.minecraft.api.http.request.ChangePunishmentDurationRequest;
 import gg.modl.minecraft.api.http.request.PardonPunishmentRequest;
 import gg.modl.minecraft.api.http.request.TogglePunishmentOptionRequest;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -65,6 +66,13 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
     private void buildMenu() {
         buildHeader();
 
+        Cache cache = platform.getCache();
+        boolean canModifyNote = cache != null && cache.hasPermission(viewerUuid, "punishment.modify.note");
+        boolean canModifyEvidence = cache != null && cache.hasPermission(viewerUuid, "punishment.modify.evidence");
+        boolean canPardon = cache != null && cache.hasPermission(viewerUuid, "punishment.modify.pardon");
+        boolean canModifyDuration = cache != null && cache.hasPermission(viewerUuid, "punishment.modify.duration");
+        boolean canModifyOptions = cache != null && cache.hasPermission(viewerUuid, "punishment.modify.options");
+
         String typeName = punishment.getType() != null ? punishment.getType().name() : "Unknown";
         boolean isBanType = punishment.getType() == Punishment.Type.BAN ||
                             punishment.getType() == Punishment.Type.SECURITY_BAN ||
@@ -72,13 +80,23 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                             punishment.getType() == Punishment.Type.BLACKLIST;
 
         // Slot 28: Add Note
-        set(CirrusItem.of(
-                ItemType.OAK_SIGN,
-                ChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Add Note"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Add a staff note to this punishment"
-                )
-        ).slot(MenuSlots.MODIFY_ADD_NOTE).actionHandler("addNote"));
+        if (canModifyNote) {
+            set(CirrusItem.of(
+                    ItemType.OAK_SIGN,
+                    ChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Add Note"),
+                    MenuItems.lore(
+                            MenuItems.COLOR_GRAY + "Add a staff note to this punishment"
+                    )
+            ).slot(MenuSlots.MODIFY_ADD_NOTE).actionHandler("addNote"));
+        } else {
+            set(CirrusItem.of(
+                    ItemType.OAK_SIGN,
+                    ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Add Note"),
+                    MenuItems.lore(
+                            MenuItems.COLOR_RED + "No Permission"
+                    )
+            ).slot(MenuSlots.MODIFY_ADD_NOTE));
+        }
 
         // Slot 29: Evidence
         List<String> evidenceLore = new ArrayList<>();
@@ -99,67 +117,127 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                 evidenceLore.add(MenuItems.COLOR_DARK_GRAY + "... and " + (evidenceList.size() - 5) + " more");
             }
         }
-        evidenceLore.add("");
-        evidenceLore.add(MenuItems.COLOR_YELLOW + "Left-click to add evidence");
-        if (!evidenceList.isEmpty()) {
-            evidenceLore.add(MenuItems.COLOR_YELLOW + "Right-click to view in chat");
+
+        if (canModifyEvidence) {
+            evidenceLore.add("");
+            evidenceLore.add(MenuItems.COLOR_YELLOW + "Left-click to add evidence");
+            if (!evidenceList.isEmpty()) {
+                evidenceLore.add(MenuItems.COLOR_YELLOW + "Right-click to view in chat");
+            }
+
+            set(CirrusItem.of(
+                    evidenceList.isEmpty() ? ItemType.ARROW : ItemType.SPECTRAL_ARROW,
+                    ChatElement.ofLegacyText(MenuItems.COLOR_AQUA + "Evidence"),
+                    MenuItems.lore(evidenceLore)
+            ).slot(MenuSlots.MODIFY_EVIDENCE).actionHandler("evidence"));
+        } else {
+            evidenceLore.add("");
+            evidenceLore.add(MenuItems.COLOR_RED + "No Permission to modify");
+
+            set(CirrusItem.of(
+                    evidenceList.isEmpty() ? ItemType.ARROW : ItemType.SPECTRAL_ARROW,
+                    ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Evidence"),
+                    MenuItems.lore(evidenceLore)
+            ).slot(MenuSlots.MODIFY_EVIDENCE));
         }
 
-        set(CirrusItem.of(
-                evidenceList.isEmpty() ? ItemType.ARROW : ItemType.SPECTRAL_ARROW,
-                ChatElement.ofLegacyText(MenuItems.COLOR_AQUA + "Evidence"),
-                MenuItems.lore(evidenceLore)
-        ).slot(MenuSlots.MODIFY_EVIDENCE).actionHandler("evidence"));
-
         // Slot 30: Pardon Punishment
-        set(CirrusItem.of(
-                ItemType.GOLDEN_APPLE,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Pardon Punishment"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Remove punishment and clear",
-                        MenuItems.COLOR_GRAY + "associated points"
-                )
-        ).slot(MenuSlots.MODIFY_PARDON).actionHandler("pardon"));
+        if (canPardon) {
+            set(CirrusItem.of(
+                    ItemType.GOLDEN_APPLE,
+                    ChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Pardon Punishment"),
+                    MenuItems.lore(
+                            MenuItems.COLOR_GRAY + "Remove punishment and clear",
+                            MenuItems.COLOR_GRAY + "associated points"
+                    )
+            ).slot(MenuSlots.MODIFY_PARDON).actionHandler("pardon"));
+        } else {
+            set(CirrusItem.of(
+                    ItemType.GOLDEN_APPLE,
+                    ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Pardon Punishment"),
+                    MenuItems.lore(
+                            MenuItems.COLOR_RED + "No Permission"
+                    )
+            ).slot(MenuSlots.MODIFY_PARDON));
+        }
 
         // Slot 31: Change Duration
-        set(CirrusItem.of(
-                ItemType.ANVIL,
-                ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Change Duration"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Shorten or lengthen punishment duration",
-                        "",
-                        MenuItems.COLOR_GRAY + "Current: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(punishment.getDuration())
-                )
-        ).slot(MenuSlots.MODIFY_DURATION).actionHandler("changeDuration"));
+        if (canModifyDuration) {
+            set(CirrusItem.of(
+                    ItemType.ANVIL,
+                    ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Change Duration"),
+                    MenuItems.lore(
+                            MenuItems.COLOR_GRAY + "Shorten or lengthen punishment duration",
+                            "",
+                            MenuItems.COLOR_GRAY + "Current: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(punishment.getDuration())
+                    )
+            ).slot(MenuSlots.MODIFY_DURATION).actionHandler("changeDuration"));
+        } else {
+            set(CirrusItem.of(
+                    ItemType.ANVIL,
+                    ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Change Duration"),
+                    MenuItems.lore(
+                            MenuItems.COLOR_GRAY + "Current: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(punishment.getDuration()),
+                            "",
+                            MenuItems.COLOR_RED + "No Permission"
+                    )
+            ).slot(MenuSlots.MODIFY_DURATION));
+        }
 
         // Slot 33: Toggle Stat-Wipe (ban types only)
         if (isBanType) {
             // Get actual stat-wipe status from punishment data
             boolean statWipe = punishment.getDataMap() != null &&
                     Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
-            set(CirrusItem.of(
-                    statWipe ? ItemType.EXPERIENCE_BOTTLE : ItemType.GLASS_BOTTLE,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Stat-Wipe"),
-                    MenuItems.lore(
-                            MenuItems.COLOR_GRAY + (statWipe ? "Disable" : "Enable") + " stat-wiping for this ban",
-                            "",
-                            MenuItems.COLOR_GRAY + "Current: " + (statWipe ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")
-                    )
-            ).slot(MenuSlots.MODIFY_STAT_WIPE).actionHandler("toggleStatWipe"));
+
+            if (canModifyOptions) {
+                set(CirrusItem.of(
+                        statWipe ? ItemType.EXPERIENCE_BOTTLE : ItemType.GLASS_BOTTLE,
+                        ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Stat-Wipe"),
+                        MenuItems.lore(
+                                MenuItems.COLOR_GRAY + (statWipe ? "Disable" : "Enable") + " stat-wiping for this ban",
+                                "",
+                                MenuItems.COLOR_GRAY + "Current: " + (statWipe ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")
+                        )
+                ).slot(MenuSlots.MODIFY_STAT_WIPE).actionHandler("toggleStatWipe"));
+            } else {
+                set(CirrusItem.of(
+                        statWipe ? ItemType.EXPERIENCE_BOTTLE : ItemType.GLASS_BOTTLE,
+                        ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Toggle Stat-Wipe"),
+                        MenuItems.lore(
+                                MenuItems.COLOR_GRAY + "Current: " + (statWipe ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled"),
+                                "",
+                                MenuItems.COLOR_RED + "No Permission"
+                        )
+                ).slot(MenuSlots.MODIFY_STAT_WIPE));
+            }
 
             // Slot 34: Toggle Alt-Blocking
             // Get actual alt-blocking status from punishment data
             boolean altBlock = punishment.getDataMap() != null &&
                     Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
-            set(CirrusItem.of(
-                    altBlock ? ItemType.TORCH : ItemType.REDSTONE_TORCH,
-                    ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Alt-Blocking"),
-                    MenuItems.lore(
-                            MenuItems.COLOR_GRAY + (altBlock ? "Disable" : "Enable") + " alt-blocking for this ban",
-                            "",
-                            MenuItems.COLOR_GRAY + "Current: " + (altBlock ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")
-                    )
-            ).slot(MenuSlots.MODIFY_ALT_BLOCK).actionHandler("toggleAltBlock"));
+
+            if (canModifyOptions) {
+                set(CirrusItem.of(
+                        altBlock ? ItemType.TORCH : ItemType.REDSTONE_TORCH,
+                        ChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Alt-Blocking"),
+                        MenuItems.lore(
+                                MenuItems.COLOR_GRAY + (altBlock ? "Disable" : "Enable") + " alt-blocking for this ban",
+                                "",
+                                MenuItems.COLOR_GRAY + "Current: " + (altBlock ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")
+                        )
+                ).slot(MenuSlots.MODIFY_ALT_BLOCK).actionHandler("toggleAltBlock"));
+            } else {
+                set(CirrusItem.of(
+                        altBlock ? ItemType.TORCH : ItemType.REDSTONE_TORCH,
+                        ChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Toggle Alt-Blocking"),
+                        MenuItems.lore(
+                                MenuItems.COLOR_GRAY + "Current: " + (altBlock ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled"),
+                                "",
+                                MenuItems.COLOR_RED + "No Permission"
+                        )
+                ).slot(MenuSlots.MODIFY_ALT_BLOCK));
+            }
         }
     }
 

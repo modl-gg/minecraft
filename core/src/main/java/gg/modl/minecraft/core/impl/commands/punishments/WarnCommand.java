@@ -92,7 +92,7 @@ public class WarnCommand extends BaseCommand {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
             } else {
                 sender.sendMessage(localeManager.getMessage("warn.error", Map.of(
-                    "error", throwable.getMessage()
+                    "error", localeManager.sanitizeErrorMessage(throwable.getMessage())
                 )));
             }
             return null;

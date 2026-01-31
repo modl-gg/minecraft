@@ -8,6 +8,7 @@ import dev.simplix.protocolize.api.chat.ChatElement;
 import dev.simplix.protocolize.data.ItemType;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 
@@ -45,6 +46,7 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
     private List<Role> roles = new ArrayList<>();
     private final String panelUrl;
     private final Consumer<CirrusPlayerWrapper> parentBackAction;
+    private final boolean hasPermission;
 
     /**
      * Create a new role list menu.
@@ -64,12 +66,20 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
         this.parentBackAction = backAction;
         activeTab = StaffTab.SETTINGS;
 
+        // Check permission for role editing
+        Cache cache = platform.getCache();
+        this.hasPermission = cache != null && cache.hasPermission(viewerUuid, "admin.settings.modify");
+
         // TODO: Fetch roles when endpoint GET /v1/panel/roles is available
         // For now, list is empty
     }
 
     @Override
     protected Collection<Role> elements() {
+        // Check permission - return empty if no access
+        if (!hasPermission) {
+            return Collections.singletonList(new Role("no_permission", null, Collections.emptyList()));
+        }
         // Return placeholder if empty to prevent Cirrus from shrinking inventory
         if (roles.isEmpty()) {
             return Collections.singletonList(new Role(null, null, Collections.emptyList()));
@@ -79,6 +89,17 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
 
     @Override
     protected CirrusItem map(Role role) {
+        // Handle no permission placeholder
+        if ("no_permission".equals(role.getId())) {
+            return CirrusItem.of(
+                    ItemType.BARRIER,
+                    ChatElement.ofLegacyText(MenuItems.COLOR_RED + "No Permission"),
+                    MenuItems.lore(
+                            MenuItems.COLOR_GRAY + "You don't have permission",
+                            MenuItems.COLOR_GRAY + "to edit roles"
+                    )
+            );
+        }
         // Handle placeholder for empty list
         if (role.getId() == null) {
             return createEmptyPlaceholder("No roles");
@@ -106,8 +127,8 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
 
     @Override
     protected void handleClick(Click click, Role role) {
-        // Handle placeholder - do nothing
-        if (role.getId() == null) {
+        // Handle placeholder or no permission - do nothing
+        if (role.getId() == null || "no_permission".equals(role.getId()) || !hasPermission) {
             return;
         }
 

@@ -92,7 +92,7 @@ public class MuteCommand extends BaseCommand {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
             } else {
                 sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
-                    Map.of("error", throwable.getMessage())));
+                    Map.of("error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
             }
             return null;
         });

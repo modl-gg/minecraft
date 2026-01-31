@@ -171,15 +171,15 @@ public class PunishCommand extends BaseCommand {
                 platform.staffBroadcast(staffMessage);
                 
             } else {
-                sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error", 
-                    Map.of("error", response.getMessage())));
+                sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
+                    Map.of("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
             }
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
             } else {
-                sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error", 
-                    Map.of("error", throwable.getMessage())));
+                sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
+                    Map.of("error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
             }
             return null;
         });

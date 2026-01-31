@@ -30,7 +30,7 @@ public class ModlReloadCommand extends BaseCommand {
     }
 
     private void displayHelp(CommandIssuer sender) {
-        sender.sendMessage("§6=== MODL Commands ===");
+        sender.sendMessage("§6=== Commands ===");
         sender.sendMessage("");
 
         sender.sendMessage("§e§lPunishment Commands:");
@@ -60,36 +60,30 @@ public class ModlReloadCommand extends BaseCommand {
 
         sender.sendMessage("§e§lAdmin Commands:");
         sender.sendMessage("§7/modl status§f - Check plugin status");
-        sender.sendMessage("§7/modl reload§f - Reload locale files");
-        sender.sendMessage("§7  Note: Staff permissions and punishment types sync automatically");
+        sender.sendMessage("§7/modl reload§f - Reload configuration");
         sender.sendMessage("");
 
         sender.sendMessage("§6========================");
     }
 
     @Subcommand("reload")
-    @Description("Reload MODL locale files")
-    @Syntax("reload [component]")
+    @Description("Reload MODL configuration and locale files")
     @Conditions("admin")
-    public void reload(CommandIssuer sender, @Default("locale") String component) {
-        switch (component.toLowerCase()) {
-            case "all":
-            case "locale":
-            case "locales":
-            case "messages":
-                reloadLocale(sender);
-                break;
-            default:
-                sender.sendMessage(localeManager.getMessage("reload.invalid_component",
-                    Map.of("component", component, "valid", "locale")));
+    public void reload(CommandIssuer sender) {
+        sender.sendMessage(localeManager.getMessage("general.reloading"));
+        try {
+            localeManager.reloadLocale();
+            sender.sendMessage(localeManager.getMessage("general.reload_success"));
+        } catch (Exception e) {
+            sender.sendMessage(localeManager.getMessage("general.reload_error", Map.of("error", e.getMessage())));
         }
     }
 
     @Subcommand("status")
-    @Description("Show MODL plugin status and loaded data")
+    @Description("Show plugin status and loaded data")
     @Conditions("admin")
     public void status(CommandIssuer sender) {
-        sender.sendMessage("§6=== MODL Plugin Status ===");
+        sender.sendMessage("§6=== Plugin Status ===");
 
         sender.sendMessage("§eStaff Permissions: §f" + cache.getStaffCount() + " staff members cached");
         sender.sendMessage("§eCached Players: §f" + cache.getCachedPlayerCount() + " players with punishment data");
@@ -97,15 +91,5 @@ public class ModlReloadCommand extends BaseCommand {
         sender.sendMessage("§7Note: Staff permissions and punishment types sync automatically");
 
         sender.sendMessage("§6========================");
-    }
-
-    private void reloadLocale(CommandIssuer sender) {
-        sender.sendMessage("§6[MODL] §eReloading locale files...");
-        try {
-            localeManager.reloadLocale();
-            sender.sendMessage("§6[MODL] §aLocale files reloaded successfully!");
-        } catch (Exception e) {
-            sender.sendMessage("§c[MODL] Failed to reload locale: " + e.getMessage());
-        }
     }
 }

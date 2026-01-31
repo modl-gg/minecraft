@@ -82,7 +82,7 @@ public class PluginLoader {
 
         // Initialize sync service with configurable polling rate
         this.syncService = new SyncService(platform, httpClient, cache, logger, this.localeManager,
-                httpManager.getApiUrl(), httpManager.getApiKey(), syncPollingRateSeconds, dataDirectory.toFile(), databaseConfig);
+                httpManager.getApiUrl(), httpManager.getApiKey(), syncPollingRateSeconds, dataDirectory.toFile(), databaseConfig, httpManager.getApiVersion());
         
         // Log configuration details
         logger.info("MODL Configuration:");
@@ -344,7 +344,7 @@ public class PluginLoader {
         // "player" condition - checks if the issuer is a player (not console)
         commandManager.getCommandConditions().addCondition("player", context -> {
             if (!context.getIssuer().isPlayer()) {
-                throw new ConditionFailedException("This command can only be used by players.");
+                throw new ConditionFailedException(localeManager.getMessage("iammuted.only_players"));
             }
         });
 

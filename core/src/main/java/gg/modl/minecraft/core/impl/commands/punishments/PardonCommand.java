@@ -96,7 +96,7 @@ public class PardonCommand extends BaseCommand {
             } else {
                 Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
                 sender.sendMessage(localeManager.getMessage("pardon.error",
-                    Map.of("error", cause.getMessage())));
+                    Map.of("error", localeManager.sanitizeErrorMessage(cause.getMessage()))));
             }
             return null;
         });
@@ -143,7 +143,7 @@ public class PardonCommand extends BaseCommand {
             } else {
                 Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
                 sender.sendMessage(localeManager.getMessage("pardon.error_player",
-                    Map.of("player", playerName, "type", type, "error", cause.getMessage())));
+                    Map.of("player", playerName, "type", type, "error", localeManager.sanitizeErrorMessage(cause.getMessage()))));
             }
             return null;
         });
@@ -188,11 +188,11 @@ public class PardonCommand extends BaseCommand {
                             Map.of("id", punishmentId)));
                     } else {
                         sender.sendMessage(localeManager.getMessage("pardon.error",
-                            Map.of("error", errorMessage)));
+                            Map.of("error", localeManager.sanitizeErrorMessage(errorMessage))));
                     }
                 } else {
                     sender.sendMessage(localeManager.getMessage("pardon.error",
-                        Map.of("error", errorMessage)));
+                        Map.of("error", localeManager.sanitizeErrorMessage(errorMessage))));
                 }
             }
             return null;
@@ -263,19 +263,19 @@ public class PardonCommand extends BaseCommand {
                 } else if (errorMessage.toLowerCase().contains("type")) {
                     // Type validation error - show specific message
                     if ("ban".equals(expectedType)) {
-                        sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_ban", 
+                        sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_ban",
                             Map.of("id", target)));
                     } else if ("mute".equals(expectedType)) {
-                        sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_mute", 
+                        sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_mute",
                             Map.of("id", target)));
                     } else {
                         sender.sendMessage(localeManager.getMessage("pardon.error",
-                            Map.of("error", errorMessage)));
+                            Map.of("error", localeManager.sanitizeErrorMessage(errorMessage))));
                     }
                 } else {
-                    // Other error - show as-is
+                    // Other error - show sanitized message
                     sender.sendMessage(localeManager.getMessage("pardon.error",
-                        Map.of("error", errorMessage)));
+                        Map.of("error", localeManager.sanitizeErrorMessage(errorMessage))));
                 }
             }
             return null;

@@ -195,7 +195,7 @@ public class TicketCommands extends BaseCommand {
                 sendClickableTicketMessage(sender, localeManager.getMessage("messages.view_ticket_label"), ticketUrl, ticketId);
             } else {
                 sender.sendMessage(localeManager.getMessage("messages.ticket_claim_failed",
-                    Map.of("error", response.getMessage() != null ? response.getMessage() : "Unknown error")));
+                    Map.of("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
             }
         }).exceptionally(throwable -> {
             String errorMessage = throwable.getMessage();
@@ -203,7 +203,7 @@ public class TicketCommands extends BaseCommand {
                 errorMessage = throwable.getCause().getMessage();
             }
             sender.sendMessage(localeManager.getMessage("messages.ticket_claim_failed",
-                Map.of("error", errorMessage != null ? errorMessage : "Unknown error")));
+                Map.of("error", localeManager.sanitizeErrorMessage(errorMessage))));
             return null;
         });
     }
@@ -222,43 +222,41 @@ public class TicketCommands extends BaseCommand {
                 sendClickableTicketMessage(sender, localeManager.getMessage("messages.view_ticket_label"), ticketUrl, response.getTicketId());
                 sender.sendMessage(localeManager.getMessage("messages.evidence_note"));
             } else {
-                String error = response.getMessage() != null ? response.getMessage() : localeManager.getMessage("messages.unknown_error");
-                sender.sendMessage(localeManager.getMessage("messages.failed_submit", Map.of("type", ticketType.toLowerCase(), "error", error)));
+                sender.sendMessage(localeManager.getMessage("messages.failed_submit", Map.of("type", ticketType.toLowerCase(), "error", localeManager.sanitizeErrorMessage(response.getMessage()))));
                 sender.sendMessage(localeManager.getMessage("messages.try_again"));
             }
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
             } else {
-                sender.sendMessage(localeManager.getMessage("messages.failed_submit", Map.of("type", ticketType.toLowerCase(), "error", throwable.getMessage())));
+                sender.sendMessage(localeManager.getMessage("messages.failed_submit", Map.of("type", ticketType.toLowerCase(), "error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
                 sender.sendMessage(localeManager.getMessage("messages.try_again"));
             }
             return null;
         });
     }
-    
+
     private void submitUnfinishedTicket(CommandIssuer sender, CreateTicketRequest request, String ticketType) {
         sender.sendMessage(localeManager.getMessage("messages.creating", Map.of("type", ticketType.toLowerCase())));
-        
+
         CompletableFuture<CreateTicketResponse> future = httpClient.createUnfinishedTicket(request);
-        
+
         future.thenAccept(response -> {
             if (response.isSuccess() && response.getTicketId() != null) {
                 sender.sendMessage(localeManager.getMessage("messages.created", Map.of("type", ticketType)));
                 sender.sendMessage(localeManager.getMessage("messages.ticket_id", Map.of("ticketId", response.getTicketId())));
-                
+
                 String formUrl = panelUrl + "/ticket/" + response.getTicketId();
                 sendClickableTicketMessage(sender, localeManager.getMessage("messages.complete_form_label", Map.of("type", ticketType.toLowerCase())), formUrl, response.getTicketId());
             } else {
-                String error = response.getMessage() != null ? response.getMessage() : localeManager.getMessage("messages.unknown_error");
-                sender.sendMessage(localeManager.getMessage("messages.failed_create", Map.of("type", ticketType.toLowerCase(), "error", error)));
+                sender.sendMessage(localeManager.getMessage("messages.failed_create", Map.of("type", ticketType.toLowerCase(), "error", localeManager.sanitizeErrorMessage(response.getMessage()))));
                 sender.sendMessage(localeManager.getMessage("messages.try_again"));
             }
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
             } else {
-                sender.sendMessage(localeManager.getMessage("messages.failed_create", Map.of("type", ticketType.toLowerCase(), "error", throwable.getMessage())));
+                sender.sendMessage(localeManager.getMessage("messages.failed_create", Map.of("type", ticketType.toLowerCase(), "error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
                 sender.sendMessage(localeManager.getMessage("messages.try_again"));
             }
             return null;

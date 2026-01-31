@@ -159,11 +159,10 @@ public class ReportMenu extends SimpleMenu {
                 sendMessage(locale.getMessage("messages.view_ticket", Map.of("url", ticketUrl)));
                 sendMessage(locale.getMessage("messages.evidence_note"));
             } else {
-                String error = response.getMessage() != null ? response.getMessage() : locale.getMessage("messages.unknown_error");
-                sendMessage(locale.getMessage("messages.failed_submit", Map.of("type", "report", "error", error)));
+                sendMessage(locale.getMessage("messages.failed_submit", Map.of("type", "report", "error", locale.sanitizeErrorMessage(response.getMessage()))));
             }
         }).exceptionally(throwable -> {
-            sendMessage(locale.getMessage("messages.failed_submit", Map.of("type", "report", "error", throwable.getMessage())));
+            sendMessage(locale.getMessage("messages.failed_submit", Map.of("type", "report", "error", locale.sanitizeErrorMessage(throwable.getMessage()))));
             return null;
         });
     }

@@ -2,6 +2,7 @@ package gg.modl.minecraft.core.sync;
 
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.SimplePunishment;
+import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.NotificationAcknowledgeRequest;
@@ -57,6 +58,8 @@ public class SyncService {
     @NotNull
     private final File dataFolder;
     private final DatabaseConfig databaseConfig;
+    @NotNull
+    private final ApiVersion apiVersion;
     
     private String lastSyncTimestamp;
     private ScheduledExecutorService syncExecutor;
@@ -97,12 +100,15 @@ public class SyncService {
             return t;
         });
         
-        // Perform initial diagnostic check
-        logger.info("MODL Sync service starting - performing initial diagnostic check...");
-        performDiagnosticCheck();
-        
-        // Start sync task with configurable rate (delayed by 10 seconds to allow diagnostic check)
-        syncExecutor.scheduleAtFixedRate(this::performSync, 10, actualPollingRate, TimeUnit.SECONDS);
+        // Perform initial diagnostic check only for V1 API (V2 already validated during HttpManager init)
+        if (apiVersion == ApiVersion.V1) {
+            logger.info("MODL Sync service starting - performing initial diagnostic check...");
+            performDiagnosticCheck();
+        }
+
+        // Start sync task with configurable rate (delayed by 5 seconds for V2, 10 seconds for V1 to allow diagnostic check)
+        int initialDelay = apiVersion == ApiVersion.V2 ? 5 : 10;
+        syncExecutor.scheduleAtFixedRate(this::performSync, initialDelay, actualPollingRate, TimeUnit.SECONDS);
         isRunning = true;
         
         logger.info("MODL Sync service started - syncing every " + actualPollingRate + " seconds");
@@ -908,14 +914,16 @@ public class SyncService {
      * Format notification message for display
      */
     private String formatNotificationMessage(SyncResponse.PlayerNotification notification) {
-        return localeManager.getMessage("notification.modl_prefix", Map.of("message", notification.getMessage()));
+        // Return the message directly without prefix
+        return notification.getMessage();
     }
     
     /**
      * Format pending notification message for display
      */
     private String formatNotificationMessage(Cache.PendingNotification notification) {
-        return localeManager.getMessage("notification.ticket_prefix", Map.of("message", notification.getMessage()));
+        // Return the message directly without prefix
+        return notification.getMessage();
     }
     
     /**

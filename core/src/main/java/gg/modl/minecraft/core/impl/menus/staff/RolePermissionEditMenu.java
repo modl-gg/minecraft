@@ -8,6 +8,7 @@ import dev.simplix.protocolize.api.chat.ChatElement;
 import dev.simplix.protocolize.data.ItemType;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 
@@ -47,6 +48,7 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
     private List<Permission> allPermissions = new ArrayList<>();
     private Set<String> enabledPermissions;
     private final String panelUrl;
+    private final boolean hasPermission;
 
     // All available permission nodes
     private static final List<String> AVAILABLE_PERMISSIONS = Arrays.asList(
@@ -86,6 +88,10 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         this.panelUrl = panelUrl;
         activeTab = StaffTab.SETTINGS;
 
+        // Check permission for role editing
+        Cache cache = platform.getCache();
+        this.hasPermission = cache != null && cache.hasPermission(viewerUuid, "admin.settings.modify");
+
         // Initialize permissions
         enabledPermissions = new HashSet<>(role.getPermissions());
         for (String node : AVAILABLE_PERMISSIONS) {
@@ -95,6 +101,10 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
     @Override
     protected Collection<Permission> elements() {
+        // Check permission - return empty if no access
+        if (!hasPermission) {
+            return Collections.singletonList(new Permission("no_permission", false));
+        }
         // Return placeholder if empty to prevent Cirrus from shrinking inventory
         if (allPermissions.isEmpty()) {
             return Collections.singletonList(new Permission(null, false));
@@ -104,6 +114,17 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
     @Override
     protected CirrusItem map(Permission permission) {
+        // Handle no permission placeholder
+        if ("no_permission".equals(permission.getNode())) {
+            return CirrusItem.of(
+                    ItemType.BARRIER,
+                    ChatElement.ofLegacyText(MenuItems.COLOR_RED + "No Permission"),
+                    MenuItems.lore(
+                            MenuItems.COLOR_GRAY + "You don't have permission",
+                            MenuItems.COLOR_GRAY + "to edit role permissions"
+                    )
+            );
+        }
         // Handle placeholder for empty list
         if (permission.getNode() == null) {
             return createEmptyPlaceholder("No permissions");
@@ -122,8 +143,8 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
     @Override
     protected void handleClick(Click click, Permission permission) {
-        // Handle placeholder - do nothing
-        if (permission.getNode() == null) {
+        // Handle placeholder or no permission - do nothing
+        if (permission.getNode() == null || "no_permission".equals(permission.getNode()) || !hasPermission) {
             return;
         }
 

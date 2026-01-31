@@ -967,4 +967,31 @@ public class LocaleManager {
     public void reloadLocale() {
         loadLocale(currentLocale);
     }
+
+    /**
+     * Sanitize an error message for display to players.
+     * Removes technical details like "Missing locale:" prefixes and locale paths.
+     * @param errorMessage The raw error message (e.g., from throwable.getMessage())
+     * @return A clean error message suitable for player display
+     */
+    public String sanitizeErrorMessage(String errorMessage) {
+        if (errorMessage == null || errorMessage.isEmpty()) {
+            return getMessage("messages.unknown_error");
+        }
+
+        // Remove "Missing locale:" prefix and locale path patterns
+        if (errorMessage.contains("Missing locale:") || errorMessage.matches(".*\\.[a-z_]+\\.[a-z_]+.*")) {
+            return getMessage("messages.unknown_error");
+        }
+
+        // Remove color codes that might have leaked through
+        String cleaned = errorMessage.replaceAll("[§&][0-9a-fk-or]", "");
+
+        // If the message is too technical or looks like an exception, use generic error
+        if (cleaned.contains("Exception") || cleaned.contains("java.") || cleaned.contains("null")) {
+            return getMessage("messages.unknown_error");
+        }
+
+        return cleaned;
+    }
 }

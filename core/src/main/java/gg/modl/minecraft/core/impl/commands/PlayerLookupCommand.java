@@ -111,24 +111,19 @@ public class PlayerLookupCommand extends BaseCommand {
                     return null;
                 });
             } else {
-                sender.sendMessage(localeManager.getMessage("player_lookup.not_found", Map.of("player", playerQuery)));
+                sender.sendMessage(localeManager.getMessage("general.player_not_found"));
             }
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
             } else {
-                sender.sendMessage(localeManager.getMessage("player_lookup.error", Map.of("error", throwable.getMessage())));
+                sender.sendMessage(localeManager.getMessage("player_lookup.error", Map.of("error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
             }
             return null;
         });
     }
 
     private void displayPlayerInfo(CommandIssuer sender, PlayerLookupResponse.PlayerData data, LinkedAccountsResponse linkedResponse) {
-        // Header
-        sender.sendMessage(localeManager.getMessage("player_lookup.header"));
-        sender.sendMessage(localeManager.getMessage("player_lookup.title", Map.of("username", data.getCurrentUsername())));
-        sender.sendMessage(localeManager.getMessage("player_lookup.header"));
-
         // UUID
         sender.sendMessage(localeManager.getMessage("player_lookup.uuid", Map.of("uuid", data.getMinecraftUuid())));
         
@@ -164,7 +159,7 @@ public class PlayerLookupCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("player_lookup.currently_muted", Map.of("status", mutedStatus)));
 
         // Staff Notes
-        sender.sendMessage(localeManager.getMessage("player_lookup.staff_notes_header"));
+        sender.sendMessage(localeManager.getMessage("player_lookup.staff_notes_label"));
         boolean hasNotes = false;
         if (linkedResponse != null && linkedResponse.getLinkedAccounts() != null) {
             for (Account account : linkedResponse.getLinkedAccounts()) {
@@ -195,7 +190,7 @@ public class PlayerLookupCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("player_lookup.total_punishments", Map.of("count", String.valueOf(totalPunishments))));
 
         // Linked Accounts
-        sender.sendMessage(localeManager.getMessage("player_lookup.linked_accounts_header"));
+        sender.sendMessage(localeManager.getMessage("player_lookup.linked_accounts_label"));
         if (linkedResponse != null && linkedResponse.getLinkedAccounts() != null && !linkedResponse.getLinkedAccounts().isEmpty()) {
             int accountCount = 0;
             for (Account account : linkedResponse.getLinkedAccounts()) {
@@ -266,8 +261,6 @@ public class PlayerLookupCommand extends BaseCommand {
                 sender.sendMessage(localeManager.getMessage("player_lookup.profile_fallback", Map.of("url", profileUrl)));
             }
         }
-
-        sender.sendMessage(localeManager.getMessage("player_lookup.footer"));
     }
 
     private String formatDate(String isoDate) {

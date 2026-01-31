@@ -4,7 +4,6 @@
 
 # General Messages
 messages:
-  prefix: "&8[&6MODL&8]&r "
   cannot_report_self: "&cYou cannot report yourself!"
   submitting: "&eSubmitting {type}..."
   creating: "&eCreating {type}..."
@@ -55,14 +54,9 @@ general:
   staff_notification: "&7&o[{issuer}: created {type} for {target}&7&o]"
   
   # Reload messages
-  reloading: "&eReloading punishment types and staff permissions..."
-  reload_success_types: "&aSuccessfully refreshed {count} punishment types."
-  reload_success_permissions: "&aSuccessfully loaded permissions for {count} staff members."
+  reloading: "&eReloading..."
+  reload_success: "&aReload complete."
   reload_error: "&cError reloading: {error}"
-
-# Reload command messages
-reload:
-  invalid_component: "&cInvalid component '{component}'. Valid options: {valid}"
 
 # Punishment type validation messages
 validation:
@@ -257,42 +251,35 @@ notification:
   ticket_reply: "&6[Ticket] &f{message}"
   ticket_reply_with_link: "&6[Ticket] &f{message} &b[Click to view]"
   ticket_click_action: "&7Click to view ticket {ticketId}"
-  modl_prefix: "&6[MODL] &f{message}"
-  ticket_prefix: "&6[Ticket] &f{message}"
 
 # IAmMuted Command Messages
 iammuted:
   only_players: "&cThis command can only be used by players."
   not_muted: "&cYou can only use this command while you are muted."
-  player_not_found: "&cPlayer not found."
   player_not_online: "&cThat player is not online."
   cannot_message_self: "&cYou cannot send this message to yourself."
   cooldown_message: "&cYou must wait {minutes} minutes and {seconds} seconds before using this command again."
   notification_to_target: "&6[Muted Player] &f{sender} &7is currently muted and cannot respond to chat."
-  custom_message_prefix: "&7Message: &f"
   success_message: "&aYour muted status has been communicated to &f{target}&a."
 
 # Player Lookup Messages
 player_lookup:
-  permission_denied: "&cYou must be a staff member to use this command."
   looking_up: "&7Looking up player &e{player}&7..."
-  not_found: "&cPlayer not found: &e{player}"
   error: "&cError looking up player: {error}"
-  title: "&6&lPlayer Lookup: &e{username}"
   uuid: "&7UUID: &f{uuid}"
   currently_banned: "&7Currently Banned: {status}"
   currently_muted: "&7Currently Muted: {status}"
-  staff_notes_header: "&7Staff Notes:"
+  staff_notes_label: "&7Staff Notes:"
   staff_note_format: "  &8• &f{text} &7- {issuer}"
   no_staff_notes: "  &8No staff notes"
   total_punishments: "&7Total Punishments: &f{count}"
-  linked_accounts_header: "&7Linked Accounts:"
+  linked_accounts_label: "&7Linked Accounts:"
   linked_account_format: "  &8• &f{username}{status}"
   linked_account_more: "  &8... and {count} more"
   no_linked_accounts: "  &8No linked accounts"
   total_tickets: "&7Total Tickets: &f{count}"
   profile_fallback: "&6Profile: &b{url}"
-  
+
   # Status messages for linked accounts
   status:
     banned_and_muted: " &c(currently banned & muted)"

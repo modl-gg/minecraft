@@ -8,6 +8,7 @@ import dev.simplix.protocolize.api.chat.ChatElement;
 import dev.simplix.protocolize.data.ItemType;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 
@@ -50,6 +51,7 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
     private final String panelUrl;
     private final List<String> availableRoles = Arrays.asList("Staff", "Moderator", "Admin", "Owner");
     private final Consumer<CirrusPlayerWrapper> parentBackAction;
+    private final boolean hasPermission;
 
     // Track selected role for each staff member
     private final Map<String, String> selectedRoles = new java.util.HashMap<>();
@@ -72,12 +74,20 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         this.parentBackAction = backAction;
         activeTab = StaffTab.SETTINGS;
 
+        // Check permission for staff management
+        Cache cache = platform.getCache();
+        this.hasPermission = cache != null && cache.hasPermission(viewerUuid, "admin.staff.manage");
+
         // TODO: Fetch staff members when endpoint GET /v1/panel/staff is available
         // For now, list is empty
     }
 
     @Override
     protected Collection<StaffMember> elements() {
+        // Check permission - return empty if no access
+        if (!hasPermission) {
+            return Collections.singletonList(new StaffMember("no_permission", null, null, null));
+        }
         // Return placeholder if empty to prevent Cirrus from shrinking inventory
         if (staffMembers.isEmpty()) {
             return Collections.singletonList(new StaffMember(null, null, null, null));
@@ -87,6 +97,17 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
 
     @Override
     protected CirrusItem map(StaffMember staff) {
+        // Handle no permission placeholder
+        if ("no_permission".equals(staff.getId())) {
+            return CirrusItem.of(
+                    ItemType.BARRIER,
+                    ChatElement.ofLegacyText(MenuItems.COLOR_RED + "No Permission"),
+                    MenuItems.lore(
+                            MenuItems.COLOR_GRAY + "You don't have permission",
+                            MenuItems.COLOR_GRAY + "to manage staff members"
+                    )
+            );
+        }
         // Handle placeholder for empty list
         if (staff.getId() == null) {
             return createEmptyPlaceholder("No staff members");
@@ -123,8 +144,8 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
 
     @Override
     protected void handleClick(Click click, StaffMember staff) {
-        // Handle placeholder - do nothing
-        if (staff.getId() == null) {
+        // Handle placeholder or no permission - do nothing
+        if (staff.getId() == null || "no_permission".equals(staff.getId()) || !hasPermission) {
             return;
         }
 
