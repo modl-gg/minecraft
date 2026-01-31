@@ -12,6 +12,7 @@ import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
 import gg.modl.minecraft.api.http.response.PunishmentCreateResponse;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
+import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.PunishMenu;
@@ -20,7 +21,6 @@ import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.PunishmentTypeParser;
 import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -28,14 +28,15 @@ import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class PunishCommand extends BaseCommand {
-    private final ModlHttpClient httpClient;
+    private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
 
-    // API version - set after construction to support V1/V2 switching
-    @Setter
-    private ApiVersion apiVersion = ApiVersion.V2;
+    // Helper to get the current HTTP client
+    private ModlHttpClient getHttpClient() {
+        return httpClientHolder.getClient();
+    }
 
     // Cache for punishment types - loaded once at startup and manually refreshed
     private volatile List<PunishmentTypesResponse.PunishmentTypeData> cachedPunishmentTypes = new ArrayList<>();
@@ -154,7 +155,7 @@ public class PunishCommand extends BaseCommand {
         final int ordinal = punishmentType.getOrdinal();
 
         // For V1 API with manual punishment types (ordinals 0-5), use the manual endpoint
-        if (apiVersion == ApiVersion.V1 && ordinal <= 5) {
+        if (httpClientHolder.getApiVersion() == ApiVersion.V1 && ordinal <= 5) {
             // Convert to CreatePunishmentRequest for manual endpoint
             com.google.gson.JsonObject dataJson = new com.google.gson.JsonObject();
             dataJson.addProperty("reason", punishmentArgs.reason.isEmpty() ? "No reason specified" : punishmentArgs.reason);
@@ -177,7 +178,7 @@ public class PunishCommand extends BaseCommand {
                     new ArrayList<>()
                 );
 
-            httpClient.createPunishment(manualRequest).thenAccept(response -> {
+            getHttpClient().createPunishment(manualRequest).thenAccept(response -> {
                 String targetName = target.getUsernames().get(0).getUsername();
 
                 // Success message
@@ -207,7 +208,7 @@ public class PunishCommand extends BaseCommand {
         }
 
         // For V2 or dynamic punishments (ordinals > 5), use the dynamic endpoint
-        CompletableFuture<PunishmentCreateResponse> future = httpClient.createPunishmentWithResponse(request);
+        CompletableFuture<PunishmentCreateResponse> future = getHttpClient().createPunishmentWithResponse(request);
 
         future.thenAccept(response -> {
             if (response.isSuccess()) {
@@ -250,7 +251,7 @@ public class PunishCommand extends BaseCommand {
      */
     private void openPunishmentGui(CommandIssuer sender, Account target) {
         // Menus require V2 API
-        if (apiVersion == ApiVersion.V1) {
+        if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
             sender.sendMessage(localeManager.getMessage("api_errors.menus_require_v2"));
             return;
         }
@@ -267,7 +268,7 @@ public class PunishCommand extends BaseCommand {
             // Open the punish menu
             PunishMenu menu = new PunishMenu(
                     platform,
-                    httpClient,
+                    getHttpClient(),
                     senderUuid,
                     senderName,
                     target,
@@ -285,7 +286,7 @@ public class PunishCommand extends BaseCommand {
      */
     public void initializePunishmentTypes() {
         // Load punishment types
-        httpClient.getPunishmentTypes().thenAccept(response -> {
+        getHttpClient().getPunishmentTypes().thenAccept(response -> {
             if (response.isSuccess()) {
                 // Populate the punishment type registry for ban/mute detection
                 PunishmentTypeParser.populateRegistry(response.getData());
@@ -325,7 +326,7 @@ public class PunishCommand extends BaseCommand {
      * Load staff permissions into cache
      */
     private void loadStaffPermissions() {
-        httpClient.getStaffPermissions().thenAccept(response -> {
+        getHttpClient().getStaffPermissions().thenAccept(response -> {
             cache.clearStaffPermissions();
             
             for (var staffMember : response.getData().getStaff()) {

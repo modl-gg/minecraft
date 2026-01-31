@@ -8,6 +8,7 @@ import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
+import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.HistoryMenu;
@@ -22,11 +23,14 @@ import java.util.UUID;
  */
 @RequiredArgsConstructor
 public class HistoryCommand extends BaseCommand {
-    private final ModlHttpClient httpClient;
+    private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
-    private final ApiVersion apiVersion;
+
+    private ModlHttpClient getHttpClient() {
+        return httpClientHolder.getClient();
+    }
 
     @CommandCompletion("@players")
     @CommandAlias("history|hist")
@@ -35,7 +39,7 @@ public class HistoryCommand extends BaseCommand {
     @Conditions("player|staff")
     public void history(CommandIssuer sender, @Name("player") String playerQuery) {
         // Menus require V2 API
-        if (apiVersion == ApiVersion.V1) {
+        if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
             sender.sendMessage(localeManager.getMessage("api_errors.menus_require_v2"));
             return;
         }
@@ -46,12 +50,12 @@ public class HistoryCommand extends BaseCommand {
         // Look up the player
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
 
-        httpClient.lookupPlayer(request).thenAccept(response -> {
+        getHttpClient().lookupPlayer(request).thenAccept(response -> {
             if (response.isSuccess() && response.getData() != null) {
                 UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
 
                 // Fetch full profile for the history menu
-                httpClient.getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
+                getHttpClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
                     if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
                         platform.runOnMainThread(() -> {
                             // Get sender name
@@ -63,7 +67,7 @@ public class HistoryCommand extends BaseCommand {
                             // Open the history menu
                             HistoryMenu menu = new HistoryMenu(
                                     platform,
-                                    httpClient,
+                                    getHttpClient(),
                                     senderUuid,
                                     senderName,
                                     profileResponse.getProfile(),

@@ -6,6 +6,7 @@ import co.aikar.commands.annotation.*;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.staff.StaffMenu;
@@ -19,19 +20,22 @@ import java.util.UUID;
  */
 @RequiredArgsConstructor
 public class StaffCommand extends BaseCommand {
-    private final ModlHttpClient httpClient;
+    private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
     private final String panelUrl;
-    private final ApiVersion apiVersion;
+
+    private ModlHttpClient getHttpClient() {
+        return httpClientHolder.getClient();
+    }
 
     @CommandAlias("staff|staffmenu|sm")
     @Description("Open the staff menu")
     @Conditions("player|staff")
     public void staff(CommandIssuer sender) {
         // Menus require V2 API
-        if (apiVersion == ApiVersion.V1) {
+        if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
             sender.sendMessage(localeManager.getMessage("api_errors.menus_require_v2"));
             return;
         }
@@ -50,7 +54,7 @@ public class StaffCommand extends BaseCommand {
             // Open the staff menu
             StaffMenu menu = new StaffMenu(
                     platform,
-                    httpClient,
+                    getHttpClient(),
                     senderUuid,
                     senderName,
                     isAdmin,

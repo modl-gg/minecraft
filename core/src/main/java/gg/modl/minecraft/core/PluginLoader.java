@@ -121,8 +121,7 @@ public class PluginLoader {
         commandManager.registerCommand(playerLookupCommand);
         
         // Register punishment command with tab completion
-        PunishCommand punishCommand = new PunishCommand(httpManager.getHttpClient(), platform, cache, this.localeManager);
-        punishCommand.setApiVersion(httpManager.getApiVersion());
+        PunishCommand punishCommand = new PunishCommand(httpClientHolder, platform, cache, this.localeManager);
         commandManager.registerCommand(punishCommand);
         
         // Set up punishment types tab completion
@@ -158,13 +157,13 @@ public class PluginLoader {
         commandManager.registerCommand(new IAmMutedCommand(platform, cache, this.localeManager));
         commandManager.registerCommand(new TicketCommands(platform, httpManager.getHttpClient(), httpManager.getPanelUrl(), this.localeManager, chatMessageCache));
 
-        // Register GUI commands (menus require V2 API - commands will check and disable if V1)
-        commandManager.registerCommand(new InspectCommand(httpManager.getHttpClient(), platform, cache, this.localeManager, httpManager.getApiVersion()));
-        commandManager.registerCommand(new StaffCommand(httpManager.getHttpClient(), platform, cache, this.localeManager, httpManager.getPanelUrl(), httpManager.getApiVersion()));
-        commandManager.registerCommand(new HistoryCommand(httpManager.getHttpClient(), platform, cache, this.localeManager, httpManager.getApiVersion()));
-        commandManager.registerCommand(new AltsCommand(httpManager.getHttpClient(), platform, cache, this.localeManager, httpManager.getApiVersion()));
-        commandManager.registerCommand(new NotesCommand(httpManager.getHttpClient(), platform, cache, this.localeManager, httpManager.getApiVersion()));
-        commandManager.registerCommand(new ReportsCommand(httpManager.getHttpClient(), platform, cache, this.localeManager, httpManager.getPanelUrl(), httpManager.getApiVersion()));
+        // Register GUI commands (menus require V2 API - commands will check dynamically via holder)
+        commandManager.registerCommand(new InspectCommand(httpClientHolder, platform, cache, this.localeManager));
+        commandManager.registerCommand(new StaffCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
+        commandManager.registerCommand(new HistoryCommand(httpClientHolder, platform, cache, this.localeManager));
+        commandManager.registerCommand(new AltsCommand(httpClientHolder, platform, cache, this.localeManager));
+        commandManager.registerCommand(new NotesCommand(httpClientHolder, platform, cache, this.localeManager));
+        commandManager.registerCommand(new ReportsCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
 
     }
 
