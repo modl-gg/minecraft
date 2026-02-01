@@ -1,12 +1,8 @@
 package gg.modl.minecraft.velocity;
 
 import co.aikar.commands.VelocityCommandManager;
+import com.github.retrooper.packetevents.PacketEvents;
 import com.google.inject.Inject;
-import com.velocitypowered.api.plugin.Dependency;
-import gg.modl.minecraft.core.HttpManager;
-import gg.modl.minecraft.core.PluginLoader;
-import gg.modl.minecraft.core.plugin.PluginInfo;
-import gg.modl.minecraft.core.service.ChatMessageCache;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -15,6 +11,15 @@ import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.simplix.cirrus.velocity.CirrusVelocity;
+import gg.modl.minecraft.api.LibraryRecord;
+import gg.modl.minecraft.core.HttpManager;
+import gg.modl.minecraft.core.Libraries;
+import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.core.plugin.PluginInfo;
+import gg.modl.minecraft.core.service.ChatMessageCache;
+import io.github.retrooper.packetevents.velocity.factory.VelocityPacketEventsBuilder;
+import net.byteflux.libby.Library;
+import net.byteflux.libby.VelocityLibraryManager;
 import org.slf4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
@@ -29,8 +34,7 @@ import java.util.Map;
         version = PluginInfo.VERSION,
         authors = { PluginInfo.AUTHOR },
         description = PluginInfo.DESCRIPTION,
-        url = PluginInfo.URL,
-        dependencies = { @Dependency(id = "packetevents") })
+        url = PluginInfo.URL)
 public final class VelocityPlugin {
 
     private final PluginContainer plugin;
@@ -50,12 +54,15 @@ public final class VelocityPlugin {
 
     @Subscribe
     public synchronized void onProxyInitialize(ProxyInitializeEvent evt) {
+        // Load runtime dependencies via libby before anything else
+        loadLibraries();
+
+        // Initialize PacketEvents before Cirrus
+        initializePacketEvents();
+
         loadConfig();
         createLocaleFiles();
 
-        // Load configuration with defaults
-        loadConfig();
-        
         // Validate configuration before proceeding
         String apiUrl = getConfigString("api.url", "https://yourserver.modl.gg");
         if ("https://yourserver.modl.gg".equals(apiUrl)) {
@@ -69,7 +76,7 @@ public final class VelocityPlugin {
             logger.error("===============================================");;
             return;
         }
-        
+
         VelocityCommandManager commandManager = new VelocityCommandManager(this.server, this);
         new CirrusVelocity(this, server).init();
 
@@ -99,8 +106,47 @@ public final class VelocityPlugin {
         if (pluginLoader != null) {
             pluginLoader.shutdown();
         }
+        // Terminate PacketEvents
+        if (PacketEvents.getAPI() != null) {
+            PacketEvents.getAPI().terminate();
+        }
+    }
+
+    private void initializePacketEvents() {
+        PacketEvents.setAPI(VelocityPacketEventsBuilder.build(server, plugin, logger, folder));
+        PacketEvents.getAPI().load();
+        PacketEvents.getAPI().init();
+        logger.info("PacketEvents initialized successfully");
     }
     
+    private void loadLibraries() {
+        VelocityLibraryManager<VelocityPlugin> libraryManager = new VelocityLibraryManager<>(
+                logger, folder, server.getPluginManager(), this);
+        libraryManager.addMavenCentral();
+        libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
+
+        // Load common libraries
+        for (LibraryRecord record : Libraries.COMMON) {
+            loadLibrary(libraryManager, record);
+        }
+
+        logger.info("Runtime libraries loaded successfully");
+    }
+
+    private void loadLibrary(VelocityLibraryManager<VelocityPlugin> libraryManager, LibraryRecord record) {
+        Library.Builder builder = Library.builder()
+                .groupId(record.groupId())
+                .artifactId(record.artifactId())
+                .version(record.version())
+                .id(record.id());
+
+        if (record.hasRelocation()) {
+            builder.relocate(record.oldRelocation(), record.newRelocation());
+        }
+
+        libraryManager.loadLibrary(builder.build());
+    }
+
     private void loadConfig() {
         try {
             if (!Files.exists(folder)) {

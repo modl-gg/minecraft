@@ -1,11 +1,17 @@
 package gg.modl.minecraft.bungee;
 
 import co.aikar.commands.BungeeCommandManager;
+import com.github.retrooper.packetevents.PacketEvents;
 import dev.simplix.cirrus.bungee.CirrusBungee;
+import gg.modl.minecraft.api.LibraryRecord;
 import gg.modl.minecraft.core.HttpManager;
+import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import io.github.retrooper.packetevents.bungee.factory.BungeePacketEventsBuilder;
 import lombok.Getter;
+import net.byteflux.libby.BungeeLibraryManager;
+import net.byteflux.libby.Library;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
@@ -23,9 +29,15 @@ public class BungeePlugin extends Plugin {
 
     @Override
     public synchronized void onEnable() {
+        // Load runtime dependencies via libby before anything else
+        loadLibraries();
+
+        // Initialize PacketEvents before Cirrus
+        initializePacketEvents();
+
         loadConfig();
         createLocaleFiles();
-        
+
         // Validate configuration before proceeding
         String apiUrl = configuration.getString("api.url");
         if ("https://yourserver.modl.gg".equals(apiUrl)) {
@@ -66,6 +78,44 @@ public class BungeePlugin extends Plugin {
         if (loader != null) {
             loader.shutdown();
         }
+        // Terminate PacketEvents
+        if (PacketEvents.getAPI() != null) {
+            PacketEvents.getAPI().terminate();
+        }
+    }
+
+    private void initializePacketEvents() {
+        PacketEvents.setAPI(BungeePacketEventsBuilder.build(this));
+        PacketEvents.getAPI().load();
+        PacketEvents.getAPI().init();
+        getLogger().info("PacketEvents initialized successfully");
+    }
+
+    private void loadLibraries() {
+        BungeeLibraryManager libraryManager = new BungeeLibraryManager(this);
+        libraryManager.addMavenCentral();
+        libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
+
+        // Load common libraries
+        for (LibraryRecord record : Libraries.COMMON) {
+            loadLibrary(libraryManager, record);
+        }
+
+        getLogger().info("Runtime libraries loaded successfully");
+    }
+
+    private void loadLibrary(BungeeLibraryManager libraryManager, LibraryRecord record) {
+        Library.Builder builder = Library.builder()
+                .groupId(record.groupId())
+                .artifactId(record.artifactId())
+                .version(record.version())
+                .id(record.id());
+
+        if (record.hasRelocation()) {
+            builder.relocate(record.oldRelocation(), record.newRelocation());
+        }
+
+        libraryManager.loadLibrary(builder.build());
     }
 
     private void loadConfig() {

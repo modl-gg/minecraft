@@ -56,5 +56,17 @@
             <groupId>gg.modl.minecraft.cirrus</groupId>
             <artifactId>cirrus-spigot</artifactId>
         </dependency>
+        <dependency>
+            <groupId>net.byteflux</groupId>
+            <artifactId>libby-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.byteflux</groupId>
+            <artifactId>libby-bukkit</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.retrooper</groupId>
+            <artifactId>packetevents-spigot</artifactId>
+        </dependency>
     </dependencies>
 </project>

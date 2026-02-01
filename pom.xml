@@ -68,6 +68,8 @@
         <mongo.version>5.2.1</mongo.version>
         <snakeyaml.version>2.3</snakeyaml.version>
         <annotations.version>13.0</annotations.version>
+        <libby.version>1.3.1</libby.version>
+        <packetevents.version>2.11.2</packetevents.version>
 
         <!-- Platform dependencies -->
         <bungeecord.version>1.16-R0.4</bungeecord.version>
@@ -202,6 +204,43 @@
                 <artifactId>gson</artifactId>
                 <version>${gson.version}</version>
             </dependency>
+            <!-- Libby runtime dependency loading -->
+            <dependency>
+                <groupId>net.byteflux</groupId>
+                <artifactId>libby-core</artifactId>
+                <version>${libby.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.byteflux</groupId>
+                <artifactId>libby-bukkit</artifactId>
+                <version>${libby.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.byteflux</groupId>
+                <artifactId>libby-bungee</artifactId>
+                <version>${libby.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.byteflux</groupId>
+                <artifactId>libby-velocity</artifactId>
+                <version>${libby.version}</version>
+            </dependency>
+            <!-- PacketEvents (shaded, not loaded via libby) -->
+            <dependency>
+                <groupId>com.github.retrooper</groupId>
+                <artifactId>packetevents-spigot</artifactId>
+                <version>${packetevents.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.retrooper</groupId>
+                <artifactId>packetevents-bungeecord</artifactId>
+                <version>${packetevents.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.retrooper</groupId>
+                <artifactId>packetevents-velocity</artifactId>
+                <version>${packetevents.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -222,6 +261,7 @@
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>${gson.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.jetbrains</groupId>
@@ -233,24 +273,24 @@
 
     <repositories>
         <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+        <repository>
             <id>aikar</id>
             <url>https://repo.aikar.co/content/groups/aikar/</url>
-        </repository>
-        <repository>
-            <id>sonatype-oss</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </repository>
-        <repository>
-            <id>sonatype</id>
-            <url>https://repository.sonatype.org/content/groups/public/</url>
         </repository>
         <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
         <repository>
-            <id>modl-gg</id>
-            <url>https://maven.pkg.github.com/modl-gg/*</url>
+            <id>codemc-releases</id>
+            <url>https://repo.codemc.io/repository/maven-releases/</url>
+        </repository>
+        <repository>
+            <id>byteflux-releases</id>
+            <url>https://repo.byteflux.net/repository/maven-releases/</url>
         </repository>
     </repositories>
 

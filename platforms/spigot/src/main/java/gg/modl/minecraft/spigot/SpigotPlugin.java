@@ -1,10 +1,16 @@
 package gg.modl.minecraft.spigot;
 
 import co.aikar.commands.BukkitCommandManager;
+import com.github.retrooper.packetevents.PacketEvents;
 import dev.simplix.cirrus.spigot.CirrusSpigot;
+import gg.modl.minecraft.api.LibraryRecord;
 import gg.modl.minecraft.core.HttpManager;
+import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
+import net.byteflux.libby.BukkitLibraryManager;
+import net.byteflux.libby.Library;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -18,9 +24,15 @@ public class SpigotPlugin extends JavaPlugin {
 
     @Override
     public synchronized void onEnable() {
+        // Load runtime dependencies via libby before anything else
+        loadLibraries();
+
+        // Initialize PacketEvents before Cirrus
+        initializePacketEvents();
+
         saveDefaultConfig();
         createLocaleFiles();
-        
+
         // Validate configuration before proceeding
         String apiUrl = getConfig().getString("api.url");
         if ("https://yourserver.modl.gg".equals(apiUrl)) {
@@ -35,7 +47,7 @@ public class SpigotPlugin extends JavaPlugin {
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
-        
+
         HttpManager httpManager = new HttpManager(
                 getConfig().getString("api.key"),
                 apiUrl,
@@ -63,8 +75,45 @@ public class SpigotPlugin extends JavaPlugin {
         if (loader != null) {
             loader.shutdown();
         }
+        // Terminate PacketEvents
+        if (PacketEvents.getAPI() != null) {
+            PacketEvents.getAPI().terminate();
+        }
     }
-    
+
+    private void initializePacketEvents() {
+        PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
+        PacketEvents.getAPI().load();
+        PacketEvents.getAPI().init();
+        getLogger().info("PacketEvents initialized successfully");
+    }
+
+    private void loadLibraries() {
+        BukkitLibraryManager libraryManager = new BukkitLibraryManager(this);
+        libraryManager.addMavenCentral();
+        libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
+
+        for (LibraryRecord record : Libraries.COMMON) {
+            loadLibrary(libraryManager, record);
+        }
+
+        getLogger().info("Runtime libraries loaded successfully");
+    }
+
+    private void loadLibrary(BukkitLibraryManager libraryManager, LibraryRecord record) {
+        Library.Builder builder = Library.builder()
+                .groupId(record.groupId())
+                .artifactId(record.artifactId())
+                .version(record.version())
+                .id(record.id());
+
+        if (record.hasRelocation()) {
+            builder.relocate(record.oldRelocation(), record.newRelocation());
+        }
+
+        libraryManager.loadLibrary(builder.build());
+    }
+
     private void createLocaleFiles() {
         try {
             // Create locale directory

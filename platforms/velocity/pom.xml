@@ -68,7 +68,19 @@
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
-            <scope>compile</scope>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.byteflux</groupId>
+            <artifactId>libby-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.byteflux</groupId>
+            <artifactId>libby-velocity</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.retrooper</groupId>
+            <artifactId>packetevents-velocity</artifactId>
         </dependency>
     </dependencies>
 

@@ -6,3 +6,10 @@ description: ${plugin.description}
 website: ${plugin.url}
 api-version: 1.13
 folia-supported: true
+softdepend:
+  - ProtocolLib
+  - ProtocolSupport
+  - ViaVersion
+  - ViaBackwards
+  - ViaRewind
+  - Geyser-Spigot

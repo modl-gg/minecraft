@@ -52,5 +52,10 @@
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
+        <repository>
+            <id>AlessioDP</id>
+            <url>https://repo.alessiodp.com/releases/</url>
+        </repository>
     </repositories>
+
 </project>

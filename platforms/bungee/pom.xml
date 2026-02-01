@@ -55,6 +55,18 @@
             <groupId>gg.modl.minecraft.cirrus</groupId>
             <artifactId>cirrus-bungeecord</artifactId>
         </dependency>
+        <dependency>
+            <groupId>net.byteflux</groupId>
+            <artifactId>libby-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.byteflux</groupId>
+            <artifactId>libby-bungee</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.retrooper</groupId>
+            <artifactId>packetevents-bungeecord</artifactId>
+        </dependency>
     </dependencies>
 
     <repositories>
