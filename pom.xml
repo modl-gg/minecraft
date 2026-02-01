@@ -225,21 +225,36 @@
                 <artifactId>libby-velocity</artifactId>
                 <version>${libby.version}</version>
             </dependency>
-            <!-- PacketEvents (shaded, not loaded via libby) -->
+            <!-- PacketEvents (loaded via libby at runtime) -->
+            <dependency>
+                <groupId>com.github.retrooper</groupId>
+                <artifactId>packetevents-api</artifactId>
+                <version>${packetevents.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.github.retrooper</groupId>
+                <artifactId>packetevents-netty-common</artifactId>
+                <version>${packetevents.version}</version>
+                <scope>provided</scope>
+            </dependency>
             <dependency>
                 <groupId>com.github.retrooper</groupId>
                 <artifactId>packetevents-spigot</artifactId>
                 <version>${packetevents.version}</version>
+                <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>com.github.retrooper</groupId>
                 <artifactId>packetevents-bungeecord</artifactId>
                 <version>${packetevents.version}</version>
+                <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>com.github.retrooper</groupId>
                 <artifactId>packetevents-velocity</artifactId>
                 <version>${packetevents.version}</version>
+                <scope>provided</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

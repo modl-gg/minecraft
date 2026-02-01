@@ -101,6 +101,11 @@ public class BungeePlugin extends Plugin {
             loadLibrary(libraryManager, record);
         }
 
+        // Load PacketEvents (API first, then netty, then platform implementation)
+        loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
+        loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
+        loadLibrary(libraryManager, Libraries.PACKETEVENTS_BUNGEE);
+
         getLogger().info("Runtime libraries loaded successfully");
     }
 

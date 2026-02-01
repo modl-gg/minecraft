@@ -65,6 +65,10 @@
         </dependency>
         <dependency>
             <groupId>com.github.retrooper</groupId>
+            <artifactId>packetevents-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.retrooper</groupId>
             <artifactId>packetevents-bungeecord</artifactId>
         </dependency>
     </dependencies>

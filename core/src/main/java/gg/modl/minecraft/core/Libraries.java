@@ -58,6 +58,46 @@ public final class Libraries {
             "httpcore5-h2"
     );
 
+    // PacketEvents API (must be loaded before platform-specific implementations)
+    public static final LibraryRecord PACKETEVENTS_API = LibraryRecord.of(
+            "com{}github{}retrooper",
+            "packetevents-api",
+            "2.11.2",
+            "packetevents-api"
+    );
+
+    // PacketEvents Netty (required by platform implementations)
+    public static final LibraryRecord PACKETEVENTS_NETTY = LibraryRecord.of(
+            "com{}github{}retrooper",
+            "packetevents-netty-common",
+            "2.11.2",
+            "packetevents-netty-common"
+    );
+
+    // PacketEvents Spigot
+    public static final LibraryRecord PACKETEVENTS_SPIGOT = LibraryRecord.of(
+            "com{}github{}retrooper",
+            "packetevents-spigot",
+            "2.11.2",
+            "packetevents-spigot"
+    );
+
+    // PacketEvents BungeeCord
+    public static final LibraryRecord PACKETEVENTS_BUNGEE = LibraryRecord.of(
+            "com{}github{}retrooper",
+            "packetevents-bungeecord",
+            "2.11.2",
+            "packetevents-bungeecord"
+    );
+
+    // PacketEvents Velocity
+    public static final LibraryRecord PACKETEVENTS_VELOCITY = LibraryRecord.of(
+            "com{}github{}retrooper",
+            "packetevents-velocity",
+            "2.11.2",
+            "packetevents-velocity"
+    );
+
     /**
      * Common libraries loaded by all platforms.
      * These are the core dependencies needed for the plugin to function.
