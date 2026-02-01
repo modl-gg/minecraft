@@ -2,6 +2,7 @@ package gg.modl.minecraft.velocity;
 
 import co.aikar.commands.VelocityCommandManager;
 import com.google.inject.Inject;
+import com.velocitypowered.api.plugin.Dependency;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.plugin.PluginInfo;
@@ -28,7 +29,8 @@ import java.util.Map;
         version = PluginInfo.VERSION,
         authors = { PluginInfo.AUTHOR },
         description = PluginInfo.DESCRIPTION,
-        url = PluginInfo.URL)
+        url = PluginInfo.URL,
+        dependencies = { @Dependency(id = "packetevents") })
 public final class VelocityPlugin {
 
     private final PluginContainer plugin;
