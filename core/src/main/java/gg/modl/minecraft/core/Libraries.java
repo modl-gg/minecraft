@@ -98,6 +98,13 @@ public final class Libraries {
             "packetevents-velocity"
     );
 
+    public static final LibraryRecord ADVENTURE_NBT = LibraryRecord.of(
+        "net{}kyori",
+        "adventure-nbt",
+        "4.25.0",
+        "adventure-nbt"
+    );
+
     /**
      * Common libraries loaded by all platforms.
      * These are the core dependencies needed for the plugin to function.
@@ -107,6 +114,7 @@ public final class Libraries {
             GSON,
             HTTPCLIENT5,
             HTTPCORE5,
-            HTTPCORE5_H2
+            HTTPCORE5_H2,
+            ADVENTURE_NBT
     );
 }
