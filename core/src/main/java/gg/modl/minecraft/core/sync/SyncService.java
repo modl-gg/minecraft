@@ -873,15 +873,20 @@ public class SyncService {
      */
     private void processPlayerNotification(SyncResponse.PlayerNotification notification) {
         try {
-            logger.info(String.format("Processing notification %s (type: %s): %s", 
+            logger.info(String.format("Processing notification %s (type: %s): %s",
                     notification.getId(), notification.getType(), notification.getMessage()));
-            
+
             // Check if this notification has a target player UUID
             String targetPlayerUuid = notification.getTargetPlayerUuid();
             if (targetPlayerUuid != null && !targetPlayerUuid.isEmpty()) {
                 try {
                     UUID playerUuid = UUID.fromString(targetPlayerUuid);
-                    deliverNotificationToPlayer(playerUuid, notification);
+                    boolean delivered = deliverNotificationToPlayerAndCheck(playerUuid, notification);
+
+                    // Acknowledge the notification immediately after delivery to prevent re-sending
+                    if (delivered) {
+                        acknowledgeNotification(playerUuid, notification.getId());
+                    }
                 } catch (IllegalArgumentException e) {
                     logger.warning("Invalid UUID format in notification: " + targetPlayerUuid);
                 }
@@ -889,7 +894,7 @@ public class SyncService {
                 // Fallback for old format - deliver to all online players (deprecated)
                 handleNotificationForAllOnlinePlayers(notification);
             }
-            
+
         } catch (Exception e) {
             logger.severe("Error processing player notification: " + e.getMessage());
             e.printStackTrace();
@@ -900,18 +905,26 @@ public class SyncService {
      * Deliver a notification to a specific player
      */
     private void deliverNotificationToPlayer(UUID playerUuid, SyncResponse.PlayerNotification notification) {
+        deliverNotificationToPlayerAndCheck(playerUuid, notification);
+    }
+
+    /**
+     * Deliver a notification to a specific player and return whether it was delivered
+     * @return true if the notification was delivered to an online player, false if cached for later
+     */
+    private boolean deliverNotificationToPlayerAndCheck(UUID playerUuid, SyncResponse.PlayerNotification notification) {
         AbstractPlayer player = platform.getPlayer(playerUuid);
-        
+
         if (player != null && player.isOnline()) {
             // Player is online - deliver immediately
             String message;
             Map<String, Object> data = notification.getData();
-            
+
             // Check if we have a ticket URL for clickable messages
             if (data != null && data.containsKey("ticketUrl")) {
                 String ticketUrl = (String) data.get("ticketUrl");
                 String ticketId = (String) data.get("ticketId");
-                
+
                 // Create a simpler clickable message format that works across platforms
                 message = String.format(
                     "{\"text\":\"\",\"extra\":[" +
@@ -922,9 +935,9 @@ public class SyncService {
                     "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket %s\"}}]}",
                     notification.getMessage().replace("\"", "\\\""), ticketUrl, ticketId
                 );
-                
+
                 logger.info("Sending clickable notification JSON: " + message);
-                
+
                 platform.runOnMainThread(() -> {
                     platform.sendJsonMessage(playerUuid, message);
                 });
@@ -933,19 +946,21 @@ public class SyncService {
                 message = localeManager.getMessage("notification.ticket_reply", Map.of(
                     "message", notification.getMessage()
                 ));
-                
+
                 platform.runOnMainThread(() -> {
                     platform.sendMessage(playerUuid, message);
                 });
             }
-            
-            logger.info(String.format("Delivered notification %s to online player %s", 
+
+            logger.info(String.format("Delivered notification %s to online player %s",
                     notification.getId(), player.getName()));
+            return true;
         } else {
-            // Player is offline - cache for later delivery
-            cache.cacheNotification(playerUuid, notification);
-            logger.info(String.format("Cached notification %s for offline player %s", 
-                    notification.getId(), playerUuid));
+            // Player is offline - don't cache here, the notification stays in backend pending list
+            // It will be delivered when the player comes online and triggers a sync
+            logger.info(String.format("Player %s is offline, notification %s will be delivered on next login",
+                    playerUuid, notification.getId()));
+            return false;
         }
     }
     
