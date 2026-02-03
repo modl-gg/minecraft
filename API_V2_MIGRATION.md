@@ -7,7 +7,7 @@ This document describes the differences between V1 and V2 APIs and lists any fea
 The MODL Minecraft plugin supports two API versions:
 
 - **V1 API**: Panel-based API at `{panel-url}/api` - Full feature set for Minecraft server integration
-- **V2 API**: Centralized API at `api.modl.gg/v1` (or `api.cobl.gg/v1` for testing) - Newer architecture with some Minecraft-specific features pending implementation
+- **V2 API**: Centralized API at `api.modl.gg/v1` (or `api.modl.top/v1` for testing) - Newer architecture with some Minecraft-specific features pending implementation
 
 ## Automatic Version Detection
 
@@ -24,7 +24,7 @@ api:
   key: "your-api-key-here"
   url: "https://yourserver.modl.gg"
   debug: false
-  # Use testing API (api.cobl.gg) instead of production (api.modl.gg)
+  # Use testing API (api.modl.top) instead of production (api.modl.gg)
   testing-api: false
 ```
 

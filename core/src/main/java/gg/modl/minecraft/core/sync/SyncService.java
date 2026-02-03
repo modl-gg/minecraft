@@ -271,7 +271,7 @@ public class SyncService {
         } catch (Exception e) {
             logger.severe("Diagnostic: Failed to connect to panel server: " + e.getMessage());
             if (e.getMessage().contains("UnknownHostException")) {
-                logger.severe("Diagnostic: Domain name '123.cobl.gg' cannot be resolved - check DNS");
+                logger.severe("Diagnostic: Domain name '123.modl.top' cannot be resolved - check DNS");
             } else if (e.getMessage().contains("ConnectException")) {
                 logger.severe("Diagnostic: Connection refused - server may be down");
             } else if (e.getMessage().contains("SocketTimeoutException")) {

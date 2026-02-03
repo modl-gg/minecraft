@@ -9,7 +9,7 @@ api:
   url: "https://yourserver.modl.gg"
   # Enable debug HTTP logging (default: false)
   debug: false
-  # Use testing API (api.cobl.gg) instead of production API
+  # Use testing API (api.modl.top) instead of production API
   # Only enable this for development/testing purposes
   testing-api: false
   # Force a specific API version (optional, for debugging)

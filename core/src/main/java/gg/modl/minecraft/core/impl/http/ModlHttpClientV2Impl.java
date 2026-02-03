@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 
 /**
  * V2 API HTTP client implementation.
- * Connects to centralized API at api.modl.gg or api.cobl.gg.
+ * Connects to centralized API at api.modl.gg or api.modl.top.
  * Uses X-API-Key and X-Server-Domain headers for authentication.
  */
 public class ModlHttpClientV2Impl implements ModlHttpClient {

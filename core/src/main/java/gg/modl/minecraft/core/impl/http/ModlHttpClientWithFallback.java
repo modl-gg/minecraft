@@ -14,7 +14,7 @@ import java.util.logging.Logger;
  * HTTP client implementation that tries V2 API first, then falls back to V1 if V2 fails.
  *
  * Flow:
- * 1. Try V2 API (api.modl.gg or api.cobl.gg based on testing flag)
+ * 1. Try V2 API (api.modl.gg or api.modl.top based on testing flag)
  * 2. If V2 fails/errors, automatically fall back to V1 API ({panel-url}/api)
  *
  * Once a fallback occurs, subsequent requests continue using V1 to avoid repeated failures.
@@ -33,7 +33,7 @@ public class ModlHttpClientWithFallback implements ModlHttpClient {
     /**
      * Creates a fallback-enabled HTTP client.
      *
-     * @param v2Client The V2 API client (api.modl.gg or api.cobl.gg)
+     * @param v2Client The V2 API client (api.modl.gg or api.modl.top)
      * @param v1Client The V1 API client ({panel-url}/api)
      */
     public ModlHttpClientWithFallback(@NotNull ModlHttpClient v2Client, @NotNull ModlHttpClient v1Client) {

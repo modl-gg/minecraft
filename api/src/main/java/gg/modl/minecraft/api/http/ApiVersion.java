@@ -5,7 +5,7 @@ import lombok.Getter;
 /**
  * API version enumeration for MODL HTTP API.
  * V1: Legacy API at {panel-url}/api
- * V2: New centralized API at api.modl.gg/v1 (or api.cobl.gg/v1 for testing)
+ * V2: New centralized API at api.modl.gg/v1 (or api.modl.top/v1 for testing)
  */
 @Getter
 public enum ApiVersion {
@@ -16,7 +16,7 @@ public enum ApiVersion {
     V1("/api"),
 
     /**
-     * New V2 API - accessed at api.modl.gg/v1 or api.cobl.gg/v1
+     * New V2 API - accessed at api.modl.gg/v1 or api.modl.top/v1
      * Uses X-API-Key and X-Server-Domain headers for authentication
      */
     V2("/v1");

@@ -26,7 +26,7 @@ public class HttpManager {
     /**
      * Testing V2 API URL
      */
-    public static final String TESTING_API_URL = "https://api.cobl.gg";
+    public static final String TESTING_API_URL = "https://api.modl.top";
 
     @NotNull
     private final ModlHttpClient httpClient;
@@ -65,7 +65,7 @@ public class HttpManager {
      * @param key API key
      * @param url Panel URL (e.g., https://yourserver.modl.gg)
      * @param debugHttp Enable debug HTTP logging
-     * @param useTestingApi If true, uses api.cobl.gg for V2 API instead of api.modl.gg
+     * @param useTestingApi If true, uses api.modl.top for V2 API instead of api.modl.gg
      */
     public HttpManager(@NotNull String key, @NotNull String url, boolean debugHttp, boolean useTestingApi) {
         this(key, url, debugHttp, useTestingApi, "auto");
@@ -77,7 +77,7 @@ public class HttpManager {
      * @param key API key
      * @param url Panel URL (e.g., https://yourserver.modl.gg)
      * @param debugHttp Enable debug HTTP logging
-     * @param useTestingApi If true, uses api.cobl.gg for V2 API instead of api.modl.gg
+     * @param useTestingApi If true, uses api.modl.top for V2 API instead of api.modl.gg
      * @param forceVersion "auto" for health check, "v1" to force V1, "v2" to force V2
      */
     public HttpManager(@NotNull String key, @NotNull String url, boolean debugHttp, boolean useTestingApi, @NotNull String forceVersion) {
@@ -149,7 +149,7 @@ public class HttpManager {
      * @param url Panel URL
      * @param debugHttp Enable debug HTTP logging
      * @param version The API version to use
-     * @param useTestingApi If true and version is V2, uses api.cobl.gg
+     * @param useTestingApi If true and version is V2, uses api.modl.top
      */
     public HttpManager(@NotNull String key, @NotNull String url, boolean debugHttp,
                        @NotNull ApiVersion version, boolean useTestingApi) {
