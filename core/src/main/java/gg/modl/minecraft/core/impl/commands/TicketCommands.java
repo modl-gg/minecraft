@@ -94,7 +94,7 @@ public class TicketCommands extends BaseCommand {
             description,
             targetPlayer.uuid().toString(),
             targetPlayer.username(),
-            null, // No separate chatMessages field - chat is included in description
+            List.of(chatLog.split("\n")),
             List.of(),
             "normal"
         );
