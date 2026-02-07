@@ -37,7 +37,7 @@ public class NotesCommand extends BaseCommand {
     }
 
     @CommandCompletion("@players")
-    @CommandAlias("notes|note")
+    @CommandAlias("notes")
     @Syntax("<player>")
     @Description("Open the notes menu for a player")
     @Conditions("player|staff")

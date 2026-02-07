@@ -21,7 +21,9 @@ import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -40,6 +42,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     private boolean silentMode = false;
     private boolean altBlocking = false;
     private boolean statWipe = false;
+    private List<String> linkedReportIds;
     private PunishmentPreviewResponse previewData;
 
     /**
@@ -57,7 +60,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     public PunishSeverityMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                Account targetAccount, PunishmentTypesResponse.PunishmentTypeData punishmentType,
                                Consumer<CirrusPlayerWrapper> rootBackAction, Consumer<CirrusPlayerWrapper> menuBackAction) {
-        this(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, false, false, false);
+        this(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, false, false, false, new ArrayList<>());
     }
 
     /**
@@ -66,7 +69,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     public PunishSeverityMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                Account targetAccount, PunishmentTypesResponse.PunishmentTypeData punishmentType,
                                Consumer<CirrusPlayerWrapper> rootBackAction, Consumer<CirrusPlayerWrapper> menuBackAction,
-                               boolean silentMode, boolean altBlocking, boolean statWipe) {
+                               boolean silentMode, boolean altBlocking, boolean statWipe, List<String> linkedReportIds) {
         super(platform, httpClient, viewerUuid, viewerName, targetAccount, menuBackAction);
         this.punishmentType = punishmentType;
         this.menuBackAction = menuBackAction;
@@ -74,6 +77,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         this.silentMode = silentMode;
         this.altBlocking = altBlocking;
         this.statWipe = statWipe;
+        this.linkedReportIds = linkedReportIds != null ? linkedReportIds : new ArrayList<>();
 
         title("Punish: " + punishmentType.getName());
         activeTab = InspectTab.PUNISH;
@@ -227,6 +231,30 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     }
 
     private void buildToggleButtons() {
+        // Slot 33: Link Reports button
+        String linkTitle = MenuItems.COLOR_GOLD + "Link Reports";
+        if (!linkedReportIds.isEmpty()) {
+            linkTitle += MenuItems.COLOR_GREEN + " (" + linkedReportIds.size() + ")";
+        }
+        List<String> linkLore = new ArrayList<>();
+        linkLore.add(MenuItems.COLOR_GRAY + "Select reports to link with this punishment");
+        linkLore.add("");
+        if (linkedReportIds.isEmpty()) {
+            linkLore.add(MenuItems.COLOR_YELLOW + "Click to select reports");
+        } else {
+            linkLore.add(MenuItems.COLOR_GREEN + "Linked reports:");
+            for (String reportId : linkedReportIds) {
+                linkLore.add(MenuItems.COLOR_GRAY + "  - " + MenuItems.COLOR_WHITE + reportId);
+            }
+            linkLore.add("");
+            linkLore.add(MenuItems.COLOR_YELLOW + "Click to modify selection");
+        }
+        set(CirrusItem.of(
+                CirrusItemType.BOOK,
+                CirrusChatElement.ofLegacyText(linkTitle),
+                MenuItems.lore(linkLore)
+        ).slot(MenuSlots.SEVERITY_LINK_REPORTS).actionHandler("linkReports"));
+
         // Slot 34: Silent Mode toggle
         set(CirrusItem.of(
                 silentMode ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
@@ -310,6 +338,12 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         registerActionHandler("toggleAltBlock", this::handleToggleAltBlock);
         registerActionHandler("toggleStatWipe", this::handleToggleStatWipe);
 
+        // Link Reports handler
+        registerActionHandler("linkReports", (ActionHandler) click -> {
+            handleLinkReports(click);
+            return CallResult.DENY_GRABBING;
+        });
+
         // Override header navigation - pass rootBackAction to preserve the back button on primary tabs
         registerActionHandler("openNotes", ActionHandlers.openMenu(
                 new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
@@ -356,7 +390,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                             null, // duration - let API determine from severity
                             data.isEmpty() ? null : data,
                             null, // notes
-                            null, // attachedTicketIds
+                            linkedReportIds.isEmpty() ? null : linkedReportIds,
                             severityStr,
                             silentMode ? "silent" : "active"
                     );
@@ -381,6 +415,19 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                                 .punishmentId(response.getPunishmentId())
                                 .get("general.staff_notification");
                             platform.staffBroadcast(staffMessage);
+
+                            // Resolve linked reports
+                            if (!linkedReportIds.isEmpty()) {
+                                for (String reportId : linkedReportIds) {
+                                    httpClient.resolveReport(reportId, viewerName,
+                                            "Report accepted - punishment issued", response.getPunishmentId())
+                                            .exceptionally(ex -> {
+                                                // Log but don't fail the punishment for resolve errors
+                                                return null;
+                                            });
+                                }
+                                sendMessage(MenuItems.COLOR_GREEN + "Resolved " + linkedReportIds.size() + " linked report(s).");
+                            }
                         } else {
                             sendMessage(MenuItems.COLOR_RED + "Failed to issue punishment: " + response.getMessage());
                         }
@@ -399,21 +446,46 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     private void handleToggleSilent(Click click) {
         // Refresh menu with toggled silent state
         ActionHandlers.openMenu(
-                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, !silentMode, altBlocking, statWipe))
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, !silentMode, altBlocking, statWipe, linkedReportIds))
                 .handle(click);
     }
 
     private void handleToggleAltBlock(Click click) {
         // Refresh menu with toggled alt-blocking state
         ActionHandlers.openMenu(
-                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, silentMode, !altBlocking, statWipe))
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, silentMode, !altBlocking, statWipe, linkedReportIds))
                 .handle(click);
     }
 
     private void handleToggleStatWipe(Click click) {
         // Refresh menu with toggled stat-wipe state
         ActionHandlers.openMenu(
-                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, silentMode, altBlocking, !statWipe))
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, silentMode, altBlocking, !statWipe, linkedReportIds))
+                .handle(click);
+    }
+
+    private void handleLinkReports(Click click) {
+        // Open LinkReportsMenu, passing current linked IDs as pre-selected
+        Set<String> preSelected = new HashSet<>(linkedReportIds);
+        Consumer<Set<String>> onComplete = selectedIds -> {
+            // Return to PunishSeverityMenu with updated linked report IDs
+            List<String> newLinkedIds = new ArrayList<>(selectedIds);
+            platform.runOnMainThread(() -> {
+                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType,
+                        rootBackAction, menuBackAction, silentMode, altBlocking, statWipe, newLinkedIds)
+                        .display(click.player());
+            });
+        };
+
+        Consumer<CirrusPlayerWrapper> backToSeverity = player -> {
+            new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType,
+                    rootBackAction, menuBackAction, silentMode, altBlocking, statWipe, linkedReportIds)
+                    .display(player);
+        };
+
+        ActionHandlers.openMenu(
+                new LinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
+                        targetAccount, preSelected, backToSeverity, rootBackAction, onComplete))
                 .handle(click);
     }
 }

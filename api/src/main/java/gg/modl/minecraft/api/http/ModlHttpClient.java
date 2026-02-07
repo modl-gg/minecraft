@@ -6,6 +6,7 @@ import gg.modl.minecraft.api.http.request.*;
 import gg.modl.minecraft.api.http.response.*;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -94,6 +95,9 @@ public interface ModlHttpClient {
     CompletableFuture<Void> dismissReport(@NotNull String reportId, String dismissedBy, String reason);
 
     @NotNull
+    CompletableFuture<Void> resolveReport(@NotNull String reportId, String resolvedBy, String resolution, String punishmentId);
+
+    @NotNull
     CompletableFuture<TicketsResponse> getTickets(String status, String type);
 
     @NotNull
@@ -119,4 +123,18 @@ public interface ModlHttpClient {
     // Ticket claim method
     @NotNull
     CompletableFuture<ClaimTicketResponse> claimTicket(@NotNull ClaimTicketRequest request);
+
+    // Staff management endpoints
+    @NotNull
+    CompletableFuture<StaffListResponse> getStaffList();
+
+    @NotNull
+    CompletableFuture<Void> updateStaffRole(@NotNull String staffId, @NotNull String roleName);
+
+    // Role management endpoints
+    @NotNull
+    CompletableFuture<RolesListResponse> getRoles();
+
+    @NotNull
+    CompletableFuture<Void> updateRolePermissions(@NotNull String roleId, @NotNull List<String> permissions);
 }

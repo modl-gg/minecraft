@@ -145,13 +145,12 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
         String escapedText = noteText.replace("\\", "\\\\").replace("\"", "\\\"");
 
         // Create JSON component that suggests the note text as a command (puts in chat input)
-        String json = "[{\"text\":\"" + MenuItems.COLOR_GRAY + "Note copied to chat: " + MenuItems.COLOR_WHITE +
+        String json = "[{\"text\":\"" + MenuItems.COLOR_GRAY + "Note: " + MenuItems.COLOR_WHITE +
                 noteText.substring(0, Math.min(30, noteText.length())) +
                 (noteText.length() > 30 ? "..." : "") +
                 "\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"" + escapedText + "\"}}]";
 
         platform.sendJsonMessage(viewerUuid, json);
-        sendMessage(MenuItems.COLOR_GREEN + "Click the message above to paste the note to your chat!");
     }
 
     @Override

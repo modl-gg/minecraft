@@ -2,6 +2,7 @@ package gg.modl.minecraft.core.impl.cache;
 
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.SimplePunishment;
+import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import lombok.Getter;
 import lombok.Setter;
@@ -316,6 +317,8 @@ public class Cache {
         pendingNotificationsCache.clear();
         onlinePlayers.clear();
         joinTimes.clear();
+        cachedPunishmentTypes = null;
+        cachedPunishGuiConfig = null;
     }
     
     public int size() {
@@ -414,6 +417,56 @@ public class Cache {
         }
     }
     
+    // ==================== PUNISHMENT TYPES CACHE ====================
+
+    private volatile PunishmentTypesResponse cachedPunishmentTypes;
+
+    /**
+     * Cache the punishment types response.
+     */
+    public void cachePunishmentTypes(PunishmentTypesResponse response) {
+        this.cachedPunishmentTypes = response;
+    }
+
+    /**
+     * Get cached punishment types, or null if not cached.
+     */
+    public PunishmentTypesResponse getCachedPunishmentTypes() {
+        return cachedPunishmentTypes;
+    }
+
+    /**
+     * Clear the cached punishment types (e.g., on reload).
+     */
+    public void clearPunishmentTypes() {
+        this.cachedPunishmentTypes = null;
+    }
+
+    // ==================== PUNISH GUI CONFIG CACHE ====================
+
+    private volatile gg.modl.minecraft.core.config.PunishGuiConfig cachedPunishGuiConfig;
+
+    /**
+     * Cache the punish GUI config.
+     */
+    public void cachePunishGuiConfig(gg.modl.minecraft.core.config.PunishGuiConfig config) {
+        this.cachedPunishGuiConfig = config;
+    }
+
+    /**
+     * Get cached punish GUI config, or null if not cached.
+     */
+    public gg.modl.minecraft.core.config.PunishGuiConfig getCachedPunishGuiConfig() {
+        return cachedPunishGuiConfig;
+    }
+
+    /**
+     * Clear the cached punish GUI config (e.g., on reload).
+     */
+    public void clearPunishGuiConfig() {
+        this.cachedPunishGuiConfig = null;
+    }
+
     /**
      * Get the number of staff members with cached permissions
      */

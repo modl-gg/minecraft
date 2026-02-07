@@ -6,6 +6,7 @@ import co.aikar.commands.annotation.*;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.plugin.PluginInfo;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
@@ -18,9 +19,10 @@ public class ModlReloadCommand extends BaseCommand {
     private final LocaleManager localeManager;
 
     @Default
-    @Description("Show available MODL commands")
+    @Description("")
     public void showHelp(CommandIssuer sender) {
-        displayHelp(sender);
+        sender.sendMessage("§a§lmodl.gg§a v" + PluginInfo.VERSION + "§e - Moderation and Support Management System");
+        sender.sendMessage("§7GNU AGPLv3 Free Software. Use /modl help for command information.");
     }
 
     @Subcommand("help")
@@ -30,7 +32,6 @@ public class ModlReloadCommand extends BaseCommand {
     }
 
     private void displayHelp(CommandIssuer sender) {
-        sender.sendMessage("§6=== Commands ===");
         sender.sendMessage("");
 
         java.util.UUID senderUuid = sender.isPlayer() ? sender.getUniqueId() : null;
@@ -39,11 +40,14 @@ public class ModlReloadCommand extends BaseCommand {
 
         // Punishment Commands - show if staff
         if (isStaff) {
-            sender.sendMessage("§e§lPunishment Commands:");
-            if (cache.hasPermission(senderUuid, "punishment.apply.dynamic") ||
-                cache.hasAnyPunishmentPermission(senderUuid)) {
-                sender.sendMessage("§7/punish <player> <type> [reason]§f - Issue a punishment");
-            }
+            sender.sendMessage("§7/staffmenu§f - Open staff menu");
+            sender.sendMessage("§7/inspect <player> [-p]§f - Open player inspection menu (-p for print)");
+            sender.sendMessage("§7/history <player> [-p]§f - Open player history menu (-p for print)");
+            sender.sendMessage("§7/notes <player> [-p]§f - Open player notes menu (-p for print)");
+            sender.sendMessage("§7/alts <player> [-p]§f - Open player alts menu (-p for print)");
+            sender.sendMessage("§7/reports [player] [-p]§f - Open reports menu (-p for print)");
+            sender.sendMessage("§7/punish <player> [type] [reason] [-s] [-ab] [-sw] [-lenient|regular|severe]");
+
             if (cache.hasPermission(senderUuid, "punishment.apply.manual-ban")) {
                 sender.sendMessage("§7/ban <player> [duration] [reason]§f - Ban a player");
             }
@@ -57,38 +61,25 @@ public class ModlReloadCommand extends BaseCommand {
                 sender.sendMessage("§7/blacklist <player> [reason]§f - Blacklist a player");
             }
             if (cache.hasPermission(senderUuid, "punishment.modify.pardon")) {
-                sender.sendMessage("§7/pardon <player> [type]§f - Remove a punishment");
-                sender.sendMessage("§7/unban <player>§f - Unban a player");
-                sender.sendMessage("§7/unmute <player>§f - Unmute a player");
+                sender.sendMessage("§7/pardon <player>§f - Pardon ALL active/unstarted punishments");
+                sender.sendMessage("§7/unban <player>§f - Pardon active or oldest unstarted ban");
+                sender.sendMessage("§7/unmute <player>§f - Pardon active or oldest unstarted mute");
             }
-            sender.sendMessage("");
-
-            sender.sendMessage("§e§lInformation Commands:");
-            sender.sendMessage("§7/lookup <player>§f - View player information");
-            sender.sendMessage("§7/inspect <player>§f - Open player inspection menu");
-            sender.sendMessage("§7/staff§f - Open staff menu");
-            sender.sendMessage("");
         }
 
         // Player Commands - always show
-        sender.sendMessage("§e§lPlayer Commands:");
         sender.sendMessage("§7/iammuted <player>§f - Tell someone you are muted");
         sender.sendMessage("§7/report <player> <reason>§f - Report a player");
-        sender.sendMessage("§7/chatreport <messages> <reason>§f - Report chat messages");
-        sender.sendMessage("§7/apply§f - Apply for staff");
-        sender.sendMessage("§7/bugreport <description>§f - Report a bug");
-        sender.sendMessage("§7/support <message>§f - Contact support");
-        sender.sendMessage("");
+        sender.sendMessage("§7/chatreport <player>§f - Report a player's chat messages");
+        sender.sendMessage("§7/apply§f - Apply for a staff position");
+        sender.sendMessage("§7/bugreport <title>§f - Report a bug");
+        sender.sendMessage("§7/support <title>§f - Open support ticket");
 
         // Admin Commands - show if admin
         if (isAdmin || !sender.isPlayer()) {
-            sender.sendMessage("§e§lAdmin Commands:");
-            sender.sendMessage("§7/modl status§f - Check plugin status");
             sender.sendMessage("§7/modl reload§f - Reload configuration");
             sender.sendMessage("");
         }
-
-        sender.sendMessage("§6========================");
     }
 
     @Subcommand("reload")
@@ -102,19 +93,5 @@ public class ModlReloadCommand extends BaseCommand {
         } catch (Exception e) {
             sender.sendMessage(localeManager.getMessage("general.reload_error", Map.of("error", e.getMessage())));
         }
-    }
-
-    @Subcommand("status")
-    @Description("Show plugin status and loaded data")
-    @Conditions("admin")
-    public void status(CommandIssuer sender) {
-        sender.sendMessage("§6=== Plugin Status ===");
-
-        sender.sendMessage("§eStaff Permissions: §f" + cache.getStaffCount() + " staff members cached");
-        sender.sendMessage("§eCached Players: §f" + cache.getCachedPlayerCount() + " players with punishment data");
-        sender.sendMessage("§eLocale: §f" + localeManager.getCurrentLocale());
-        sender.sendMessage("§7Note: Staff permissions and punishment types sync automatically");
-
-        sender.sendMessage("§6========================");
     }
 }

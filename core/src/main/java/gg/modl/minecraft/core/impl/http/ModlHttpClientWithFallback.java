@@ -5,6 +5,7 @@ import gg.modl.minecraft.api.http.request.*;
 import gg.modl.minecraft.api.http.response.*;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -331,6 +332,16 @@ public class ModlHttpClientWithFallback implements ModlHttpClient {
 
     @NotNull
     @Override
+    public CompletableFuture<Void> resolveReport(@NotNull String reportId, String resolvedBy, String resolution, String punishmentId) {
+        return withFallback(
+                () -> v2Client.resolveReport(reportId, resolvedBy, resolution, punishmentId),
+                () -> v1Client.resolveReport(reportId, resolvedBy, resolution, punishmentId),
+                "resolveReport"
+        );
+    }
+
+    @NotNull
+    @Override
     public CompletableFuture<TicketsResponse> getTickets(String status, String type) {
         return withFallback(
                 () -> v2Client.getTickets(status, type),
@@ -406,6 +417,46 @@ public class ModlHttpClientWithFallback implements ModlHttpClient {
                 () -> v2Client.claimTicket(request),
                 () -> v1Client.claimTicket(request),
                 "claimTicket"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<StaffListResponse> getStaffList() {
+        return withFallback(
+                () -> v2Client.getStaffList(),
+                () -> v1Client.getStaffList(),
+                "getStaffList"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> updateStaffRole(@NotNull String staffId, @NotNull String roleName) {
+        return withFallback(
+                () -> v2Client.updateStaffRole(staffId, roleName),
+                () -> v1Client.updateStaffRole(staffId, roleName),
+                "updateStaffRole"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<RolesListResponse> getRoles() {
+        return withFallback(
+                () -> v2Client.getRoles(),
+                () -> v1Client.getRoles(),
+                "getRoles"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> updateRolePermissions(@NotNull String roleId, @NotNull List<String> permissions) {
+        return withFallback(
+                () -> v2Client.updateRolePermissions(roleId, permissions),
+                () -> v1Client.updateRolePermissions(roleId, permissions),
+                "updateRolePermissions"
         );
     }
 

@@ -68,6 +68,7 @@ public final class MenuSlots {
     public static final int SEVERITY_LENIENT = 28;
     public static final int SEVERITY_REGULAR = 30;
     public static final int SEVERITY_AGGRAVATED = 32;
+    public static final int SEVERITY_LINK_REPORTS = 33;
     public static final int SEVERITY_SILENT = 34;
     public static final int SEVERITY_ALT_BLOCK = 42;
     public static final int SEVERITY_STAT_WIPE = 43;

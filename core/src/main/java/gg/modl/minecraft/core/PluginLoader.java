@@ -12,7 +12,6 @@ import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.cache.LoginCache;
 import gg.modl.minecraft.core.impl.commands.TicketCommands;
-import gg.modl.minecraft.core.impl.commands.PlayerLookupCommand;
 import gg.modl.minecraft.core.impl.commands.ModlReloadCommand;
 import gg.modl.minecraft.core.impl.commands.InspectCommand;
 import gg.modl.minecraft.core.impl.commands.StaffCommand;
@@ -116,10 +115,6 @@ public class PluginLoader {
 //
         // Removed duplicate - TicketCommands registered below with proper panelUrl
         
-        // Register player lookup command
-        PlayerLookupCommand playerLookupCommand = new PlayerLookupCommand(httpManager.getHttpClient(), platform, cache, this.localeManager, httpManager.getPanelUrl());
-        commandManager.registerCommand(playerLookupCommand);
-        
         // Register punishment command with tab completion
         PunishCommand punishCommand = new PunishCommand(httpClientHolder, platform, cache, this.localeManager);
         commandManager.registerCommand(punishCommand);
@@ -132,12 +127,8 @@ public class PluginLoader {
         // Initialize punishment types cache
         punishCommand.initializePunishmentTypes();
 
-        // Initialize punishment types cache for player lookup
-        playerLookupCommand.initializePunishmentTypes();
-
         // Register punishment types listeners for auto-refresh
         syncService.addPunishmentTypesListener(punishCommand::updatePunishmentTypesCache);
-        syncService.addPunishmentTypesListener(playerLookupCommand::updatePunishmentTypesCache);
 
         // Initialize staff permissions cache at startup
         initializeStaffPermissions(httpManager.getHttpClient(), cache, logger);
@@ -158,7 +149,10 @@ public class PluginLoader {
         commandManager.registerCommand(new TicketCommands(platform, httpManager.getHttpClient(), httpManager.getPanelUrl(), this.localeManager, chatMessageCache));
 
         // Register GUI commands (menus require V2 API - commands will check dynamically via holder)
-        commandManager.registerCommand(new InspectCommand(httpClientHolder, platform, cache, this.localeManager));
+        InspectCommand inspectCommand = new InspectCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl());
+        commandManager.registerCommand(inspectCommand);
+        inspectCommand.initializePunishmentTypes();
+        syncService.addPunishmentTypesListener(inspectCommand::updatePunishmentTypesCache);
         commandManager.registerCommand(new StaffCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
         commandManager.registerCommand(new HistoryCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new AltsCommand(httpClientHolder, platform, cache, this.localeManager));

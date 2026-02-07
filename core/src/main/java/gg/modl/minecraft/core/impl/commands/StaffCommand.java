@@ -31,7 +31,7 @@ public class StaffCommand extends BaseCommand {
         return httpClientHolder.getClient();
     }
 
-    @CommandAlias("staff|staffmenu|sm")
+    @CommandAlias("staffmenu|sm")
     @Description("Open the staff menu")
     @Conditions("player|staff")
     public void staff(CommandIssuer sender) {

@@ -60,9 +60,18 @@ public class PunishMenu extends BaseInspectMenu {
         title("Punish: " + targetName);
         activeTab = InspectTab.PUNISH;
 
-        // Load config
-        this.guiConfig = PunishGuiConfig.load(platform.getDataFolder().toPath(),
-                java.util.logging.Logger.getLogger("MODL-PunishMenu"));
+        // Load config (cached after first load)
+        Cache configCache = platform.getCache();
+        PunishGuiConfig cached = configCache != null ? configCache.getCachedPunishGuiConfig() : null;
+        if (cached != null) {
+            this.guiConfig = cached;
+        } else {
+            this.guiConfig = PunishGuiConfig.load(platform.getDataFolder().toPath(),
+                    java.util.logging.Logger.getLogger("MODL-PunishMenu"));
+            if (configCache != null) {
+                configCache.cachePunishGuiConfig(this.guiConfig);
+            }
+        }
 
         // Fetch punishment types and build menu
         loadPunishmentTypes();
@@ -72,17 +81,31 @@ public class PunishMenu extends BaseInspectMenu {
     }
 
     private void loadPunishmentTypes() {
-        // Try to fetch punishment types synchronously for initial display
+        Cache cache = platform.getCache();
+
+        // Try cache first
+        PunishmentTypesResponse cached = cache != null ? cache.getCachedPunishmentTypes() : null;
+        if (cached != null && cached.isSuccess() && cached.getData() != null) {
+            punishmentTypes = new ArrayList<>(cached.getData());
+            for (PunishmentTypesResponse.PunishmentTypeData type : punishmentTypes) {
+                typesByOrdinal.put(type.getOrdinal(), type);
+            }
+            return;
+        }
+
+        // Fetch from API and cache the result
         try {
             httpClient.getPunishmentTypes().thenAccept(response -> {
                 if (response.isSuccess() && response.getData() != null) {
                     punishmentTypes = new ArrayList<>(response.getData());
-                    // Build ordinal lookup map
                     for (PunishmentTypesResponse.PunishmentTypeData type : punishmentTypes) {
                         typesByOrdinal.put(type.getOrdinal(), type);
                     }
+                    if (cache != null) {
+                        cache.cachePunishmentTypes(response);
+                    }
                 }
-            }).join(); // Block to get data before building menu
+            }).join();
         } catch (Exception e) {
             // API call failed - use empty list
         }

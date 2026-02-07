@@ -11,6 +11,7 @@ import java.util.Map;
 import gg.modl.minecraft.core.util.CircuitBreaker;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 import java.net.URI;
@@ -413,6 +414,20 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
 
     @NotNull
     @Override
+    public CompletableFuture<Void> resolveReport(@NotNull String reportId, String resolvedBy, String resolution, String punishmentId) {
+        java.util.Map<String, String> body = new java.util.HashMap<>();
+        if (resolvedBy != null) body.put("resolvedBy", resolvedBy);
+        if (resolution != null) body.put("resolution", resolution);
+        if (punishmentId != null) body.put("punishmentId", punishmentId);
+
+        return sendAsync(requestBuilder("/minecraft/reports/" + reportId + "/resolve")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
     public CompletableFuture<TicketsResponse> getTickets(String status, String type) {
         StringBuilder endpoint = new StringBuilder("/minecraft/tickets");
         boolean hasParam = false;
@@ -511,6 +526,46 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), ClaimTicketResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<StaffListResponse> getStaffList() {
+        return sendAsync(requestBuilder("/minecraft/staff")
+                .GET()
+                .build(), StaffListResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> updateStaffRole(@NotNull String staffId, @NotNull String roleName) {
+        Map<String, String> body = new HashMap<>();
+        body.put("role", roleName);
+
+        return sendAsync(requestBuilder("/minecraft/staff/" + staffId + "/role")
+                .header("Content-Type", "application/json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<RolesListResponse> getRoles() {
+        return sendAsync(requestBuilder("/minecraft/roles")
+                .GET()
+                .build(), RolesListResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> updateRolePermissions(@NotNull String roleId, @NotNull List<String> permissions) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("permissions", permissions);
+
+        return sendAsync(requestBuilder("/minecraft/roles/" + roleId + "/permissions")
+                .header("Content-Type", "application/json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
     }
 
     private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {

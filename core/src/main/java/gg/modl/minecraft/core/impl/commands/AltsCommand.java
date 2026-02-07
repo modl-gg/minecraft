@@ -37,7 +37,7 @@ public class AltsCommand extends BaseCommand {
     }
 
     @CommandCompletion("@players")
-    @CommandAlias("alts|alt|linked")
+    @CommandAlias("alts|alt")
     @Syntax("<player>")
     @Description("Open the alts menu for a player")
     @Conditions("player|staff")

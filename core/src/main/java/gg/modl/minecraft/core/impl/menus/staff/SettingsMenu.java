@@ -12,6 +12,7 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -148,7 +149,7 @@ public class SettingsMenu extends BaseStaffMenu {
                     CirrusItemType.REDSTONE,
                     CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + "Reload Modl"),
                     MenuItems.lore(
-                            MenuItems.COLOR_GRAY + "Reload messages config"
+                            MenuItems.COLOR_GRAY + "Reload configuration and locale files"
                     )
             ).slot(MenuSlots.SETTINGS_RELOAD).actionHandler("reloadModl"));
         }
@@ -229,9 +230,29 @@ public class SettingsMenu extends BaseStaffMenu {
     }
 
     private void handleReloadModl(Click click) {
-        // TODO: Implement config reload
         sendMessage(MenuItems.COLOR_GREEN + "Reloading MODL configuration...");
-        sendMessage(MenuItems.COLOR_YELLOW + "Config reload not yet implemented");
+        try {
+            LocaleManager localeManager = platform.getLocaleManager();
+            if (localeManager != null) {
+                localeManager.reloadLocale();
+                // Clear caches so they're re-fetched/reloaded from disk
+                Cache cache = platform.getCache();
+                if (cache != null) {
+                    cache.clearPunishmentTypes();
+                    cache.clearPunishGuiConfig();
+                }
+                sendMessage(MenuItems.COLOR_GREEN + "Configuration reloaded successfully!");
+            } else {
+                sendMessage(MenuItems.COLOR_RED + "Locale manager not available.");
+            }
+        } catch (Exception e) {
+            sendMessage(MenuItems.COLOR_RED + "Reload failed: " + e.getMessage());
+        }
+
+        // Refresh menu
+        ActionHandlers.openMenu(
+                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction))
+                .handle(click);
     }
 
     /**

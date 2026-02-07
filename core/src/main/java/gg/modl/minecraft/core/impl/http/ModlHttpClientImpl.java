@@ -14,6 +14,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -239,6 +240,54 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<StaffListResponse> getStaffList() {
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/staff"))
+                .header("X-API-Key", apiKey)
+                .GET()
+                .build(), StaffListResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> updateStaffRole(@NotNull String staffId, @NotNull String roleName) {
+        java.util.Map<String, String> body = new java.util.HashMap<>();
+        body.put("role", roleName);
+
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/staff/" + staffId + "/role"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<RolesListResponse> getRoles() {
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/roles"))
+                .header("X-API-Key", apiKey)
+                .GET()
+                .build(), RolesListResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> updateRolePermissions(@NotNull String roleId, @NotNull List<String> permissions) {
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("permissions", permissions);
+
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/roles/" + roleId + "/permissions"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
 
@@ -482,6 +531,22 @@ public class ModlHttpClientImpl implements ModlHttpClient {
 
         return sendAsync(HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/minecraft/reports/" + reportId + "/dismiss"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> resolveReport(@NotNull String reportId, String resolvedBy, String resolution, String punishmentId) {
+        java.util.Map<String, String> body = new java.util.HashMap<>();
+        if (resolvedBy != null) body.put("resolvedBy", resolvedBy);
+        if (resolution != null) body.put("resolution", resolution);
+        if (punishmentId != null) body.put("punishmentId", punishmentId);
+
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/reports/" + reportId + "/resolve"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))

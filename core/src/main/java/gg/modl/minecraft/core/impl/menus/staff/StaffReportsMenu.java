@@ -1,14 +1,15 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
+import dev.simplix.cirrus.model.CirrusClickType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
-import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
@@ -179,9 +180,18 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         vars.put("reported", report.getReportedPlayerName() != null ? report.getReportedPlayerName() : "Unknown");
         vars.put("date", MenuItems.formatDate(report.getDate()));
 
-        // Content - wrap text
+        // Content - normalize newlines and wrap text
         String content = report.getContent() != null ? report.getContent() : "";
-        List<String> wrappedContent = MenuItems.wrapText(content, 7);
+        // Handle literal \n sequences and actual newlines
+        content = content.replace("\\n", "\n");
+        List<String> wrappedContent = new ArrayList<>();
+        for (String paragraph : content.split("\n")) {
+            if (paragraph.trim().isEmpty()) {
+                wrappedContent.add("");
+            } else {
+                wrappedContent.addAll(MenuItems.wrapText(paragraph.trim(), 7));
+            }
+        }
         vars.put("content", String.join("\n", wrappedContent));
 
         // Get lore from locale
@@ -200,6 +210,11 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
                 lore.add(processed);
             }
         }
+
+        // Add click instructions
+        lore.add("");
+        lore.add(MenuItems.COLOR_YELLOW + "Left-click to inspect player");
+        lore.add(MenuItems.COLOR_YELLOW + "Right-click to dismiss report");
 
         // Get title from locale
         String title = locale.getMessage("menus.staff_report_item.title", vars);
@@ -236,8 +251,32 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
             return;
         }
 
-        // Check click type for left/right click
-        // For now, default to inspect behavior
+        if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
+            // Right-click: dismiss report
+            dismissReport(click, report);
+        } else {
+            // Left-click: inspect player
+            inspectPlayer(click, report);
+        }
+    }
+
+    private void dismissReport(Click click, Report report) {
+        sendMessage(MenuItems.COLOR_YELLOW + "Dismissing report...");
+
+        httpClient.dismissReport(report.getId(), viewerName, "Insufficient evidence").thenAccept(v -> {
+            sendMessage(MenuItems.COLOR_GREEN + "Report dismissed.");
+
+            // Refresh menu
+            StaffReportsMenu refreshed = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
+            refreshed.withFilter(currentFilter);
+            platform.runOnMainThread(() -> ActionHandlers.openMenu(refreshed).handle(click));
+        }).exceptionally(e -> {
+            sendMessage(MenuItems.COLOR_RED + "Failed to dismiss report: " + e.getMessage());
+            return null;
+        });
+    }
+
+    private void inspectPlayer(Click click, Report report) {
         click.clickedMenu().close();
 
         // Fetch player profile and open inspect menu

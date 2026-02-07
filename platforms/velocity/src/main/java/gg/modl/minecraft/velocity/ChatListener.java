@@ -6,6 +6,7 @@ import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
+import com.velocitypowered.api.event.PostOrder;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.player.PlayerChatEvent;
 import net.kyori.adventure.text.Component;
@@ -24,7 +25,7 @@ public class ChatListener {
         this.localeManager = localeManager;
     }
     
-    @Subscribe
+    @Subscribe(order = PostOrder.LATE)
     public void onPlayerChat(PlayerChatEvent event) {
         // Check for pending menu chat input FIRST
         if (ChatInputManager.handleChat(event.getPlayer().getUniqueId(), event.getMessage())) {
@@ -46,7 +47,7 @@ public class ChatListener {
         if (cache.isMuted(event.getPlayer().getUniqueId())) {
             // Cancel the chat event
             event.setResult(PlayerChatEvent.ChatResult.denied());
-            
+
             // Get cached mute and send message to player
             Cache.CachedPlayerData data = cache.getCache().get(event.getPlayer().getUniqueId());
             if (data != null) {

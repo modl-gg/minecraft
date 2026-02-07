@@ -1,5 +1,6 @@
 package gg.modl.minecraft.api.http.request.v2;
 
+import com.google.gson.annotations.SerializedName;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,6 +17,7 @@ import java.util.Map;
 public class V2CreatePunishmentRequest {
     private String targetUuid;
     private String issuerName;
+    @SerializedName("type_ordinal")
     private int typeOrdinal;
     private String reason;
     private Long duration;

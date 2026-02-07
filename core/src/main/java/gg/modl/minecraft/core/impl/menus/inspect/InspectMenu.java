@@ -39,20 +39,26 @@ public class InspectMenu extends BaseInspectMenu {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Pass the backAction to all tabs so the back button persists
+        // Create a back action that returns to this InspectMenu (not the original parent).
+        // Secondary menus should always navigate back to InspectMenu when pressing back,
+        // regardless of how InspectMenu itself was opened (e.g., from Staff Menu).
+        Consumer<CirrusPlayerWrapper> inspectBackAction = player ->
+                new InspectMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
+                        .display(player);
+
         registerActionHandler("openNotes", ActionHandlers.openMenu(
-                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
+                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, inspectBackAction)));
 
         registerActionHandler("openAlts", ActionHandlers.openMenu(
-                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, inspectBackAction)));
 
         registerActionHandler("openHistory", ActionHandlers.openMenu(
-                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, inspectBackAction)));
 
         registerActionHandler("openReports", ActionHandlers.openMenu(
-                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
+                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, inspectBackAction)));
 
         registerActionHandler("openPunish", ActionHandlers.openMenu(
-                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
+                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, inspectBackAction)));
     }
 }

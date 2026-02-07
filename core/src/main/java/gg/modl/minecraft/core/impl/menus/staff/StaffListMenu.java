@@ -3,19 +3,22 @@ package gg.modl.minecraft.core.impl.menus.staff;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
+import dev.simplix.cirrus.model.CirrusClickType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.response.RolesListResponse;
+import gg.modl.minecraft.api.http.response.StaffListResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,7 +30,6 @@ import java.util.function.Consumer;
  */
 public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> {
 
-    // Placeholder StaffMember class since no endpoint exists yet
     public static class StaffMember {
         private final String id;
         private final UUID uuid;
@@ -48,24 +50,21 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
     }
 
     private List<StaffMember> staffMembers = new ArrayList<>();
+    private List<String> availableRoles = new ArrayList<>();
+    // Role name → order (0 = highest/Super Admin)
+    private Map<String, Integer> roleOrders = new HashMap<>();
     private final String panelUrl;
-    private final List<String> availableRoles = Arrays.asList("Staff", "Moderator", "Admin", "Owner");
     private final Consumer<CirrusPlayerWrapper> parentBackAction;
     private final boolean hasPermission;
+    private String viewerRole;
 
     // Track selected role for each staff member
-    private final Map<String, String> selectedRoles = new java.util.HashMap<>();
+    private final Map<String, String> selectedRoles = new HashMap<>();
+
+    private static final String SUPER_ADMIN_ROLE = "Super Admin";
 
     /**
      * Create a new staff list menu.
-     *
-     * @param platform The platform instance
-     * @param httpClient The HTTP client for API calls
-     * @param viewerUuid The UUID of the staff viewing the menu
-     * @param viewerName The name of the staff viewing the menu
-     * @param isAdmin Whether the viewer has admin permissions
-     * @param panelUrl The panel URL
-     * @param backAction Action to return to parent menu
      */
     public StaffListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                          boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
@@ -74,21 +73,102 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         this.parentBackAction = backAction;
         activeTab = StaffTab.SETTINGS;
 
-        // Check permission for staff management
         Cache cache = platform.getCache();
         this.hasPermission = cache != null && cache.hasPermission(viewerUuid, "admin.staff.manage");
 
-        // TODO: Fetch staff members when endpoint GET /v1/panel/staff is available
-        // For now, list is empty
+        if (hasPermission) {
+            fetchStaffAndRoles();
+        }
+    }
+
+    /**
+     * Internal constructor for refreshing with preserved state.
+     */
+    private StaffListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
+                          boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction,
+                          List<StaffMember> existingStaff, List<String> existingRoles,
+                          Map<String, Integer> existingRoleOrders, String viewerRole,
+                          Map<String, String> existingSelections) {
+        super("Manage Staff", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
+        this.panelUrl = panelUrl;
+        this.parentBackAction = backAction;
+        activeTab = StaffTab.SETTINGS;
+
+        Cache cache = platform.getCache();
+        this.hasPermission = cache != null && cache.hasPermission(viewerUuid, "admin.staff.manage");
+
+        if (existingStaff != null) this.staffMembers = new ArrayList<>(existingStaff);
+        if (existingRoles != null) this.availableRoles = new ArrayList<>(existingRoles);
+        if (existingRoleOrders != null) this.roleOrders = new HashMap<>(existingRoleOrders);
+        this.viewerRole = viewerRole;
+        if (existingSelections != null) this.selectedRoles.putAll(existingSelections);
+    }
+
+    private void fetchStaffAndRoles() {
+        // Fetch roles first to build the order map
+        httpClient.getRoles().thenAccept(response -> {
+            if (response != null && response.getRoles() != null) {
+                availableRoles.clear();
+                roleOrders.clear();
+                for (RolesListResponse.RoleEntry role : response.getRoles()) {
+                    roleOrders.put(role.getName(), role.getOrder());
+                    // Don't include Super Admin as an assignable role
+                    if (!SUPER_ADMIN_ROLE.equals(role.getName())) {
+                        availableRoles.add(role.getName());
+                    }
+                }
+            }
+        }).exceptionally(e -> null);
+
+        httpClient.getStaffList().thenAccept(response -> {
+            if (response != null && response.getStaff() != null) {
+                staffMembers.clear();
+                for (StaffListResponse.StaffEntry entry : response.getStaff()) {
+                    UUID uuid = null;
+                    if (entry.getMinecraftUuid() != null) {
+                        try {
+                            uuid = UUID.fromString(entry.getMinecraftUuid());
+                        } catch (Exception ignored) {}
+                    }
+                    String displayName = entry.getMinecraftUsername() != null ? entry.getMinecraftUsername() : entry.getUsername();
+                    staffMembers.add(new StaffMember(entry.getId(), uuid, displayName, entry.getRole()));
+
+                    // Identify the viewer's role
+                    if (uuid != null && uuid.equals(viewerUuid)) {
+                        viewerRole = entry.getRole();
+                    }
+                }
+            }
+        }).exceptionally(e -> null);
+    }
+
+    private int getRoleOrder(String roleName) {
+        return roleOrders.getOrDefault(roleName, Integer.MAX_VALUE);
+    }
+
+    private boolean isSuperAdmin(StaffMember staff) {
+        return SUPER_ADMIN_ROLE.equals(staff.getCurrentRole());
+    }
+
+    private boolean isViewerSelf(StaffMember staff) {
+        return staff.getUuid() != null && staff.getUuid().equals(viewerUuid);
+    }
+
+    private boolean canModify(StaffMember staff) {
+        if (isSuperAdmin(staff)) return false;
+        if (isViewerSelf(staff)) return false;
+        if (viewerRole == null) return false;
+        int viewerOrder = getRoleOrder(viewerRole);
+        int targetOrder = getRoleOrder(staff.getCurrentRole());
+        // Lower order = higher rank. Can only modify staff with strictly lower rank (higher order number)
+        return viewerOrder < targetOrder;
     }
 
     @Override
     protected Collection<StaffMember> elements() {
-        // Check permission - return empty if no access
         if (!hasPermission) {
             return Collections.singletonList(new StaffMember("no_permission", null, null, null));
         }
-        // Return placeholder if empty to prevent Cirrus from shrinking inventory
         if (staffMembers.isEmpty()) {
             return Collections.singletonList(new StaffMember(null, null, null, null));
         }
@@ -97,7 +177,6 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
 
     @Override
     protected CirrusItem map(StaffMember staff) {
-        // Handle no permission placeholder
         if ("no_permission".equals(staff.getId())) {
             return CirrusItem.of(
                     CirrusItemType.BARRIER,
@@ -108,53 +187,74 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
                     )
             );
         }
-        // Handle placeholder for empty list
         if (staff.getId() == null) {
             return createEmptyPlaceholder("No staff members");
         }
 
         List<String> lore = new ArrayList<>();
+        boolean canMod = canModify(staff);
 
-        // Get selected role (or current role if none selected)
-        String selectedRole = selectedRoles.getOrDefault(staff.getId(), staff.getCurrentRole());
-
-        lore.add(MenuItems.COLOR_GRAY + "Roles:");
-        for (String role : availableRoles) {
-            if (role.equals(staff.getCurrentRole())) {
-                // Current role - bold green
-                lore.add(MenuItems.COLOR_GREEN + "  §l" + role + " §r§7(current)");
-            } else if (role.equals(selectedRole)) {
-                // Selected role - green
-                lore.add(MenuItems.COLOR_GREEN + "  " + role + " §7(selected)");
+        if (!canMod) {
+            // Show why they can't modify
+            lore.add(MenuItems.COLOR_GRAY + "Role: " + MenuItems.COLOR_WHITE + staff.getCurrentRole());
+            lore.add("");
+            if (isSuperAdmin(staff)) {
+                lore.add(MenuItems.COLOR_RED + "Super Admins cannot be modified");
+            } else if (isViewerSelf(staff)) {
+                lore.add(MenuItems.COLOR_RED + "You cannot modify your own role");
             } else {
-                // Other roles - gray
-                lore.add(MenuItems.COLOR_GRAY + "  " + role);
+                lore.add(MenuItems.COLOR_RED + "You cannot modify staff with");
+                lore.add(MenuItems.COLOR_RED + "the same or higher rank");
             }
+        } else {
+            String selectedRole = selectedRoles.getOrDefault(staff.getId(), staff.getCurrentRole());
+
+            lore.add(MenuItems.COLOR_GRAY + "Roles:");
+            for (String role : availableRoles) {
+                if (role.equals(staff.getCurrentRole())) {
+                    lore.add(MenuItems.COLOR_GREEN + "  \u00a7l" + role + " \u00a7r\u00a77(current)");
+                } else if (role.equals(selectedRole) && !role.equals(staff.getCurrentRole())) {
+                    lore.add(MenuItems.COLOR_GREEN + "  " + role + " \u00a77(selected)");
+                } else {
+                    lore.add(MenuItems.COLOR_GRAY + "  " + role);
+                }
+            }
+            lore.add("");
+            lore.add(MenuItems.COLOR_YELLOW + "Right-click to cycle roles");
+            lore.add(MenuItems.COLOR_YELLOW + "Left-click to apply selected role");
         }
-        lore.add("");
-        lore.add(MenuItems.COLOR_YELLOW + "Right-click to cycle roles");
-        lore.add(MenuItems.COLOR_YELLOW + "Left-click to apply selected role");
 
         return CirrusItem.of(
                 CirrusItemType.PLAYER_HEAD,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + staff.getUsername()),
+                CirrusChatElement.ofLegacyText(
+                        (canMod ? MenuItems.COLOR_GOLD : MenuItems.COLOR_GRAY) + staff.getUsername()),
                 MenuItems.lore(lore)
         );
     }
 
     @Override
     protected void handleClick(Click click, StaffMember staff) {
-        // Handle placeholder or no permission - do nothing
         if (staff.getId() == null || "no_permission".equals(staff.getId()) || !hasPermission) {
             return;
         }
 
-        // In Cirrus, we'd need to check click type
-        // For now, treat all clicks as cycle
-        cycleRole(click, staff);
+        if (!canModify(staff)) {
+            return;
+        }
+
+        if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
+            cycleRole(click, staff);
+        } else {
+            applyRole(click, staff);
+        }
     }
 
     private void cycleRole(Click click, StaffMember staff) {
+        if (availableRoles.isEmpty()) {
+            sendMessage(MenuItems.COLOR_RED + "No roles available.");
+            return;
+        }
+
         String currentSelected = selectedRoles.getOrDefault(staff.getId(), staff.getCurrentRole());
         int currentIndex = availableRoles.indexOf(currentSelected);
         int nextIndex = (currentIndex + 1) % availableRoles.size();
@@ -164,25 +264,43 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         sendMessage(MenuItems.COLOR_YELLOW + "Selected role: " + MenuItems.COLOR_GREEN + nextRole +
                 MenuItems.COLOR_GRAY + " (left-click to apply)");
 
-        // Refresh menu - preserve backAction
-        StaffListMenu newMenu = new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
-        newMenu.selectedRoles.putAll(this.selectedRoles);
+        // Refresh menu - preserve state
+        StaffListMenu newMenu = new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl,
+                backAction, staffMembers, availableRoles, roleOrders, viewerRole, selectedRoles);
         ActionHandlers.openMenu(newMenu).handle(click);
     }
 
     private void applyRole(Click click, StaffMember staff) {
         String selectedRole = selectedRoles.getOrDefault(staff.getId(), staff.getCurrentRole());
 
-        // TODO: Apply role when endpoint PATCH /v1/panel/staff/{id}/role is available
-        sendMessage(MenuItems.COLOR_YELLOW + "Applying role " + selectedRole + " to " + staff.getUsername() + "...");
-        sendMessage(MenuItems.COLOR_GRAY + "(Role change not saved - endpoint needed)");
+        if (selectedRole.equals(staff.getCurrentRole())) {
+            sendMessage(MenuItems.COLOR_GRAY + "This is already " + staff.getUsername() + "'s current role.");
+            return;
+        }
+
+        sendMessage(MenuItems.COLOR_YELLOW + "Applying role " + MenuItems.COLOR_GREEN + selectedRole +
+                MenuItems.COLOR_YELLOW + " to " + staff.getUsername() + "...");
+
+        httpClient.updateStaffRole(staff.getId(), selectedRole).thenAccept(v -> {
+            sendMessage(MenuItems.COLOR_GREEN + "Role updated successfully!");
+            selectedRoles.remove(staff.getId());
+
+            // Refresh staff permissions cache
+            httpClient.getStaffPermissions().exceptionally(e -> null);
+
+            // Rebuild menu with fresh data
+            StaffListMenu newMenu = new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
+            platform.runOnMainThread(() -> ActionHandlers.openMenu(newMenu).handle(click));
+        }).exceptionally(e -> {
+            sendMessage(MenuItems.COLOR_RED + "Failed to update role: " + e.getMessage());
+            return null;
+        });
     }
 
     @Override
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Override header navigation - primary tabs should NOT pass backAction
         registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
                 new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
 

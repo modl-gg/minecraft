@@ -42,7 +42,7 @@ public class ReportsCommand extends BaseCommand {
     }
 
     @CommandCompletion("@players")
-    @CommandAlias("reports|report")
+    @CommandAlias("reports")
     @Syntax("[player]")
     @Description("Open the reports menu (for a player or all reports)")
     @Conditions("player|staff")

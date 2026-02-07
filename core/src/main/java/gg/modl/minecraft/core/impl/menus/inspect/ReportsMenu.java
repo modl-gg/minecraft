@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -174,13 +175,23 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         String content = report.getContent() != null ? report.getContent() : "";
         String formattedDate = report.getDate() != null ? MenuItems.formatDate(report.getDate()) : "Unknown";
 
-        Map<String, String> vars = Map.of(
-                "type", reportType,
-                "date", formattedDate,
-                "reporter", reporter,
-                "content", content,
-                "reported", targetName
-        );
+        // Normalize newlines and wrap content
+        content = content.replace("\\n", "\n");
+        List<String> wrappedContent = new ArrayList<>();
+        for (String paragraph : content.split("\n")) {
+            if (paragraph.trim().isEmpty()) {
+                wrappedContent.add("");
+            } else {
+                wrappedContent.addAll(MenuItems.wrapText(paragraph.trim(), 7));
+            }
+        }
+
+        Map<String, String> vars = new HashMap<>();
+        vars.put("type", reportType);
+        vars.put("date", formattedDate);
+        vars.put("reporter", reporter);
+        vars.put("content", String.join("\n", wrappedContent));
+        vars.put("reported", targetName);
 
         // Get lore from locale
         List<String> lore = new ArrayList<>();
@@ -189,7 +200,14 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
             for (Map.Entry<String, String> entry : vars.entrySet()) {
                 processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
             }
-            lore.add(processed);
+            // Handle content with newlines - split into separate lore lines
+            if (processed.contains("\n")) {
+                for (String subLine : processed.split("\n")) {
+                    lore.add(subLine);
+                }
+            } else if (!processed.isEmpty()) {
+                lore.add(processed);
+            }
         }
 
         // Get title from locale
