@@ -21,6 +21,7 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.PunishMenu;
+import gg.modl.minecraft.core.impl.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.PunishmentTypeParser;
@@ -197,14 +198,6 @@ public class PunishCommand extends BaseCommand {
                     .target(targetName)
                     .get("general.punishment_issued"));
 
-                // Staff notification
-                String staffMessage = localeManager.punishment()
-                    .issuer(issuerName)
-                    .type(punishmentTypeName)
-                    .target(targetName)
-                    .get("general.staff_notification");
-                platform.staffBroadcast(staffMessage);
-
             }).exceptionally(throwable -> {
                 if (throwable.getCause() instanceof PanelUnavailableException) {
                     sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
@@ -231,15 +224,12 @@ public class PunishCommand extends BaseCommand {
                     .punishmentId(response.getPunishmentId())
                     .get("general.punishment_issued"));
 
-
-                // Staff notification
-                String staffMessage = localeManager.punishment()
-                    .issuer(issuerName)
-                    .type(punishmentTypeName)
-                    .target(targetName)
-                    .punishmentId(response.getPunishmentId())
-                    .get("general.staff_notification");
-                platform.staffBroadcast(staffMessage);
+                // Send action buttons if player
+                if (sender.isPlayer() && response.getPunishmentId() != null) {
+                    platform.runOnMainThread(() -> {
+                        PunishmentActionMessages.sendPunishmentActions(platform, sender.getUniqueId(), response.getPunishmentId());
+                    });
+                }
 
             } else {
                 sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",

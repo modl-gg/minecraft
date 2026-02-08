@@ -5,10 +5,13 @@ import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.CommandAlias;
 import co.aikar.commands.annotation.CommandCompletion;
 import co.aikar.commands.annotation.Conditions;
+import co.aikar.commands.annotation.Default;
 import co.aikar.commands.annotation.Description;
 import co.aikar.commands.annotation.Name;
 import co.aikar.commands.annotation.Syntax;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import gg.modl.minecraft.api.Account;
+import gg.modl.minecraft.api.Note;
 import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
@@ -18,12 +21,15 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.NotesMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
+
+import java.text.SimpleDateFormat;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Command to open the Notes Menu GUI for a player.
+ * Command to open the Notes Menu GUI for a player,
+ * or print staff notes to chat with the -p flag.
  */
 @RequiredArgsConstructor
 public class NotesCommand extends BaseCommand {
@@ -38,11 +44,28 @@ public class NotesCommand extends BaseCommand {
 
     @CommandCompletion("@players")
     @CommandAlias("notes")
-    @Syntax("<player>")
-    @Description("Open the notes menu for a player")
+    @Syntax("<player> [-p]")
+    @Description("Open the notes menu for a player, or use -p to print to chat")
     @Conditions("player|staff")
-    public void notes(CommandIssuer sender, @Name("player") String playerQuery) {
-        // Menus require V2 API
+    public void notes(CommandIssuer sender, @Name("player") String playerQuery, @Default("") String flags) {
+        boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
+
+        // Console can't open GUI - auto-use print mode with -p, otherwise reject
+        if (!sender.isPlayer()) {
+            if (printMode) {
+                printNotes(sender, playerQuery);
+            } else {
+                sender.sendMessage(localeManager.getMessage("general.gui_requires_player"));
+            }
+            return;
+        }
+
+        if (printMode) {
+            printNotes(sender, playerQuery);
+            return;
+        }
+
+        // GUI mode - requires V2 API
         if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
             sender.sendMessage(localeManager.getMessage("api_errors.menus_require_v2"));
             return;
@@ -97,6 +120,66 @@ public class NotesCommand extends BaseCommand {
             handleException(sender, throwable, playerQuery);
             return null;
         });
+    }
+
+    private void printNotes(CommandIssuer sender, String playerQuery) {
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
+
+        PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
+
+        getHttpClient().lookupPlayer(request).thenAccept(response -> {
+            if (response.isSuccess() && response.getData() != null) {
+                String playerName = response.getData().getCurrentUsername();
+                UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
+
+                getHttpClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
+                    if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
+                        Account profile = profileResponse.getProfile();
+                        displayNotes(sender, playerName, profile);
+                    } else {
+                        sender.sendMessage(localeManager.getMessage("general.player_not_found"));
+                    }
+                }).exceptionally(throwable -> {
+                    handleException(sender, throwable, playerQuery);
+                    return null;
+                });
+            } else {
+                sender.sendMessage(localeManager.getMessage("general.player_not_found"));
+            }
+        }).exceptionally(throwable -> {
+            handleException(sender, throwable, playerQuery);
+            return null;
+        });
+    }
+
+    private void displayNotes(CommandIssuer sender, String playerName, Account profile) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
+
+        sender.sendMessage(localeManager.getMessage("print.notes.header", Map.of("player", playerName)));
+
+        if (profile.getNotes().isEmpty()) {
+            sender.sendMessage(localeManager.getMessage("print.notes.empty"));
+        } else {
+            int ordinal = 1;
+            for (Note note : profile.getNotes()) {
+                String date = dateFormat.format(note.getDate());
+                String author = note.getIssuerName();
+                String content = note.getText();
+
+                sender.sendMessage(localeManager.getMessage("print.notes.entry", Map.of(
+                        "ordinal", String.valueOf(ordinal),
+                        "date", date,
+                        "author", author,
+                        "content", content
+                )));
+                ordinal++;
+            }
+            sender.sendMessage(localeManager.getMessage("print.notes.total", Map.of(
+                    "count", String.valueOf(profile.getNotes().size())
+            )));
+        }
+
+        sender.sendMessage(localeManager.getMessage("print.notes.footer"));
     }
 
     private void handleException(CommandIssuer sender, Throwable throwable, String playerQuery) {

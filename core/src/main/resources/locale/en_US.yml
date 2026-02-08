@@ -36,6 +36,7 @@ general:
   no_permission_punishment: "&cYou don't have permission to apply '{type}' punishments."
   no_permission_reload: "&cYou don't have permission to reload punishment data."
   invalid_syntax: "&cInvalid command syntax. Please check your usage."
+  gui_requires_player: "&cThis command opens a GUI and can only be executed by a player. Use &f-p &cfor text output."
   
   # Error messages
   player_not_found: "&cPlayer not found."
@@ -49,9 +50,6 @@ general:
   # Success messages
   punishment_issued: "&aSuccessfully issued {type} for &f{target}&a."
   punishment_issued_duration: "&aSuccessfully issued {type} for &f{target}&a ({duration})."
-  
-  # Staff notifications
-  staff_notification: "&7&o[{issuer}: created {type} for {target}&7&o]"
   
   # Reload messages
   reloading: "&eReloading..."
@@ -286,6 +284,83 @@ player_lookup:
     banned: " &c(currently banned)"
     muted: " &e(currently muted)"
     no_punishments: " &7(no active punishments)"
+
+# Print Mode Messages (for -p flag on commands)
+print:
+  # /inspect <player> -p
+  inspect:
+    header: ""
+    uuid: "&f{player}'s Info &7({uuid})"
+    currently_banned: "&eBanned: {status}"
+    currently_muted: "&eMuted: {status}"
+    notes_label: "&eStaff Notes:"
+    note_entry: "&6{ordinal}. &f{text} &eby {issuer}"
+    no_notes: "&7No staff notes"
+    total_punishments: "&eTotal Punishments: &f{count}"
+    linked_accounts_label: "&eLinked Accounts:"
+    linked_account_entry: "&6{ordinal}. &e{username} ({status}&e)"
+    linked_account_more: "&e... and {count} more"
+    no_linked_accounts: "&7No linked accounts"
+    total_tickets: "&eTotal Tickets: &f{count}"
+    profile_fallback: "&eProfile: &b{url}"
+    footer: ""
+
+  # /inspect #<punishmentId>
+  punishment_detail:
+    not_found: "&cPunishment #{id} not found."
+    header: "&6&m--------&r &ePunishment #{id} &6&m--------"
+    type: "&eType: &f{type}"
+    player: "&ePlayer: &f{player}"
+    issuer: "&eIssued by: &f{issuer}"
+    date: "&eDate: &f{date}"
+    status: "&eStatus: {status}"
+    duration: "&eDuration: &f{duration}"
+    reason: "&eReason: &f{reason}"
+    evidence: "&eEvidence: &f{count} file(s)"
+    notes: "&eNotes: &f{count}"
+    modifications: "&eModifications: &f{count}"
+    footer: "&6&m--------------------------------"
+
+  # /history <player> -p
+  history:
+    header: ""
+    entry: "&6{ordinal}. &e#{id} {date} &f{type} &eby {issuer}."
+    entry_active: "&6{ordinal}. &a#{id} &e{date} &f{type} &eby {issuer} (expires in {expiry})."
+    entry_permanent: "&6{ordinal}. &a#{id} &e{date} &f{type} &eby {issuer} (never expires)."
+    entry_inactive: "&6{ordinal}. &7#{id} &e{date} &f{type} &eby {issuer} (inactive)."
+    entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} &eby {issuer} (pardoned)."
+    total: "&eCount: &f{count}&e punishment(s)"
+    empty: "&7Player has never been punished."
+    footer: ""
+
+  # /notes <player> -p
+  notes:
+    header: ""
+    entry: "&6{ordinal}. &e{date} {author}: &f{content}"
+    total: "&eCount: &f{count}&e note(s)"
+    empty: "&7No staff notes found."
+    footer: ""
+
+  # /alts <player> -p
+  alts:
+    header: ""
+    entry: "&6{ordinal}. {color}{username} &e({status}&e)"
+    status_banned: "&cBanned"
+    status_muted: "&eMuted"
+    status_banned_and_muted: "&cBanned & Muted"
+    status_clean: "&aClean"
+    total: "&eCount: &f{count}&e linked account(s)"
+    empty: "&7No linked accounts found."
+    footer: ""
+
+  # /reports <player> -p
+  reports:
+    header: ""
+    entry: "&6{ordinal}. &e#{id} {date} ({status}&e) &f{type} &eby {reporter}"
+    entry_content: " &f{content}"
+    total: "&eCount: &f{count}&e report(s)"
+    empty: "&7No reports found."
+    footer: ""
 
 # Punishment Command Messages
 punishment_commands:

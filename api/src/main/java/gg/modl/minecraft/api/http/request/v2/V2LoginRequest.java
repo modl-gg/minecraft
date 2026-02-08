@@ -17,4 +17,5 @@ public class V2LoginRequest {
     private String username;
     private String ip;
     private Map<String, Object> ipInfo;
+    private String skinHash;
 }

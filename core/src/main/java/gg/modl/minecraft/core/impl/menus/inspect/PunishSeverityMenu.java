@@ -18,6 +18,7 @@ import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.impl.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
@@ -407,14 +408,12 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                                 .get("general.punishment_issued");
                             sendMessage(successMessage);
 
-                            // Staff notification (same as command)
-                            String staffMessage = localeManager.punishment()
-                                .issuer(viewerName)
-                                .type(punishmentType.getName())
-                                .target(targetName)
-                                .punishmentId(response.getPunishmentId())
-                                .get("general.staff_notification");
-                            platform.staffBroadcast(staffMessage);
+                            // Send action buttons
+                            if (response.getPunishmentId() != null) {
+                                platform.runOnMainThread(() -> {
+                                    PunishmentActionMessages.sendPunishmentActions(platform, viewerUuid, response.getPunishmentId());
+                                });
+                            }
 
                             // Resolve linked reports
                             if (!linkedReportIds.isEmpty()) {

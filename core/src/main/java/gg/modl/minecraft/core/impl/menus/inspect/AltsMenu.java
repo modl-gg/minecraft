@@ -20,12 +20,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Alts Menu - displays linked/alternate accounts for a player.
  */
 public class AltsMenu extends BaseInspectListMenu<Account> {
 
+    private static final Logger logger = Logger.getLogger(AltsMenu.class.getName());
     private List<Account> linkedAccounts = new ArrayList<>();
     private final Consumer<CirrusPlayerWrapper> backAction;
 
@@ -60,15 +63,15 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
     }
 
     private void loadLinkedAccounts() {
-        // Fetch linked accounts from API
-        httpClient.getLinkedAccounts(targetUuid).thenAccept(response -> {
+        // Fetch linked accounts from API synchronously so data is ready when elements() is called
+        try {
+            var response = httpClient.getLinkedAccounts(targetUuid).join();
             if (response.getStatus() == 200 && response.getLinkedAccounts() != null) {
                 linkedAccounts = new ArrayList<>(response.getLinkedAccounts());
             }
-        }).exceptionally(e -> {
-            // API call failed - leave list empty
-            return null;
-        });
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Failed to fetch linked accounts for " + targetUuid, e);
+        }
     }
 
     @Override
@@ -244,9 +247,13 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
             return;
         }
 
-        // Open inspect menu for the alt account - this is a new primary view, no back button
+        // Open inspect menu for the alt account with back button to this alts menu
+        Consumer<CirrusPlayerWrapper> backToAlts = player ->
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
+                        .display(player);
+
         ActionHandlers.openMenu(
-                new InspectMenu(platform, httpClient, viewerUuid, viewerName, alt, null))
+                new InspectMenu(platform, httpClient, viewerUuid, viewerName, alt, backToAlts))
                 .handle(click);
     }
 

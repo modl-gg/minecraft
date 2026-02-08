@@ -78,15 +78,7 @@ public class MuteCommand extends BaseCommand {
                 .duration(muteArgs.duration)
                 .get("general.punishment_issued"));
 
-            
-            // Staff notification
-            String staffMessage = localeManager.punishment()
-                .issuer(issuerName)
-                .type("mute")
-                .target(targetName)
-                .get("general.staff_notification");
-            platform.staffBroadcast(staffMessage);
-            
+
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));

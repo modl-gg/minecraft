@@ -141,4 +141,12 @@ public interface ModlHttpClient {
 
     @NotNull
     CompletableFuture<Void> updateRolePermissions(@NotNull String roleId, @NotNull List<String> permissions);
+
+    // Punishment detail lookup
+    @NotNull
+    CompletableFuture<PunishmentDetailResponse> getPunishmentDetail(@NotNull String punishmentId);
+
+    // Evidence upload token
+    @NotNull
+    CompletableFuture<EvidenceUploadTokenResponse> createEvidenceUploadToken(@NotNull String punishmentId, @NotNull String issuerName);
 }

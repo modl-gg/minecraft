@@ -19,6 +19,7 @@ import gg.modl.minecraft.core.impl.commands.HistoryCommand;
 import gg.modl.minecraft.core.impl.commands.AltsCommand;
 import gg.modl.minecraft.core.impl.commands.NotesCommand;
 import gg.modl.minecraft.core.impl.commands.ReportsCommand;
+import gg.modl.minecraft.core.impl.commands.PunishmentActionCommand;
 import gg.modl.minecraft.core.impl.commands.player.IAmMutedCommand;
 import gg.modl.minecraft.core.impl.commands.punishments.*;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -144,10 +145,10 @@ public class PluginLoader {
         commandManager.registerCommand(new ModlReloadCommand(platform, cache, this.localeManager));
         
         // Register manual punishment commands
-        commandManager.registerCommand(new BanCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
+        commandManager.registerCommand(new BanCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new MuteCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
         commandManager.registerCommand(new KickCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
-        commandManager.registerCommand(new BlacklistCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
+        commandManager.registerCommand(new BlacklistCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new PardonCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
         commandManager.registerCommand(new WarnCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
         
@@ -165,6 +166,7 @@ public class PluginLoader {
         commandManager.registerCommand(new AltsCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new NotesCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new ReportsCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
+        commandManager.registerCommand(new PunishmentActionCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
 
     }
 

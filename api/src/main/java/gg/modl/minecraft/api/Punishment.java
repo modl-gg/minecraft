@@ -207,6 +207,11 @@ public class Punishment {
     }
 
     public boolean isActive() {
+        // Kicks are instant and never considered "active"
+        if (isKickType()) {
+            return false;
+        }
+
         Map<String, Object> map = getDataMap();
 
         // Check manual active flag
@@ -215,10 +220,34 @@ public class Punishment {
             return false;
         }
 
-        // Check expiry date
+        // Queued punishments (status = "Unstarted") are not yet active
+        Object statusObj = map.get("status");
+        if ("Unstarted".equals(statusObj)) {
+            return false;
+        }
+
+        // Check for pardon modifications
+        for (Modification mod : getModifications()) {
+            Modification.Type type = mod.getType();
+            if (type == Modification.Type.MANUAL_PARDON ||
+                    type == Modification.Type.APPEAL_ACCEPT ||
+                    type == Modification.Type.SYSTEM_PARDON) {
+                return false;
+            }
+        }
+
+        // Check legacy "expires" field first
         Date expiry = getExpires();
         if (expiry != null && expiry.before(new Date())) {
             return false;
+        }
+
+        // Check duration-based expiry (using modification effectiveDuration if available)
+        if (expiry == null) {
+            Date effectiveExpiry = getEffectiveExpiry();
+            if (effectiveExpiry != null && effectiveExpiry.before(new Date())) {
+                return false;
+            }
         }
 
         // Bans and mutes must be started to be active
@@ -227,6 +256,37 @@ public class Punishment {
         }
 
         return true;
+    }
+
+    /**
+     * Calculate the effective expiry date based on duration and modifications.
+     * Mirrors the backend's getEffectiveExpiry logic.
+     */
+    @Nullable
+    public Date getEffectiveExpiry() {
+        // Check modifications for effectiveDuration (last one wins)
+        Long duration = null;
+        for (Modification mod : getModifications()) {
+            if (mod.getEffectiveDuration() != null) {
+                duration = mod.getEffectiveDuration();
+            }
+        }
+
+        // Fall back to data.duration
+        if (duration == null) {
+            duration = getDuration();
+        }
+
+        // null, 0, or negative indicates permanent (no expiry)
+        if (duration == null || duration <= 0) {
+            return null;
+        }
+
+        // Only calculate expiry from started date - countdown begins at enforcement, not issuance
+        if (started == null) {
+            return null; // Not started yet, no expiry
+        }
+        return new Date(started.getTime() + duration);
     }
 
     @Getter

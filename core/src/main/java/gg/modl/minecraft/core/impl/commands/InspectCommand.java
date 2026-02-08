@@ -12,11 +12,13 @@ import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
 import gg.modl.minecraft.api.http.response.LinkedAccountsResponse;
 import gg.modl.minecraft.api.http.response.PlayerLookupResponse;
+import gg.modl.minecraft.api.http.response.PunishmentDetailResponse;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
+import gg.modl.minecraft.core.impl.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.List;
@@ -89,7 +91,24 @@ public class InspectCommand extends BaseCommand {
     @Description("Open the inspect menu for a player, or use -p to print info to chat")
     @Conditions("player|staff")
     public void inspect(CommandIssuer sender, @Name("player") String playerQuery, @Default("") String flags) {
+        // Detect punishment ID lookup with # prefix
+        if (playerQuery.startsWith("#")) {
+            String punishmentId = playerQuery.substring(1);
+            printPunishmentDetail(sender, punishmentId);
+            return;
+        }
+
         boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
+
+        // Console can't open GUI - auto-use print mode with -p, otherwise reject
+        if (!sender.isPlayer()) {
+            if (printMode) {
+                printLookup(sender, playerQuery);
+            } else {
+                sender.sendMessage(localeManager.getMessage("general.gui_requires_player"));
+            }
+            return;
+        }
 
         if (printMode) {
             printLookup(sender, playerQuery);
@@ -153,6 +172,83 @@ public class InspectCommand extends BaseCommand {
         });
     }
 
+    // --- Punishment detail lookup (by #id) ---
+
+    private void printPunishmentDetail(CommandIssuer sender, String punishmentId) {
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", "#" + punishmentId)));
+
+        getHttpClient().getPunishmentDetail(punishmentId).thenAccept(response -> {
+            if (!response.isSuccess() || response.getPunishment() == null) {
+                sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", Map.of("id", punishmentId)));
+                return;
+            }
+
+            PunishmentDetailResponse.PunishmentDetail p = response.getPunishment();
+            String typeName = getPunishmentTypeName(String.valueOf(p.getTypeOrdinal()));
+            String playerName = p.getPlayerName() != null ? p.getPlayerName() : "Unknown";
+            String issuerName = p.getIssuerName() != null ? p.getIssuerName() : "Unknown";
+            String issued = p.getIssued() != null ? p.getIssued() : "Unknown";
+
+            // Determine status from data
+            String status = "Active";
+            boolean active = true;
+            Map<String, Object> data = p.getData();
+            if (data != null) {
+                if (data.containsKey("pardoned") && Boolean.TRUE.equals(data.get("pardoned"))) {
+                    status = "Pardoned";
+                    active = false;
+                } else if (data.containsKey("active") && Boolean.FALSE.equals(data.get("active"))) {
+                    status = "Inactive";
+                    active = false;
+                }
+            }
+
+            String duration = "Permanent";
+            if (data != null && data.containsKey("duration")) {
+                Object dur = data.get("duration");
+                if (dur != null && !dur.toString().equals("-1") && !dur.toString().equals("0")) {
+                    duration = dur.toString();
+                }
+            }
+
+            String reason = "";
+            if (data != null && data.containsKey("reason")) {
+                Object r = data.get("reason");
+                if (r != null) reason = r.toString();
+            }
+
+            int evidenceCount = p.getEvidence() != null ? p.getEvidence().size() : 0;
+            int notesCount = p.getNotes() != null ? p.getNotes().size() : 0;
+            int modsCount = p.getModifications() != null ? p.getModifications().size() : 0;
+
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.header", Map.of("id", punishmentId)));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.type", Map.of("type", typeName)));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.player", Map.of("player", playerName)));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.issuer", Map.of("issuer", issuerName)));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.date", Map.of("date", issued)));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.status", Map.of("status", active ? "&a" + status : "&7" + status)));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.duration", Map.of("duration", duration)));
+            if (!reason.isEmpty()) {
+                sender.sendMessage(localeManager.getMessage("print.punishment_detail.reason", Map.of("reason", reason)));
+            }
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.evidence", Map.of("count", String.valueOf(evidenceCount))));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.notes", Map.of("count", String.valueOf(notesCount))));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.modifications", Map.of("count", String.valueOf(modsCount))));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.footer"));
+
+            // Send action buttons for players
+            if (sender.isPlayer()) {
+                UUID senderUuid = sender.getUniqueId();
+                platform.runOnMainThread(() -> {
+                    PunishmentActionMessages.sendPunishmentActions(platform, senderUuid, punishmentId);
+                });
+            }
+        }).exceptionally(throwable -> {
+            handleException(sender, throwable, "#" + punishmentId);
+            return null;
+        });
+    }
+
     // --- Print mode (formerly /lookup) ---
 
     private void printLookup(CommandIssuer sender, String playerQuery) {
@@ -183,7 +279,10 @@ public class InspectCommand extends BaseCommand {
     }
 
     private void displayPlayerInfo(CommandIssuer sender, PlayerLookupResponse.PlayerData data, LinkedAccountsResponse linkedResponse) {
-        sender.sendMessage(localeManager.getMessage("player_lookup.uuid", Map.of("uuid", data.getMinecraftUuid())));
+        String playerName = data.getCurrentUsername() != null ? data.getCurrentUsername() : "Unknown";
+
+        sender.sendMessage(localeManager.getMessage("print.inspect.header", Map.of("player", playerName)));
+        sender.sendMessage(localeManager.getMessage("print.inspect.uuid", Map.of("player", playerName, "uuid", data.getMinecraftUuid())));
 
         UUID playerUuid = UUID.fromString(data.getMinecraftUuid());
         boolean isBanned = cache.isBanned(playerUuid);
@@ -210,43 +309,44 @@ public class InspectCommand extends BaseCommand {
 
         String bannedStatus = isBanned ? "&cYes" : "&aNo";
         String mutedStatus = isMuted ? "&cYes" : "&aNo";
-        sender.sendMessage(localeManager.getMessage("player_lookup.currently_banned", Map.of("status", bannedStatus)));
-        sender.sendMessage(localeManager.getMessage("player_lookup.currently_muted", Map.of("status", mutedStatus)));
+        sender.sendMessage(localeManager.getMessage("print.inspect.currently_banned", Map.of("status", bannedStatus)));
+        sender.sendMessage(localeManager.getMessage("print.inspect.currently_muted", Map.of("status", mutedStatus)));
 
-        sender.sendMessage(localeManager.getMessage("player_lookup.staff_notes_label"));
+        sender.sendMessage(localeManager.getMessage("print.inspect.notes_label"));
         boolean hasNotes = false;
         if (linkedResponse != null && linkedResponse.getLinkedAccounts() != null) {
             for (Account account : linkedResponse.getLinkedAccounts()) {
                 if (account.getNotes() != null && !account.getNotes().isEmpty()) {
                     hasNotes = true;
-                    int noteCount = 0;
+                    int noteOrdinal = 1;
                     for (Note note : account.getNotes()) {
-                        if (noteCount >= 3) break;
-                        sender.sendMessage(localeManager.getMessage("player_lookup.staff_note_format", Map.of(
+                        if (noteOrdinal > 3) break;
+                        sender.sendMessage(localeManager.getMessage("print.inspect.note_entry", Map.of(
+                            "ordinal", String.valueOf(noteOrdinal),
                             "text", note.getText(),
                             "issuer", note.getIssuerName()
                         )));
-                        noteCount++;
+                        noteOrdinal++;
                     }
                     break;
                 }
             }
         }
         if (!hasNotes) {
-            sender.sendMessage(localeManager.getMessage("player_lookup.no_staff_notes"));
+            sender.sendMessage(localeManager.getMessage("print.inspect.no_notes"));
         }
 
         int totalPunishments = 0;
         if (data.getPunishmentStats() != null) {
             totalPunishments = data.getPunishmentStats().getTotalPunishments();
         }
-        sender.sendMessage(localeManager.getMessage("player_lookup.total_punishments", Map.of("count", String.valueOf(totalPunishments))));
+        sender.sendMessage(localeManager.getMessage("print.inspect.total_punishments", Map.of("count", String.valueOf(totalPunishments))));
 
-        sender.sendMessage(localeManager.getMessage("player_lookup.linked_accounts_label"));
+        sender.sendMessage(localeManager.getMessage("print.inspect.linked_accounts_label"));
         if (linkedResponse != null && linkedResponse.getLinkedAccounts() != null && !linkedResponse.getLinkedAccounts().isEmpty()) {
-            int accountCount = 0;
+            int accountOrdinal = 1;
             for (Account account : linkedResponse.getLinkedAccounts()) {
-                if (accountCount >= 5) break;
+                if (accountOrdinal > 5) break;
                 String currentName = account.getUsernames() != null && !account.getUsernames().isEmpty()
                     ? account.getUsernames().get(account.getUsernames().size() - 1).getUsername()
                     : "Unknown";
@@ -265,46 +365,49 @@ public class InspectCommand extends BaseCommand {
                     status = localeManager.getMessage("player_lookup.status.no_punishments");
                 }
 
-                sender.sendMessage(localeManager.getMessage("player_lookup.linked_account_format", Map.of(
+                sender.sendMessage(localeManager.getMessage("print.inspect.linked_account_entry", Map.of(
+                    "ordinal", String.valueOf(accountOrdinal),
                     "username", currentName,
                     "status", status
                 )));
-                accountCount++;
+                accountOrdinal++;
             }
             if (linkedResponse.getLinkedAccounts().size() > 5) {
-                sender.sendMessage(localeManager.getMessage("player_lookup.linked_account_more", Map.of(
+                sender.sendMessage(localeManager.getMessage("print.inspect.linked_account_more", Map.of(
                     "count", String.valueOf(linkedResponse.getLinkedAccounts().size() - 5)
                 )));
             }
         } else {
-            sender.sendMessage(localeManager.getMessage("player_lookup.no_linked_accounts"));
+            sender.sendMessage(localeManager.getMessage("print.inspect.no_linked_accounts"));
         }
 
         int totalTickets = 0;
         if (data.getRecentTickets() != null) {
             totalTickets = data.getRecentTickets().size();
         }
-        sender.sendMessage(localeManager.getMessage("player_lookup.total_tickets", Map.of("count", String.valueOf(totalTickets))));
+        sender.sendMessage(localeManager.getMessage("print.inspect.total_tickets", Map.of("count", String.valueOf(totalTickets))));
 
-        sender.sendMessage("");
+        sender.sendMessage(localeManager.getMessage("print.inspect.footer"));
+
         if (data.getMinecraftUuid() != null) {
             String profileUrl = panelUrl + "/panel?player=" + data.getMinecraftUuid();
-            String profileMessage = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"📋 \",\"color\":\"gold\"}," +
-                "{\"text\":\"View Web Profile\",\"color\":\"aqua\",\"underlined\":true," +
-                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view %s's profile\"}}]}",
-                profileUrl, data.getCurrentUsername()
-            );
 
             if (sender.isPlayer()) {
+                String profileMessage = String.format(
+                    "{\"text\":\"\",\"extra\":[" +
+                    "{\"text\":\"  \",\"color\":\"gold\"}," +
+                    "{\"text\":\"View Web Profile\",\"color\":\"aqua\",\"underlined\":true," +
+                    "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+                    "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view %s's profile\"}}]}",
+                    profileUrl, playerName
+                );
+
                 UUID senderUuid = sender.getUniqueId();
                 platform.runOnMainThread(() -> {
                     platform.sendJsonMessage(senderUuid, profileMessage);
                 });
             } else {
-                sender.sendMessage(localeManager.getMessage("player_lookup.profile_fallback", Map.of("url", profileUrl)));
+                sender.sendMessage(localeManager.getMessage("print.inspect.profile_fallback", Map.of("url", profileUrl)));
             }
         }
     }

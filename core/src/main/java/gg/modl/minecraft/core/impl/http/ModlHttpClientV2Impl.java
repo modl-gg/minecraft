@@ -119,7 +119,8 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 request.getMinecraftUuid(),
                 request.getUsername(),
                 request.getIpAddress(),
-                ipInfoMap
+                ipInfoMap,
+                request.getSkinHash()
         );
         String requestBody = gson.toJson(v2Request);
         if (debugMode) {
@@ -588,6 +589,26 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .header("Content-Type", "application/json")
                 .method("PATCH", HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<PunishmentDetailResponse> getPunishmentDetail(@NotNull String punishmentId) {
+        return sendAsync(requestBuilder("/minecraft/punishments/" + punishmentId)
+                .GET()
+                .build(), PunishmentDetailResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<EvidenceUploadTokenResponse> createEvidenceUploadToken(@NotNull String punishmentId, @NotNull String issuerName) {
+        Map<String, String> body = new HashMap<>();
+        body.put("issuerName", issuerName);
+
+        return sendAsync(requestBuilder("/minecraft/punishments/" + punishmentId + "/upload-token")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), EvidenceUploadTokenResponse.class);
     }
 
     private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {

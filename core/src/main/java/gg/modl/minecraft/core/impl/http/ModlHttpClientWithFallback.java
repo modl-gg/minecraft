@@ -468,6 +468,26 @@ public class ModlHttpClientWithFallback implements ModlHttpClient {
         );
     }
 
+    @NotNull
+    @Override
+    public CompletableFuture<PunishmentDetailResponse> getPunishmentDetail(@NotNull String punishmentId) {
+        return withFallback(
+                () -> v2Client.getPunishmentDetail(punishmentId),
+                () -> v1Client.getPunishmentDetail(punishmentId),
+                "getPunishmentDetail"
+        );
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<EvidenceUploadTokenResponse> createEvidenceUploadToken(@NotNull String punishmentId, @NotNull String issuerName) {
+        return withFallback(
+                () -> v2Client.createEvidenceUploadToken(punishmentId, issuerName),
+                () -> v1Client.createEvidenceUploadToken(punishmentId, issuerName),
+                "createEvidenceUploadToken"
+        );
+    }
+
     /**
      * Check if the client has fallen back to V1 API.
      * @return true if currently using V1 fallback

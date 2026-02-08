@@ -680,6 +680,30 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                 .build(), ClaimTicketResponse.class);
     }
 
+    @NotNull
+    @Override
+    public CompletableFuture<PunishmentDetailResponse> getPunishmentDetail(@NotNull String punishmentId) {
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/punishments/" + punishmentId))
+                .header("X-API-Key", apiKey)
+                .GET()
+                .build(), PunishmentDetailResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<EvidenceUploadTokenResponse> createEvidenceUploadToken(@NotNull String punishmentId, @NotNull String issuerName) {
+        java.util.Map<String, String> body = new java.util.HashMap<>();
+        body.put("issuerName", issuerName);
+
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/punishments/" + punishmentId + "/upload-token"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), EvidenceUploadTokenResponse.class);
+    }
+
     private String generateRequestId() {
         return String.valueOf(System.nanoTime() % 1000000);
     }

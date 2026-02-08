@@ -52,6 +52,7 @@ public final class Modification {
     public enum Type {
         MANUAL_DURATION_CHANGE,
         MANUAL_PARDON,
+        SYSTEM_PARDON,
         APPEAL_REJECT,
         APPEAL_DURATION_CHANGE,
         APPEAL_ACCEPT,

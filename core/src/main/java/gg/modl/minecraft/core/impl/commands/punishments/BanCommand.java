@@ -4,11 +4,16 @@ import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
 import gg.modl.minecraft.api.Account;
+import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.CreatePunishmentRequest;
+import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
+import gg.modl.minecraft.api.http.response.PunishmentCreateResponse;
+import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.TimeUtil;
 import lombok.RequiredArgsConstructor;
@@ -19,10 +24,14 @@ import java.util.concurrent.CompletableFuture;
 
 @RequiredArgsConstructor
 public class BanCommand extends BaseCommand {
-    private final ModlHttpClient httpClient;
+    private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
+
+    private ModlHttpClient getHttpClient() {
+        return httpClientHolder.getClient();
+    }
 
     @CommandCompletion("@players")
     @CommandAlias("ban")
@@ -36,12 +45,69 @@ public class BanCommand extends BaseCommand {
 
         // Parse arguments
         BanArgs banArgs = parseArguments(args);
-        
+
         // Get issuer information
-        final String issuerName = sender.isPlayer() ? 
+        final String issuerName = sender.isPlayer() ?
             platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
 
-        // Build punishment data as JsonObject
+        // Build punishment data
+        Map<String, Object> dataMap = new HashMap<>();
+        dataMap.put("reason", banArgs.reason.isEmpty() ? "No reason specified" : banArgs.reason);
+        dataMap.put("silent", banArgs.silent);
+        dataMap.put("altBlocking", banArgs.altBlocking);
+        dataMap.put("wipeAfterExpiry", banArgs.statWipe);
+        if (banArgs.duration > 0) {
+            dataMap.put("duration", banArgs.duration);
+        }
+
+        // Try V2 dynamic endpoint first for punishment ID
+        if (httpClientHolder.getApiVersion() != ApiVersion.V1) {
+            PunishmentCreateRequest v2Request = new PunishmentCreateRequest(
+                target.getMinecraftUuid().toString(),
+                issuerName,
+                2, // Manual ban ordinal
+                banArgs.reason.isEmpty() ? "No reason specified" : banArgs.reason,
+                banArgs.duration,
+                dataMap,
+                new ArrayList<>(),
+                new ArrayList<>(),
+                null, null
+            );
+
+            getHttpClient().createPunishmentWithResponse(v2Request).thenAccept(response -> {
+                if (response.isSuccess()) {
+                    String targetName = target.getUsernames().get(0).getUsername();
+
+                    sender.sendMessage(localeManager.punishment()
+                        .type("ban")
+                        .target(targetName)
+                        .duration(banArgs.duration)
+                        .punishmentId(response.getPunishmentId())
+                        .get("general.punishment_issued"));
+
+                    // Send action buttons if player
+                    if (sender.isPlayer() && response.getPunishmentId() != null) {
+                        platform.runOnMainThread(() -> {
+                            PunishmentActionMessages.sendPunishmentActions(platform, sender.getUniqueId(), response.getPunishmentId());
+                        });
+                    }
+                } else {
+                    sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
+                        Map.of("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
+                }
+            }).exceptionally(throwable -> {
+                if (throwable.getCause() instanceof PanelUnavailableException) {
+                    sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+                } else {
+                    sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
+                        Map.of("error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
+                }
+                return null;
+            });
+            return;
+        }
+
+        // Fallback to V1 API
         JsonObject data = new JsonObject();
         data.addProperty("reason", banArgs.reason.isEmpty() ? "No reason specified" : banArgs.reason);
         data.addProperty("silent", banArgs.silent);
@@ -51,43 +117,26 @@ public class BanCommand extends BaseCommand {
             data.addProperty("duration", banArgs.duration);
         }
 
-        // Create manual punishment request for ban (ordinal 2)
         CreatePunishmentRequest request = new CreatePunishmentRequest(
             target.getMinecraftUuid().toString(),
             issuerName,
-            2, // Manual ban ordinal
+            2,
             banArgs.reason.isEmpty() ? "No reason specified" : banArgs.reason,
             banArgs.duration,
-            data, // Pass the JsonObject with all punishment data
-            new ArrayList<>(), // notes
-            new ArrayList<>()  // attachedTicketIds
+            data,
+            new ArrayList<>(),
+            new ArrayList<>()
         );
 
-        // Make copies for lambda usage
-        final boolean silentBan = banArgs.silent;
-        final String durationStr = banArgs.duration > 0 ? TimeUtil.formatTimeMillis(banArgs.duration) : "permanent";
-
-        // Send manual punishment request (uses /minecraft/punishment/create endpoint)
-        CompletableFuture<Void> future = httpClient.createPunishment(request);
-        
-        future.thenAccept(response -> {
+        getHttpClient().createPunishment(request).thenAccept(response -> {
             String targetName = target.getUsernames().get(0).getUsername();
-            
-            // Success message to issuer
+
             sender.sendMessage(localeManager.punishment()
                 .type("ban")
                 .target(targetName)
                 .duration(banArgs.duration)
                 .get("general.punishment_issued"));
 
-            // Staff notification
-            String staffMessage = localeManager.punishment()
-                .issuer(issuerName)
-                .type("ban")
-                .target(targetName)
-                .get("general.staff_notification");
-            platform.staffBroadcast(staffMessage);
-            
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
@@ -102,12 +151,12 @@ public class BanCommand extends BaseCommand {
     private BanArgs parseArguments(String args) {
         String[] arguments = args.split(" ");
         BanArgs result = new BanArgs();
-        
+
         StringBuilder reasonBuilder = new StringBuilder();
-        
+
         for (int i = 0; i < arguments.length; i++) {
             String arg = arguments[i];
-            
+
             if (arg.equalsIgnoreCase("-silent") || arg.equalsIgnoreCase("-s")) {
                 result.silent = true;
             } else if (arg.equalsIgnoreCase("-alt-blocking") || arg.equalsIgnoreCase("-ab")) {
@@ -128,25 +177,9 @@ public class BanCommand extends BaseCommand {
                 }
             }
         }
-        
+
         result.reason = reasonBuilder.toString().trim();
         return result;
-    }
-
-    /**
-     * Get public notification message for manual ban using ordinal 2
-     */
-    private String getPublicNotificationMessage(String targetName, long duration) {
-        boolean isTemporary = duration > 0;
-        
-        Map<String, String> variables = Map.of(
-            "target", targetName,
-            "duration", localeManager.formatDuration(duration)
-        );
-        
-        // Use ordinal 2 for manual ban
-        String messagePath = isTemporary ? "public_notification.temporary" : "public_notification.permanent";
-        return localeManager.getPunishmentTypeMessage(2, messagePath, variables);
     }
 
     private static class BanArgs {
