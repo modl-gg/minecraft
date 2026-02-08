@@ -69,6 +69,7 @@ public class SyncService {
     // V2 upgrade settings
     private final String serverDomain;
     private final boolean useTestingApi;
+    private final boolean debugMode;
     private boolean hasUpgradedToV2 = false;
     private int v2CheckCounter = 0;
     private static final int V2_CHECK_INTERVAL = 30; // Check V2 every 30 sync cycles
@@ -90,7 +91,7 @@ public class SyncService {
                        @NotNull String apiKey, int pollingRateSeconds, @NotNull File dataFolder,
                        DatabaseConfig databaseConfig) {
         this(platform, httpClientHolder, cache, logger, localeManager, apiUrl, apiKey, pollingRateSeconds,
-             dataFolder, databaseConfig, null, false);
+             dataFolder, databaseConfig, null, false, false);
     }
 
     /**
@@ -100,7 +101,7 @@ public class SyncService {
                        @NotNull Logger logger, @NotNull LocaleManager localeManager, @NotNull String apiUrl,
                        @NotNull String apiKey, int pollingRateSeconds, @NotNull File dataFolder,
                        DatabaseConfig databaseConfig,
-                       String serverDomain, boolean useTestingApi) {
+                       String serverDomain, boolean useTestingApi, boolean debugMode) {
         this.platform = platform;
         this.httpClientHolder = httpClientHolder;
         this.cache = cache;
@@ -113,6 +114,7 @@ public class SyncService {
         this.databaseConfig = databaseConfig;
         this.serverDomain = serverDomain;
         this.useTestingApi = useTestingApi;
+        this.debugMode = debugMode;
     }
 
     public interface PunishmentTypesRefreshListener {
@@ -147,7 +149,9 @@ public class SyncService {
         
         // Perform initial diagnostic check only for V1 API (V2 already validated during HttpManager init)
         if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
-            logger.info("MODL Sync service starting - performing initial diagnostic check...");
+            if (debugMode) {
+                logger.info("MODL Sync service starting - performing initial diagnostic check...");
+            }
             performDiagnosticCheck();
         }
 
@@ -156,7 +160,9 @@ public class SyncService {
         syncExecutor.scheduleAtFixedRate(this::performSync, initialDelay, actualPollingRate, TimeUnit.SECONDS);
         isRunning = true;
         
-        logger.info("MODL Sync service started - syncing every " + actualPollingRate + " seconds");
+        if (debugMode) {
+            logger.info("MODL Sync service started - syncing every " + actualPollingRate + " seconds");
+        }
     }
     
     /**
@@ -185,7 +191,9 @@ public class SyncService {
         }
         
         isRunning = false;
-        logger.info("MODL Sync service stopped");
+        if (debugMode) {
+            logger.info("MODL Sync service stopped");
+        }
     }
     
     /**
@@ -193,10 +201,12 @@ public class SyncService {
      */
     private void performDiagnosticCheck() {
         try {
-            logger.info("Diagnostic: Testing API connectivity...");
-            logger.info("Diagnostic: API Base URL: " + apiUrl);
-            logger.info("Diagnostic: API Key: " + (apiKey.length() > 8 ? 
-                apiKey.substring(0, 8) + "..." : "***"));
+            if (debugMode) {
+                logger.info("Diagnostic: Testing API connectivity...");
+                logger.info("Diagnostic: API Base URL: " + apiUrl);
+                logger.info("Diagnostic: API Key: " + (apiKey.length() > 8 ?
+                    apiKey.substring(0, 8) + "..." : "***"));
+            }
             
             // First, test basic connectivity to the panel URL
             testBasicConnectivity();
@@ -214,8 +224,10 @@ public class SyncService {
             
             CompletableFuture<SyncResponse> testFuture = httpClientHolder.getClient().sync(testRequest);
             testFuture.thenAccept(response -> {
-                logger.info("Diagnostic: API connectivity test PASSED");
-                logger.info("Diagnostic: Server response timestamp: " + response.getTimestamp());
+                if (debugMode) {
+                    logger.info("Diagnostic: API connectivity test PASSED");
+                    logger.info("Diagnostic: Server response timestamp: " + response.getTimestamp());
+                }
             }).exceptionally(throwable -> {
                 if (throwable.getCause() instanceof PanelUnavailableException) {
                     logger.warning("Diagnostic: Panel is temporarily unavailable (502 error) - likely restarting");
@@ -249,7 +261,9 @@ public class SyncService {
      */
     private void testBasicConnectivity() {
         try {
-            logger.info("Diagnostic: Testing basic connectivity to " + apiUrl);
+            if (debugMode) {
+                logger.info("Diagnostic: Testing basic connectivity to " + apiUrl);
+            }
             URL url = new URL(apiUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("HEAD");
@@ -257,10 +271,14 @@ public class SyncService {
             connection.setReadTimeout(5000);
             
             int responseCode = connection.getResponseCode();
-            logger.info("Diagnostic: Basic connectivity test - Response code: " + responseCode);
-            
+            if (debugMode) {
+                logger.info("Diagnostic: Basic connectivity test - Response code: " + responseCode);
+            }
+
             if (responseCode >= 200 && responseCode < 400) {
-                logger.info("Diagnostic: Panel server is reachable");
+                if (debugMode) {
+                    logger.info("Diagnostic: Panel server is reachable");
+                }
             } else if (responseCode == 502) {
                 logger.warning("Diagnostic: Panel server returned 502 - server may be misconfigured");
             } else {
@@ -337,7 +355,9 @@ public class SyncService {
             String v2BaseUrl = useTestingApi ? HttpManager.TESTING_API_URL : HttpManager.V2_API_URL;
             String healthUrl = v2BaseUrl + "/v1/health";
 
-            logger.info("Checking V2 API availability at: " + healthUrl);
+            if (debugMode) {
+                logger.info("Checking V2 API availability at: " + healthUrl);
+            }
 
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(5))
@@ -455,6 +475,13 @@ public class SyncService {
         for (SyncResponse.PlayerNotification notification : data.getPlayerNotifications()) {
             processPlayerNotification(notification);
         }
+
+        // Process staff notifications
+        if (data.getStaffNotifications() != null) {
+            for (SyncResponse.StaffNotification staffNotif : data.getStaffNotifications()) {
+                processStaffNotification(staffNotif);
+            }
+        }
         
         // Process migration task if present
         if (data.getMigrationTask() != null) {
@@ -464,7 +491,9 @@ public class SyncService {
         // Check for staff permissions updates
         Long newStaffTimestamp = data.getStaffPermissionsUpdatedAt();
         if (newStaffTimestamp != null && !newStaffTimestamp.equals(lastKnownStaffPermissionsTimestamp)) {
-            logger.info("Staff permissions changed (timestamp: " + newStaffTimestamp + "), refreshing...");
+            if (debugMode) {
+                logger.info("Staff permissions changed (timestamp: " + newStaffTimestamp + "), refreshing...");
+            }
             refreshStaffPermissions();
             lastKnownStaffPermissionsTimestamp = newStaffTimestamp;
         }
@@ -472,7 +501,9 @@ public class SyncService {
         // Check for punishment types updates
         Long newPunishmentTypesTimestamp = data.getPunishmentTypesUpdatedAt();
         if (newPunishmentTypesTimestamp != null && !newPunishmentTypesTimestamp.equals(lastKnownPunishmentTypesTimestamp)) {
-            logger.info("Punishment types changed (timestamp: " + newPunishmentTypesTimestamp + "), refreshing...");
+            if (debugMode) {
+                logger.info("Punishment types changed (timestamp: " + newPunishmentTypesTimestamp + "), refreshing...");
+            }
             refreshPunishmentTypes();
             lastKnownPunishmentTypesTimestamp = newPunishmentTypesTimestamp;
         }
@@ -493,7 +524,9 @@ public class SyncService {
                     }
                 }
             }
-            logger.info("Staff permissions refreshed: " + loadedCount + " staff members");
+            if (debugMode) {
+                logger.info("Staff permissions refreshed: " + loadedCount + " staff members");
+            }
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 logger.warning("Failed to refresh staff permissions: Panel temporarily unavailable");
@@ -514,7 +547,9 @@ public class SyncService {
                         logger.warning("Error notifying punishment types listener: " + e.getMessage());
                     }
                 }
-                logger.info("Punishment types refreshed: " + response.getData().size() + " types");
+                if (debugMode) {
+                    logger.info("Punishment types refreshed: " + response.getData().size() + " types");
+                }
             }
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
@@ -531,8 +566,10 @@ public class SyncService {
      */
     private void processMigrationTask(SyncResponse.MigrationTask migrationTask) {
         try {
-            logger.info(String.format("Processing migration task %s (type: %s)", 
-                migrationTask.getTaskId(), migrationTask.getType()));
+            if (debugMode) {
+                logger.info(String.format("Processing migration task %s (type: %s)",
+                        migrationTask.getTaskId(), migrationTask.getType()));
+            }
             
             // Initialize migration service if not already done
             if (migrationService == null) {
@@ -542,7 +579,9 @@ public class SyncService {
                     
                     if (databaseProvider == null) {
                         // LiteBans not available, use JDBC
-                        logger.info("[Migration] LiteBans not available, using JDBC connection");
+                        if (debugMode) {
+                            logger.info("[Migration] LiteBans not available, using JDBC connection");
+                        }
                         databaseProvider = new JdbcDatabaseProvider(databaseConfig, logger);
                     }
                     
@@ -565,7 +604,9 @@ public class SyncService {
                         // Upload the file to panel
                         migrationService.uploadMigrationFile(jsonFile, taskId).thenAccept(success -> {
                             if (success) {
-                                logger.info("[Migration] Migration task " + taskId + " completed successfully");
+                                if (debugMode) {
+                                    logger.info("[Migration] Migration task " + taskId + " completed successfully");
+                                }
                             } else {
                                 logger.warning("[Migration] Migration task " + taskId + " upload failed");
                             }
@@ -596,9 +637,11 @@ public class SyncService {
         String username = pending.getUsername();
         SimplePunishment punishment = pending.getPunishment();
         
-        logger.info(String.format("Processing pending punishment %s for %s - Type: '%s', Ordinal: %d, isBan: %s, isMute: %s, isKick: %s", 
-                punishment.getId(), username, punishment.getType(), punishment.getOrdinal(), 
-                punishment.isBan(), punishment.isMute(), punishment.isKick()));
+        if (debugMode) {
+            logger.info(String.format("Processing pending punishment %s for %s - Type: '%s', Ordinal: %d, isBan: %s, isMute: %s, isKick: %s",
+                    punishment.getId(), username, punishment.getType(), punishment.getOrdinal(),
+                    punishment.isBan(), punishment.isMute(), punishment.isKick()));
+        }
         
         // Execute on main thread for platform-specific operations
         platform.runOnMainThread(() -> {
@@ -641,13 +684,19 @@ public class SyncService {
             AbstractPlayer player = platform.getPlayer(uuid);
             
             if (punishment.isBan()) {
-                logger.info(String.format("Executing BAN for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
+                if (debugMode) {
+                    logger.info(String.format("Executing BAN for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
+                }
                 return executeBan(uuid, username, punishment);
             } else if (punishment.isMute()) {
-                logger.info(String.format("Executing MUTE for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
+                if (debugMode) {
+                    logger.info(String.format("Executing MUTE for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
+                }
                 return executeMute(uuid, username, punishment);
             } else if (punishment.isKick()) {
-                logger.info(String.format("Executing KICK for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
+                if (debugMode) {
+                    logger.info(String.format("Executing KICK for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
+                }
                 return executeKick(uuid, username, punishment);
             } else {
                 logger.warning(String.format("Unknown punishment type for %s - Type: '%s', Ordinal: %d, isBan: %s, isMute: %s, isKick: %s", 
@@ -674,7 +723,9 @@ public class SyncService {
             String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "muted", localeManager);
             platform.broadcast(broadcastMessage);
             
-            logger.info(String.format("Successfully executed mute for %s: %s", username, punishment.getDescription()));
+            if (debugMode) {
+                logger.info(String.format("Successfully executed mute for %s: %s", username, punishment.getDescription()));
+            }
             return true;
         } catch (Exception e) {
             logger.severe("Error executing mute: " + e.getMessage());
@@ -699,7 +750,9 @@ public class SyncService {
             String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "banned", localeManager);
             platform.broadcast(broadcastMessage);
             
-            logger.info(String.format("Successfully executed ban for %s: %s", username, punishment.getDescription()));
+            if (debugMode) {
+                logger.info(String.format("Successfully executed ban for %s: %s", username, punishment.getDescription()));
+            }
             return true;
         } catch (Exception e) {
             logger.severe("Error executing ban: " + e.getMessage());
@@ -723,10 +776,14 @@ public class SyncService {
                 String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "kicked", localeManager);
                 platform.broadcast(broadcastMessage);
                 
-                logger.info(String.format("Successfully executed kick for %s: %s", username, punishment.getDescription()));
+                if (debugMode) {
+                    logger.info(String.format("Successfully executed kick for %s: %s", username, punishment.getDescription()));
+                }
                 return true;
             } else {
-                logger.info(String.format("Player %s is not online, kick punishment ignored", username));
+                if (debugMode) {
+                    logger.info(String.format("Player %s is not online, kick punishment ignored", username));
+                }
                 return true; // Still considered successful since player is offline
             }
         } catch (Exception e) {
@@ -753,7 +810,7 @@ public class SyncService {
                     handleDurationChange(uuid, username, punishmentId, modification.getEffectiveDuration());
                     break;
                 default:
-                    logger.info("Unknown modification type: " + modification.getType());
+                    logger.warning("Unknown modification type: " + modification.getType());
             }
         } catch (Exception e) {
             logger.severe("Error handling punishment modification: " + e.getMessage());
@@ -774,7 +831,9 @@ public class SyncService {
         if (cachedMute != null && cachedMute.getId().equals(punishmentId)) {
             cache.removeMute(uuid);
             wasMute = true;
-            logger.info(String.format("Removed cached mute for %s (punishment %s)", username, punishmentId));
+            if (debugMode) {
+                logger.info(String.format("Removed cached mute for %s (punishment %s)", username, punishmentId));
+            }
         }
 
         // Check cached ban (in case player was banned while online)
@@ -782,7 +841,9 @@ public class SyncService {
         if (cachedBan != null && cachedBan.getId().equals(punishmentId)) {
             cache.removeBan(uuid);
             wasBan = true;
-            logger.info(String.format("Removed cached ban for %s (punishment %s)", username, punishmentId));
+            if (debugMode) {
+                logger.info(String.format("Removed cached ban for %s (punishment %s)", username, punishmentId));
+            }
         }
 
         // If neither matched by ID, try removing both (fallback for older data)
@@ -790,10 +851,14 @@ public class SyncService {
             // Remove any cached punishment data for safety
             cache.removeMute(uuid);
             cache.removeBan(uuid);
-            logger.info(String.format("Cleared all cached punishments for %s (punishment %s not found in cache)", username, punishmentId));
+            if (debugMode) {
+                logger.info(String.format("Cleared all cached punishments for %s (punishment %s not found in cache)", username, punishmentId));
+            }
         }
 
-        logger.info(String.format("Pardoned punishment %s for %s", punishmentId, username));
+        if (debugMode) {
+            logger.info(String.format("Pardoned punishment %s for %s", punishmentId, username));
+        }
         platform.broadcast(String.format("§a%s has been pardoned", username));
     }
     
@@ -804,8 +869,10 @@ public class SyncService {
         // Update cache if needed
         // Implementation depends on specific cache structure
         
-        logger.info(String.format("Updated punishment %s duration for %s to %d ms", 
-                punishmentId, username, newDuration));
+        if (debugMode) {
+            logger.info(String.format("Updated punishment %s duration for %s to %d ms",
+                    punishmentId, username, newDuration));
+        }
     }
     
     /**
@@ -822,8 +889,10 @@ public class SyncService {
         
         httpClientHolder.getClient().acknowledgePunishment(request)
                 .thenAccept(response -> {
-                    logger.info(String.format("Acknowledged punishment %s execution: %s", 
-                            punishmentId, success ? "SUCCESS" : "FAILED"));
+                    if (debugMode) {
+                        logger.info(String.format("Acknowledged punishment %s execution: %s",
+                                punishmentId, success ? "SUCCESS" : "FAILED"));
+                    }
                 })
                 .exceptionally(throwable -> {
                     if (throwable.getCause() instanceof PanelUnavailableException) {
@@ -854,7 +923,7 @@ public class SyncService {
                 cache.cacheStaffMember(uuid, staffMember);
 
                 // Only log when data is new or changed
-                if (isNew || permissionsChanged) {
+                if (debugMode && (isNew || permissionsChanged)) {
                     logger.info(String.format("Staff member data %s for %s (%s) - Role: %s, Permissions: %s",
                             isNew ? "loaded" : "updated",
                             staffMember.getMinecraftUsername(),
@@ -869,12 +938,37 @@ public class SyncService {
     }
     
     /**
+     * Process a staff notification - send to all online staff with notifications enabled
+     */
+    private void processStaffNotification(SyncResponse.StaffNotification notification) {
+        try {
+            String formattedMessage = "\u00A7e[Staff] \u00A7f" + notification.getMessage();
+
+            Collection<AbstractPlayer> onlinePlayers = platform.getOnlinePlayers();
+            for (AbstractPlayer player : onlinePlayers) {
+                UUID playerUuid = player.getUuid();
+                if (cache.isStaffMemberByPermissions(playerUuid) && cache.isStaffNotificationsEnabled(playerUuid)) {
+                    platform.sendMessage(playerUuid, formattedMessage);
+                }
+            }
+
+            if (debugMode) {
+                logger.info(String.format("Processed staff notification: %s", notification.getMessage()));
+            }
+        } catch (Exception e) {
+            logger.warning("Error processing staff notification: " + e.getMessage());
+        }
+    }
+
+    /**
      * Process a player notification
      */
     private void processPlayerNotification(SyncResponse.PlayerNotification notification) {
         try {
-            logger.info(String.format("Processing notification %s (type: %s): %s",
-                    notification.getId(), notification.getType(), notification.getMessage()));
+            if (debugMode) {
+                logger.info(String.format("Processing notification %s (type: %s): %s",
+                        notification.getId(), notification.getType(), notification.getMessage()));
+            }
 
             // Check if this notification has a target player UUID
             String targetPlayerUuid = notification.getTargetPlayerUuid();
@@ -936,7 +1030,9 @@ public class SyncService {
                     notification.getMessage().replace("\"", "\\\""), ticketUrl, ticketId
                 );
 
-                logger.info("Sending clickable notification JSON: " + message);
+                if (debugMode) {
+                    logger.info("Sending clickable notification JSON: " + message);
+                }
 
                 platform.runOnMainThread(() -> {
                     platform.sendJsonMessage(playerUuid, message);
@@ -952,14 +1048,18 @@ public class SyncService {
                 });
             }
 
-            logger.info(String.format("Delivered notification %s to online player %s",
-                    notification.getId(), player.getName()));
+            if (debugMode) {
+                logger.info(String.format("Delivered notification %s to online player %s",
+                        notification.getId(), player.getName()));
+            }
             return true;
         } else {
             // Player is offline - don't cache here, the notification stays in backend pending list
             // It will be delivered when the player comes online and triggers a sync
-            logger.info(String.format("Player %s is offline, notification %s will be delivered on next login",
-                    playerUuid, notification.getId()));
+            if (debugMode) {
+                logger.info(String.format("Player %s is offline, notification %s will be delivered on next login",
+                        playerUuid, notification.getId()));
+            }
             return false;
         }
     }
@@ -968,8 +1068,10 @@ public class SyncService {
      * Deliver a notification immediately for a player who just logged in
      */
     public void deliverLoginNotification(UUID playerUuid, SyncResponse.PlayerNotification notification) {
-        logger.info(String.format("Delivering login notification %s to player %s", 
-                notification.getId(), playerUuid));
+        if (debugMode) {
+            logger.info(String.format("Delivering login notification %s to player %s",
+                    notification.getId(), playerUuid));
+        }
         deliverNotificationToPlayer(playerUuid, notification);
     }
     
@@ -1015,8 +1117,10 @@ public class SyncService {
             // Create a copy of the list to avoid ConcurrentModificationException
             List<Cache.PendingNotification> notificationsToProcess = new ArrayList<>(pendingNotifications);
             
-            logger.info(String.format("Delivering %d pending notifications to player %s", 
-                    notificationsToProcess.size(), playerUuid));
+            if (debugMode) {
+                logger.info(String.format("Delivering %d pending notifications to player %s",
+                        notificationsToProcess.size(), playerUuid));
+            }
             
             List<String> deliveredNotificationIds = new ArrayList<>();
             List<String> expiredNotificationIds = new ArrayList<>();
@@ -1145,11 +1249,15 @@ public class SyncService {
                     // Track for acknowledgment and removal
                     deliveredIds.add(pending.getId());
                     
-                    logger.info(String.format("Delivered pending notification %s to player %s", 
-                            pending.getId(), playerUuid));
+                    if (debugMode) {
+                        logger.info(String.format("Delivered pending notification %s to player %s",
+                                pending.getId(), playerUuid));
+                    }
                 } else {
                     // Player disconnected, stop delivery
-                    logger.info(String.format("Player %s disconnected during notification delivery", playerUuid));
+                    if (debugMode) {
+                        logger.info(String.format("Player %s disconnected during notification delivery", playerUuid));
+                    }
                     return;
                 }
             }
@@ -1185,8 +1293,10 @@ public class SyncService {
                 acknowledgeNotifications(playerUuid, deliveredIds);
             }
             
-            logger.info(String.format("Completed pending notification delivery for player %s. " +
-                    "Delivered: %d, Expired: %d", playerUuid, deliveredIds.size(), expiredIds.size()));
+            if (debugMode) {
+                logger.info(String.format("Completed pending notification delivery for player %s. " +
+                        "Delivered: %d, Expired: %d", playerUuid, deliveredIds.size(), expiredIds.size()));
+            }
                     
         } catch (Exception e) {
             logger.severe("Error finalizing pending notification delivery: " + e.getMessage());
@@ -1230,8 +1340,10 @@ public class SyncService {
             
             httpClientHolder.getClient().acknowledgeNotifications(request)
                     .thenAccept(response -> {
-                        logger.info(String.format("Acknowledged %d notifications for player %s", 
-                                notificationIds.size(), playerUuid));
+                        if (debugMode) {
+                            logger.info(String.format("Acknowledged %d notifications for player %s",
+                                    notificationIds.size(), playerUuid));
+                        }
                     })
                     .exceptionally(throwable -> {
                         if (throwable.getCause() instanceof PanelUnavailableException) {

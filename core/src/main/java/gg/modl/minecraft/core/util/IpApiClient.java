@@ -47,12 +47,11 @@ public class IpApiClient {
                 
                 int responseCode = connection.getResponseCode();
                 if (responseCode == 429) {
-                    // Rate limited - fail soft, don't log as error
-                    logger.fine("IP API rate limited, skipping lookup for " + ipAddress);
+                    logger.warning("IP API rate limited, skipping lookup for " + ipAddress);
                     return null;
                 }
                 if (responseCode != 200) {
-                    logger.fine("IP API returned " + responseCode + " for " + ipAddress + ", skipping");
+                    logger.warning("IP API returned " + responseCode + " for " + ipAddress + ", skipping");
                     return null;
                 }
 
@@ -75,7 +74,7 @@ public class IpApiClient {
                     return jsonResponse;
                 } else {
                     String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Unknown error";
-                    logger.fine("IP API returned error for " + ipAddress + ": " + message);
+                    logger.warning("IP API returned error for " + ipAddress + ": " + message);
                     return null;
                 }
             } catch (Exception e) {

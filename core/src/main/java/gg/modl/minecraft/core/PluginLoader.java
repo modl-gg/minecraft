@@ -74,7 +74,9 @@ public class PluginLoader {
         // Try to load locale from external file if it exists
         Path localeFile = dataDirectory.resolve("locale").resolve("en_US.yml");
         if (Files.exists(localeFile)) {
-            logger.info("Loading locale from external file: " + localeFile);
+            if (httpManager.isDebugHttp()) {
+                logger.info("Loading locale from external file: " + localeFile);
+            }
             this.localeManager.loadFromFile(localeFile);
         }
 
@@ -90,14 +92,16 @@ public class PluginLoader {
         // Initialize sync service with configurable polling rate and V2 upgrade support
         this.syncService = new SyncService(platform, httpClientHolder, cache, logger, this.localeManager,
                 httpManager.getApiUrl(), httpManager.getApiKey(), syncPollingRateSeconds, dataDirectory.toFile(), databaseConfig,
-                httpManager.getServerDomain(), httpManager.isUseTestingApi());
+                httpManager.getServerDomain(), httpManager.isUseTestingApi(), httpManager.isDebugHttp());
         
-        // Log configuration details
-        logger.info("MODL Configuration:");
-        logger.info("  API URL: " + httpManager.getApiUrl());
-        logger.info("  API Key: " + (httpManager.getApiKey().length() > 8 ? 
-            httpManager.getApiKey().substring(0, 8) + "..." : "***"));
-        logger.info("  Debug Mode: " + httpManager.isDebugHttp());
+        // Log configuration details (only in debug mode)
+        if (httpManager.isDebugHttp()) {
+            logger.info("MODL Configuration:");
+            logger.info("  API URL: " + httpManager.getApiUrl());
+            logger.info("  API Key: " + (httpManager.getApiKey().length() > 8 ?
+                httpManager.getApiKey().substring(0, 8) + "..." : "***"));
+            logger.info("  Debug Mode: " + httpManager.isDebugHttp());
+        }
         
         // Start sync service
         syncService.start();
@@ -131,7 +135,7 @@ public class PluginLoader {
         syncService.addPunishmentTypesListener(punishCommand::updatePunishmentTypesCache);
 
         // Initialize staff permissions cache at startup
-        initializeStaffPermissions(httpManager.getHttpClient(), cache, logger);
+        initializeStaffPermissions(httpManager.getHttpClient(), cache, logger, httpManager.isDebugHttp());
 
         // Register reload command
         commandManager.registerCommand(new ModlReloadCommand(platform, cache, this.localeManager));
@@ -209,7 +213,6 @@ public class PluginLoader {
                 if (config != null && config.containsKey("locale_config")) {
                     Map<String, Object> localeConfig = (Map<String, Object>) config.get("locale_config");
                     this.localeManager.setConfigValues(localeConfig);
-                    logger.info("Loaded locale config values from config.yml");
                 }
             }
         } catch (Exception e) {
@@ -383,8 +386,10 @@ public class PluginLoader {
         });
     }
 
-    private static void initializeStaffPermissions(ModlHttpClient httpClient, Cache cache, Logger logger) {
-        logger.info("Initializing staff permissions cache...");
+    private static void initializeStaffPermissions(ModlHttpClient httpClient, Cache cache, Logger logger, boolean debugMode) {
+        if (debugMode) {
+            logger.info("Initializing staff permissions cache...");
+        }
         httpClient.getStaffPermissions().thenAccept(response -> {
             int loadedCount = 0;
             for (var staffMember : response.getData().getStaff()) {
@@ -398,7 +403,9 @@ public class PluginLoader {
                     }
                 }
             }
-            logger.info("Staff permissions initialized: " + loadedCount + " staff members cached");
+            if (debugMode) {
+                logger.info("Staff permissions initialized: " + loadedCount + " staff members cached");
+            }
         }).exceptionally(throwable -> {
             logger.warning("Failed to initialize staff permissions: " + throwable.getMessage());
             return null;

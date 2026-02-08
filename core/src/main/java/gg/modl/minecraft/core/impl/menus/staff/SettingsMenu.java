@@ -93,15 +93,15 @@ public class SettingsMenu extends BaseStaffMenu {
                 MenuItems.lore(infoLore)
         ).slot(MenuSlots.SETTINGS_INFO));
 
-        // Slot 30: Report Notifications toggle
+        // Slot 30: Staff Notifications toggle
         Cache cache = platform.getCache();
-        boolean reportNotificationsEnabled = cache != null && cache.isReportNotificationsEnabled(viewerUuid);
+        boolean staffNotificationsEnabled = cache != null && cache.isStaffNotificationsEnabled(viewerUuid);
         set(CirrusItem.of(
-                reportNotificationsEnabled ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Report Notifications: " +
-                        (reportNotificationsEnabled ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
+                staffNotificationsEnabled ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Staff Notifications: " +
+                        (staffNotificationsEnabled ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
                 MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Toggle report notifications"
+                        MenuItems.COLOR_GRAY + "Toggle staff notifications"
                 )
         ).slot(MenuSlots.SETTINGS_NOTIFICATIONS).actionHandler("toggleNotifications"));
 
@@ -211,9 +211,9 @@ public class SettingsMenu extends BaseStaffMenu {
     private void handleToggleNotifications(Click click) {
         Cache cache = platform.getCache();
         if (cache != null) {
-            boolean currentValue = cache.isReportNotificationsEnabled(viewerUuid);
-            cache.setReportNotificationsEnabled(viewerUuid, !currentValue);
-            sendMessage(MenuItems.COLOR_GREEN + "Report notifications " + (!currentValue ? "enabled" : "disabled"));
+            boolean currentValue = cache.isStaffNotificationsEnabled(viewerUuid);
+            cache.setStaffNotificationsEnabled(viewerUuid, !currentValue);
+            sendMessage(MenuItems.COLOR_GREEN + "Staff notifications " + (!currentValue ? "enabled" : "disabled"));
         } else {
             sendMessage(MenuItems.COLOR_RED + "Unable to save preference - cache unavailable");
         }

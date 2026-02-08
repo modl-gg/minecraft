@@ -73,6 +73,10 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
             if (response != null && response.getRoles() != null) {
                 roles.clear();
                 for (RolesListResponse.RoleEntry entry : response.getRoles()) {
+                    // Hide Super Admin role from the list
+                    if ("Super Admin".equals(entry.getName())) {
+                        continue;
+                    }
                     roles.add(new Role(
                             entry.getId(),
                             entry.getName(),
@@ -140,6 +144,16 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
     protected void handleClick(Click click, Role role) {
         if (role.getId() == null || "no_permission".equals(role.getId()) || !hasPermission) {
             return;
+        }
+
+        // Prevent editing own role
+        Cache cache = platform.getCache();
+        if (cache != null) {
+            String viewerRole = cache.getStaffRole(viewerUuid);
+            if (viewerRole != null && viewerRole.equals(role.getName())) {
+                sendMessage(MenuItems.COLOR_RED + "You cannot edit your own role.");
+                return;
+            }
         }
 
         // Open role permission edit menu - back action re-fetches roles

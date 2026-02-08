@@ -478,7 +478,8 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> submitIpInfo(@NotNull String minecraftUUID, @NotNull String ip,
                                                  String country, String region, String asn, boolean proxy, boolean hosting) {
-        // V1 API does not support this endpoint
+        // V1 API does not support this endpoint - log a warning so it's visible
+        logger.warning("submitIpInfo called on V1 client which does not support this endpoint - IP geo data will not be stored");
         return CompletableFuture.completedFuture(null);
     }
 

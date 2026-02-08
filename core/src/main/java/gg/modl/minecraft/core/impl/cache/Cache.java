@@ -249,6 +249,15 @@ public class Cache {
     public boolean isStaffMemberByPermissions(UUID playerUuid) {
         return staffPermissionsCache.containsKey(playerUuid);
     }
+
+    /**
+     * Get the staff role name for a player
+     * @return The staff role name, or null if not a staff member
+     */
+    public String getStaffRole(UUID playerUuid) {
+        StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
+        return staffPerms != null ? staffPerms.getStaffRole() : null;
+    }
     
     // ==================== NOTIFICATION MANAGEMENT ====================
     
@@ -370,23 +379,23 @@ public class Cache {
     }
 
     /**
-     * Check if report notifications are enabled for a staff member
+     * Check if staff notifications are enabled for a staff member
      */
-    public boolean isReportNotificationsEnabled(UUID playerUuid) {
-        return getStaffPreferences(playerUuid).isReportNotificationsEnabled();
+    public boolean isStaffNotificationsEnabled(UUID playerUuid) {
+        return getStaffPreferences(playerUuid).isStaffNotificationsEnabled();
     }
 
     /**
-     * Set report notifications preference for a staff member
+     * Set staff notifications preference for a staff member
      */
-    public void setReportNotificationsEnabled(UUID playerUuid, boolean enabled) {
-        getStaffPreferences(playerUuid).setReportNotificationsEnabled(enabled);
+    public void setStaffNotificationsEnabled(UUID playerUuid, boolean enabled) {
+        getStaffPreferences(playerUuid).setStaffNotificationsEnabled(enabled);
     }
 
     @Getter
     @Setter
     public static class StaffPreferences {
-        private boolean reportNotificationsEnabled = true; // Default enabled
+        private boolean staffNotificationsEnabled = true; // Default enabled
 
         public StaffPreferences() {}
     }

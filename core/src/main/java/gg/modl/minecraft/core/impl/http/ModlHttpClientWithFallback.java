@@ -284,11 +284,8 @@ public class ModlHttpClientWithFallback implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> submitIpInfo(@NotNull String minecraftUUID, @NotNull String ip,
                                                  String country, String region, String asn, boolean proxy, boolean hosting) {
-        return withFallback(
-                () -> v2Client.submitIpInfo(minecraftUUID, ip, country, region, asn, proxy, hosting),
-                () -> v1Client.submitIpInfo(minecraftUUID, ip, country, region, asn, proxy, hosting),
-                "submitIpInfo"
-        );
+        // Always use V2 directly - V1 does not support this endpoint
+        return v2Client.submitIpInfo(minecraftUUID, ip, country, region, asn, proxy, hosting);
     }
 
     @NotNull

@@ -64,6 +64,10 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             "admin.audit.view",
             // Punishment permissions
             "punishment.modify",
+            "punishment.apply.kick",
+            "punishment.apply.manual-mute",
+            "punishment.apply.manual-ban",
+            "punishment.apply.blacklist",
             // Ticket permissions
             "ticket.view.all",
             "ticket.reply.all",
@@ -82,7 +86,9 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         activeTab = StaffTab.SETTINGS;
 
         Cache cache = platform.getCache();
-        this.hasPermission = cache != null && cache.hasPermission(viewerUuid, "admin.settings.modify");
+        // Prevent editing the Super Admin role
+        boolean isSuperAdmin = "Super Admin".equals(role.getName());
+        this.hasPermission = !isSuperAdmin && cache != null && cache.hasPermission(viewerUuid, "admin.settings.modify");
 
         // Initialize permissions from role data
         enabledPermissions = new HashSet<>(role.getPermissions());
@@ -186,14 +192,20 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             enabledPermissions.remove(permission.getNode());
         }
 
-        // Refresh menu with updated local state
+        // Create new menu for fresh render, but preserve permission order
         RoleListMenu.Role localRole = new RoleListMenu.Role(
                 role.getId(), role.getName(), role.getDescription(), new ArrayList<>(enabledPermissions));
         RolePermissionEditMenu newMenu = new RolePermissionEditMenu(
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, localRole, backAction);
-        // Preserve original permissions for change tracking
         newMenu.originalPermissions.clear();
         newMenu.originalPermissions.addAll(this.originalPermissions);
+
+        // Copy permission order from current menu instead of the reconstructed order
+        newMenu.allPermissions.clear();
+        for (Permission p : this.allPermissions) {
+            newMenu.allPermissions.add(new Permission(p.getNode(), enabledPermissions.contains(p.getNode())));
+        }
+
         ActionHandlers.openMenu(newMenu).handle(click);
     }
 

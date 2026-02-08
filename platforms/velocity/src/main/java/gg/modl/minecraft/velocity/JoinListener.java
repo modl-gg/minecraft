@@ -43,6 +43,7 @@ public class JoinListener {
     private final SyncService syncService;
     private final String panelUrl;
     private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
+    private final boolean debugMode;
 
     /**
      * Get the current HTTP client from the holder.
@@ -86,25 +87,27 @@ public class JoinListener {
             CompletableFuture<PlayerLoginResponse> loginFuture = getHttpClient().playerLogin(request);
             PlayerLoginResponse response = loginFuture.get(5, TimeUnit.SECONDS); // 5 second timeout
 
-            logger.info(String.format("Login response for %s: status=%d, punishments=%s",
-                    event.getPlayer().getUsername(),
-                    response.getStatus(),
-                    response.getActivePunishments()));
+            if (debugMode) {
+                logger.info(String.format("Login response for %s: status=%d, punishments=%s",
+                        event.getPlayer().getUsername(),
+                        response.getStatus(),
+                        response.getActivePunishments()));
 
-            if (response.getActivePunishments() != null) {
-                for (SimplePunishment p : response.getActivePunishments()) {
-                    logger.info(String.format("Punishment: type='%s', isBan=%s, isMute=%s, started=%s, id=%s",
-                            p.getType(), p.isBan(), p.isMute(), p.isStarted(), p.getId()));
+                if (response.getActivePunishments() != null) {
+                    for (SimplePunishment p : response.getActivePunishments()) {
+                        logger.info(String.format("Punishment: type='%s', isBan=%s, isMute=%s, started=%s, id=%s",
+                                p.getType(), p.isBan(), p.isMute(), p.isStarted(), p.getId()));
+                    }
                 }
+
+                logger.info(String.format("Login response for %s: hasBan=%s, hasMute=%s",
+                        event.getPlayer().getUsername(),
+                        response.hasActiveBan(),
+                        response.hasActiveMute()));
             }
 
-            logger.info(String.format("Login response for %s: hasBan=%s, hasMute=%s",
-                    event.getPlayer().getUsername(),
-                    response.hasActiveBan(),
-                    response.hasActiveMute()));
-
             // Handle pending IP lookups requested by the backend
-            handlePendingIpLookups(response, event.getPlayer().getUniqueId().toString());
+            handlePendingIpLookups(response, event.getPlayer().getUniqueId().toString(), ipAddress, ipInfoFuture);
 
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
@@ -112,8 +115,10 @@ public class JoinListener {
                 Component kickMessage = Colors.get(banText);
                 event.setResult(ResultedEvent.ComponentResult.denied(kickMessage));
 
-                logger.info(String.format("Denied login for %s due to active ban: %s",
-                        event.getPlayer().getUsername(), ban.getDescription()));
+                if (debugMode) {
+                    logger.info(String.format("Denied login for %s due to active ban: %s",
+                            event.getPlayer().getUsername(), ban.getDescription()));
+                }
 
                 // Acknowledge ban enforcement if it wasn't started yet
                 if (!ban.isStarted()) {
@@ -124,8 +129,10 @@ public class JoinListener {
                 if (response.hasActiveMute()) {
                     SimplePunishment mute = response.getActiveMute();
                     cache.cacheMute(event.getPlayer().getUniqueId(), mute);
-                    logger.info(String.format("Cached active mute for %s: %s",
-                            event.getPlayer().getUsername(), mute.getDescription()));
+                    if (debugMode) {
+                        logger.info(String.format("Cached active mute for %s: %s",
+                                event.getPlayer().getUsername(), mute.getDescription()));
+                    }
                 }
 
                 // Process pending notifications from login response
@@ -142,7 +149,9 @@ public class JoinListener {
 
                 event.setResult(ResultedEvent.ComponentResult.allowed());
 
-                logger.info(String.format("Allowed login for %s", event.getPlayer().getUsername()));
+                if (debugMode) {
+                    logger.info(String.format("Allowed login for %s", event.getPlayer().getUsername()));
+                }
             }
         } catch (PanelUnavailableException e) {
             // Panel is restarting (502 error) - deny login for safety to prevent banned players from connecting
@@ -214,7 +223,9 @@ public class JoinListener {
             );
             
             getHttpClient().acknowledgePunishment(request).thenAccept(response -> {
-                logger.info("Successfully acknowledged ban enforcement for punishment " + ban.getId());
+                if (debugMode) {
+                    logger.info("Successfully acknowledged ban enforcement for punishment " + ban.getId());
+                }
             }).exceptionally(throwable -> {
                 logger.error("Failed to acknowledge ban enforcement for punishment " + ban.getId(), throwable);
                 return null;
@@ -226,13 +237,17 @@ public class JoinListener {
     
     /**
      * Handle pending IP lookups requested by the backend.
+     * Reuses the original ipInfoFuture for the player's current IP to avoid redundant API calls.
      */
-    private void handlePendingIpLookups(PlayerLoginResponse response, String minecraftUUID) {
+    private void handlePendingIpLookups(PlayerLoginResponse response, String minecraftUUID, String originalIp, CompletableFuture<JsonObject> originalIpInfoFuture) {
         if (response.getPendingIpLookups() == null || response.getPendingIpLookups().isEmpty()) {
             return;
         }
         for (String ip : response.getPendingIpLookups()) {
-            IpApiClient.getIpInfo(ip).thenAccept(ipInfo -> {
+            CompletableFuture<JsonObject> ipInfoFuture = ip.equals(originalIp) && originalIpInfoFuture != null
+                    ? originalIpInfoFuture
+                    : IpApiClient.getIpInfo(ip);
+            ipInfoFuture.thenAccept(ipInfo -> {
                 if (ipInfo != null && ipInfo.has("status") && "success".equals(ipInfo.get("status").getAsString())) {
                     getHttpClient().submitIpInfo(
                             minecraftUUID,

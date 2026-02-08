@@ -46,6 +46,7 @@ public class BungeeListener implements Listener {
     private final SyncService syncService;
     private final String panelUrl;
     private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
+    private final boolean debugMode;
 
     /**
      * Get the current HTTP client from the holder.
@@ -91,7 +92,7 @@ public class BungeeListener implements Listener {
             PlayerLoginResponse response = loginFuture.get(5, TimeUnit.SECONDS); // 5 second timeout
             
             // Handle pending IP lookups requested by the backend
-            handlePendingIpLookups(response, event.getConnection().getUniqueId().toString());
+            handlePendingIpLookups(response, event.getConnection().getUniqueId().toString(), ipAddress, ipInfoFuture);
 
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
@@ -286,7 +287,9 @@ public class BungeeListener implements Listener {
             );
             
             getHttpClient().acknowledgePunishment(request).thenAccept(response -> {
-                platform.getLogger().info("Successfully acknowledged ban enforcement for punishment " + ban.getId());
+                if (debugMode) {
+                    platform.getLogger().info("Successfully acknowledged ban enforcement for punishment " + ban.getId());
+                }
             }).exceptionally(throwable -> {
                 platform.getLogger().severe("Failed to acknowledge ban enforcement for punishment " + ban.getId() + ": " + throwable.getMessage());
                 return null;
@@ -298,13 +301,17 @@ public class BungeeListener implements Listener {
     
     /**
      * Handle pending IP lookups requested by the backend.
+     * Reuses the original ipInfoFuture for the player's current IP to avoid redundant API calls.
      */
-    private void handlePendingIpLookups(gg.modl.minecraft.api.http.response.PlayerLoginResponse response, String minecraftUUID) {
+    private void handlePendingIpLookups(gg.modl.minecraft.api.http.response.PlayerLoginResponse response, String minecraftUUID, String originalIp, CompletableFuture<JsonObject> originalIpInfoFuture) {
         if (response.getPendingIpLookups() == null || response.getPendingIpLookups().isEmpty()) {
             return;
         }
         for (String ip : response.getPendingIpLookups()) {
-            IpApiClient.getIpInfo(ip).thenAccept(ipInfo -> {
+            CompletableFuture<JsonObject> ipInfoFuture = ip.equals(originalIp) && originalIpInfoFuture != null
+                    ? originalIpInfoFuture
+                    : IpApiClient.getIpInfo(ip);
+            ipInfoFuture.thenAccept(ipInfo -> {
                 if (ipInfo != null && ipInfo.has("status") && "success".equals(ipInfo.get("status").getAsString())) {
                     getHttpClient().submitIpInfo(
                             minecraftUUID,

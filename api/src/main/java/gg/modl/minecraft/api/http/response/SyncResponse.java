@@ -39,6 +39,8 @@ public class SyncResponse {
 
         private MigrationTask migrationTask;
 
+        private List<StaffNotification> staffNotifications;
+
         private Long staffPermissionsUpdatedAt;
 
         private Long punishmentTypesUpdatedAt;
@@ -136,6 +138,16 @@ public class SyncResponse {
         private String email;
     }
     
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class StaffNotification {
+        private String id;
+        private String type;    // TICKET_CREATED, PUNISHMENT_ISSUED, PUNISHMENT_PARDONED
+        private String message;
+        private Long timestamp;
+    }
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
