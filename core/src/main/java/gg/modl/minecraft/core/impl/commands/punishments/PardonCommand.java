@@ -7,10 +7,12 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Modification;
 import gg.modl.minecraft.api.Punishment;
+import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PardonPunishmentRequest;
 import gg.modl.minecraft.api.http.request.PlayerNameRequest;
+import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -18,14 +20,19 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class PardonCommand extends BaseCommand {
-    private final ModlHttpClient httpClient;
+    private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
+
+    private ModlHttpClient getHttpClient() {
+        return httpClientHolder.getClient();
+    }
 
     @CommandCompletion("@players")
     @CommandAlias("pardon")
@@ -33,6 +40,11 @@ public class PardonCommand extends BaseCommand {
     @Description("Pardon all of a player's active and unstarted punishments")
     @Conditions("permission:value=punishment.modify")
     public void pardon(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
+        if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
+            sender.sendMessage(localeManager.getMessage("pardon.disabled_v1"));
+            return;
+        }
+
         final String issuerName = sender.isPlayer() ?
             platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
 
@@ -48,6 +60,11 @@ public class PardonCommand extends BaseCommand {
     @Description("Unban a player by name or punishment ID")
     @Conditions("permission:value=punishment.modify")
     public void unban(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
+        if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
+            sender.sendMessage(localeManager.getMessage("pardon.disabled_v1"));
+            return;
+        }
+
         final String issuerName = sender.isPlayer() ?
             platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
 
@@ -63,6 +80,11 @@ public class PardonCommand extends BaseCommand {
     @Description("Unmute a player by name or punishment ID")
     @Conditions("permission:value=punishment.modify")
     public void unmute(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
+        if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
+            sender.sendMessage(localeManager.getMessage("pardon.disabled_v1"));
+            return;
+        }
+
         final String issuerName = sender.isPlayer() ?
             platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
 
@@ -79,7 +101,7 @@ public class PardonCommand extends BaseCommand {
     private void pardonAllByPlayerName(CommandIssuer sender, String playerName, String issuerName, String reason) {
         sender.sendMessage(localeManager.getMessage("pardon.processing_player", Map.of("player", playerName)));
 
-        httpClient.getPlayer(new PlayerNameRequest(playerName)).thenAccept(response -> {
+        getHttpClient().getPlayer(new PlayerNameRequest(playerName)).thenAccept(response -> {
             if (!response.isSuccess() || response.getPlayer() == null) {
                 sender.sendMessage(localeManager.getMessage("pardon.player_not_found", Map.of("player", playerName)));
                 return;
@@ -111,7 +133,7 @@ public class PardonCommand extends BaseCommand {
     private void pardonSingleByPlayerName(CommandIssuer sender, String playerName, String issuerName, String reason, String type) {
         sender.sendMessage(localeManager.getMessage("pardon.processing_player", Map.of("player", playerName)));
 
-        httpClient.getPlayer(new PlayerNameRequest(playerName)).thenAccept(response -> {
+        getHttpClient().getPlayer(new PlayerNameRequest(playerName)).thenAccept(response -> {
             if (!response.isSuccess() || response.getPlayer() == null) {
                 sender.sendMessage(localeManager.getMessage("pardon.player_not_found", Map.of("player", playerName)));
                 return;
@@ -158,6 +180,7 @@ public class PardonCommand extends BaseCommand {
     private void pardonPunishmentList(CommandIssuer sender, List<Punishment> punishments, String playerName, String issuerName, String reason, String type) {
         AtomicInteger pardoned = new AtomicInteger(0);
         AtomicInteger failed = new AtomicInteger(0);
+        AtomicReference<String> firstError = new AtomicReference<>();
         int total = punishments.size();
 
         for (Punishment p : punishments) {
@@ -165,14 +188,16 @@ public class PardonCommand extends BaseCommand {
                 p.getId(), issuerName, reason.isEmpty() ? null : reason, null
             );
 
-            httpClient.pardonPunishment(request).thenAccept(pardonResponse -> {
+            getHttpClient().pardonPunishment(request).thenAccept(pardonResponse -> {
                 if (pardonResponse.hasPardoned()) {
                     pardoned.incrementAndGet();
                 }
-                checkCompletion(sender, pardoned, failed, total, playerName, issuerName, type);
+                checkCompletion(sender, pardoned, failed, firstError, total, playerName, issuerName, type);
             }).exceptionally(ex -> {
+                Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                firstError.compareAndSet(null, cause.getMessage());
                 failed.incrementAndGet();
-                checkCompletion(sender, pardoned, failed, total, playerName, issuerName, type);
+                checkCompletion(sender, pardoned, failed, firstError, total, playerName, issuerName, type);
                 return null;
             });
         }
@@ -181,7 +206,7 @@ public class PardonCommand extends BaseCommand {
     /**
      * Check if all pardon requests completed and send the final message.
      */
-    private void checkCompletion(CommandIssuer sender, AtomicInteger pardoned, AtomicInteger failed, int total, String playerName, String issuerName, String type) {
+    private void checkCompletion(CommandIssuer sender, AtomicInteger pardoned, AtomicInteger failed, AtomicReference<String> firstError, int total, String playerName, String issuerName, String type) {
         if (pardoned.get() + failed.get() < total) {
             return; // Not all done yet
         }
@@ -199,8 +224,9 @@ public class PardonCommand extends BaseCommand {
         }
 
         if (failed.get() > 0 && pardonedCount == 0) {
+            String errorMsg = firstError.get() != null ? firstError.get() : "Unknown error";
             sender.sendMessage(localeManager.getMessage("pardon.error",
-                Map.of("error", "Failed to pardon " + failed.get() + " punishment(s)")));
+                Map.of("error", localeManager.sanitizeErrorMessage(errorMsg))));
         }
     }
 
@@ -257,7 +283,7 @@ public class PardonCommand extends BaseCommand {
             target, issuerName, reason.isEmpty() ? null : reason, expectedType
         );
 
-        httpClient.pardonPunishment(request).thenAccept(response -> {
+        getHttpClient().pardonPunishment(request).thenAccept(response -> {
             if (response.hasPardoned()) {
                 sender.sendMessage(localeManager.getMessage("pardon.success_id",
                     Map.of("id", target)));

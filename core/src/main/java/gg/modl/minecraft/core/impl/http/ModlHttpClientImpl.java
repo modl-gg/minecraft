@@ -445,12 +445,8 @@ public class ModlHttpClientImpl implements ModlHttpClient {
 
     @Override
     public CompletableFuture<PardonResponse> pardonPunishment(@NotNull PardonPunishmentRequest request) {
-        return sendAsync(HttpRequest.newBuilder()
-                        .uri(URI.create(baseUrl + "/minecraft/punishments/" + request.getPunishmentId() + "/pardon"))
-                        .header("X-API-Key", apiKey)
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
-                        .build(), PardonResponse.class);
+        // V1 API does not support pardon-by-punishment-ID; return failure so callers can fall back to player-based pardon
+        return CompletableFuture.failedFuture(new RuntimeException("Sorry! Pardoning from Minecraft temporarily disabled, use panel."));
     }
 
     @Override

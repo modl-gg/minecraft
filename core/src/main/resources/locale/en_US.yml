@@ -373,7 +373,7 @@ api_errors:
   panel_unavailable: "&cThe panel is temporarily unavailable. Please try again shortly."
   connection_failed: "&cConnection to panel failed. Please try again in a moment."
   ban_check_failed: "&cUnable to verify ban status. Login temporarily restricted for safety."
-  menus_require_v2: "&cIn-game menus require the V2 API. The new API will become available on 2/1/2026."
+  menus_require_v2: "&cIn-game menus require the V2 API. The new API will become available on 02/11/2026."
 
 # Pardon Command Messages
 pardon:
@@ -389,6 +389,7 @@ pardon:
   error_wrong_type_mute: "&cPunishment &e#{id}&c is not a mute. Use &e/pardon {id}&c to pardon any punishment type."
   staff_notification_id: "&7&o[{issuer}: pardoned punishment #{id}&7&o]"
   staff_notification_player: "&7&o[{issuer}: pardoned {player}'s {type}&7&o]"
+  disabled_v1: "&cThis feature is temporarily disabled in-game until 2/11/2026 as part of V2 migration. Please use the panel instead."
 
 # Warning Command Messages
 warn:

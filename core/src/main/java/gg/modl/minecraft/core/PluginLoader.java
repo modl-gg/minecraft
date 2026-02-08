@@ -5,6 +5,7 @@ import co.aikar.commands.CommandManager;
 import co.aikar.commands.ConditionFailedException;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
+import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PlayerNameRequest;
 import gg.modl.minecraft.api.http.response.PlayerNameResponse;
@@ -67,6 +68,7 @@ public class PluginLoader {
         platform.setCache(cache);
 
         this.httpClientHolder = httpManager.getHttpClientHolder();
+        PermissionUtil.setHttpClientHolder(this.httpClientHolder);
 
         // Initialize locale manager with support for external locale files
         this.localeManager = new LocaleManager();
@@ -149,7 +151,7 @@ public class PluginLoader {
         commandManager.registerCommand(new MuteCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
         commandManager.registerCommand(new KickCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
         commandManager.registerCommand(new BlacklistCommand(httpClientHolder, platform, cache, this.localeManager));
-        commandManager.registerCommand(new PardonCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
+        commandManager.registerCommand(new PardonCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new WarnCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
         
         // Register player commands
