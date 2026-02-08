@@ -71,13 +71,12 @@ public class ReportsCommand extends BaseCommand {
             return;
         }
 
-        // Console can't open GUI - reject without -p
+        // Console always uses print mode
         if (!sender.isPlayer()) {
-            if (printMode) {
-                // -p without player not supported for console
-                sender.sendMessage(localeManager.getMessage("general.invalid_syntax"));
+            if (actualPlayerQuery != null && !actualPlayerQuery.isEmpty()) {
+                printPlayerReports(sender, actualPlayerQuery);
             } else {
-                sender.sendMessage(localeManager.getMessage("general.gui_requires_player"));
+                sender.sendMessage(localeManager.getMessage("general.invalid_syntax"));
             }
             return;
         }

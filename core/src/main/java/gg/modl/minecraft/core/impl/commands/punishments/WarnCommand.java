@@ -46,7 +46,7 @@ public class WarnCommand extends BaseCommand {
             platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
 
         // Create the note text for the profile
-        final String noteText = String.format("WARNING: %s (by %s)", warnArgs.reason, issuerName);
+        final String noteText = String.format("WARNING: %s", warnArgs.reason);
 
         // Create note request
         CreatePlayerNoteRequest noteRequest = new CreatePlayerNoteRequest(

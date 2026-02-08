@@ -52,13 +52,9 @@ public class HistoryCommand extends BaseCommand {
     public void history(CommandIssuer sender, @Name("player") String playerQuery, @Default("") String flags) {
         boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
 
-        // Console can't open GUI - auto-use print mode with -p, otherwise reject
+        // Console always uses print mode
         if (!sender.isPlayer()) {
-            if (printMode) {
-                printHistory(sender, playerQuery);
-            } else {
-                sender.sendMessage(localeManager.getMessage("general.gui_requires_player"));
-            }
+            printHistory(sender, playerQuery);
             return;
         }
 

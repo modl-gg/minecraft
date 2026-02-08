@@ -100,13 +100,9 @@ public class InspectCommand extends BaseCommand {
 
         boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
 
-        // Console can't open GUI - auto-use print mode with -p, otherwise reject
+        // Console always uses print mode
         if (!sender.isPlayer()) {
-            if (printMode) {
-                printLookup(sender, playerQuery);
-            } else {
-                sender.sendMessage(localeManager.getMessage("general.gui_requires_player"));
-            }
+            printLookup(sender, playerQuery);
             return;
         }
 

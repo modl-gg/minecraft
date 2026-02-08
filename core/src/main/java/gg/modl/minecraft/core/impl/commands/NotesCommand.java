@@ -50,13 +50,9 @@ public class NotesCommand extends BaseCommand {
     public void notes(CommandIssuer sender, @Name("player") String playerQuery, @Default("") String flags) {
         boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
 
-        // Console can't open GUI - auto-use print mode with -p, otherwise reject
+        // Console always uses print mode
         if (!sender.isPlayer()) {
-            if (printMode) {
-                printNotes(sender, playerQuery);
-            } else {
-                sender.sendMessage(localeManager.getMessage("general.gui_requires_player"));
-            }
+            printNotes(sender, playerQuery);
             return;
         }
 

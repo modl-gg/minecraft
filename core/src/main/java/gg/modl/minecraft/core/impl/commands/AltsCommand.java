@@ -49,13 +49,9 @@ public class AltsCommand extends BaseCommand {
     public void alts(CommandIssuer sender, @Name("player") String playerQuery, @Default("") String flags) {
         boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
 
-        // Console can't open GUI - auto-use print mode with -p, otherwise reject
+        // Console always uses print mode
         if (!sender.isPlayer()) {
-            if (printMode) {
-                printAlts(sender, playerQuery);
-            } else {
-                sender.sendMessage(localeManager.getMessage("general.gui_requires_player"));
-            }
+            printAlts(sender, playerQuery);
             return;
         }
 
