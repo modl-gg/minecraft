@@ -109,6 +109,9 @@ public class SpigotListener implements Listener {
                         // Store for sync event
                         loginCache.storePreLoginResult(event.getUniqueId(),
                             new LoginCache.PreLoginResult(response, ipInfo, skinHash));
+
+                        // Handle pending IP lookups requested by the backend
+                        handlePendingIpLookups(response, event.getUniqueId().toString());
                     });
             })
             .exceptionally(throwable -> {
@@ -373,6 +376,38 @@ public class SpigotListener implements Listener {
         }
     }
     
+    /**
+     * Handle pending IP lookups requested by the backend.
+     * The backend sends a list of IPs that need geo data (first-time IPs).
+     * We look them up using the free ip-api.com and submit the results back.
+     */
+    private void handlePendingIpLookups(PlayerLoginResponse response, String minecraftUUID) {
+        if (response.getPendingIpLookups() == null || response.getPendingIpLookups().isEmpty()) {
+            return;
+        }
+        for (String ip : response.getPendingIpLookups()) {
+            IpApiClient.getIpInfo(ip).thenAccept(ipInfo -> {
+                if (ipInfo != null && ipInfo.has("status") && "success".equals(ipInfo.get("status").getAsString())) {
+                    getHttpClient().submitIpInfo(
+                            minecraftUUID,
+                            ip,
+                            ipInfo.has("countryCode") ? ipInfo.get("countryCode").getAsString() : null,
+                            ipInfo.has("regionName") ? ipInfo.get("regionName").getAsString() : null,
+                            ipInfo.has("as") ? ipInfo.get("as").getAsString() : null,
+                            ipInfo.has("proxy") && ipInfo.get("proxy").getAsBoolean(),
+                            ipInfo.has("hosting") && ipInfo.get("hosting").getAsBoolean()
+                    ).exceptionally(throwable -> {
+                        platform.getLogger().warning("Failed to submit IP info for " + ip + ": " + throwable.getMessage());
+                        return null;
+                    });
+                }
+            }).exceptionally(throwable -> {
+                platform.getLogger().warning("Failed to lookup IP " + ip + ": " + throwable.getMessage());
+                return null;
+            });
+        }
+    }
+
     /**
      * Convert a map from the login response to a PlayerNotification object
      */

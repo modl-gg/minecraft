@@ -104,11 +104,22 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<PlayerLoginResponse> playerLogin(@NotNull PlayerLoginRequest request) {
-        // Convert to V2 format - backend expects only minecraftUUID, username, ip
+        // Convert to V2 format with optional IP geo data
+        Map<String, Object> ipInfoMap = null;
+        if (request.getIpInfo() != null) {
+            ipInfoMap = new HashMap<>();
+            com.google.gson.JsonObject ipInfo = request.getIpInfo();
+            if (ipInfo.has("countryCode")) ipInfoMap.put("country", ipInfo.get("countryCode").getAsString());
+            if (ipInfo.has("regionName")) ipInfoMap.put("region", ipInfo.get("regionName").getAsString());
+            if (ipInfo.has("as")) ipInfoMap.put("asn", ipInfo.get("as").getAsString());
+            if (ipInfo.has("proxy")) ipInfoMap.put("proxy", ipInfo.get("proxy").getAsBoolean());
+            if (ipInfo.has("hosting")) ipInfoMap.put("hosting", ipInfo.get("hosting").getAsBoolean());
+        }
         V2LoginRequest v2Request = new V2LoginRequest(
                 request.getMinecraftUuid(),
                 request.getUsername(),
-                request.getIpAddress()
+                request.getIpAddress(),
+                ipInfoMap
         );
         String requestBody = gson.toJson(v2Request);
         if (debugMode) {
@@ -356,6 +367,17 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         return sendAsync(requestBuilder("/minecraft/migration/progress")
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> submitIpInfo(@NotNull String minecraftUUID, @NotNull String ip,
+                                                 String country, String region, String asn, boolean proxy, boolean hosting) {
+        V2SubmitIpInfoRequest v2Request = new V2SubmitIpInfoRequest(minecraftUUID, ip, country, region, asn, proxy, hosting);
+        return sendAsync(requestBuilder("/minecraft/players/submit-ip-info")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
                 .build(), Void.class);
     }
 

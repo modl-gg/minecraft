@@ -15,6 +15,7 @@ public class PlayerLoginResponse {
     private int status;
     private List<SimplePunishment> activePunishments;
     private List<Map<String, Object>> pendingNotifications;
+    private List<String> pendingIpLookups;
     
     public boolean hasActiveBan() {
         return activePunishments != null && activePunishments.stream().anyMatch(SimplePunishment::isBan);

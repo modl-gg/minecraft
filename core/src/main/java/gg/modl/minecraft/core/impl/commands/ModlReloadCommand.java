@@ -21,7 +21,7 @@ public class ModlReloadCommand extends BaseCommand {
     @Default
     @Description("")
     public void showHelp(CommandIssuer sender) {
-        sender.sendMessage("§a§lmodl.gg§a v" + PluginInfo.VERSION + "§e - Moderation and Support Management System");
+        sender.sendMessage("§a§lmodl.gg§a v" + PluginInfo.VERSION + "§f - §eModeration and Support Management System");
         sender.sendMessage("§7GNU AGPLv3 Free Software. Use /modl help for command information.");
     }
 

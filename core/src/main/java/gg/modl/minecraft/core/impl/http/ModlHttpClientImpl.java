@@ -476,6 +476,14 @@ public class ModlHttpClientImpl implements ModlHttpClient {
 
     @NotNull
     @Override
+    public CompletableFuture<Void> submitIpInfo(@NotNull String minecraftUUID, @NotNull String ip,
+                                                 String country, String region, String asn, boolean proxy, boolean hosting) {
+        // V1 API does not support this endpoint
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @NotNull
+    @Override
     public CompletableFuture<OnlinePlayersResponse> getOnlinePlayers() {
         return sendAsync(HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/minecraft/players/online"))

@@ -54,29 +54,23 @@ public class JoinListener {
     @Subscribe
     public void onLogin(LoginEvent event) {
         String ipAddress = event.getPlayer().getRemoteAddress().getAddress().getHostAddress();
-        
-        // Get IP information asynchronously but wait for it (with timeout)
+
+        // Start IP lookup and skin hash fetch in parallel (non-blocking)
+        CompletableFuture<JsonObject> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
+        CompletableFuture<String> skinHashFuture = WebPlayer.get(event.getPlayer().getUniqueId())
+                .thenApply(wp -> wp != null && wp.valid() ? wp.skin() : null)
+                .exceptionally(t -> null);
+
+        // Don't block login on IP lookup - use what's immediately available
         JsonObject ipInfo = null;
-        try {
-            CompletableFuture<JsonObject> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
-            ipInfo = ipInfoFuture.get(3, TimeUnit.SECONDS); // 3 second timeout
-        } catch (Exception e) {
-            logger.warn("Failed to get IP info for {} within timeout: {}", ipAddress, e.getMessage());
-            // Continue without IP info
-        }
-        
-        // Get player skin hash for punishment tracking
         String skinHash = null;
         try {
-            WebPlayer webPlayer = WebPlayer.get(event.getPlayer().getUniqueId()).get(3, TimeUnit.SECONDS);
-            if (webPlayer != null && webPlayer.valid()) {
-                skinHash = webPlayer.skin();
-            }
+            ipInfo = ipInfoFuture.getNow(null);
+            skinHash = skinHashFuture.getNow(null);
         } catch (Exception e) {
-            logger.warn("Failed to get skin hash for {}: {}", event.getPlayer().getUsername(), e.getMessage());
-            // Continue without skin hash
+            // Continue without - backend will request IP lookup via pendingIpLookups
         }
-        
+
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getUsername(),
@@ -108,6 +102,9 @@ public class JoinListener {
                     event.getPlayer().getUsername(),
                     response.hasActiveBan(),
                     response.hasActiveMute()));
+
+            // Handle pending IP lookups requested by the backend
+            handlePendingIpLookups(response, event.getPlayer().getUniqueId().toString());
 
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
@@ -227,6 +224,36 @@ public class JoinListener {
         }
     }
     
+    /**
+     * Handle pending IP lookups requested by the backend.
+     */
+    private void handlePendingIpLookups(PlayerLoginResponse response, String minecraftUUID) {
+        if (response.getPendingIpLookups() == null || response.getPendingIpLookups().isEmpty()) {
+            return;
+        }
+        for (String ip : response.getPendingIpLookups()) {
+            IpApiClient.getIpInfo(ip).thenAccept(ipInfo -> {
+                if (ipInfo != null && ipInfo.has("status") && "success".equals(ipInfo.get("status").getAsString())) {
+                    getHttpClient().submitIpInfo(
+                            minecraftUUID,
+                            ip,
+                            ipInfo.has("countryCode") ? ipInfo.get("countryCode").getAsString() : null,
+                            ipInfo.has("regionName") ? ipInfo.get("regionName").getAsString() : null,
+                            ipInfo.has("as") ? ipInfo.get("as").getAsString() : null,
+                            ipInfo.has("proxy") && ipInfo.get("proxy").getAsBoolean(),
+                            ipInfo.has("hosting") && ipInfo.get("hosting").getAsBoolean()
+                    ).exceptionally(throwable -> {
+                        logger.warn("Failed to submit IP info for {}: {}", ip, throwable.getMessage());
+                        return null;
+                    });
+                }
+            }).exceptionally(throwable -> {
+                logger.warn("Failed to lookup IP {}: {}", ip, throwable.getMessage());
+                return null;
+            });
+        }
+    }
+
     /**
      * Convert a map from the login response to a PlayerNotification object
      */

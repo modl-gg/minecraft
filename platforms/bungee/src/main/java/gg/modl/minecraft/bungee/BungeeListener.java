@@ -58,29 +58,24 @@ public class BungeeListener implements Listener {
     public void onLogin(LoginEvent event) {
         // Extract clean IP address from socket address
         String ipAddress = extractIpAddress(event.getConnection().getSocketAddress());
-        
-        // Get IP information asynchronously but wait for it (with timeout)
+
+        // Start IP lookup and skin hash fetch in parallel (non-blocking)
+        CompletableFuture<JsonObject> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
+        CompletableFuture<String> skinHashFuture = WebPlayer.get(event.getConnection().getUniqueId())
+                .thenApply(wp -> wp != null && wp.valid() ? wp.skin() : null)
+                .exceptionally(t -> null);
+
+        // Wait briefly for both to complete, but don't block login
         JsonObject ipInfo = null;
-        try {
-            CompletableFuture<JsonObject> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
-            ipInfo = ipInfoFuture.get(3, TimeUnit.SECONDS); // 3 second timeout
-        } catch (Exception e) {
-            platform.getLogger().warning("Failed to get IP info for " + ipAddress + " within timeout: " + e.getMessage());
-            // Continue without IP info
-        }
-        
-        // Get player skin hash for punishment tracking
         String skinHash = null;
         try {
-            WebPlayer webPlayer = WebPlayer.get(event.getConnection().getUniqueId()).get(3, TimeUnit.SECONDS);
-            if (webPlayer != null && webPlayer.valid()) {
-                skinHash = webPlayer.skin();
-            }
+            // Give parallel tasks a short window before proceeding
+            ipInfo = ipInfoFuture.getNow(null);
+            skinHash = skinHashFuture.getNow(null);
         } catch (Exception e) {
-            platform.getLogger().warning("Failed to get skin hash for " + event.getConnection().getName() + ": " + e.getMessage());
-            // Continue without skin hash
+            // Continue without - backend will request IP lookup via pendingIpLookups
         }
-        
+
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getConnection().getUniqueId().toString(),
                 event.getConnection().getName(),
@@ -95,13 +90,16 @@ public class BungeeListener implements Listener {
             CompletableFuture<PlayerLoginResponse> loginFuture = getHttpClient().playerLogin(request);
             PlayerLoginResponse response = loginFuture.get(5, TimeUnit.SECONDS); // 5 second timeout
             
+            // Handle pending IP lookups requested by the backend
+            handlePendingIpLookups(response, event.getConnection().getUniqueId().toString());
+
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
                 String banText = PunishmentMessages.formatBanMessage(ban, localeManager, MessageContext.LOGIN);
                 TextComponent kickMessage = new TextComponent(banText);
                 event.setCancelReason(kickMessage);
                 event.setCancelled(true);
-                
+
                 // Acknowledge ban enforcement if it wasn't started yet
                 if (!ban.isStarted()) {
                     acknowledgeBanEnforcement(ban, event.getConnection().getUniqueId().toString());
@@ -298,6 +296,36 @@ public class BungeeListener implements Listener {
         }
     }
     
+    /**
+     * Handle pending IP lookups requested by the backend.
+     */
+    private void handlePendingIpLookups(gg.modl.minecraft.api.http.response.PlayerLoginResponse response, String minecraftUUID) {
+        if (response.getPendingIpLookups() == null || response.getPendingIpLookups().isEmpty()) {
+            return;
+        }
+        for (String ip : response.getPendingIpLookups()) {
+            IpApiClient.getIpInfo(ip).thenAccept(ipInfo -> {
+                if (ipInfo != null && ipInfo.has("status") && "success".equals(ipInfo.get("status").getAsString())) {
+                    getHttpClient().submitIpInfo(
+                            minecraftUUID,
+                            ip,
+                            ipInfo.has("countryCode") ? ipInfo.get("countryCode").getAsString() : null,
+                            ipInfo.has("regionName") ? ipInfo.get("regionName").getAsString() : null,
+                            ipInfo.has("as") ? ipInfo.get("as").getAsString() : null,
+                            ipInfo.has("proxy") && ipInfo.get("proxy").getAsBoolean(),
+                            ipInfo.has("hosting") && ipInfo.get("hosting").getAsBoolean()
+                    ).exceptionally(throwable -> {
+                        platform.getLogger().warning("Failed to submit IP info for " + ip + ": " + throwable.getMessage());
+                        return null;
+                    });
+                }
+            }).exceptionally(throwable -> {
+                platform.getLogger().warning("Failed to lookup IP " + ip + ": " + throwable.getMessage());
+                return null;
+            });
+        }
+    }
+
     /**
      * Convert a map from the login response to a PlayerNotification object
      */

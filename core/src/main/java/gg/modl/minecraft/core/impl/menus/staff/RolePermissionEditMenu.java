@@ -186,10 +186,6 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             enabledPermissions.remove(permission.getNode());
         }
 
-        sendMessage(MenuItems.COLOR_YELLOW + "Permission " + permission.getNode() + " " +
-                (newState ? MenuItems.COLOR_GREEN + "enabled" : MenuItems.COLOR_RED + "disabled") +
-                MenuItems.COLOR_GRAY + " (click Apply to save)");
-
         // Refresh menu with updated local state
         RoleListMenu.Role localRole = new RoleListMenu.Role(
                 role.getId(), role.getName(), role.getDescription(), new ArrayList<>(enabledPermissions));

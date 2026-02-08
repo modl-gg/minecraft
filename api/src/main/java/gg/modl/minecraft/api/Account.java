@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Getter
@@ -34,7 +35,7 @@ public class Account {
     private List<Punishment> punishments;
 
     @SerializedName("pendingNotifications")
-    private List<String> pendingNotifications;
+    private List<Map<String, Object>> pendingNotifications;
 
     // Null-safe getters for list fields
     @NotNull
@@ -58,7 +59,7 @@ public class Account {
     }
 
     @NotNull
-    public List<String> getPendingNotifications() {
+    public List<Map<String, Object>> getPendingNotifications() {
         return pendingNotifications != null ? pendingNotifications : Collections.emptyList();
     }
 

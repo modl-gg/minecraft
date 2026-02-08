@@ -4,17 +4,15 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Map;
-
-/**
- * V2 API login request matching backend's LoginRequest record.
- */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class V2LoginRequest {
+public class V2SubmitIpInfoRequest {
     private String minecraftUUID;
-    private String username;
     private String ip;
-    private Map<String, Object> ipInfo;
+    private String country;
+    private String region;
+    private String asn;
+    private boolean proxy;
+    private boolean hosting;
 }

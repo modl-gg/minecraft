@@ -41,36 +41,41 @@ public class IpApiClient {
                 
                 // Set request properties
                 connection.setRequestMethod("GET");
-                connection.setConnectTimeout(5000); // 5 second timeout
-                connection.setReadTimeout(5000);    // 5 second read timeout
+                connection.setConnectTimeout(3000); // 3 second timeout
+                connection.setReadTimeout(3000);    // 3 second read timeout
                 connection.setRequestProperty("User-Agent", "modl-minecraft/1.0");
                 
                 int responseCode = connection.getResponseCode();
-                if (responseCode == 200) {
-                    // Read response
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
-                    reader.close();
-                    
-                    // Parse JSON response
-                    JsonObject jsonResponse = gson.fromJson(response.toString(), JsonObject.class);
-                    
-                    // Check if the API returned success
-                    if (jsonResponse.has("status") && "success".equals(jsonResponse.get("status").getAsString())) {
-                        logger.fine("Successfully retrieved IP info for " + ipAddress);
-                        return jsonResponse;
-                    } else {
-                        String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Unknown error";
-                        logger.warning("IP API returned error for " + ipAddress + ": " + message);
-                        return null;
-                    }
+                if (responseCode == 429) {
+                    // Rate limited - fail soft, don't log as error
+                    logger.fine("IP API rate limited, skipping lookup for " + ipAddress);
+                    return null;
+                }
+                if (responseCode != 200) {
+                    logger.fine("IP API returned " + responseCode + " for " + ipAddress + ", skipping");
+                    return null;
+                }
+
+                // Read response
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                StringBuilder response = new StringBuilder();
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
+
+                // Parse JSON response
+                JsonObject jsonResponse = gson.fromJson(response.toString(), JsonObject.class);
+
+                // Check if the API returned success
+                if (jsonResponse.has("status") && "success".equals(jsonResponse.get("status").getAsString())) {
+                    logger.fine("Successfully retrieved IP info for " + ipAddress);
+                    return jsonResponse;
                 } else {
-                    logger.warning("IP API request failed with code " + responseCode + " for IP " + ipAddress);
+                    String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Unknown error";
+                    logger.fine("IP API returned error for " + ipAddress + ": " + message);
                     return null;
                 }
             } catch (Exception e) {

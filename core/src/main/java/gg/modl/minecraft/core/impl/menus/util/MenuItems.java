@@ -155,6 +155,32 @@ public final class MenuItems {
     }
 
     /**
+     * Create a filter button with status toggle info.
+     */
+    public static CirrusItem filterButton(String currentFilter, List<String> options, String currentStatusFilter, String itemLabel) {
+        List<String> loreLines = new ArrayList<>();
+        loreLines.add(COLOR_GRAY + "Filter by type:");
+        loreLines.add("");
+        for (String option : options) {
+            if (option.equalsIgnoreCase(currentFilter)) {
+                loreLines.add(COLOR_GREEN + "▸ " + option);
+            } else {
+                loreLines.add(COLOR_GRAY + "  " + option);
+            }
+        }
+        loreLines.add("");
+        loreLines.add(COLOR_YELLOW + "Click to cycle filters");
+        String opposite = "open".equalsIgnoreCase(currentStatusFilter) ? "closed" : "open";
+        loreLines.add(COLOR_YELLOW + "Right click to show only " + opposite + " " + itemLabel);
+
+        return CirrusItem.of(
+                CirrusItemType.ANVIL,
+                CirrusChatElement.ofLegacyText(COLOR_GOLD + "Filter"),
+                lore(loreLines)
+        ).actionHandler("filter");
+    }
+
+    /**
      * Create a sort button.
      */
     public static CirrusItem sortButton(String currentSort, List<String> options) {

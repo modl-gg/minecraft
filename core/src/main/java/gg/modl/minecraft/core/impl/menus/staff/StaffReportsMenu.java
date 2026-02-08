@@ -31,7 +31,6 @@ import java.util.function.Consumer;
  */
 public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report> {
 
-    // Placeholder Report class since no endpoint exists yet
     public static class Report {
         private final String id;
         private final String type;
@@ -40,9 +39,10 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         private final String reportedPlayerName;
         private final String content;
         private final Date date;
+        private final String status;
 
         public Report(String id, String type, String reporterName, UUID reportedPlayerUuid,
-                      String reportedPlayerName, String content, Date date) {
+                      String reportedPlayerName, String content, Date date, String status) {
             this.id = id;
             this.type = type;
             this.reporterName = reporterName;
@@ -50,6 +50,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
             this.reportedPlayerName = reportedPlayerName;
             this.content = content;
             this.date = date;
+            this.status = status;
         }
 
         public String getId() { return id; }
@@ -59,10 +60,12 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         public String getReportedPlayerName() { return reportedPlayerName; }
         public String getContent() { return content; }
         public Date getDate() { return date; }
+        public String getStatus() { return status; }
     }
 
     private List<Report> reports = new ArrayList<>();
     private String currentFilter = "all";
+    private String currentStatusFilter = "open";
     private final List<String> filterOptions = Arrays.asList("all", "player", "chat", "cheating", "behavior", "other");
     private final String panelUrl;
     private final Consumer<CirrusPlayerWrapper> parentBackAction;
@@ -91,7 +94,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
 
     private void fetchReports() {
         try {
-            httpClient.getReports("Open").thenAccept(response -> {
+            httpClient.getReports("all").thenAccept(response -> {
                 if (response.isSuccess() && response.getReports() != null) {
                     reports.clear();
                     for (var report : response.getReports()) {
@@ -109,7 +112,8 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
                                 reportedUuid,
                                 report.getReportedPlayerName(),
                                 report.getContent() != null ? report.getContent() : report.getSubject(),
-                                report.getCreatedAt()
+                                report.getCreatedAt(),
+                                report.getStatus()
                         ));
                     }
                 }
@@ -128,13 +132,21 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         return this;
     }
 
+    /**
+     * Set the current status filter (open/closed).
+     */
+    public StaffReportsMenu withStatusFilter(String statusFilter) {
+        this.currentStatusFilter = statusFilter;
+        return this;
+    }
+
     @Override
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
         // Add filter button at slot 40 (y position in navigation row)
         // Note: actionHandler("filter") is already set in MenuItems.filterButton()
-        items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions));
+        items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions, currentStatusFilter, "reports"));
 
         return items;
     }
@@ -143,24 +155,33 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
     protected Collection<Report> elements() {
         // Return placeholder if empty to prevent Cirrus from shrinking inventory
         if (reports.isEmpty()) {
-            return Collections.singletonList(new Report(null, null, null, null, null, null, null));
+            return Collections.singletonList(new Report(null, null, null, null, null, null, null, null));
         }
 
         // Filter and sort reports (newest first)
         List<Report> filtered = new ArrayList<>();
 
         for (Report report : reports) {
-            if (currentFilter.equals("all") || report.getType().equalsIgnoreCase(currentFilter)) {
+            boolean typeMatch = currentFilter.equals("all") || (report.getType() != null && report.getType().equalsIgnoreCase(currentFilter));
+            boolean statusMatch = "open".equalsIgnoreCase(currentStatusFilter)
+                    ? !"closed".equalsIgnoreCase(report.getStatus())
+                    : "closed".equalsIgnoreCase(report.getStatus());
+            if (typeMatch && statusMatch) {
                 filtered.add(report);
             }
         }
 
         // If filtering results in empty list, return placeholder
         if (filtered.isEmpty()) {
-            return Collections.singletonList(new Report(null, null, null, null, null, null, null));
+            return Collections.singletonList(new Report(null, null, null, null, null, null, null, null));
         }
 
-        filtered.sort((r1, r2) -> r2.getDate().compareTo(r1.getDate()));
+        filtered.sort((r1, r2) -> {
+            if (r1.getDate() == null && r2.getDate() == null) return 0;
+            if (r1.getDate() == null) return 1;
+            if (r2.getDate() == null) return -1;
+            return r2.getDate().compareTo(r1.getDate());
+        });
         return filtered;
     }
 
@@ -175,10 +196,13 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
 
         // Build variables map
         Map<String, String> vars = new HashMap<>();
+        vars.put("id", report.getId());
         vars.put("type", report.getType() != null ? report.getType() : "Unknown");
         vars.put("reporter", report.getReporterName() != null ? report.getReporterName() : "Unknown");
         vars.put("reported", report.getReportedPlayerName() != null ? report.getReportedPlayerName() : "Unknown");
         vars.put("date", MenuItems.formatDate(report.getDate()));
+        vars.put("status", report.getStatus() != null && report.getStatus().equalsIgnoreCase("closed")
+                ? "&cCLOSED" : "&aOPEN");
 
         // Content - normalize newlines and wrap text
         String content = report.getContent() != null ? report.getContent() : "";
@@ -210,11 +234,6 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
                 lore.add(processed);
             }
         }
-
-        // Add click instructions
-        lore.add("");
-        lore.add(MenuItems.COLOR_YELLOW + "Left-click to inspect player");
-        lore.add(MenuItems.COLOR_YELLOW + "Right-click to dismiss report");
 
         // Get title from locale
         String title = locale.getMessage("menus.staff_report_item.title", vars);
@@ -267,8 +286,8 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
             sendMessage(MenuItems.COLOR_GREEN + "Report dismissed.");
 
             // Refresh menu
-            StaffReportsMenu refreshed = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
-            refreshed.withFilter(currentFilter);
+            StaffReportsMenu refreshed = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
+                    .withFilter(currentFilter).withStatusFilter(currentStatusFilter);
             platform.runOnMainThread(() -> ActionHandlers.openMenu(refreshed).handle(click));
         }).exceptionally(e -> {
             sendMessage(MenuItems.COLOR_RED + "Failed to dismiss report: " + e.getMessage());
@@ -277,6 +296,11 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
     }
 
     private void inspectPlayer(Click click, Report report) {
+        if (report.getReportedPlayerUuid() == null) {
+            sendMessage(MenuItems.COLOR_RED + "Cannot inspect: no player UUID for this report.");
+            return;
+        }
+
         click.clickedMenu().close();
 
         // Fetch player profile and open inspect menu
@@ -330,15 +354,25 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
     }
 
     private void handleFilter(Click click) {
-        // Cycle through filter options
-        int currentIndex = filterOptions.indexOf(currentFilter);
-        int nextIndex = (currentIndex + 1) % filterOptions.size();
-        String newFilter = filterOptions.get(nextIndex);
+        if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
+            // Toggle status filter between open and closed
+            String newStatus = "open".equalsIgnoreCase(currentStatusFilter) ? "closed" : "open";
+            ActionHandlers.openMenu(
+                    new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
+                            .withFilter(currentFilter)
+                            .withStatusFilter(newStatus))
+                    .handle(click);
+        } else {
+            // Cycle through type filter options
+            int currentIndex = filterOptions.indexOf(currentFilter);
+            int nextIndex = (currentIndex + 1) % filterOptions.size();
+            String newFilter = filterOptions.get(nextIndex);
 
-        // Refresh menu with new filter - preserve backAction if present
-        ActionHandlers.openMenu(
-                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
-                        .withFilter(newFilter))
-                .handle(click);
+            ActionHandlers.openMenu(
+                    new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
+                            .withFilter(newFilter)
+                            .withStatusFilter(currentStatusFilter))
+                    .handle(click);
+        }
     }
 }

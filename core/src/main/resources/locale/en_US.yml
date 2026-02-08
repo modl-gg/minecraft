@@ -367,14 +367,14 @@ menus:
 
   # Report items
   report_item:
-    title: "&f&l{type} &f({date})"
+    title: "&e{date} {id} ({status}&e)"
     lore:
-      - "&7Reported by {reporter}"
+      - "&7Reported by &a{reporter} &7({type})"
       - "&f "
-      - "&f{content}"
+      - "{content}"
       - "&f "
-      - "&eRight click to dismiss report"
-      - "&cLeft click to inspect {reported}"
+      - "&cLeft-click to inspect player"
+      - "&aRight-click to dismiss report"
 
   # Alt account items
   alt_item:
@@ -419,13 +419,27 @@ menus:
 
   # Staff menu - Reports
   staff_report_item:
-    title: "&e{date}"
+    title: "&e{date} {id} ({status}&e)"
     lore:
-      - "&7Type: &f{type}"
-      - "&7Reporter: &f{reporter}"
-      - "&7Reported: &c{reported}"
+      - "&c{reported}&7 reported by &a{reporter} &7({type})"
       - "&f "
       - "{content}"
       - "&f "
-      - "&eLeft-click to inspect player"
-      - "&cRight-click to dismiss report"
+      - "&cLeft-click to inspect player"
+      - "&aRight-click to dismiss report"
+  link_report_item_unselected:
+    title: "&e{date} {id}"
+    lore:
+      - "&7Reported by &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&eClick to select"
+  link_report_item_selected:
+    title: "&a{date} {id}"
+    lore:
+      - "&7Reported by &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&eClick to deselect"

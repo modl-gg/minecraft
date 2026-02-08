@@ -3,6 +3,7 @@ package gg.modl.minecraft.core.impl.menus.inspect;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
+import dev.simplix.cirrus.model.CirrusClickType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
@@ -58,6 +59,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
 
     private List<Report> reports = new ArrayList<>();
     private String currentFilter = "all";
+    private String currentStatusFilter = "open";
     private final List<String> filterOptions = Arrays.asList("all", "player", "chat", "cheating", "behavior", "other");
     private final Consumer<CirrusPlayerWrapper> backAction;
 
@@ -112,6 +114,14 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         return this;
     }
 
+    /**
+     * Set the current status filter (open/closed).
+     */
+    public ReportsMenu withStatusFilter(String statusFilter) {
+        this.currentStatusFilter = statusFilter;
+        return this;
+    }
+
     private static String getPlayerNameStatic(Account account) {
         if (account.getUsernames() != null && !account.getUsernames().isEmpty()) {
             return account.getUsernames().stream()
@@ -128,7 +138,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
 
         // Add filter button at slot 40 (y position in navigation row)
         // Note: actionHandler("filter") is already set in MenuItems.filterButton()
-        items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions));
+        items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions, currentStatusFilter, "reports"));
 
         return items;
     }
@@ -140,14 +150,14 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
             return Collections.singletonList(new Report(null, null, null, null, null, null));
         }
 
-        // Filter reports based on current filter
-        if (currentFilter.equals("all")) {
-            return reports;
-        }
-
+        // Filter reports based on current type and status filter
         List<Report> filtered = new ArrayList<>();
         for (Report report : reports) {
-            if (report.getType().equalsIgnoreCase(currentFilter)) {
+            boolean typeMatch = currentFilter.equals("all") || (report.getType() != null && report.getType().equalsIgnoreCase(currentFilter));
+            boolean statusMatch = "open".equalsIgnoreCase(currentStatusFilter)
+                    ? !"closed".equalsIgnoreCase(report.getStatus())
+                    : "closed".equalsIgnoreCase(report.getStatus());
+            if (typeMatch && statusMatch) {
                 filtered.add(report);
             }
         }
@@ -156,6 +166,14 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         if (filtered.isEmpty()) {
             return Collections.singletonList(new Report(null, null, null, null, null, null));
         }
+
+        // Sort newest first with null-safe dates
+        filtered.sort((r1, r2) -> {
+            if (r1.getDate() == null && r2.getDate() == null) return 0;
+            if (r1.getDate() == null) return 1;
+            if (r2.getDate() == null) return -1;
+            return r2.getDate().compareTo(r1.getDate());
+        });
 
         return filtered;
     }
@@ -187,11 +205,14 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         }
 
         Map<String, String> vars = new HashMap<>();
+        vars.put("id", report.getId());
         vars.put("type", reportType);
         vars.put("date", formattedDate);
         vars.put("reporter", reporter);
         vars.put("content", String.join("\n", wrappedContent));
         vars.put("reported", targetName);
+        vars.put("status", report.getStatus() != null && report.getStatus().equalsIgnoreCase("closed")
+                ? "&cCLOSED" : "&aOPEN");
 
         // Get lore from locale
         List<String> lore = new ArrayList<>();
@@ -208,6 +229,12 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
             } else if (!processed.isEmpty()) {
                 lore.add(processed);
             }
+        }
+
+        // Add click instructions for open reports
+        if (report.getStatus() == null || "open".equalsIgnoreCase(report.getStatus()) || "in_progress".equalsIgnoreCase(report.getStatus())) {
+            lore.add("");
+            lore.add(MenuItems.COLOR_YELLOW + "Right-click to dismiss report");
         }
 
         // Get title from locale
@@ -259,8 +286,26 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         if (report.getId() == null) {
             return;
         }
-        // Reports are view-only in this menu
-        // Could open a report detail view in the future
+
+        if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
+            dismissReport(click, report);
+        }
+    }
+
+    private void dismissReport(Click click, Report report) {
+        sendMessage(MenuItems.COLOR_YELLOW + "Dismissing report...");
+
+        httpClient.dismissReport(report.getId(), viewerName, "Insufficient evidence").thenAccept(v -> {
+            sendMessage(MenuItems.COLOR_GREEN + "Report dismissed.");
+
+            // Refresh menu
+            ReportsMenu refreshed = new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
+                    .withFilter(currentFilter).withStatusFilter(currentStatusFilter);
+            platform.runOnMainThread(() -> ActionHandlers.openMenu(refreshed).handle(click));
+        }).exceptionally(e -> {
+            sendMessage(MenuItems.COLOR_RED + "Failed to dismiss report: " + e.getMessage());
+            return null;
+        });
     }
 
     @Override
@@ -285,15 +330,25 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
     }
 
     private void handleFilter(Click click) {
-        // Cycle through filter options
-        int currentIndex = filterOptions.indexOf(currentFilter);
-        int nextIndex = (currentIndex + 1) % filterOptions.size();
-        String newFilter = filterOptions.get(nextIndex);
+        if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
+            // Toggle status filter between open and closed
+            String newStatus = "open".equalsIgnoreCase(currentStatusFilter) ? "closed" : "open";
+            ActionHandlers.openMenu(
+                    new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
+                            .withFilter(currentFilter)
+                            .withStatusFilter(newStatus))
+                    .handle(click);
+        } else {
+            // Cycle through type filter options
+            int currentIndex = filterOptions.indexOf(currentFilter);
+            int nextIndex = (currentIndex + 1) % filterOptions.size();
+            String newFilter = filterOptions.get(nextIndex);
 
-        // Refresh menu with new filter
-        ActionHandlers.openMenu(
-                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                        .withFilter(newFilter))
-                .handle(click);
+            ActionHandlers.openMenu(
+                    new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
+                            .withFilter(newFilter)
+                            .withStatusFilter(currentStatusFilter))
+                    .handle(click);
+        }
     }
 }

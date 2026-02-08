@@ -78,6 +78,10 @@ public interface ModlHttpClient {
     @NotNull
     CompletableFuture<Void> updateMigrationStatus(@NotNull MigrationStatusUpdateRequest request);
 
+    @NotNull
+    CompletableFuture<Void> submitIpInfo(@NotNull String minecraftUUID, @NotNull String ip,
+                                          String country, String region, String asn, boolean proxy, boolean hosting);
+
     // Staff menu endpoints
     @NotNull
     CompletableFuture<OnlinePlayersResponse> getOnlinePlayers();

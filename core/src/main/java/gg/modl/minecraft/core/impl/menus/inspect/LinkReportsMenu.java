@@ -14,6 +14,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -94,7 +95,7 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
 
     private void fetchReports() {
         try {
-            httpClient.getPlayerReports(targetUuid, "all").thenAccept(response -> {
+            httpClient.getPlayerReports(targetUuid, "Open").thenAccept(response -> {
                 if (response.isSuccess() && response.getReports() != null) {
                     reports.clear();
                     for (var report : response.getReports()) {
@@ -179,9 +180,11 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
 
     @Override
     protected CirrusItem map(Report report) {
+        LocaleManager locale = platform.getLocaleManager();
+
         // Handle placeholder for empty list
         if (report.getId() == null) {
-            return createEmptyPlaceholder("No reports found");
+            return createEmptyPlaceholder(locale.getMessage("menus.empty.reports"));
         }
 
         boolean selected = selectedReportIds.contains(report.getId());
@@ -191,25 +194,48 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
         String content = report.getContent() != null ? report.getContent() : "";
         String formattedDate = report.getDate() != null ? MenuItems.formatDate(report.getDate()) : "Unknown";
 
-        List<String> lore = new ArrayList<>();
-        lore.add(MenuItems.COLOR_GRAY + "Type: " + MenuItems.COLOR_WHITE + reportType);
-        lore.add(MenuItems.COLOR_GRAY + "Reporter: " + MenuItems.COLOR_WHITE + reporter);
-        lore.add(MenuItems.COLOR_GRAY + "Date: " + MenuItems.COLOR_WHITE + formattedDate);
-        if (!content.isEmpty()) {
-            lore.add("");
-            lore.addAll(MenuItems.wrapText(content, 7));
-        }
-        lore.add("");
-        if (selected) {
-            lore.add(MenuItems.COLOR_GREEN + "Selected");
-            lore.add(MenuItems.COLOR_YELLOW + "Click to deselect");
-        } else {
-            lore.add(MenuItems.COLOR_YELLOW + "Click to select");
+        // Normalize newlines and wrap content
+        content = content.replace("\\n", "\n");
+        List<String> wrappedContent = new ArrayList<>();
+        for (String paragraph : content.split("\n")) {
+            if (paragraph.trim().isEmpty()) {
+                wrappedContent.add("");
+            } else {
+                wrappedContent.addAll(MenuItems.wrapText(paragraph.trim(), 7));
+            }
         }
 
+        Map<String, String> vars = new HashMap<>();
+        vars.put("id", report.getId());
+        vars.put("type", reportType);
+        vars.put("date", formattedDate);
+        vars.put("reporter", reporter);
+        vars.put("content", String.join("\n", wrappedContent));
+
+        // Use selected or unselected locale key
+        String localeKey = selected ? "menus.link_report_item_selected" : "menus.link_report_item_unselected";
+
+        // Get lore from locale
+        List<String> lore = new ArrayList<>();
+        for (String line : locale.getMessageList(localeKey + ".lore")) {
+            String processed = line;
+            for (Map.Entry<String, String> entry : vars.entrySet()) {
+                processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
+            }
+            // Handle content with newlines - split into separate lore lines
+            if (processed.contains("\n")) {
+                for (String subLine : processed.split("\n")) {
+                    lore.add(subLine);
+                }
+            } else if (!processed.isEmpty()) {
+                lore.add(processed);
+            }
+        }
+
+        // Get title from locale
+        String title = locale.getMessage(localeKey + ".title", vars);
+
         CirrusItemType itemType = selected ? CirrusItemType.LIME_DYE : getReportItemType(report.getType());
-        String titlePrefix = selected ? MenuItems.COLOR_GREEN : MenuItems.COLOR_GOLD;
-        String title = titlePrefix + reportType + " Report";
 
         return CirrusItem.of(
                 itemType,
