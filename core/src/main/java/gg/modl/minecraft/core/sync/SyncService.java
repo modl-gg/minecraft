@@ -449,19 +449,15 @@ public class SyncService {
         
         SyncResponse.SyncData data = response.getData();
 
-        // Process pending punishments
-        for (SyncResponse.PendingPunishment pending : data.getPendingPunishments()) {
-            processPendingPunishment(pending);
-        }
-        
-        // Process recently started punishments
-//        for (SyncResponse.PendingPunishment started : data.getRecentlyStartedPunishments()) {
-//            processStartedPunishment(started);
-//        }
-        
-        // Process modified punishments (pardons, duration changes)
+        // Process modified punishments FIRST (pardons, duration changes) so the cache
+        // is cleared before new/promoted punishments are added
         for (SyncResponse.ModifiedPunishment modified : data.getRecentlyModifiedPunishments()) {
             processModifiedPunishment(modified);
+        }
+
+        // Process pending punishments AFTER modifications
+        for (SyncResponse.PendingPunishment pending : data.getPendingPunishments()) {
+            processPendingPunishment(pending);
         }
         
         // Process active staff members (only if present - removed from sync in favor of startup loading)
@@ -938,19 +934,12 @@ public class SyncService {
     }
     
     /**
-     * Process a staff notification - send to all online staff with notifications enabled
+     * Process a staff notification - broadcast to staff using the standard staff notification format
      */
     private void processStaffNotification(SyncResponse.StaffNotification notification) {
         try {
-            String formattedMessage = "\u00A7e[Staff] \u00A7f" + notification.getMessage();
-
-            Collection<AbstractPlayer> onlinePlayers = platform.getOnlinePlayers();
-            for (AbstractPlayer player : onlinePlayers) {
-                UUID playerUuid = player.getUuid();
-                if (cache.isStaffMemberByPermissions(playerUuid) && cache.isStaffNotificationsEnabled(playerUuid)) {
-                    platform.sendMessage(playerUuid, formattedMessage);
-                }
-            }
+            String message = "&7&o[" + notification.getMessage() + "&7&o]";
+            platform.staffBroadcast(message);
 
             if (debugMode) {
                 logger.info(String.format("Processed staff notification: %s", notification.getMessage()));

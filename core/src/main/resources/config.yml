@@ -219,9 +219,6 @@ punish_gui:
 # Locale Configuration
 # These values are used by the locale system for URLs, formatting, etc.
 locale_config:
-  # Panel URL (appeal URL is derived as panel_url + /appeal)
-  panel_url: "https://server.modl.gg"
-
   # Default reason when none is specified
   default_reason: "No reason specified"
 

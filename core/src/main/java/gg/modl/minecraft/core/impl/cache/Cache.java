@@ -211,12 +211,25 @@ public class Cache {
         // Check new staff permissions cache first
         StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
         if (staffPerms != null) {
-            return staffPerms.getPermissions().contains(permission);
+            return matchesPermission(staffPerms.getPermissions(), permission);
         }
 
         // Fallback to old sync-based staff member (for backward compatibility)
         SyncResponse.ActiveStaffMember staffMember = getStaffMember(playerUuid);
-        return staffMember != null && staffMember.getPermissions().contains(permission);
+        return staffMember != null && matchesPermission(staffMember.getPermissions(), permission);
+    }
+
+    /**
+     * Check if a permission list grants the requested permission.
+     * Supports parent matching: having "punishment.modify" grants "punishment.modify.pardon", etc.
+     */
+    private boolean matchesPermission(List<String> permissions, String requested) {
+        for (String perm : permissions) {
+            if (perm.equals(requested)) return true;
+            // Parent permission grants all children (e.g. "punishment.modify" grants "punishment.modify.note")
+            if (requested.startsWith(perm + ".")) return true;
+        }
+        return false;
     }
 
     /**

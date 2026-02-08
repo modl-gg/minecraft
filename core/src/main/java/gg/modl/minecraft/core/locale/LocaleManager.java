@@ -20,6 +20,8 @@ public class LocaleManager {
     private Map<String, Object> messages;
     private Map<String, Object> configValues;
     private final String currentLocale;
+    @Getter
+    private String panelUrl;
 
     public LocaleManager(String locale) {
         this.currentLocale = locale;
@@ -38,6 +40,14 @@ public class LocaleManager {
      */
     public void setConfigValues(Map<String, Object> config) {
         this.configValues = config != null ? config : new HashMap<>();
+    }
+
+    /**
+     * Set the panel URL (derived from api.url config).
+     * Used for appeal URLs and other panel links.
+     */
+    public void setPanelUrl(String panelUrl) {
+        this.panelUrl = panelUrl;
     }
     
     private void loadLocale(String locale) {
@@ -235,10 +245,9 @@ public class LocaleManager {
     public String getPunishmentMessage(String path, Map<String, String> variables) {
         Map<String, String> allVariables = new HashMap<>(variables);
         
-        // Add config variables - appeal_url is derived from panel_url
-        String panelUrl = getMessage("config.panel_url");
-        if (panelUrl != null && !panelUrl.startsWith("&c") && !panelUrl.startsWith("§c")) {
-            allVariables.putIfAbsent("appeal_url", panelUrl + "/appeal");
+        // Add config variables - appeal_url is derived from api.url
+        if (this.panelUrl != null && !this.panelUrl.isEmpty()) {
+            allVariables.putIfAbsent("appeal_url", this.panelUrl + "/appeal");
         } else {
             allVariables.putIfAbsent("appeal_url", "https://server.modl.gg/appeal");
         }
@@ -397,10 +406,9 @@ public class LocaleManager {
         // Add issued date in MM/DD/YY HH:MM format
         variables.put("issued", formatIssuedDate(punishment));
 
-        // Add appeal URL (panel url + /appeal)
-        String panelUrl = getMessage("config.panel_url");
-        if (panelUrl != null && !panelUrl.startsWith("&c") && !panelUrl.startsWith("§c")) {
-            variables.put("appeal_url", panelUrl + "/appeal");
+        // Add appeal URL (api.url + /appeal)
+        if (this.panelUrl != null && !this.panelUrl.isEmpty()) {
+            variables.put("appeal_url", this.panelUrl + "/appeal");
         } else {
             variables.put("appeal_url", "https://server.modl.gg/appeal");
         }

@@ -80,7 +80,7 @@ validation:
 #     {reason} - The punishment reason
 #     {duration} - Duration formatted (e.g., "7d 3h" or "permanent")
 #     {description} - Same as reason
-#     {appeal_url} - Full appeal URL (panel_url + /appeal)
+#     {appeal_url} - Full appeal URL (api.url + /appeal)
 #     {id} - The punishment ID
 #     {temp} - "temporarily" or "permanently"
 #     {issued} - Issue date in MM/DD/YY HH:MM format

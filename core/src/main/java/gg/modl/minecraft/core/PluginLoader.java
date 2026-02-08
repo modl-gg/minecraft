@@ -83,6 +83,9 @@ public class PluginLoader {
         // Load locale config values from config.yml
         loadLocaleConfig(dataDirectory, logger);
 
+        // Set panel URL on locale manager (derived from api.url)
+        this.localeManager.setPanelUrl(httpManager.getPanelUrl());
+
         // Set the locale manager on the platform for menu access
         platform.setLocaleManager(this.localeManager);
 

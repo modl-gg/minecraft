@@ -44,7 +44,6 @@ public class BungeeListener implements Listener {
     private final HttpClientHolder httpClientHolder;
     private final ChatMessageCache chatMessageCache;
     private final SyncService syncService;
-    private final String panelUrl;
     private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
     private final boolean debugMode;
 

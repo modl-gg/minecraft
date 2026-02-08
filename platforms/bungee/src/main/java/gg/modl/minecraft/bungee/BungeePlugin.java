@@ -70,7 +70,7 @@ public class BungeePlugin extends Plugin {
         int syncPollingRate = Math.max(1, configuration.getInt("sync.polling_rate", 2));
 
         this.loader = new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
-        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), httpManager.getPanelUrl(), loader.getLocaleManager(), httpManager.isDebugHttp()));
+        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), httpManager.isDebugHttp()));
     }
 
     @Override
