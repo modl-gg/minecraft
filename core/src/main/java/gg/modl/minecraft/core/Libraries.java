@@ -192,6 +192,13 @@ public final class Libraries {
             "adventure-api"
     );
 
+    public static final LibraryRecord ADVENTURE_TEXT_SERIALIZER_LEGACY = LibraryRecord.of(
+            "net{}kyori",
+            "adventure-text-serializer-legacy",
+            "4.26.1",
+            "adventure-text-serializer-legacy"
+    );
+
     /**
      * Common libraries loaded by all platforms.
      * These are the core dependencies needed for the plugin to function.

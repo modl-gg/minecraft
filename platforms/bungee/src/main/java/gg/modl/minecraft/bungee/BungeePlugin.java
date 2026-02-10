@@ -114,11 +114,12 @@ public class BungeePlugin extends Plugin {
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_BUNGEE);
 
-        // Load Adventure (transitive deps first, then API)
+        // Load Adventure (transitive deps first, then API, then serializers)
         loadLibrary(libraryManager, Libraries.EXAMINATION_API);
         loadLibrary(libraryManager, Libraries.EXAMINATION_STRING);
         loadLibrary(libraryManager, Libraries.ADVENTURE_KEY);
         loadLibrary(libraryManager, Libraries.ADVENTURE_API);
+        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_LEGACY);
 
         getLogger().info("Runtime libraries loaded successfully");
     }

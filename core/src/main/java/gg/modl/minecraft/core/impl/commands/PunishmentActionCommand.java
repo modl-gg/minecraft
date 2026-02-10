@@ -134,7 +134,7 @@ public class PunishmentActionCommand extends BaseCommand {
                 "Enter the evidence URL for punishment #" + punishmentId + ":",
                 (url) -> {
                     if (url == null || url.isBlank()) {
-                        platform.sendMessage(senderUuid, "&cNo URL provided.");
+                        platform.sendMessage(senderUuid, Colors.translate("&cNo URL provided."));
                         return;
                     }
 
@@ -143,13 +143,13 @@ public class PunishmentActionCommand extends BaseCommand {
                     );
 
                     getHttpClient().addPunishmentEvidence(request).thenAccept(v -> {
-                        platform.sendMessage(senderUuid, "&aEvidence linked to punishment #" + punishmentId);
+                        platform.sendMessage(senderUuid, Colors.translate("&aEvidence linked to punishment #" + punishmentId));
                     }).exceptionally(throwable -> {
-                        platform.sendMessage(senderUuid, "&cFailed to link evidence: " + throwable.getMessage());
+                        platform.sendMessage(senderUuid, Colors.translate("&cFailed to link evidence: " + throwable.getMessage()));
                         return null;
                     });
                 },
-                () -> platform.sendMessage(senderUuid, "&7Evidence linking cancelled.")
+                () -> platform.sendMessage(senderUuid, Colors.translate("&7Evidence linking cancelled."))
         );
     }
 
