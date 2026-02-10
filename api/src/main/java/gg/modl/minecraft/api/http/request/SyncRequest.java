@@ -27,12 +27,14 @@ public class SyncRequest {
     public static class OnlinePlayer {
         @NotNull
         private String uuid;
-        
+
         @NotNull
         private String username;
-        
+
         @NotNull
         private String ipAddress;
+
+        private long sessionDurationMs;
     }
     
     @Data

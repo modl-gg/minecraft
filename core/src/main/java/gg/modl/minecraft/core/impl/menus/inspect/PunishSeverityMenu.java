@@ -382,6 +382,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                     if (silentMode) {
                         data.put("silent", true);
                     }
+                    data.put("issuedServer", platform.getPlayerServer(viewerUuid));
 
                     PunishmentCreateRequest request = new PunishmentCreateRequest(
                             targetUuid.toString(),

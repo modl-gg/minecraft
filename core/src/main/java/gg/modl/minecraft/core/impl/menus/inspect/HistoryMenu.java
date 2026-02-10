@@ -213,6 +213,8 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         vars.put("reason", punishment.getReason() != null ? punishment.getReason() : "No reason");
         vars.put("issuer", punishment.getIssuerName() != null ? punishment.getIssuerName() : "Unknown");
         vars.put("issued_date", MenuItems.formatDate(punishment.getIssued()));
+        Object issuedServerObj = punishment.getDataMap().get("issuedServer");
+        vars.put("issued_server", issuedServerObj instanceof String ? (String) issuedServerObj : "");
 
         // Get lore from locale
         List<String> lore = new ArrayList<>();

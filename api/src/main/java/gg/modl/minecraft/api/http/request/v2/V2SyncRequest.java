@@ -24,6 +24,7 @@ public class V2SyncRequest {
         private String uuid;
         private String username;
         private String ipAddress;
+        private long sessionDurationMs;
     }
 
     @Data

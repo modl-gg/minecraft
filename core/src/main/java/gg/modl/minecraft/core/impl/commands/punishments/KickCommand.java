@@ -5,9 +5,11 @@ import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
+import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.CreatePunishmentRequest;
+import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -19,10 +21,14 @@ import java.util.concurrent.CompletableFuture;
 
 @RequiredArgsConstructor
 public class KickCommand extends BaseCommand {
-    private final ModlHttpClient httpClient;
+    private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
+
+    private ModlHttpClient getHttpClient() {
+        return httpClientHolder.getClient();
+    }
 
     @CommandCompletion("@players")
     @CommandAlias("kick")
@@ -45,6 +51,11 @@ public class KickCommand extends BaseCommand {
         JsonObject data = new JsonObject();
         data.addProperty("reason", kickArgs.reason.isEmpty() ? "No reason specified" : kickArgs.reason);
         data.addProperty("silent", kickArgs.silent);
+        if (httpClientHolder.getApiVersion() != ApiVersion.V1) {
+            data.addProperty("issuedServer", sender.isPlayer()
+                ? platform.getPlayerServer(sender.getUniqueId())
+                : platform.getServerName());
+        }
 
         // Create manual punishment request for kick (ordinal 0)
         CreatePunishmentRequest request = new CreatePunishmentRequest(
@@ -62,7 +73,7 @@ public class KickCommand extends BaseCommand {
         final boolean silentKick = kickArgs.silent;
 
         // Send manual punishment request (uses /minecraft/punishment/create endpoint)
-        CompletableFuture<Void> future = httpClient.createPunishment(request);
+        CompletableFuture<Void> future = getHttpClient().createPunishment(request);
         
         future.thenAccept(response -> {
             String targetName = target.getUsernames().get(0).getUsername();

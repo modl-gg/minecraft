@@ -7,4 +7,5 @@ import org.jetbrains.annotations.NotNull;
 public class PlayerDisconnectRequest {
     @NotNull
     private final String minecraftUuid;
+    private final long sessionDurationMs;
 }

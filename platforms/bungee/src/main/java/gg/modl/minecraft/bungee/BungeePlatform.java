@@ -31,6 +31,7 @@ public class BungeePlatform implements Platform {
     private final BungeeCommandManager commandManager;
     private final Logger logger;
     private final File dataFolder;
+    private final String configServerName;
     @Setter
     private Cache cache;
     @Setter
@@ -174,7 +175,16 @@ public class BungeePlatform implements Platform {
 
     @Override
     public String getServerName() {
-        return "bungee-proxy"; // Default server name, can be made configurable
+        return configServerName;
+    }
+
+    @Override
+    public String getPlayerServer(UUID uuid) {
+        ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
+        if (player != null && player.getServer() != null) {
+            return player.getServer().getInfo().getName();
+        }
+        return getServerName();
     }
 
     @Override

@@ -29,4 +29,6 @@ public class CreateTicketRequest {
     private final List<String> tags;
     @Nullable
     private final String priority;
+    @Nullable
+    private final String createdServer;
 }

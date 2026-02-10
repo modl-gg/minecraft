@@ -9,6 +9,7 @@ package gg.modl.minecraft.api;
  * @param id            Unique identifier for the library
  * @param oldRelocation Package to relocate from (null if no relocation)
  * @param newRelocation Package to relocate to (null if no relocation)
+ * @param url           Direct download URL (null to use standard Maven resolution)
  */
 public record LibraryRecord(
         String groupId,
@@ -16,13 +17,14 @@ public record LibraryRecord(
         String version,
         String id,
         String oldRelocation,
-        String newRelocation
+        String newRelocation,
+        String url
 ) {
     /**
      * Creates a LibraryRecord without relocation.
      */
     public static LibraryRecord of(String groupId, String artifactId, String version, String id) {
-        return new LibraryRecord(groupId, artifactId, version, id, null, null);
+        return new LibraryRecord(groupId, artifactId, version, id, null, null, null);
     }
 
     /**
@@ -30,7 +32,14 @@ public record LibraryRecord(
      */
     public static LibraryRecord ofRelocated(String groupId, String artifactId, String version, String id,
                                             String oldRelocation, String newRelocation) {
-        return new LibraryRecord(groupId, artifactId, version, id, oldRelocation, newRelocation);
+        return new LibraryRecord(groupId, artifactId, version, id, oldRelocation, newRelocation, null);
+    }
+
+    /**
+     * Creates a LibraryRecord with a direct download URL (for SNAPSHOT or non-standard repos).
+     */
+    public static LibraryRecord ofUrl(String groupId, String artifactId, String version, String id, String url) {
+        return new LibraryRecord(groupId, artifactId, version, id, null, null, url);
     }
 
     /**

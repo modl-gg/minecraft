@@ -63,7 +63,7 @@ public class BungeePlugin extends Plugin {
         BungeeCommandManager commandManager = new BungeeCommandManager(this);
         new CirrusBungee(this).init();
 
-        BungeePlatform platform = new BungeePlatform(commandManager, getLogger(), getDataFolder());
+        BungeePlatform platform = new BungeePlatform(commandManager, getLogger(), getDataFolder(), configuration.getString("server.name", "Server 1"));
         ChatMessageCache chatMessageCache = new ChatMessageCache();
 
         // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)
@@ -95,11 +95,19 @@ public class BungeePlugin extends Plugin {
         BungeeLibraryManager libraryManager = new BungeeLibraryManager(this);
         libraryManager.addMavenCentral();
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
+        libraryManager.addRepository("https://jitpack.io");
 
         // Load common libraries
         for (LibraryRecord record : Libraries.COMMON) {
             loadLibrary(libraryManager, record);
         }
+
+        // Load ACF (core first, then platform-specific)
+        loadLibrary(libraryManager, Libraries.ACF_CORE);
+        loadLibrary(libraryManager, Libraries.ACF_BUNGEE);
+
+        // Load Cirrus (platform-specific shadow jar includes cirrus-api + cirrus-common)
+        loadLibrary(libraryManager, Libraries.CIRRUS_BUNGEECORD);
 
         // Load PacketEvents (API first, then netty, then platform implementation)
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
@@ -118,6 +126,10 @@ public class BungeePlugin extends Plugin {
 
         if (record.hasRelocation()) {
             builder.relocate(record.oldRelocation(), record.newRelocation());
+        }
+
+        if (record.url() != null) {
+            builder.url(record.url());
         }
 
         libraryManager.loadLibrary(builder.build());

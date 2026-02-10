@@ -31,6 +31,7 @@ public class VelocityPlatform implements Platform {
     private final VelocityCommandManager commandManager;
     private final Logger logger;
     private final File dataFolder;
+    private final String configServerName;
     @Setter
     private Cache cache;
     @Setter
@@ -197,7 +198,15 @@ public class VelocityPlatform implements Platform {
 
     @Override
     public String getServerName() {
-        return "velocity-proxy"; // Default server name, can be made configurable
+        return configServerName;
+    }
+
+    @Override
+    public String getPlayerServer(UUID uuid) {
+        return server.getPlayer(uuid)
+            .flatMap(Player::getCurrentServer)
+            .map(conn -> conn.getServerInfo().getName())
+            .orElse(getServerName());
     }
 
     @Override

@@ -59,7 +59,7 @@ public class SpigotPlugin extends JavaPlugin {
         BukkitCommandManager commandManager = new BukkitCommandManager(this);
         new CirrusSpigot(this).init();
 
-        SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger(), getDataFolder());
+        SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger(), getDataFolder(), getConfig().getString("server.name", "Server 1"));
         ChatMessageCache chatMessageCache = new ChatMessageCache();
 
         // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)
@@ -92,10 +92,18 @@ public class SpigotPlugin extends JavaPlugin {
         BukkitLibraryManager libraryManager = new BukkitLibraryManager(this);
         libraryManager.addMavenCentral();
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
+        libraryManager.addRepository("https://jitpack.io");
 
         for (LibraryRecord record : Libraries.COMMON) {
             loadLibrary(libraryManager, record);
         }
+
+        // Load ACF (core first, then platform-specific)
+        loadLibrary(libraryManager, Libraries.ACF_CORE);
+        loadLibrary(libraryManager, Libraries.ACF_BUKKIT);
+
+        // Load Cirrus (platform-specific shadow jar includes cirrus-api + cirrus-common)
+        loadLibrary(libraryManager, Libraries.CIRRUS_SPIGOT);
 
         // Load PacketEvents (API first, then netty, then platform implementation)
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
@@ -114,6 +122,10 @@ public class SpigotPlugin extends JavaPlugin {
 
         if (record.hasRelocation()) {
             builder.relocate(record.oldRelocation(), record.newRelocation());
+        }
+
+        if (record.url() != null) {
+            builder.url(record.url());
         }
 
         libraryManager.loadLibrary(builder.build());

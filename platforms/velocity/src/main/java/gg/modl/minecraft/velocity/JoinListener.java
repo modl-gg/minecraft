@@ -185,7 +185,9 @@ public class JoinListener {
 
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
-        PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString());
+        // Compute session duration BEFORE marking offline (which clears join time)
+        long sessionDuration = cache.getSessionDuration(event.getPlayer().getUniqueId());
+        PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString(), sessionDuration);
 
         getHttpClient().playerDisconnect(request);
 

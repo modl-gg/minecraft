@@ -423,7 +423,8 @@ public class SyncService {
                 .map(player -> new SyncRequest.OnlinePlayer(
                         player.getUuid().toString(),
                         player.getName(),
-                        player.getIpAddress()
+                        player.getIpAddress(),
+                        cache.getSessionDuration(player.getUuid())
                 ))
                 .collect(Collectors.toList());
     }

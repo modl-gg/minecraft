@@ -31,6 +31,7 @@ public interface Platform {
     void runOnMainThread(Runnable task);
     void kickPlayer(AbstractPlayer player, String reason);
     String getServerName();
+    default String getPlayerServer(UUID uuid) { return getServerName(); }
     File getDataFolder();
     
     /**

@@ -29,6 +29,7 @@ public class SpigotPlatform implements Platform {
     private final BukkitCommandManager commandManager;
     private final Logger logger;
     private final File dataFolder;
+    private final String configServerName;
     @Setter
     private Cache cache;
     @Setter
@@ -172,7 +173,7 @@ public class SpigotPlatform implements Platform {
 
     @Override
     public String getServerName() {
-        return "spigot-server"; // Default server name, can be made configurable
+        return configServerName;
     }
 
     @Override

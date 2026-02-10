@@ -138,7 +138,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> playerDisconnect(@NotNull PlayerDisconnectRequest request) {
         // Convert to V2 format
-        V2DisconnectRequest v2Request = new V2DisconnectRequest(request.getMinecraftUuid());
+        V2DisconnectRequest v2Request = new V2DisconnectRequest(request.getMinecraftUuid(), request.getSessionDurationMs());
         return sendAsync(requestBuilder("/minecraft/players/disconnect")
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
@@ -251,7 +251,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         V2SyncRequest v2Request = new V2SyncRequest(
                 request.getLastSyncTimestamp(),
                 request.getOnlinePlayers().stream()
-                        .map(p -> new V2SyncRequest.OnlinePlayer(p.getUuid(), p.getUsername(), p.getIpAddress()))
+                        .map(p -> new V2SyncRequest.OnlinePlayer(p.getUuid(), p.getUsername(), p.getIpAddress(), p.getSessionDurationMs()))
                         .collect(Collectors.toList()),
                 new V2SyncRequest.ServerStatus(
                         request.getServerStatus().getOnlinePlayerCount(),

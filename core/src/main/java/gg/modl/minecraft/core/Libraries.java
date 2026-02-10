@@ -105,6 +105,61 @@ public final class Libraries {
         "adventure-nbt"
     );
 
+    // ACF - Annotation Command Framework (SNAPSHOT, loaded via direct URL)
+    public static final LibraryRecord ACF_CORE = LibraryRecord.ofUrl(
+            "co{}aikar",
+            "acf-core",
+            "0.5.1-SNAPSHOT",
+            "acf-core",
+            "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-core/0.5.1-SNAPSHOT/acf-core-0.5.1-20260118.005649-52.jar"
+    );
+
+    public static final LibraryRecord ACF_BUKKIT = LibraryRecord.ofUrl(
+            "co{}aikar",
+            "acf-bukkit",
+            "0.5.1-SNAPSHOT",
+            "acf-bukkit",
+            "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-bukkit/0.5.1-SNAPSHOT/acf-bukkit-0.5.1-20260118.005649-52.jar"
+    );
+
+    public static final LibraryRecord ACF_VELOCITY = LibraryRecord.ofUrl(
+            "co{}aikar",
+            "acf-velocity",
+            "0.5.1-SNAPSHOT",
+            "acf-velocity",
+            "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-velocity/0.5.1-SNAPSHOT/acf-velocity-0.5.1-20260118.005649-51.jar"
+    );
+
+    public static final LibraryRecord ACF_BUNGEE = LibraryRecord.ofUrl(
+            "co{}aikar",
+            "acf-bungee",
+            "0.5.1-SNAPSHOT",
+            "acf-bungee",
+            "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-bungee/0.5.1-SNAPSHOT/acf-bungee-0.5.1-20260118.005649-52.jar"
+    );
+
+    // Cirrus - Inventory GUI framework (loaded via JitPack)
+    public static final LibraryRecord CIRRUS_SPIGOT = LibraryRecord.of(
+            "com{}github{}modl-gg{}minecraft-cirrus",
+            "cirrus-spigot",
+            "v4.1.0-SNAPSHOT",
+            "cirrus-spigot"
+    );
+
+    public static final LibraryRecord CIRRUS_VELOCITY = LibraryRecord.of(
+            "com{}github{}modl-gg{}minecraft-cirrus",
+            "cirrus-velocity",
+            "v4.1.0-SNAPSHOT",
+            "cirrus-velocity"
+    );
+
+    public static final LibraryRecord CIRRUS_BUNGEECORD = LibraryRecord.of(
+            "com{}github{}modl-gg{}minecraft-cirrus",
+            "cirrus-bungeecord",
+            "v4.1.0-SNAPSHOT",
+            "cirrus-bungeecord"
+    );
+
     /**
      * Common libraries loaded by all platforms.
      * These are the core dependencies needed for the plugin to function.

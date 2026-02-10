@@ -88,7 +88,7 @@ public final class VelocityPlugin {
                 getConfigString("api.force-version", "auto")
         );
 
-        VelocityPlatform platform = new VelocityPlatform(this.server, commandManager, logger, folder.toFile());
+        VelocityPlatform platform = new VelocityPlatform(this.server, commandManager, logger, folder.toFile(), getConfigString("server.name", "Server 1"));
         ChatMessageCache chatMessageCache = new ChatMessageCache();
         
         // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)
@@ -124,11 +124,19 @@ public final class VelocityPlugin {
                 logger, folder, server.getPluginManager(), this);
         libraryManager.addMavenCentral();
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
+        libraryManager.addRepository("https://jitpack.io");
 
         // Load common libraries
         for (LibraryRecord record : Libraries.COMMON) {
             loadLibrary(libraryManager, record);
         }
+
+        // Load ACF (core first, then platform-specific)
+        loadLibrary(libraryManager, Libraries.ACF_CORE);
+        loadLibrary(libraryManager, Libraries.ACF_VELOCITY);
+
+        // Load Cirrus (platform-specific shadow jar includes cirrus-api + cirrus-common)
+        loadLibrary(libraryManager, Libraries.CIRRUS_VELOCITY);
 
         // Load PacketEvents (API first, then netty, then platform implementation)
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
@@ -147,6 +155,10 @@ public final class VelocityPlugin {
 
         if (record.hasRelocation()) {
             builder.relocate(record.oldRelocation(), record.newRelocation());
+        }
+
+        if (record.url() != null) {
+            builder.url(record.url());
         }
 
         libraryManager.loadLibrary(builder.build());

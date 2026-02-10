@@ -140,6 +140,12 @@ public class PunishCommand extends BaseCommand {
         // Build punishment data (matching panel logic)
         Map<String, Object> data = buildPunishmentData(punishmentArgs, punishmentType, target);
 
+        if (httpClientHolder.getApiVersion() != ApiVersion.V1) {
+            data.put("issuedServer", sender.isPlayer()
+                ? platform.getPlayerServer(sender.getUniqueId())
+                : platform.getServerName());
+        }
+
         // Create notes list (matching panel logic)
         List<String> notes = new ArrayList<>();
         if (!punishmentArgs.reason.isEmpty()) {

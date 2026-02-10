@@ -58,6 +58,9 @@ public class BlacklistCommand extends BaseCommand {
 
         // Try V2 dynamic endpoint first for punishment ID
         if (httpClientHolder.getApiVersion() != ApiVersion.V1) {
+            dataMap.put("issuedServer", sender.isPlayer()
+                ? platform.getPlayerServer(sender.getUniqueId())
+                : platform.getServerName());
             PunishmentCreateRequest v2Request = new PunishmentCreateRequest(
                 target.getMinecraftUuid().toString(),
                 issuerName,

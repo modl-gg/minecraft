@@ -148,15 +148,15 @@ public class PluginLoader {
         
         // Register manual punishment commands
         commandManager.registerCommand(new BanCommand(httpClientHolder, platform, cache, this.localeManager));
-        commandManager.registerCommand(new MuteCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
-        commandManager.registerCommand(new KickCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
+        commandManager.registerCommand(new MuteCommand(httpClientHolder, platform, cache, this.localeManager));
+        commandManager.registerCommand(new KickCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new BlacklistCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new PardonCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new WarnCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
         
         // Register player commands
         commandManager.registerCommand(new IAmMutedCommand(platform, cache, this.localeManager));
-        commandManager.registerCommand(new TicketCommands(platform, httpManager.getHttpClient(), httpManager.getPanelUrl(), this.localeManager, chatMessageCache));
+        commandManager.registerCommand(new TicketCommands(platform, httpClientHolder, httpManager.getHttpClient(), httpManager.getPanelUrl(), this.localeManager, chatMessageCache));
 
         // Register GUI commands (menus require V2 API - commands will check dynamically via holder)
         InspectCommand inspectCommand = new InspectCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl());

@@ -424,6 +424,7 @@ menus:
       - "&f "
       - "{notes}"
       - "&f "
+      - "&fServer: &7{issued_server}"
       - "&fID: &c{punishment_id}"
       - "&bClick to modify this punishment."
     status_active: "&7Expires in {expiry}."
