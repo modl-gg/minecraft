@@ -114,6 +114,12 @@ public class BungeePlugin extends Plugin {
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_BUNGEE);
 
+        // Load Adventure (transitive deps first, then API)
+        loadLibrary(libraryManager, Libraries.EXAMINATION_API);
+        loadLibrary(libraryManager, Libraries.EXAMINATION_STRING);
+        loadLibrary(libraryManager, Libraries.ADVENTURE_KEY);
+        loadLibrary(libraryManager, Libraries.ADVENTURE_API);
+
         getLogger().info("Runtime libraries loaded successfully");
     }
 
@@ -122,7 +128,8 @@ public class BungeePlugin extends Plugin {
                 .groupId(record.groupId())
                 .artifactId(record.artifactId())
                 .version(record.version())
-                .id(record.id());
+                .id(record.id())
+                .isolatedLoad(false);
 
         if (record.hasRelocation()) {
             builder.relocate(record.oldRelocation(), record.newRelocation());
@@ -143,19 +150,12 @@ public class BungeePlugin extends Plugin {
         File file = new File(getDataFolder(), "config.yml");
 
         if (!file.exists()) {
-            try {
-                file.createNewFile();
-                // Create default config content
-                Configuration defaultConfig = new Configuration();
-                defaultConfig.set("api.key", "your-api-key-here");
-                defaultConfig.set("api.url", "https://yourserver.modl.gg");
-                defaultConfig.set("api.debug", false);
-                defaultConfig.set("api.testing-api", false);
-                defaultConfig.set("api.force-version", "auto");
-                defaultConfig.set("server.name", "Server 1");
-                defaultConfig.set("server.query_mojang", false);
-                defaultConfig.set("sync.polling_rate", 2);
-                ConfigurationProvider.getProvider(YamlConfiguration.class).save(defaultConfig, file);
+            try (InputStream defaultConfig = getResourceAsStream("config.yml")) {
+                if (defaultConfig != null) {
+                    Files.copy(defaultConfig, file.toPath());
+                } else {
+                    getLogger().warning("Default config resource not found in JAR");
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }

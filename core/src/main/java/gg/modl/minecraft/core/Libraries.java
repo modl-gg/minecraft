@@ -139,25 +139,57 @@ public final class Libraries {
     );
 
     // Cirrus - Inventory GUI framework (loaded via JitPack)
-    public static final LibraryRecord CIRRUS_SPIGOT = LibraryRecord.of(
-            "com{}github{}modl-gg{}minecraft-cirrus",
+    public static final LibraryRecord CIRRUS_SPIGOT = LibraryRecord.ofUrl(
+            "gg{}modl{}minecraft{}cirrus",
             "cirrus-spigot",
-            "v4.1.0-SNAPSHOT",
-            "cirrus-spigot"
+            "4.1.0-SNAPSHOT",
+            "cirrus-spigot",
+            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.0-SNAPSHOT/cirrus-spigot-4.1.0.jar"
     );
 
-    public static final LibraryRecord CIRRUS_VELOCITY = LibraryRecord.of(
-            "com{}github{}modl-gg{}minecraft-cirrus",
+    public static final LibraryRecord CIRRUS_VELOCITY = LibraryRecord.ofUrl(
+            "gg{}modl{}minecraft{}cirrus",
             "cirrus-velocity",
-            "v4.1.0-SNAPSHOT",
-            "cirrus-velocity"
+            "4.1.0-SNAPSHOT",
+            "cirrus-velocity",
+            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.0-SNAPSHOT/cirrus-velocity-4.1.0.jar"
     );
 
-    public static final LibraryRecord CIRRUS_BUNGEECORD = LibraryRecord.of(
-            "com{}github{}modl-gg{}minecraft-cirrus",
+    public static final LibraryRecord CIRRUS_BUNGEECORD = LibraryRecord.ofUrl(
+            "gg{}modl{}minecraft{}cirrus",
             "cirrus-bungeecord",
-            "v4.1.0-SNAPSHOT",
-            "cirrus-bungeecord"
+            "4.1.0-SNAPSHOT",
+            "cirrus-bungeecord",
+            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.0-SNAPSHOT/cirrus-bungeecord-4.1.0.jar"
+    );
+
+    // Adventure - UI library for Minecraft (adventure-api requires adventure-key and examination libs)
+    public static final LibraryRecord ADVENTURE_KEY = LibraryRecord.of(
+            "net{}kyori",
+            "adventure-key",
+            "4.26.1",
+            "adventure-key"
+    );
+
+    public static final LibraryRecord EXAMINATION_API = LibraryRecord.of(
+            "net{}kyori",
+            "examination-api",
+            "1.3.0",
+            "examination-api"
+    );
+
+    public static final LibraryRecord EXAMINATION_STRING = LibraryRecord.of(
+            "net{}kyori",
+            "examination-string",
+            "1.3.0",
+            "examination-string"
+    );
+
+    public static final LibraryRecord ADVENTURE_API = LibraryRecord.of(
+            "net{}kyori",
+            "adventure-api",
+            "4.26.1",
+            "adventure-api"
     );
 
     /**

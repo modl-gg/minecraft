@@ -59,7 +59,7 @@
 
         <!-- Internal dependencies -->
         <protocolize.version>2.4.2</protocolize.version>
-        <cirrus.version>v4.1.0-SNAPSHOT</cirrus.version>
+        <cirrus.version>4.1.0-SNAPSHOT</cirrus.version>
         <acf.version>0.5.1-SNAPSHOT</acf.version>
         <lombok.version>1.18.34</lombok.version>
         <gson.version>2.12.1</gson.version>
@@ -155,25 +155,25 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.github.modl-gg.minecraft-cirrus</groupId>
+                <groupId>gg.modl.minecraft.cirrus</groupId>
                 <artifactId>cirrus-api</artifactId>
                 <version>${cirrus.version}</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
-                <groupId>com.github.modl-gg.minecraft-cirrus</groupId>
+                <groupId>gg.modl.minecraft.cirrus</groupId>
                 <artifactId>cirrus-velocity</artifactId>
                 <version>${cirrus.version}</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
-                <groupId>com.github.modl-gg.minecraft-cirrus</groupId>
+                <groupId>gg.modl.minecraft.cirrus</groupId>
                 <artifactId>cirrus-spigot</artifactId>
                 <version>${cirrus.version}</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
-                <groupId>com.github.modl-gg.minecraft-cirrus</groupId>
+                <groupId>gg.modl.minecraft.cirrus</groupId>
                 <artifactId>cirrus-bungeecord</artifactId>
                 <version>${cirrus.version}</version>
                 <scope>provided</scope>

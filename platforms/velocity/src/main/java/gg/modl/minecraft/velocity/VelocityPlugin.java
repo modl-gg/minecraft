@@ -197,37 +197,14 @@ public final class VelocityPlugin {
     }
     
     private void createDefaultConfig(Path configFile) throws IOException {
-        String defaultConfig = """
-                # MODL Minecraft Plugin Configuration
-                # 
-                # API Configuration - Get these values from your MODL panel
-                api:
-                  # Your API key from the panel
-                  key: "your-api-key-here"
-                  # Your panel's base URL (e.g., https://yourserver.modl.gg)
-                  url: "https://yourserver.modl.gg"
-                  # Enable debug HTTP logging (default: false)
-                  debug: false
-                  # Use testing API (api.modl.top) instead of production API
-                  # Only enable this for development/testing purposes
-                  testing-api: false
-
-                # Server Configuration
-                server:
-                  # Name of this server (used for identification in the panel)
-                  name: "Server 1"
-                  # Allow querying Mojang API for unknown players (default: false)
-                  query_mojang: false
-                  
-                # Sync Configuration
-                sync:
-                  # How often to sync with the panel (in seconds)
-                  # Default: 2 seconds. Minimum: 1 second
-                  polling_rate: 2
-                """;
-        
-        Files.writeString(configFile, defaultConfig);
-        logger.info("Created default configuration file at: " + configFile);
+        try (InputStream defaultConfig = getClass().getResourceAsStream("/config.yml")) {
+            if (defaultConfig != null) {
+                Files.copy(defaultConfig, configFile);
+                logger.info("Created default configuration file at: " + configFile);
+            } else {
+                logger.warn("Default config resource not found in JAR");
+            }
+        }
     }
     
     @SuppressWarnings("unchecked")

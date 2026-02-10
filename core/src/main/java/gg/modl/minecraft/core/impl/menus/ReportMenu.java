@@ -143,7 +143,8 @@ public class ReportMenu extends SimpleMenu {
             villain.username(),                                       // reportedPlayerName
             null,                                              // TODO: chatMessages
             List.of(), // tags
-            "normal"                           // priority
+            "normal",                           // priority
+            platform.getPlayerServer(hero.uuid())// ""
         );
         
         sendMessage(locale.getMessage("messages.submitting", Map.of("type", "report")));

@@ -213,10 +213,10 @@ public class HttpManager {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                logger.info("V2 API health check PASSED (status: " + response.statusCode() + ", body: " + response.body() + ")");
+                logger.info("V2 API health check PASSED (status: " + response.statusCode() + ")");
                 return true;
             } else {
-                logger.warning("V2 API health check FAILED (status: " + response.statusCode() + ", body: " + response.body() + ")");
+                logger.warning("V2 API health check FAILED (status: " + response.statusCode() +")");
                 return false;
             }
         } catch (Exception e) {
