@@ -52,8 +52,7 @@ public class SpigotPlugin extends JavaPlugin {
                 getConfig().getString("api.key"),
                 apiUrl,
                 getConfig().getBoolean("api.debug", false),
-                getConfig().getBoolean("api.testing-api", false),
-                getConfig().getString("api.force-version", "auto")
+                getConfig().getBoolean("api.testing-api", false)
         );
 
         BukkitCommandManager commandManager = new BukkitCommandManager(this);

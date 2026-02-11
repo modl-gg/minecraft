@@ -11,7 +11,6 @@ import co.aikar.commands.annotation.Optional;
 import co.aikar.commands.annotation.Syntax;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
@@ -140,11 +139,9 @@ public class PunishCommand extends BaseCommand {
         // Build punishment data (matching panel logic)
         Map<String, Object> data = buildPunishmentData(punishmentArgs, punishmentType, target);
 
-        if (httpClientHolder.getApiVersion() != ApiVersion.V1) {
-            data.put("issuedServer", sender.isPlayer()
-                ? platform.getPlayerServer(sender.getUniqueId())
-                : platform.getServerName());
-        }
+        data.put("issuedServer", sender.isPlayer()
+            ? platform.getPlayerServer(sender.getUniqueId())
+            : platform.getServerName());
 
         // Create notes list (matching panel logic)
         List<String> notes = new ArrayList<>();
@@ -171,52 +168,7 @@ public class PunishCommand extends BaseCommand {
         final boolean silentPunishment = punishmentArgs.silent;
         final int ordinal = punishmentType.getOrdinal();
 
-        // For V1 API with manual punishment types (ordinals 0-5), use the manual endpoint
-        if (httpClientHolder.getApiVersion() == ApiVersion.V1 && ordinal <= 5) {
-            // Convert to CreatePunishmentRequest for manual endpoint
-            com.google.gson.JsonObject dataJson = new com.google.gson.JsonObject();
-            dataJson.addProperty("reason", punishmentArgs.reason.isEmpty() ? "No reason specified" : punishmentArgs.reason);
-            dataJson.addProperty("silent", punishmentArgs.silent);
-            dataJson.addProperty("altBlocking", punishmentArgs.altBlocking);
-            dataJson.addProperty("wipeAfterExpiry", punishmentArgs.statWipe);
-            if (punishmentArgs.duration > 0) {
-                dataJson.addProperty("duration", punishmentArgs.duration);
-            }
-
-            gg.modl.minecraft.api.http.request.CreatePunishmentRequest manualRequest =
-                new gg.modl.minecraft.api.http.request.CreatePunishmentRequest(
-                    target.getMinecraftUuid().toString(),
-                    issuerName,
-                    ordinal,
-                    punishmentArgs.reason.isEmpty() ? "No reason specified" : punishmentArgs.reason,
-                    punishmentArgs.duration,
-                    dataJson,
-                    new ArrayList<>(),
-                    new ArrayList<>()
-                );
-
-            getHttpClient().createPunishment(manualRequest).thenAccept(response -> {
-                String targetName = target.getUsernames().get(0).getUsername();
-
-                // Success message
-                sender.sendMessage(localeManager.punishment()
-                    .type(punishmentTypeName)
-                    .target(targetName)
-                    .get("general.punishment_issued"));
-
-            }).exceptionally(throwable -> {
-                if (throwable.getCause() instanceof PanelUnavailableException) {
-                    sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-                } else {
-                    sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
-                        Map.of("error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
-                }
-                return null;
-            });
-            return;
-        }
-
-        // For V2 or dynamic punishments (ordinals > 5), use the dynamic endpoint
+        // Use the dynamic punishment endpoint
         CompletableFuture<PunishmentCreateResponse> future = getHttpClient().createPunishmentWithResponse(request);
 
         future.thenAccept(response -> {
@@ -256,12 +208,6 @@ public class PunishCommand extends BaseCommand {
      * Open the punishment GUI for a player target
      */
     private void openPunishmentGui(CommandIssuer sender, Account target) {
-        // Menus require V2 API
-        if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
-            sender.sendMessage(localeManager.getMessage("api_errors.menus_require_v2"));
-            return;
-        }
-
         UUID senderUuid = sender.getUniqueId();
 
         platform.runOnMainThread(() -> {

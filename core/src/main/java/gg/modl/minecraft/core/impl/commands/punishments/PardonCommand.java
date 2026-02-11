@@ -7,7 +7,6 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Modification;
 import gg.modl.minecraft.api.Punishment;
-import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PardonPunishmentRequest;
@@ -40,11 +39,6 @@ public class PardonCommand extends BaseCommand {
     @Description("Pardon all of a player's active and unstarted punishments")
     @Conditions("permission:value=punishment.modify")
     public void pardon(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
-        if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
-            sender.sendMessage(localeManager.getMessage("pardon.disabled_v1"));
-            return;
-        }
-
         final String issuerName = sender.isPlayer() ?
             platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
 
@@ -60,11 +54,6 @@ public class PardonCommand extends BaseCommand {
     @Description("Unban a player by name or punishment ID")
     @Conditions("permission:value=punishment.modify")
     public void unban(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
-        if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
-            sender.sendMessage(localeManager.getMessage("pardon.disabled_v1"));
-            return;
-        }
-
         final String issuerName = sender.isPlayer() ?
             platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
 
@@ -80,11 +69,6 @@ public class PardonCommand extends BaseCommand {
     @Description("Unmute a player by name or punishment ID")
     @Conditions("permission:value=punishment.modify")
     public void unmute(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
-        if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
-            sender.sendMessage(localeManager.getMessage("pardon.disabled_v1"));
-            return;
-        }
-
         final String issuerName = sender.isPlayer() ?
             platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
 

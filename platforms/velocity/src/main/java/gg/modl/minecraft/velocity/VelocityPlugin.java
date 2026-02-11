@@ -84,8 +84,7 @@ public final class VelocityPlugin {
                 getConfigString("api.key", "your-api-key-here"),
                 apiUrl,
                 (Boolean) getNestedConfig("api.debug", false),
-                (Boolean) getNestedConfig("api.testing-api", false),
-                getConfigString("api.force-version", "auto")
+                (Boolean) getNestedConfig("api.testing-api", false)
         );
 
         VelocityPlatform platform = new VelocityPlatform(this.server, commandManager, logger, folder.toFile(), getConfigString("server.name", "Server 1"));

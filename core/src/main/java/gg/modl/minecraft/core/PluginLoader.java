@@ -5,11 +5,9 @@ import co.aikar.commands.CommandManager;
 import co.aikar.commands.ConditionFailedException;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PlayerNameRequest;
 import gg.modl.minecraft.api.http.response.PlayerNameResponse;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.cache.LoginCache;
 import gg.modl.minecraft.core.impl.commands.TicketCommands;
@@ -27,6 +25,7 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.service.database.DatabaseConfig;
 import gg.modl.minecraft.core.sync.SyncService;
+import gg.modl.minecraft.core.util.PermissionUtil;
 import lombok.Getter;
 import org.yaml.snakeyaml.Yaml;
 
@@ -68,7 +67,6 @@ public class PluginLoader {
         platform.setCache(cache);
 
         this.httpClientHolder = httpManager.getHttpClientHolder();
-        PermissionUtil.setHttpClientHolder(this.httpClientHolder);
 
         // Initialize locale manager with support for external locale files
         this.localeManager = new LocaleManager();
@@ -95,10 +93,10 @@ public class PluginLoader {
         // Load database configuration for migration
         DatabaseConfig databaseConfig = loadDatabaseConfig(dataDirectory, logger);
 
-        // Initialize sync service with configurable polling rate and V2 upgrade support
+        // Initialize sync service with configurable polling rate
         this.syncService = new SyncService(platform, httpClientHolder, cache, logger, this.localeManager,
                 httpManager.getApiUrl(), httpManager.getApiKey(), syncPollingRateSeconds, dataDirectory.toFile(), databaseConfig,
-                httpManager.getServerDomain(), httpManager.isUseTestingApi(), httpManager.isDebugHttp());
+                httpManager.isDebugHttp());
         
         // Log configuration details (only in debug mode)
         if (httpManager.isDebugHttp()) {

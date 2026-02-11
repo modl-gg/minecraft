@@ -12,7 +12,6 @@ import co.aikar.commands.annotation.Syntax;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Note;
-import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
@@ -58,12 +57,6 @@ public class NotesCommand extends BaseCommand {
 
         if (printMode) {
             printNotes(sender, playerQuery);
-            return;
-        }
-
-        // GUI mode - requires V2 API
-        if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
-            sender.sendMessage(localeManager.getMessage("api_errors.menus_require_v2"));
             return;
         }
 

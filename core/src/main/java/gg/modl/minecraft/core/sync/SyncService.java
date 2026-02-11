@@ -2,7 +2,6 @@ package gg.modl.minecraft.core.sync;
 
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.SimplePunishment;
-import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.NotificationAcknowledgeRequest;
@@ -12,27 +11,17 @@ import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.HttpClientHolder;
-import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
-import gg.modl.minecraft.core.impl.http.ModlHttpClientV2Impl;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.database.DatabaseConfig;
 import gg.modl.minecraft.core.service.database.JdbcDatabaseProvider;
 import gg.modl.minecraft.core.service.MigrationService;
 import gg.modl.minecraft.core.util.PunishmentMessages;
-import lombok.RequiredArgsConstructor;
 
 import java.io.File;
 import org.jetbrains.annotations.NotNull;
 
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URL;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -65,14 +54,7 @@ public class SyncService {
     @NotNull
     private final File dataFolder;
     private final DatabaseConfig databaseConfig;
-
-    // V2 upgrade settings
-    private final String serverDomain;
-    private final boolean useTestingApi;
     private final boolean debugMode;
-    private boolean hasUpgradedToV2 = false;
-    private int v2CheckCounter = 0;
-    private static final int V2_CHECK_INTERVAL = 30; // Check V2 every 30 sync cycles
 
     private String lastSyncTimestamp;
     private ScheduledExecutorService syncExecutor;
@@ -89,19 +71,7 @@ public class SyncService {
     public SyncService(@NotNull Platform platform, @NotNull HttpClientHolder httpClientHolder, @NotNull Cache cache,
                        @NotNull Logger logger, @NotNull LocaleManager localeManager, @NotNull String apiUrl,
                        @NotNull String apiKey, int pollingRateSeconds, @NotNull File dataFolder,
-                       DatabaseConfig databaseConfig) {
-        this(platform, httpClientHolder, cache, logger, localeManager, apiUrl, apiKey, pollingRateSeconds,
-             dataFolder, databaseConfig, null, false, false);
-    }
-
-    /**
-     * Create a new SyncService with V2 upgrade support.
-     */
-    public SyncService(@NotNull Platform platform, @NotNull HttpClientHolder httpClientHolder, @NotNull Cache cache,
-                       @NotNull Logger logger, @NotNull LocaleManager localeManager, @NotNull String apiUrl,
-                       @NotNull String apiKey, int pollingRateSeconds, @NotNull File dataFolder,
-                       DatabaseConfig databaseConfig,
-                       String serverDomain, boolean useTestingApi, boolean debugMode) {
+                       DatabaseConfig databaseConfig, boolean debugMode) {
         this.platform = platform;
         this.httpClientHolder = httpClientHolder;
         this.cache = cache;
@@ -112,8 +82,6 @@ public class SyncService {
         this.pollingRateSeconds = pollingRateSeconds;
         this.dataFolder = dataFolder;
         this.databaseConfig = databaseConfig;
-        this.serverDomain = serverDomain;
-        this.useTestingApi = useTestingApi;
         this.debugMode = debugMode;
     }
 
@@ -147,17 +115,8 @@ public class SyncService {
             return t;
         });
         
-        // Perform initial diagnostic check only for V1 API (V2 already validated during HttpManager init)
-        if (httpClientHolder.getApiVersion() == ApiVersion.V1) {
-            if (debugMode) {
-                logger.info("MODL Sync service starting - performing initial diagnostic check...");
-            }
-            performDiagnosticCheck();
-        }
-
-        // Start sync task with configurable rate (delayed by 5 seconds for V2, 10 seconds for V1 to allow diagnostic check)
-        int initialDelay = httpClientHolder.getApiVersion() == ApiVersion.V2 ? 5 : 10;
-        syncExecutor.scheduleAtFixedRate(this::performSync, initialDelay, actualPollingRate, TimeUnit.SECONDS);
+        // Start sync task with configurable rate
+        syncExecutor.scheduleAtFixedRate(this::performSync, 5, actualPollingRate, TimeUnit.SECONDS);
         isRunning = true;
         
         if (debugMode) {
@@ -197,121 +156,10 @@ public class SyncService {
     }
     
     /**
-     * Perform diagnostic check to validate API connectivity
-     */
-    private void performDiagnosticCheck() {
-        try {
-            if (debugMode) {
-                logger.info("Diagnostic: Testing API connectivity...");
-                logger.info("Diagnostic: API Base URL: " + apiUrl);
-                logger.info("Diagnostic: API Key: " + (apiKey.length() > 8 ?
-                    apiKey.substring(0, 8) + "..." : "***"));
-            }
-            
-            // First, test basic connectivity to the panel URL
-            testBasicConnectivity();
-            
-            // Test with a minimal sync request
-            SyncRequest testRequest = new SyncRequest();
-            testRequest.setLastSyncTimestamp(Instant.now().toString());
-            testRequest.setOnlinePlayers(List.of()); // Empty list
-            testRequest.setServerStatus(new SyncRequest.ServerStatus(
-                0, 
-                platform.getMaxPlayers(),
-                platform.getServerVersion(),
-                Instant.now().toString()
-            ));
-            
-            CompletableFuture<SyncResponse> testFuture = httpClientHolder.getClient().sync(testRequest);
-            testFuture.thenAccept(response -> {
-                if (debugMode) {
-                    logger.info("Diagnostic: API connectivity test PASSED");
-                    logger.info("Diagnostic: Server response timestamp: " + response.getTimestamp());
-                }
-            }).exceptionally(throwable -> {
-                if (throwable.getCause() instanceof PanelUnavailableException) {
-                    logger.warning("Diagnostic: Panel is temporarily unavailable (502 error) - likely restarting");
-                } else {
-                    logger.severe("Diagnostic: API connectivity test FAILED: " + throwable.getMessage());
-                    if (throwable.getMessage().contains("502")) {
-                        logger.severe("Diagnostic: 502 Bad Gateway indicates the API server is unreachable");
-                        logger.severe("Diagnostic: This usually means:");
-                        logger.severe("Diagnostic:   1. The panel server is down");
-                        logger.severe("Diagnostic:   2. The reverse proxy/load balancer is misconfigured");
-                        logger.severe("Diagnostic:   3. The API endpoint URL is incorrect");
-                        logger.severe("Diagnostic: Expected sync endpoint: " + apiUrl + "/sync");
-                    } else if (throwable.getMessage().contains("401") || throwable.getMessage().contains("403")) {
-                        logger.severe("Diagnostic: Authentication failed - API key may be invalid");
-                    } else if (throwable.getMessage().contains("404")) {
-                        logger.severe("Diagnostic: Endpoint not found - the sync endpoint may not exist");
-                    } else if (throwable.getMessage().contains("ConnectException") || throwable.getMessage().contains("UnknownHostException")) {
-                        logger.severe("Diagnostic: Network connectivity issue - cannot reach " + apiUrl);
-                    }
-                }
-                return null;
-            });
-            
-        } catch (Exception e) {
-            logger.severe("Diagnostic: Failed to perform connectivity test: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * Test basic connectivity to the panel server
-     */
-    private void testBasicConnectivity() {
-        try {
-            if (debugMode) {
-                logger.info("Diagnostic: Testing basic connectivity to " + apiUrl);
-            }
-            URL url = new URL(apiUrl);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("HEAD");
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(5000);
-            
-            int responseCode = connection.getResponseCode();
-            if (debugMode) {
-                logger.info("Diagnostic: Basic connectivity test - Response code: " + responseCode);
-            }
-
-            if (responseCode >= 200 && responseCode < 400) {
-                if (debugMode) {
-                    logger.info("Diagnostic: Panel server is reachable");
-                }
-            } else if (responseCode == 502) {
-                logger.warning("Diagnostic: Panel server returned 502 - server may be misconfigured");
-            } else {
-                logger.warning("Diagnostic: Panel server returned unexpected code: " + responseCode);
-            }
-            
-            connection.disconnect();
-        } catch (Exception e) {
-            logger.severe("Diagnostic: Failed to connect to panel server: " + e.getMessage());
-            if (e.getMessage().contains("UnknownHostException")) {
-                logger.severe("Diagnostic: Domain name '123.modl.top' cannot be resolved - check DNS");
-            } else if (e.getMessage().contains("ConnectException")) {
-                logger.severe("Diagnostic: Connection refused - server may be down");
-            } else if (e.getMessage().contains("SocketTimeoutException")) {
-                logger.severe("Diagnostic: Connection timeout - server may be slow or unreachable");
-            }
-        }
-    }
-    
-    /**
      * Perform a sync operation
      */
     private void performSync() {
         try {
-            // Check if we should try upgrading to V2 (only for V1 clients)
-            if (httpClientHolder.getApiVersion() == ApiVersion.V1 && !hasUpgradedToV2 && serverDomain != null) {
-                v2CheckCounter++;
-                if (v2CheckCounter >= V2_CHECK_INTERVAL) {
-                    v2CheckCounter = 0;
-                    tryUpgradeToV2();
-                }
-            }
-
             // Get online players
             Collection<AbstractPlayer> onlinePlayers = platform.getOnlinePlayers();
 
@@ -347,74 +195,6 @@ public class SyncService {
         }
     }
 
-    /**
-     * Check if V2 API is available and switch to it if so.
-     */
-    private void tryUpgradeToV2() {
-        try {
-            String v2BaseUrl = useTestingApi ? HttpManager.TESTING_API_URL : HttpManager.V2_API_URL;
-            String healthUrl = v2BaseUrl + "/v1/health";
-
-            if (debugMode) {
-                logger.info("Checking V2 API availability at: " + healthUrl);
-            }
-
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(5))
-                    .build();
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(healthUrl))
-                    .header("X-API-Key", apiKey)
-                    .header("X-Server-Domain", serverDomain)
-                    .timeout(Duration.ofSeconds(5))
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                logger.info("V2 API health check PASSED - upgrading from V1 to V2");
-                upgradeToV2(v2BaseUrl);
-            } else {
-                logger.fine("V2 API health check failed (status: " + response.statusCode() + ") - staying on V1");
-            }
-        } catch (Exception e) {
-            logger.fine("V2 API health check failed: " + e.getMessage() + " - staying on V1");
-        }
-    }
-
-    /**
-     * Upgrade to V2 API client.
-     * Updates the shared HttpClientHolder so all components automatically use the new V2 client.
-     */
-    private void upgradeToV2(String v2BaseUrl) {
-        try {
-            String v2ApiUrl = v2BaseUrl + ApiVersion.V2.getBasePath();
-
-            // Create new V2 client
-            ModlHttpClient v2Client = new ModlHttpClientV2Impl(v2ApiUrl, apiKey, serverDomain, false);
-
-            // Update the shared holder - this makes all components use V2
-            httpClientHolder.update(v2Client, ApiVersion.V2);
-            this.hasUpgradedToV2 = true;
-
-            logger.info("==============================================");
-            logger.info("MODL API: Successfully upgraded to V2 API!");
-            logger.info("  Base URL: " + v2ApiUrl);
-            logger.info("  Server Domain: " + serverDomain);
-            logger.info("  All components now using V2 client");
-            logger.info("==============================================");
-
-            // Refresh staff permissions and punishment types with new client
-            refreshStaffPermissions();
-            refreshPunishmentTypes();
-
-        } catch (Exception e) {
-            logger.warning("Failed to upgrade to V2 API: " + e.getMessage());
-        }
-    }
-    
     /**
      * Build online players list for sync request
      */

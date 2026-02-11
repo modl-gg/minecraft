@@ -11,7 +11,6 @@ import co.aikar.commands.annotation.Name;
 import co.aikar.commands.annotation.Optional;
 import co.aikar.commands.annotation.Syntax;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
@@ -78,12 +77,6 @@ public class ReportsCommand extends BaseCommand {
             } else {
                 sender.sendMessage(localeManager.getMessage("general.invalid_syntax"));
             }
-            return;
-        }
-
-        // Non-print mode requires V2 API for GUI
-        if (!printMode && httpClientHolder.getApiVersion() == ApiVersion.V1) {
-            sender.sendMessage(localeManager.getMessage("api_errors.menus_require_v2"));
             return;
         }
 

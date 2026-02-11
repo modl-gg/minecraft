@@ -4,12 +4,9 @@ import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
 import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
-import gg.modl.minecraft.api.http.request.CreatePunishmentRequest;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
-import gg.modl.minecraft.api.http.response.PunishmentCreateResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
@@ -17,9 +14,7 @@ import gg.modl.minecraft.core.impl.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
 
-import com.google.gson.JsonObject;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 @RequiredArgsConstructor
 public class BlacklistCommand extends BaseCommand {
@@ -56,12 +51,11 @@ public class BlacklistCommand extends BaseCommand {
         dataMap.put("altBlocking", blacklistArgs.altBlocking);
         dataMap.put("wipeAfterExpiry", blacklistArgs.statWipe);
 
-        // Try V2 dynamic endpoint first for punishment ID
-        if (httpClientHolder.getApiVersion() != ApiVersion.V1) {
-            dataMap.put("issuedServer", sender.isPlayer()
-                ? platform.getPlayerServer(sender.getUniqueId())
-                : platform.getServerName());
-            PunishmentCreateRequest v2Request = new PunishmentCreateRequest(
+        dataMap.put("issuedServer", sender.isPlayer()
+            ? platform.getPlayerServer(sender.getUniqueId())
+            : platform.getServerName());
+
+        PunishmentCreateRequest v2Request = new PunishmentCreateRequest(
                 target.getMinecraftUuid().toString(),
                 issuerName,
                 5, // Blacklist ordinal
@@ -102,44 +96,6 @@ public class BlacklistCommand extends BaseCommand {
                 }
                 return null;
             });
-            return;
-        }
-
-        // Fallback to V1 API
-        JsonObject data = new JsonObject();
-        data.addProperty("reason", blacklistArgs.reason.isEmpty() ? "No reason specified" : blacklistArgs.reason);
-        data.addProperty("silent", blacklistArgs.silent);
-        data.addProperty("altBlocking", blacklistArgs.altBlocking);
-        data.addProperty("wipeAfterExpiry", blacklistArgs.statWipe);
-
-        CreatePunishmentRequest request = new CreatePunishmentRequest(
-            target.getMinecraftUuid().toString(),
-            issuerName,
-            5,
-            blacklistArgs.reason.isEmpty() ? "No reason specified" : blacklistArgs.reason,
-            0,
-            data,
-            new ArrayList<>(),
-            new ArrayList<>()
-        );
-
-        getHttpClient().createPunishment(request).thenAccept(response -> {
-            String targetName = target.getUsernames().get(0).getUsername();
-
-            sender.sendMessage(localeManager.punishment()
-                .type("blacklist")
-                .target(targetName)
-                .get("general.punishment_issued"));
-
-        }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) {
-                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-            } else {
-                sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
-                    Map.of("error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
-            }
-            return null;
-        });
     }
 
     private BlacklistArgs parseArguments(String args) {

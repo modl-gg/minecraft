@@ -4,7 +4,6 @@ import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
 import gg.modl.minecraft.api.AbstractPlayer;
-import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
@@ -42,8 +41,7 @@ public class TicketCommands extends BaseCommand {
             return;
         }
 
-        String createdServer = httpClientHolder.getApiVersion() != ApiVersion.V1
-            ? platform.getPlayerServer(sender.getUniqueId()) : null;
+        String createdServer = platform.getPlayerServer(sender.getUniqueId());
 
         CreateTicketRequest request = new CreateTicketRequest(
             reporter.uuid().toString(),
@@ -93,8 +91,7 @@ public class TicketCommands extends BaseCommand {
                              "Reported by: " + reporter.username() + "\n\n" +
                              "**Chat Log:**\n```\n" + chatLog + "\n```";
 
-        String createdServer = httpClientHolder.getApiVersion() != ApiVersion.V1
-            ? platform.getPlayerServer(sender.getUniqueId()) : null;
+        String createdServer = platform.getPlayerServer(sender.getUniqueId());
 
         CreateTicketRequest request = new CreateTicketRequest(
             reporter.uuid().toString(),
@@ -119,8 +116,7 @@ public class TicketCommands extends BaseCommand {
     public void staffApplication(CommandIssuer sender) {
         AbstractPlayer applicant = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
-        String createdServer = httpClientHolder.getApiVersion() != ApiVersion.V1
-            ? platform.getPlayerServer(sender.getUniqueId()) : null;
+        String createdServer = platform.getPlayerServer(sender.getUniqueId());
 
         CreateTicketRequest request = new CreateTicketRequest(
             applicant.uuid().toString(),
@@ -146,8 +142,7 @@ public class TicketCommands extends BaseCommand {
     public void bugReport(CommandIssuer sender, String description) {
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
-        String createdServer = httpClientHolder.getApiVersion() != ApiVersion.V1
-            ? platform.getPlayerServer(sender.getUniqueId()) : null;
+        String createdServer = platform.getPlayerServer(sender.getUniqueId());
 
         CreateTicketRequest request = new CreateTicketRequest(
             reporter.uuid().toString(),
@@ -173,8 +168,7 @@ public class TicketCommands extends BaseCommand {
     public void supportRequest(CommandIssuer sender, String description) {
         AbstractPlayer requester = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
-        String createdServer = httpClientHolder.getApiVersion() != ApiVersion.V1
-            ? platform.getPlayerServer(sender.getUniqueId()) : null;
+        String createdServer = platform.getPlayerServer(sender.getUniqueId());
 
         CreateTicketRequest request = new CreateTicketRequest(
             requester.uuid().toString(),

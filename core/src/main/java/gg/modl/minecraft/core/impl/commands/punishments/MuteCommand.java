@@ -4,7 +4,6 @@ import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
 import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.http.ApiVersion;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.CreatePunishmentRequest;
@@ -54,11 +53,9 @@ public class MuteCommand extends BaseCommand {
         if (muteArgs.duration > 0) {
             data.addProperty("duration", muteArgs.duration);
         }
-        if (httpClientHolder.getApiVersion() != ApiVersion.V1) {
-            data.addProperty("issuedServer", sender.isPlayer()
-                ? platform.getPlayerServer(sender.getUniqueId())
-                : platform.getServerName());
-        }
+        data.addProperty("issuedServer", sender.isPlayer()
+            ? platform.getPlayerServer(sender.getUniqueId())
+            : platform.getServerName());
 
         // Create manual punishment request for mute (ordinal 1)
         CreatePunishmentRequest request = new CreatePunishmentRequest(

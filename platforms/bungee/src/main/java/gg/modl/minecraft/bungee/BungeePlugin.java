@@ -56,8 +56,7 @@ public class BungeePlugin extends Plugin {
                 configuration.getString("api.key"),
                 apiUrl,
                 configuration.getBoolean("api.debug", false),
-                configuration.getBoolean("api.testing-api", false),
-                configuration.getString("api.force-version", "auto")
+                configuration.getBoolean("api.testing-api", false)
         );
 
         BungeeCommandManager commandManager = new BungeeCommandManager(this);
