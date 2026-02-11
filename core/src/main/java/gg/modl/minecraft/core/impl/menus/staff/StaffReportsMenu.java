@@ -204,10 +204,11 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         vars.put("status", report.getStatus() != null && report.getStatus().equalsIgnoreCase("closed")
                 ? "&cCLOSED" : "&aOPEN");
 
-        // Content - normalize newlines and wrap text
+        // Content - normalize newlines, strip markdown, and wrap text
         String content = report.getContent() != null ? report.getContent() : "";
         // Handle literal \n sequences and actual newlines
         content = content.replace("\\n", "\n");
+        content = content.replace("**", "").replace("```", "");
         List<String> wrappedContent = new ArrayList<>();
         for (String paragraph : content.split("\n")) {
             if (paragraph.trim().isEmpty()) {

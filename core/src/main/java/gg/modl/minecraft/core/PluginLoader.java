@@ -68,12 +68,15 @@ public class PluginLoader {
 
         this.httpClientHolder = httpManager.getHttpClientHolder();
 
-        // Initialize locale manager with support for external locale files
-        this.localeManager = new LocaleManager();
+        // Read configured locale from config.yml
         Logger logger = Logger.getLogger("MODL-" + platform.getClass().getSimpleName());
+        String configuredLocale = readLocaleFromConfig(dataDirectory, logger);
+
+        // Initialize locale manager with support for external locale files
+        this.localeManager = new LocaleManager(configuredLocale);
 
         // Try to load locale from external file if it exists
-        Path localeFile = dataDirectory.resolve("locale").resolve("en_US.yml");
+        Path localeFile = dataDirectory.resolve("locale").resolve(configuredLocale + ".yml");
         if (Files.exists(localeFile)) {
             if (httpManager.isDebugHttp()) {
                 logger.info("Loading locale from external file: " + localeFile);
@@ -199,6 +202,33 @@ public class PluginLoader {
         return null;
     }
     
+    /**
+     * Read the locale setting from config.yml, defaulting to "en_US"
+     */
+    @SuppressWarnings("unchecked")
+    private static String readLocaleFromConfig(Path dataDirectory, Logger logger) {
+        try {
+            Path configFile = dataDirectory.resolve("config.yml");
+            if (!Files.exists(configFile)) {
+                return "en_US";
+            }
+            Yaml yaml = new Yaml();
+            try (InputStream inputStream = new FileInputStream(configFile.toFile())) {
+                Map<String, Object> config = yaml.load(inputStream);
+                if (config != null && config.containsKey("locale")) {
+                    String locale = (String) config.get("locale");
+                    if (locale != null && !locale.isEmpty()) {
+                        logger.info("Using locale: " + locale);
+                        return locale;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("Failed to read locale from config: " + e.getMessage());
+        }
+        return "en_US";
+    }
+
     /**
      * Load locale config values from config.yml and pass to LocaleManager
      */

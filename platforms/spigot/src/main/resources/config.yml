@@ -19,6 +19,9 @@ server:
   # Allow querying Mojang API for unknown players (default: false)
   query_mojang: false
 
+# Language for in-game messages. Available: en_US, de_DE, es_ES
+locale: "en_US"
+
 # Sync Configuration
 sync:
   # How often to sync with the panel (in seconds)

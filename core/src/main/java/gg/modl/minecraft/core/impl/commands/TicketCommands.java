@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RequiredArgsConstructor
 public class TicketCommands extends BaseCommand {
@@ -27,13 +28,17 @@ public class TicketCommands extends BaseCommand {
     private final String panelUrl; // e.g., "https://myserver.modl.gg"
     private final LocaleManager localeManager;
     private final ChatMessageCache chatMessageCache;
-    
+
+    private Map<UUID, Map<String, Long>> cooldowns = new ConcurrentHashMap<>();
+
     @CommandAlias("report")
     @CommandCompletion("@players")
     @Description("Report a player with a reason")
     @Syntax("<player> <reason...>")
     @Conditions("player")
     public void report(CommandIssuer sender, AbstractPlayer targetPlayer, String reason) {
+        if (!checkCooldown(sender, "player")) return;
+
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
         if (targetPlayer.username().equalsIgnoreCase(reporter.username())) {
@@ -57,7 +62,7 @@ public class TicketCommands extends BaseCommand {
             createdServer
         );
         
-        submitFinishedTicket(sender, request, "Report");
+        submitFinishedTicket(sender, request, "Report", "player");
     }
     
     @CommandAlias("chatreport")
@@ -66,6 +71,8 @@ public class TicketCommands extends BaseCommand {
     @Syntax("<player>")
     @Conditions("player")
     public void chatReport(CommandIssuer sender, AbstractPlayer targetPlayer) {
+        if (!checkCooldown(sender, "chat")) return;
+
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
         if (targetPlayer.username().equalsIgnoreCase(reporter.username())) {
@@ -107,13 +114,15 @@ public class TicketCommands extends BaseCommand {
             createdServer
         );
 
-        submitFinishedTicket(sender, request, "Chat report");
+        submitFinishedTicket(sender, request, "Chat report", "chat");
     }
     
     @CommandAlias("apply")
     @Description("Submit a staff application")
     @Conditions("player")
     public void staffApplication(CommandIssuer sender) {
+        if (!checkCooldown(sender, "staff")) return;
+
         AbstractPlayer applicant = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
         String createdServer = platform.getPlayerServer(sender.getUniqueId());
@@ -132,7 +141,7 @@ public class TicketCommands extends BaseCommand {
             createdServer
         );
         
-        submitUnfinishedTicket(sender, request, "Staff application");
+        submitUnfinishedTicket(sender, request, "Staff application", "staff");
     }
     
     @CommandAlias("bugreport")
@@ -140,6 +149,8 @@ public class TicketCommands extends BaseCommand {
     @Syntax("<description...>")
     @Conditions("player")
     public void bugReport(CommandIssuer sender, String description) {
+        if (!checkCooldown(sender, "bug")) return;
+
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
         String createdServer = platform.getPlayerServer(sender.getUniqueId());
@@ -158,7 +169,7 @@ public class TicketCommands extends BaseCommand {
             createdServer
         );
         
-        submitUnfinishedTicket(sender, request, "Bug report");
+        submitUnfinishedTicket(sender, request, "Bug report", "bug");
     }
     
     @CommandAlias("support")
@@ -166,6 +177,8 @@ public class TicketCommands extends BaseCommand {
     @Syntax("<description...>")
     @Conditions("player")
     public void supportRequest(CommandIssuer sender, String description) {
+        if (!checkCooldown(sender, "support")) return;
+
         AbstractPlayer requester = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
         String createdServer = platform.getPlayerServer(sender.getUniqueId());
@@ -184,7 +197,7 @@ public class TicketCommands extends BaseCommand {
             createdServer
         );
 
-        submitUnfinishedTicket(sender, request, "Support request");
+        submitUnfinishedTicket(sender, request, "Support request", "support");
     }
 
     @CommandAlias("tclaim|claimticket")
@@ -225,16 +238,34 @@ public class TicketCommands extends BaseCommand {
         });
     }
     
-    private void submitFinishedTicket(CommandIssuer sender, CreateTicketRequest request, String ticketType) {
+    private boolean checkCooldown(CommandIssuer sender, String ticketType) {
+        UUID uuid = sender.getUniqueId();
+        Map<String, Long> playerCooldowns = cooldowns.get(uuid);
+        if (playerCooldowns != null) {
+            Long lastUsed = playerCooldowns.get(ticketType);
+            if (lastUsed != null && System.currentTimeMillis() - lastUsed < 60_000) {
+                sender.sendMessage(localeManager.getMessage("messages.ticket_cooldown"));
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void setCooldown(UUID uuid, String ticketType) {
+        cooldowns.computeIfAbsent(uuid, k -> new ConcurrentHashMap<>()).put(ticketType, System.currentTimeMillis());
+    }
+
+    private void submitFinishedTicket(CommandIssuer sender, CreateTicketRequest request, String ticketType, String cooldownType) {
         sender.sendMessage(localeManager.getMessage("messages.submitting", Map.of("type", ticketType.toLowerCase())));
         
         CompletableFuture<CreateTicketResponse> future = httpClient.createTicket(request);
         
         future.thenAccept(response -> {
             if (response.isSuccess() && response.getTicketId() != null) {
+                setCooldown(sender.getUniqueId(), cooldownType);
                 sender.sendMessage(localeManager.getMessage("messages.success", Map.of("type", ticketType)));
                 sender.sendMessage(localeManager.getMessage("messages.ticket_id", Map.of("ticketId", response.getTicketId())));
-                
+
                 String ticketUrl = panelUrl + "/ticket/" + response.getTicketId();
                 sendClickableTicketMessage(sender, localeManager.getMessage("messages.view_ticket_label"), ticketUrl, response.getTicketId());
                 sender.sendMessage(localeManager.getMessage("messages.evidence_note"));
@@ -253,13 +284,14 @@ public class TicketCommands extends BaseCommand {
         });
     }
 
-    private void submitUnfinishedTicket(CommandIssuer sender, CreateTicketRequest request, String ticketType) {
+    private void submitUnfinishedTicket(CommandIssuer sender, CreateTicketRequest request, String ticketType, String cooldownType) {
         sender.sendMessage(localeManager.getMessage("messages.creating", Map.of("type", ticketType.toLowerCase())));
 
         CompletableFuture<CreateTicketResponse> future = httpClient.createUnfinishedTicket(request);
 
         future.thenAccept(response -> {
             if (response.isSuccess() && response.getTicketId() != null) {
+                setCooldown(sender.getUniqueId(), cooldownType);
                 sender.sendMessage(localeManager.getMessage("messages.created", Map.of("type", ticketType)));
                 sender.sendMessage(localeManager.getMessage("messages.ticket_id", Map.of("ticketId", response.getTicketId())));
 

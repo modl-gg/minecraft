@@ -1,0 +1,431 @@
+# MODL Minecraft Plugin - German Locale
+# Color codes: Use & for color codes (e.g., &c for red, &a for green)
+# Placeholders: {player}, {reason}, {ticketId}, {url}, {title}
+
+# General Messages
+messages:
+  cannot_report_self: "&cDu kannst dich nicht selbst melden!"
+  submitting: "&e{type} wird eingereicht..."
+  creating: "&e{type} wird erstellt..."
+  success: "&a{type} erfolgreich eingereicht!"
+  created: "&a{type} erfolgreich erstellt!"
+  ticket_id: "&7Ticket-ID: &f{ticketId}"
+  view_ticket: "&7Dein Ticket ansehen: &b{url}"
+  complete_form: "&7Vervollständige dein {type}: &b{url}"
+  evidence_note: "&7Du kannst bei Bedarf zusätzliche Beweise zu deinem Ticket hinzufügen."
+  form_title_note: "&7Du kannst den Titel '&f{title}&7' im Formular vor dem Absenden ändern."
+  failed_submit: "&c{type} konnte nicht eingereicht werden: {error}"
+  failed_create: "&c{type} konnte nicht erstellt werden: {error}"
+  try_again: "&cBitte versuche es später erneut oder kontaktiere das Team direkt."
+  unknown_error: "Unbekannter Fehler"
+  no_details: "Keine zusätzlichen Details angegeben"
+  no_chat_logs_available: "&cKeine kürzlichen Chatnachrichten von {player} gefunden. Chat-Meldung ohne Chatprotokoll nicht möglich."
+  view_ticket_label: "Dein Ticket ansehen"
+  complete_form_label: "Vervollständige dein {type}"
+  console_ticket_url: "&6{message}: &b{url}"
+  claiming_ticket: "&eTicket &f{ticketId}&e wird mit deinem Konto verknüpft..."
+  ticket_claimed_success: "&aTicket &f{ticketId}&a erfolgreich mit deinem Konto verknüpft!"
+  ticket_claim_failed: "&cTicket konnte nicht verknüpft werden: {error}"
+
+general:
+  no_permission: "&cDu hast keine Berechtigung, diesen Befehl zu verwenden."
+  no_permission_punishment: "&cDu hast keine Berechtigung, '{type}'-Strafen zu verhängen."
+  no_permission_reload: "&cDu hast keine Berechtigung, Strafendaten neu zu laden."
+  invalid_syntax: "&cUngültige Befehlssyntax. Bitte überprüfe die Verwendung."
+  gui_requires_player: "&cDieser Befehl öffnet eine GUI und kann nur von einem Spieler ausgeführt werden. Verwende &f-p &cfür Textausgabe."
+  player_not_found: "&cSpieler nicht gefunden."
+  punishment_error: "&cFehler beim Erstellen der Strafe: {error}"
+  punishment_types_not_loaded: "&cStrafentypen nicht geladen. Versuche &f/modl reload&c oder kontaktiere einen Administrator."
+  invalid_punishment_type: "&cUngültiger Strafentyp. Verfügbare Typen: {types}"
+  invalid_duration: "&cUngültiges Dauerformat. Beispiele: 1d, 2h, 30m, 1w"
+  cannot_punish_self: "&cDu kannst dich nicht selbst bestrafen."
+  target_immune: "&cDu kannst {target} nicht bestrafen, da diese Person Immunität besitzt."
+  punishment_issued: "&a{type} erfolgreich für &f{target}&a verhängt."
+  punishment_issued_duration: "&a{type} erfolgreich für &f{target}&a verhängt ({duration})."
+  reloading: "&eWird neu geladen..."
+  reload_success: "&aNeu laden abgeschlossen."
+  reload_error: "&cFehler beim Neuladen: {error}"
+
+validation:
+  single_severity_error: "&cSchweregrad kann für den Strafentyp '{type}' nicht festgelegt werden. Dieser Strafentyp hat nur eine Schwerestufe."
+  permanent_skin_change_error: "&cSchweregrad kann für den dauerhaften Skin-Änderungs-Strafentyp '{type}' nicht festgelegt werden."
+  permanent_username_change_error: "&cSchweregrad kann für den dauerhaften Namensänderungs-Strafentyp '{type}' nicht festgelegt werden."
+  alt_blocking_not_supported: "&cAlt-Blockierung wird für den Strafentyp '{type}' nicht unterstützt."
+  stat_wiping_not_supported: "&cStatistik-Zurücksetzung wird für den Strafentyp '{type}' nicht unterstützt."
+
+punishment_types:
+  ordinal_0:
+    public_notification: "&c{target} wurde gekickt."
+    player_notification:
+      - "&c&lDu wurdest vom Server gekickt."
+      - "&f{reason} &7(#{id})"
+  ordinal_1:
+    public_notification: "&c{target} wurde stummgeschaltet."
+    player_notification:
+      - ""
+      - "&cDu {tense} {temp} stummgeschaltet für {duration}"
+      - "&7{issued} | #{id} | {appeal_url}"
+      - "&f{reason}"
+      - ""
+  ordinal_2:
+    public_notification: "&c{target} wurde gebannt."
+    player_notification:
+      - "&c&lDu {tense} {temp} gebannt wegen:"
+      - ""
+      - "&f{reason}"
+      - "&7{will_expire}"
+      - "&7Ist das ein Fehler? Lege Einspruch ein unter {appeal_url} mit ID #{id}."
+  ordinal_3:
+    public_notification: "&c{target} wurde gebannt."
+    player_notification:
+      - "&c&lDein Konto {tense2} aufgrund von Sicherheitsbedenken eingeschränkt."
+      - "&fVerdächtige Aktivitäten wurden auf deinem Konto festgestellt. Bitte sichere dein Konto und lege Einspruch ein unter {appeal_url} mit ID #{id}."
+  ordinal_4:
+    public_notification: "&c{target} wurde gebannt."
+    player_notification:
+      - "&c&lDein Konto {tense2} mit einem gebannten Konto verknüpft."
+      - ""
+      - "&fDas Umgehen von Banns durch die Verwendung von Zweitkonten oder das Teilen deines Kontos ist strengstens untersagt."
+      - ""
+      - "&7Dieser Bann wird automatisch aufgehoben, wenn der verknüpfte Bann abläuft."
+      - "&7Ist das ein Fehler? Lege Einspruch ein unter {appeal_url} mit ID #{id}"
+  ordinal_5:
+    public_notification: "&c{target} wurde auf die schwarze Liste gesetzt."
+    player_notification:
+      - "&cDu {tense} auf die schwarze Liste gesetzt"
+      - "&7ID: #{id}"
+  ordinal_6:
+    public_notification: "&c{target} wurde wegen Chat-Missbrauch stummgeschaltet."
+    player_notification:
+      - ""
+      - "&cDu {tense} {temp} stummgeschaltet für {duration}"
+      - "&7{issued} | #{id} | {appeal_url}"
+      - "&f{player_description}"
+      - ""
+  ordinal_7:
+    public_notification: "&c{target} wurde wegen unsozialem Verhalten stummgeschaltet."
+    player_notification:
+      - ""
+      - "&cDu {tense} stummgeschaltet für {duration}"
+      - "&7{issued} | #{id} | {appeal_url}"
+      - "&f{player_description}"
+      - ""
+  ordinal_8:
+    public_notification: "&c{target} wurde wegen gezielter Belästigung gebannt."
+    player_notification:
+      - "&c&lDu {tense} {temp} gebannt wegen:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Ist das ein Fehler? Lege Einspruch ein unter {appeal_url} mit ID #{id}."
+  ordinal_9:
+    public_notification: "&c{target} wurde wegen unangemessener Inhalte gebannt."
+    player_notification:
+      - "&c&lDu {tense} {temp} gebannt wegen:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Ist das ein Fehler? Lege Einspruch ein unter {appeal_url} mit ID #{id}."
+  ordinal_10:
+    public_notification: "&c{target} wurde gebannt."
+    player_notification:
+      - "&c&lDu {tense} aufgrund deines Minecraft-Benutzernamens gebannt."
+      - ""
+      - "&f{reason}"
+      - ""
+      - "&7Dieser Bann wird automatisch aufgehoben, wenn du deinen Benutzernamen änderst."
+      - "&7Ist das ein Fehler? Lege Einspruch ein unter {appeal_url} mit ID #{id}"
+  ordinal_11:
+    public_notification: "&c{target} wurde gebannt."
+    player_notification:
+      - "&c&lDu {tense} aufgrund deines Minecraft-Skins gebannt."
+      - ""
+      - "&f{reason}"
+      - ""
+      - "&7Dieser Bann wird automatisch aufgehoben, wenn du deinen Skin änderst."
+      - "&7Ist das ein Fehler? Lege Einspruch ein unter {appeal_url} mit ID #{id}"
+  ordinal_12:
+    public_notification: "&c{target} wurde wegen Teammissbrauch gebannt."
+    player_notification:
+      - "&c&lDu {tense} {temp} gebannt wegen:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Ist das ein Fehler? Lege Einspruch ein unter {appeal_url} mit ID #{id}."
+  ordinal_13:
+    public_notification: "&c{target} wurde wegen Spielmissbrauch gebannt."
+    player_notification:
+      - "&c&lDu {tense} {temp} gebannt wegen:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Ist das ein Fehler? Lege Einspruch ein unter {appeal_url} mit ID #{id}."
+  ordinal_14:
+    public_notification: "&c{target} wurde wegen Cheating gebannt."
+    player_notification:
+      - "&c&lDu {tense} {temp} gebannt wegen:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Ist das ein Fehler? Lege Einspruch ein unter {appeal_url} mit ID #{id}."
+  ordinal_15:
+    public_notification: "&c{target} wurde wegen Spielhandel gebannt."
+    player_notification:
+      - "&c&lDu {tense} {temp} gebannt wegen:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Ist das ein Fehler? Lege Einspruch ein unter {appeal_url} mit ID #{id}."
+  ordinal_16:
+    public_notification: "&c{target} wurde wegen Kontomissbrauch gebannt."
+    player_notification:
+      - "&c&lDu {tense} {temp} gebannt wegen:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Ist das ein Fehler? Lege Einspruch ein unter {appeal_url} mit ID #{id}."
+  ordinal_17:
+    public_notification: "&c{target} wurde wegen Systemmissbrauch gebannt."
+    player_notification:
+      - "&c&lDu {tense} {temp} gebannt wegen:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Ist das ein Fehler? Lege Einspruch ein unter {appeal_url} mit ID #{id}."
+
+notification:
+  ticket_reply: "&6[Ticket] &f{message}"
+  ticket_reply_with_link: "&6[Ticket] &f{message} &b[Klicken zum Ansehen]"
+  ticket_click_action: "&7Klicke, um Ticket {ticketId} anzusehen"
+
+iammuted:
+  only_players: "&cDieser Befehl kann nur von Spielern verwendet werden."
+  not_muted: "&cDu kannst diesen Befehl nur verwenden, während du stummgeschaltet bist."
+  player_not_online: "&cDieser Spieler ist nicht online."
+  cannot_message_self: "&cDu kannst diese Nachricht nicht an dich selbst senden."
+  cooldown_message: "&cDu musst {minutes} Minuten und {seconds} Sekunden warten, bevor du diesen Befehl erneut verwenden kannst."
+  notification_to_target: "&6[Stummgeschalteter Spieler] &f{sender} &7ist derzeit stummgeschaltet und kann nicht im Chat antworten."
+  success_message: "&aDein Stummschaltungsstatus wurde &f{target}&a mitgeteilt."
+
+player_lookup:
+  looking_up: "&7Spieler &e{player}&7 wird nachgeschlagen..."
+  error: "&cFehler beim Nachschlagen des Spielers: {error}"
+  uuid: "&7UUID: &f{uuid}"
+  currently_banned: "&7Derzeit gebannt: {status}"
+  currently_muted: "&7Derzeit stummgeschaltet: {status}"
+  staff_notes_label: "&7Teamnotizen:"
+  staff_note_format: "  &8• &f{text} &7- {issuer}"
+  no_staff_notes: "  &8Keine Teamnotizen"
+  total_punishments: "&7Strafen insgesamt: &f{count}"
+  linked_accounts_label: "&7Verknüpfte Konten:"
+  linked_account_format: "  &8• &f{username}{status}"
+  linked_account_more: "  &8... und {count} weitere"
+  no_linked_accounts: "  &8Keine verknüpften Konten"
+  total_tickets: "&7Tickets insgesamt: &f{count}"
+  profile_fallback: "&6Profil: &b{url}"
+  status:
+    banned_and_muted: " &c(derzeit gebannt & stummgeschaltet)"
+    banned: " &c(derzeit gebannt)"
+    muted: " &e(derzeit stummgeschaltet)"
+    no_punishments: " &7(keine aktiven Strafen)"
+
+print:
+  inspect:
+    header: ""
+    uuid: "&f{player}s Info &7({uuid})"
+    currently_banned: "&eGebannt: {status}"
+    currently_muted: "&eStummgeschaltet: {status}"
+    notes_label: "&eTeamnotizen:"
+    note_entry: "&6{ordinal}. &f{text} &evon {issuer}"
+    no_notes: "&7Keine Teamnotizen"
+    total_punishments: "&eStrafen insgesamt: &f{count}"
+    linked_accounts_label: "&eVerknüpfte Konten:"
+    linked_account_entry: "&6{ordinal}. &e{username} ({status}&e)"
+    linked_account_more: "&e... und {count} weitere"
+    no_linked_accounts: "&7Keine verknüpften Konten"
+    total_tickets: "&eTickets insgesamt: &f{count}"
+    profile_fallback: "&eProfil: &b{url}"
+    footer: ""
+  punishment_detail:
+    not_found: "&cStrafe #{id} nicht gefunden."
+    header: "&6&m--------&r &eStrafe #{id} &6&m--------"
+    type: "&eTyp: &f{type}"
+    player: "&eSpieler: &f{player}"
+    issuer: "&eAusgestellt von: &f{issuer}"
+    date: "&eDatum: &f{date}"
+    status: "&eStatus: {status}"
+    duration: "&eDauer: &f{duration}"
+    reason: "&eGrund: &f{reason}"
+    evidence: "&eBeweise: &f{count} Datei(en)"
+    notes: "&eNotizen: &f{count}"
+    modifications: "&eÄnderungen: &f{count}"
+    footer: "&6&m--------------------------------"
+  history:
+    header: ""
+    entry: "&6{ordinal}. &e#{id} {date} &f{type} &evon {issuer}."
+    entry_active: "&6{ordinal}. &a#{id} &e{date} &f{type} &evon {issuer} (läuft ab in {expiry})."
+    entry_permanent: "&6{ordinal}. &a#{id} &e{date} &f{type} &evon {issuer} (läuft nie ab)."
+    entry_inactive: "&6{ordinal}. &7#{id} &e{date} &f{type} &evon {issuer} (inaktiv)."
+    entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} &evon {issuer} (begnadigt)."
+    total: "&eAnzahl: &f{count}&e Strafe(n)"
+    empty: "&7Spieler wurde noch nie bestraft."
+    footer: ""
+  notes:
+    header: ""
+    entry: "&6{ordinal}. &e{date} {author}: &f{content}"
+    total: "&eAnzahl: &f{count}&e Notiz(en)"
+    empty: "&7Keine Teamnotizen gefunden."
+    footer: ""
+  alts:
+    header: ""
+    entry: "&6{ordinal}. {color}{username} &e({status}&e)"
+    status_banned: "&cGebannt"
+    status_muted: "&eStummgeschaltet"
+    status_banned_and_muted: "&cGebannt & Stummgeschaltet"
+    status_clean: "&aSauber"
+    total: "&eAnzahl: &f{count}&e verknüpfte(s) Konto/Konten"
+    empty: "&7Keine verknüpften Konten gefunden."
+    footer: ""
+  reports:
+    header: ""
+    entry: "&6{ordinal}. &e#{id} {date} ({status}&e) &f{type} &evon {reporter}"
+    entry_content: " &f{content}"
+    total: "&eAnzahl: &f{count}&e Meldung(en)"
+    empty: "&7Keine Meldungen gefunden."
+    footer: ""
+
+punishment_commands:
+  invalid_severity: "&cUngültiger Schweregrad. Gültige Schweregrade: lenient, regular, severe"
+  warning_message: "&c{username} wurde {punishment_type}."
+
+api_errors:
+  panel_restarting: "&cDas Panel wird gerade neu gestartet. Bitte versuche es in 10 Sekunden erneut."
+  panel_unavailable: "&cDas Panel ist vorübergehend nicht verfügbar. Bitte versuche es in Kürze erneut."
+  connection_failed: "&cVerbindung zum Panel fehlgeschlagen. Bitte versuche es in einem Moment erneut."
+  ban_check_failed: "&cBannstatus konnte nicht überprüft werden. Anmeldung aus Sicherheitsgründen vorübergehend eingeschränkt."
+  menus_require_v2: "&cIn-Game-Menüs erfordern die V2-API. Die neue API wird am 11.02.2026 verfügbar."
+
+pardon:
+  processing_id: "&7Begnadigung für Strafen-ID: &e{id}&7 wird bearbeitet..."
+  processing_player: "&7Begnadigung für Spieler: &e{player}&7 wird bearbeitet..."
+  success_id: "&aStrafe &e#{id}&a erfolgreich begnadigt."
+  success_player: "&a{player}s {type} erfolgreich begnadigt."
+  already_pardoned_id: "&7Strafe &e#{id}&7 ist bereits inaktiv oder wurde begnadigt."
+  no_active_punishment: "&7{player} hat keine aktive {type} zum Begnadigen."
+  error: "&cBegnadigung fehlgeschlagen: {error}"
+  error_player: "&cBegnadigung von {player}s {type} fehlgeschlagen: {error}"
+  error_wrong_type_ban: "&cStrafe &e#{id}&c ist kein Bann. Verwende &e/pardon {id}&c um jeden Strafentyp zu begnadigen."
+  error_wrong_type_mute: "&cStrafe &e#{id}&c ist keine Stummschaltung. Verwende &e/pardon {id}&c um jeden Strafentyp zu begnadigen."
+  staff_notification_id: "&7&o[{issuer}: Strafe #{id} begnadigt&7&o]"
+  staff_notification_player: "&7&o[{issuer}: {player}s {type} begnadigt&7&o]"
+  disabled_v1: "&cDiese Funktion ist vorübergehend im Spiel bis zum 11.02.2026 im Rahmen der V2-Migration deaktiviert. Bitte verwende stattdessen das Panel."
+
+warn:
+  player_message: "&c&lDu hast eine Verwarnung von {issuer} erhalten.\n&fGrund: &7{reason}\n&7Bitte überprüfe die Serverregeln und passe dein Verhalten entsprechend an."
+  success: "&a&f{target}&a erfolgreich verwarnt für: &7{reason}"
+  staff_notification: "&7&o[{issuer}: hat {target} verwarnt für {reason}&7&o]"
+  error: "&cVerwarnung konnte nicht erstellt werden: {error}"
+
+menus:
+  player_head:
+    title: "&6{player_name}s Informationen"
+    lore:
+      - "&8{uuid}"
+      - "&f "
+      - "&fErster Login: {first_login}"
+      - "&fOnline: {is_online} ({last_seen_or_session_time})"
+      - "&fSpielzeit: {playtime}"
+      - "&fEchte IP protokolliert: {real_ip_logged}"
+      - "&fGebannt: {is_banned}"
+      - "&fStummgeschaltet: {is_muted}"
+  history_item:
+    title_active: "&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    title_inactive: "&m&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    lore:
+      - "&7{status_line}"
+      - "&f "
+      - "{notes}"
+      - "&f "
+      - "&fServer: &7{issued_server}"
+      - "&fID: &c{punishment_id}"
+      - "&bKlicke, um diese Strafe zu bearbeiten."
+    status_active: "&7Läuft ab in {expiry}."
+    status_inactive: "&7Abgelaufen vor {expired}."
+    status_pardoned: "&7Begnadigt vor {pardoned}."
+    status_permanent: "&7&7Diese permanente Strafe läuft nie ab."
+    status_unstarted: "&7Strafe noch nicht begonnen."
+    note_format: "&e{note_date} {note_issuer}&f: {note}"
+  note_item:
+    title: "&e{date} {author}"
+    lore:
+      - "&f{content}"
+      - "&f "
+      - "&eKlicke, um Notiz im Chat anzuzeigen"
+  report_item:
+    title: "&e{date} {id} ({status}&e)"
+    lore:
+      - "&7Gemeldet von &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&cLinksklick zum Inspizieren des Spielers"
+      - "&aRechtsklick zum Ablehnen der Meldung"
+  alt_item:
+    title: "{color}{player_name}"
+    lore:
+      - "&8{uuid}"
+      - "&f "
+      - "&fOnline: {is_online} ({last_seen_or_session_time})"
+      - "&fEchte IP protokolliert: {real_ip}"
+      - "&fErster Login: &f{first_login}"
+      - "&7{punishments}"
+      - "&f "
+      - "&eKlicke, um {player_name} zu inspizieren"
+    punishment_line_active_true:
+      - "&fAktive Strafen ({active_count}): &f"
+      - "{active_punishment_list}"
+    punishment_line_active_false:
+      - "&fAktive Strafen: &f0"
+      - "&fInaktive Strafen: &f{inactive_count}"
+    active_punishment_format: "&7- &e#{punishment_id} {punishment_date}: {punishment_type} ({punishment_remaining})"
+  empty:
+    history: "Keine Strafenhistorie"
+    notes: "Keine Teamnotizen"
+    reports: "Keine Meldungen eingereicht"
+    alts: "Keine verknüpften Konten"
+    tickets: "Keine Tickets"
+    staff_reports: "Keine Meldungen"
+  ticket_item:
+    title: "&6Ticket #{id}"
+    lore:
+      - "&7Spieler: &f{player}"
+      - "&7Titel: &f{title}"
+      - "&7Erstellt: &f{date}"
+      - "&7Status: {status}"
+      - "&f "
+      - "&eKlicke, um im Panel zu öffnen"
+  staff_report_item:
+    title: "&e{date} {id} ({status}&e)"
+    lore:
+      - "&c{reported}&7 gemeldet von &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&cLinksklick zum Inspizieren des Spielers"
+      - "&aRechtsklick zum Ablehnen der Meldung"
+  link_report_item_unselected:
+    title: "&e{date} {id}"
+    lore:
+      - "&7Gemeldet von &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&eKlicke zum Auswählen"
+  link_report_item_selected:
+    title: "&a{date} {id}"
+    lore:
+      - "&7Gemeldet von &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&eKlicke zum Abwählen"

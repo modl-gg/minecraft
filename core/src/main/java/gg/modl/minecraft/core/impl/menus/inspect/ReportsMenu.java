@@ -193,8 +193,9 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         String content = report.getContent() != null ? report.getContent() : "";
         String formattedDate = report.getDate() != null ? MenuItems.formatDate(report.getDate()) : "Unknown";
 
-        // Normalize newlines and wrap content
+        // Normalize newlines, strip markdown, and wrap content
         content = content.replace("\\n", "\n");
+        content = content.replace("**", "").replace("```", "");
         List<String> wrappedContent = new ArrayList<>();
         for (String paragraph : content.split("\n")) {
             if (paragraph.trim().isEmpty()) {
