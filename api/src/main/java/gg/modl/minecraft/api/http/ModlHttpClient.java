@@ -149,4 +149,8 @@ public interface ModlHttpClient {
     // Evidence upload token
     @NotNull
     CompletableFuture<EvidenceUploadTokenResponse> createEvidenceUploadToken(@NotNull String punishmentId, @NotNull String issuerName);
+
+    // Server tracking
+    @NotNull
+    CompletableFuture<Void> updatePlayerServer(@NotNull String minecraftUuid, @NotNull String serverName);
 }

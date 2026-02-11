@@ -27,6 +27,7 @@ import net.md_5.bungee.api.event.ChatEvent;
 import net.md_5.bungee.api.event.LoginEvent;
 import net.md_5.bungee.api.event.PlayerDisconnectEvent;
 import net.md_5.bungee.api.event.PostLoginEvent;
+import net.md_5.bungee.api.event.ServerSwitchEvent;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.event.EventHandler;
 import net.md_5.bungee.event.EventPriority;
@@ -194,7 +195,17 @@ public class BungeeListener implements Listener {
         // Remove player from chat message cache
         chatMessageCache.removePlayer(event.getPlayer().getUniqueId().toString());
     }
-    
+
+    @EventHandler
+    public void onServerSwitch(ServerSwitchEvent event) {
+        String serverName = platform.getPlayerServer(event.getPlayer().getUniqueId());
+        getHttpClient().updatePlayerServer(event.getPlayer().getUniqueId().toString(), serverName)
+                .exceptionally(throwable -> {
+                    platform.getLogger().warning("Failed to update server for " + event.getPlayer().getName() + ": " + throwable.getMessage());
+                    return null;
+                });
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onChat(ChatEvent event) {
         if (event.isCommand() || event.getSender() == null) {

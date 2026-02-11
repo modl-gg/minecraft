@@ -357,12 +357,12 @@ public class Cache {
     @Getter
     @Setter
     public static class CachedPlayerData {
-        private Punishment mute;
-        private SimplePunishment simpleMute;
-        private Punishment ban;
-        private SimplePunishment simpleBan;
-        private SyncResponse.ActiveStaffMember staffMember;
-        
+        private volatile Punishment mute;
+        private volatile SimplePunishment simpleMute;
+        private volatile Punishment ban;
+        private volatile SimplePunishment simpleBan;
+        private volatile SyncResponse.ActiveStaffMember staffMember;
+
         public boolean isEmpty() {
             return mute == null && simpleMute == null && ban == null && simpleBan == null && staffMember == null;
         }

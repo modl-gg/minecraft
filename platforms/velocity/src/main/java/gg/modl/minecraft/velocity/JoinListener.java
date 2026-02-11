@@ -23,6 +23,7 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
+import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -200,8 +201,17 @@ public class JoinListener {
         // Remove player from chat message cache
         chatMessageCache.removePlayer(event.getPlayer().getUniqueId().toString());
     }
-    
-    
+
+    @Subscribe
+    public void onServerConnected(ServerConnectedEvent event) {
+        String serverName = event.getServer().getServerInfo().getName();
+        getHttpClient().updatePlayerServer(event.getPlayer().getUniqueId().toString(), serverName)
+                .exceptionally(throwable -> {
+                    logger.warn("Failed to update server for {}: {}", event.getPlayer().getUsername(), throwable.getMessage());
+                    return null;
+                });
+    }
+
     public Cache getPunishmentCache() {
         return cache;
     }

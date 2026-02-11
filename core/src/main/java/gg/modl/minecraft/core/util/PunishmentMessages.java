@@ -174,13 +174,27 @@ public class PunishmentMessages {
         return localeManager.getPublicNotificationMessage(ordinal, punishment.getCategory(), variables);
     }
     
+    private static String dateFormatPattern = "MM/dd/yyyy HH:mm";
+
+    /**
+     * Set the date format pattern from config. Called during plugin initialization.
+     */
+    public static void setDateFormat(String pattern) {
+        try {
+            new java.text.SimpleDateFormat(pattern); // validate
+            dateFormatPattern = pattern;
+        } catch (IllegalArgumentException ignored) {
+            // Keep default if pattern is invalid
+        }
+    }
+
     /**
      * Format time in a user-friendly way
      */
     public static String formatTime(java.util.Date date) {
         if (date == null) return "Never";
-        
-        java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("MM/dd/yyyy HH:mm");
+
+        java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat(dateFormatPattern);
         return formatter.format(date);
     }
     
@@ -236,11 +250,10 @@ public class PunishmentMessages {
         // Temp - "temporarily" or "permanently"
         variables.put("temp", punishment.isPermanent() ? "permanently" : "temporarily");
 
-        // Issued date in MM/DD/YYYY HH:MM format
+        // Issued date using configured format
         java.util.Date issuedDate = punishment.getIssuedAsDate();
         if (issuedDate != null) {
-            java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("MM/dd/yyyy HH:mm");
-            variables.put("issued", formatter.format(issuedDate));
+            variables.put("issued", formatTime(issuedDate));
         } else {
             variables.put("issued", "Unknown");
         }

@@ -146,9 +146,9 @@ public class TicketCommands extends BaseCommand {
     
     @CommandAlias("bugreport")
     @Description("Report a bug")
-    @Syntax("<description...>")
+    @Syntax("<title...>")
     @Conditions("player")
-    public void bugReport(CommandIssuer sender, String description) {
+    public void bugReport(CommandIssuer sender, String title) {
         if (!checkCooldown(sender, "bug")) return;
 
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
@@ -159,8 +159,8 @@ public class TicketCommands extends BaseCommand {
             reporter.uuid().toString(),
             reporter.username(),
             "bug",
-            "Bug Report: " + reporter.username(),
-            description,
+            title,
+            null,
             null,
             null,
             null,
@@ -174,9 +174,9 @@ public class TicketCommands extends BaseCommand {
     
     @CommandAlias("support")
     @Description("Request support")
-    @Syntax("<description...>")
+    @Syntax("<title...>")
     @Conditions("player")
-    public void supportRequest(CommandIssuer sender, String description) {
+    public void supportRequest(CommandIssuer sender, String title) {
         if (!checkCooldown(sender, "support")) return;
 
         AbstractPlayer requester = platform.getAbstractPlayer(sender.getUniqueId(), false);
@@ -187,8 +187,8 @@ public class TicketCommands extends BaseCommand {
             requester.uuid().toString(),
             requester.username(),
             "support",
-            "Support Request: " + requester.username(),
-            description,
+            title,
+            null,
             null,
             null,
             null,

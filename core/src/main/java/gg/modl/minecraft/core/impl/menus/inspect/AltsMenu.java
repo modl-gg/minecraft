@@ -80,7 +80,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         if (linkedAccounts.isEmpty()) {
             return Collections.singletonList(new Account(null, null,
                     Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
-                    Collections.emptyList(), Collections.emptyList()));
+                    Collections.emptyList(), Collections.emptyList(), Collections.emptyMap()));
         }
         return linkedAccounts;
     }

@@ -248,6 +248,12 @@ public class PluginLoader {
                 if (config != null && config.containsKey("locale_config")) {
                     Map<String, Object> localeConfig = (Map<String, Object>) config.get("locale_config");
                     this.localeManager.setConfigValues(localeConfig);
+
+                    // Propagate date format to static utility classes
+                    String dateFormat = this.localeManager.getDateFormatPattern();
+                    gg.modl.minecraft.core.impl.menus.util.MenuItems.setDateFormat(dateFormat);
+                    gg.modl.minecraft.core.util.DateFormatter.setDateFormat(dateFormat);
+                    gg.modl.minecraft.core.util.PunishmentMessages.setDateFormat(dateFormat);
                 }
             }
         } catch (Exception e) {

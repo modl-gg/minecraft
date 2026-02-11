@@ -19,6 +19,7 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.impl.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.PunishmentMessages;
 
 import java.util.List;
 import java.util.Map;
@@ -195,8 +196,11 @@ public class InspectCommand extends BaseCommand {
             String duration = "Permanent";
             if (data != null && data.containsKey("duration")) {
                 Object dur = data.get("duration");
-                if (dur != null && !dur.toString().equals("-1") && !dur.toString().equals("0")) {
-                    duration = dur.toString();
+                if (dur instanceof Number) {
+                    long millis = ((Number) dur).longValue();
+                    if (millis > 0) {
+                        duration = PunishmentMessages.formatDuration(millis);
+                    }
                 }
             }
 

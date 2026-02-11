@@ -37,6 +37,9 @@ public class Account {
     @SerializedName("pendingNotifications")
     private List<Map<String, Object>> pendingNotifications;
 
+    @SerializedName("data")
+    private Map<String, Object> data;
+
     // Null-safe getters for list fields
     @NotNull
     public List<Username> getUsernames() {
@@ -61,6 +64,11 @@ public class Account {
     @NotNull
     public List<Map<String, Object>> getPendingNotifications() {
         return pendingNotifications != null ? pendingNotifications : Collections.emptyList();
+    }
+
+    @NotNull
+    public Map<String, Object> getData() {
+        return data != null ? data : Collections.emptyMap();
     }
 
     @Getter

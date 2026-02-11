@@ -636,7 +636,7 @@ public class SyncService {
         if (debugMode) {
             logger.info(String.format("Pardoned punishment %s for %s", punishmentId, username));
         }
-        platform.broadcast(String.format("§a%s has been pardoned", username));
+        // Staff notification is sent by backend via staffNotifications — don't broadcast here
     }
     
     /**

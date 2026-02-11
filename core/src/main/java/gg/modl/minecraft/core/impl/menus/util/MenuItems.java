@@ -18,7 +18,18 @@ import java.util.stream.Collectors;
 public final class MenuItems {
     private MenuItems() {}
 
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MM/dd/yyyy HH:mm");
+    private static SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MM/dd/yyyy HH:mm");
+
+    /**
+     * Set the date format pattern from config. Called during plugin initialization.
+     */
+    public static void setDateFormat(String pattern) {
+        try {
+            DATE_FORMAT = new SimpleDateFormat(pattern);
+        } catch (IllegalArgumentException ignored) {
+            // Keep default if pattern is invalid
+        }
+    }
 
     // Colors
     public static final String COLOR_GOLD = "§6";

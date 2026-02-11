@@ -22,7 +22,6 @@ import gg.modl.minecraft.core.impl.menus.inspect.HistoryMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
@@ -144,7 +143,6 @@ public class HistoryCommand extends BaseCommand {
     }
 
     private void displayHistory(CommandIssuer sender, String playerName, Account profile) {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
 
         sender.sendMessage(localeManager.getMessage("print.history.header", Map.of("player", playerName)));
 
@@ -156,7 +154,7 @@ public class HistoryCommand extends BaseCommand {
                 String type = punishment.getTypeCategory();
                 String id = punishment.getId();
                 String issuer = punishment.getIssuerName();
-                String date = dateFormat.format(punishment.getIssued());
+                String date = localeManager.formatDate(punishment.getIssued());
                 String ordinalStr = String.valueOf(ordinal);
 
                 if (punishment.isActive()) {

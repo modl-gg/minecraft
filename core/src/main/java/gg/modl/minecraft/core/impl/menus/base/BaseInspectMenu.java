@@ -6,6 +6,7 @@ import dev.simplix.cirrus.menu.CirrusInventoryType;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
+import gg.modl.minecraft.api.IPAddress;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -263,6 +264,38 @@ public abstract class BaseInspectMenu extends BaseMenu {
             }
         }
 
+        // Determine server (current if online, last from data if offline)
+        String server = "Unknown";
+        if (isOnline) {
+            server = platform.getPlayerServer(targetUuid);
+        } else {
+            Object lastServer = targetAccount.getData().get("lastServer");
+            if (lastServer instanceof String) {
+                server = (String) lastServer;
+            }
+        }
+
+        // Get region/country from latest IP
+        String region = "Unknown";
+        String country = "Unknown";
+        if (!targetAccount.getIpList().isEmpty()) {
+            IPAddress latestIp = targetAccount.getIpList().get(targetAccount.getIpList().size() - 1);
+            region = latestIp.getRegion();
+            country = latestIp.getCountry();
+        }
+
+        // Playtime from data
+        String playtime = "N/A";
+        Object playtimeObj = targetAccount.getData().get("totalPlaytimeSeconds");
+        if (playtimeObj instanceof Number) {
+            long totalSeconds = ((Number) playtimeObj).longValue();
+            if (totalSeconds > 0) {
+                long hours = totalSeconds / 3600;
+                long minutes = (totalSeconds % 3600) / 60;
+                playtime = hours > 0 ? hours + "h " + minutes + "m" : minutes + "m";
+            }
+        }
+
         // Build variables map using HashMap to allow more entries
         Map<String, String> vars = new HashMap<>();
         vars.put("player_name", targetName);
@@ -270,10 +303,13 @@ public abstract class BaseInspectMenu extends BaseMenu {
         vars.put("first_login", firstLogin);
         vars.put("is_online", isOnline ? "&aYes" : "&cNo");
         vars.put("last_seen_or_session_time", lastSeenOrSessionTime);
-        vars.put("playtime", "N/A");
+        vars.put("playtime", playtime);
         vars.put("real_ip_logged", realIpLogged ? "&aYes" : "&cNo");
         vars.put("is_banned", isBanned ? "&cYes" : "&aNo");
         vars.put("is_muted", isMuted ? "&cYes" : "&aNo");
+        vars.put("server", server);
+        vars.put("region", region);
+        vars.put("country", country);
 
         // Get lore lines from locale and substitute variables
         List<String> loreLinesRaw = locale.getMessageList("menus.player_head.lore");

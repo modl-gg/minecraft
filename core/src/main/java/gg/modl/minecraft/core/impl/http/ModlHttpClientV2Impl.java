@@ -120,7 +120,8 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 request.getUsername(),
                 request.getIpAddress(),
                 ipInfoMap,
-                request.getSkinHash()
+                request.getSkinHash(),
+                request.getServerName()
         );
         String requestBody = gson.toJson(v2Request);
         if (debugMode) {
@@ -609,6 +610,16 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), EvidenceUploadTokenResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> updatePlayerServer(@NotNull String minecraftUuid, @NotNull String serverName) {
+        Map<String, String> body = Map.of("minecraftUuid", minecraftUuid, "serverName", serverName);
+        return sendAsync(requestBuilder("/minecraft/players/update-server")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
     }
 
     private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {

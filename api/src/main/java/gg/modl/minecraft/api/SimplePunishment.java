@@ -43,17 +43,17 @@ public class SimplePunishment {
 
     /**
      * Check if this is a ban punishment.
-     * Uses PunishmentTypeRegistry (populated from server config) as primary source,
-     * with category and ordinal fallbacks for backward compatibility.
+     * Backend-provided category is most authoritative since it's determined per-punishment
+     * based on the specific severity/offense level, while the registry is per-type across all levels.
      */
     public boolean isBan() {
-        // Check registry first (populated from punishment types config)
-        if (PunishmentTypeRegistry.isInitialized()) {
-            return PunishmentTypeRegistry.isBan(ordinal);
-        }
-        // Fallback to category from backend
+        // Backend-provided category is most authoritative (per-punishment, not per-type)
         if (category != null) {
             return "BAN".equalsIgnoreCase(category);
+        }
+        // Check registry (per-type level, may be inaccurate for types with mixed ban/mute durations)
+        if (PunishmentTypeRegistry.isInitialized()) {
+            return PunishmentTypeRegistry.isBan(ordinal);
         }
         // Fallback to ordinal for legacy support (ordinals 2-5 are admin ban types)
         if (ordinal >= 2 && ordinal <= 5) {
@@ -65,17 +65,17 @@ public class SimplePunishment {
 
     /**
      * Check if this is a mute punishment.
-     * Uses PunishmentTypeRegistry (populated from server config) as primary source,
-     * with category and ordinal fallbacks for backward compatibility.
+     * Backend-provided category is most authoritative since it's determined per-punishment
+     * based on the specific severity/offense level, while the registry is per-type across all levels.
      */
     public boolean isMute() {
-        // Check registry first (populated from punishment types config)
-        if (PunishmentTypeRegistry.isInitialized()) {
-            return PunishmentTypeRegistry.isMute(ordinal);
-        }
-        // Fallback to category from backend
+        // Backend-provided category is most authoritative (per-punishment, not per-type)
         if (category != null) {
             return "MUTE".equalsIgnoreCase(category);
+        }
+        // Check registry (per-type level, may be inaccurate for types with mixed ban/mute durations)
+        if (PunishmentTypeRegistry.isInitialized()) {
+            return PunishmentTypeRegistry.isMute(ordinal);
         }
         // Fallback to ordinal for legacy support (ordinal 1 is admin mute type)
         if (ordinal == 1) {

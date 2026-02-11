@@ -200,10 +200,7 @@ public class PardonCommand extends BaseCommand {
             sender.sendMessage(localeManager.getMessage("pardon.success_player",
                 Map.of("player", playerName, "type", type, "count", String.valueOf(pardonedCount))));
 
-            String staffMessage = localeManager.getMessage("pardon.staff_notification_player",
-                Map.of("issuer", issuerName, "player", playerName, "type", type, "count", String.valueOf(pardonedCount)));
-            platform.staffBroadcast(staffMessage);
-
+            // Staff notification is sent by backend via sync — don't duplicate here
             invalidatePlayerCache(playerName, type);
         }
 
@@ -272,10 +269,7 @@ public class PardonCommand extends BaseCommand {
                 sender.sendMessage(localeManager.getMessage("pardon.success_id",
                     Map.of("id", target)));
 
-                String staffMessage = localeManager.getMessage("pardon.staff_notification_id",
-                    Map.of("issuer", issuerName, "id", target));
-                platform.staffBroadcast(staffMessage);
-
+                // Staff notification is sent by backend via sync — don't duplicate here
                 cache.clear();
             } else {
                 sender.sendMessage(localeManager.getMessage("pardon.already_pardoned_id",

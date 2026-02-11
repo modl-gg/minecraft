@@ -430,15 +430,11 @@ public class LocaleManager {
     }
 
     /**
-     * Format issued date in MM/DD/YY HH:MM format
+     * Format issued date using the configured date format.
      */
     private String formatIssuedDate(gg.modl.minecraft.api.SimplePunishment punishment) {
         java.util.Date issuedDate = punishment.getIssuedAsDate();
-        if (issuedDate == null) {
-            return "Unknown";
-        }
-        SimpleDateFormat formatter = new SimpleDateFormat("MM/dd/yyyy HH:mm");
-        return formatter.format(issuedDate);
+        return formatDate(issuedDate);
     }
 
     /**
@@ -849,16 +845,31 @@ public class LocaleManager {
     }
     
     /**
-     * Format expiration date
+     * Format a date using the configured date format from locale_config.date_format.
      */
-    public String formatExpiration(Date expiration) {
+    public String formatDate(Date date) {
+        if (date == null) return "Unknown";
         String format = getMessage("config.date_format");
         try {
             SimpleDateFormat dateFormat = new SimpleDateFormat(format);
-            return dateFormat.format(expiration);
+            return dateFormat.format(date);
         } catch (Exception e) {
-            return expiration.toString();
+            return date.toString();
         }
+    }
+
+    /**
+     * Format expiration date
+     */
+    public String formatExpiration(Date expiration) {
+        return formatDate(expiration);
+    }
+
+    /**
+     * Get the configured date format pattern string.
+     */
+    public String getDateFormatPattern() {
+        return getMessage("config.date_format");
     }
     
     /**

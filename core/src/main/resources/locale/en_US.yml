@@ -309,7 +309,7 @@ print:
   # /inspect #<punishmentId>
   punishment_detail:
     not_found: "&cPunishment #{id} not found."
-    header: "&6&m--------&r &ePunishment #{id} &6&m--------"
+    header: " "
     type: "&eType: &f{type}"
     player: "&ePlayer: &f{player}"
     issuer: "&eIssued by: &f{issuer}"
@@ -320,7 +320,7 @@ print:
     evidence: "&eEvidence: &f{count} file(s)"
     notes: "&eNotes: &f{count}"
     modifications: "&eModifications: &f{count}"
-    footer: "&6&m--------------------------------"
+    footer: " "
 
   # /history <player> -p
   history:
@@ -410,9 +410,10 @@ menus:
       - "&8{uuid}"
       - "&f "
       - "&fFirst Login: {first_login}"
-      - "&fOnline: {is_online} ({last_seen_or_session_time})"
+      - "&fOnline: {is_online} ({last_seen_or_session_time} on {server})"
       - "&fPlaytime: {playtime}"
       - "&fReal IP Logged: {real_ip_logged}"
+      - "&fRegion: {region} (Country: {country})"
       - "&fBanned: {is_banned}"
       - "&fMuted: {is_muted}"
 
