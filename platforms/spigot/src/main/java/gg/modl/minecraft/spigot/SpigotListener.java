@@ -16,6 +16,7 @@ import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
+import gg.modl.minecraft.core.util.MutedCommandUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
 import gg.modl.minecraft.core.util.WebPlayer;
@@ -27,10 +28,12 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -46,6 +49,7 @@ public class SpigotListener implements Listener {
     private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
     private final LoginCache loginCache;
     private final boolean debugMode;
+    private final List<String> mutedCommands;
 
     /**
      * Get the current HTTP client from the holder.
@@ -322,16 +326,42 @@ public class SpigotListener implements Listener {
         }
     }
     
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onCommandPreprocess(PlayerCommandPreprocessEvent event) {
+        if (!cache.isMuted(event.getPlayer().getUniqueId())) {
+            return;
+        }
+        if (!MutedCommandUtil.isBlockedCommand(event.getMessage(), mutedCommands)) {
+            return;
+        }
+
+        event.setCancelled(true);
+
+        // Send mute message to player
+        Cache.CachedPlayerData data = cache.getCache().get(event.getPlayer().getUniqueId());
+        if (data != null) {
+            String muteMessage;
+            if (data.getSimpleMute() != null) {
+                muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
+            } else if (data.getMute() != null) {
+                muteMessage = formatMuteMessage(data.getMute());
+            } else {
+                muteMessage = ChatColor.RED + "You are muted!";
+            }
+            event.getPlayer().sendMessage(muteMessage);
+        }
+    }
+
     /**
      * Format mute message for old punishment format (fallback)
      */
     private String formatMuteMessage(Punishment mute) {
         String reason = mute.getReason() != null ? mute.getReason() : "No reason provided";
-        
+
         StringBuilder message = new StringBuilder();
         message.append(ChatColor.RED).append("You are muted!\n");
         message.append(ChatColor.GRAY).append("Reason: ").append(ChatColor.WHITE).append(reason);
-        
+
         if (mute.getExpires() != null) {
             long timeLeft = mute.getExpires().getTime() - System.currentTimeMillis();
             if (timeLeft > 0) {
@@ -342,7 +372,7 @@ public class SpigotListener implements Listener {
         } else {
             message.append("\n").append(ChatColor.DARK_RED).append("This mute is permanent.");
         }
-        
+
         return message.toString();
     }
     

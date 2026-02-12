@@ -7,6 +7,7 @@ import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.PermissionUtil;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.spigot.wrapper.SpigotPlayerWrapper;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
@@ -44,8 +45,15 @@ public class SpigotPlatform implements Platform {
     public void staffBroadcast(String string) {
         String message = ChatColor.translateAlternateColorCodes('&', string);
         Bukkit.getOnlinePlayers().stream()
-            .filter(player -> player.hasPermission("modl.staff"))
+            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
             .forEach(player -> player.sendMessage(message));
+    }
+
+    @Override
+    public void staffJsonBroadcast(String jsonMessage) {
+        Bukkit.getOnlinePlayers().stream()
+            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
+            .forEach(player -> player.spigot().sendMessage(ComponentSerializer.parse(jsonMessage)));
     }
 
     @Override

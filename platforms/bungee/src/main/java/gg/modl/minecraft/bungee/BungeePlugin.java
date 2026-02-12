@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.List;
 
 @Getter
 public class BungeePlugin extends Plugin {
@@ -68,8 +69,10 @@ public class BungeePlugin extends Plugin {
         // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)
         int syncPollingRate = Math.max(1, configuration.getInt("sync.polling_rate", 2));
 
+        List<String> mutedCommands = configuration.getStringList("muted_commands");
+
         this.loader = new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
-        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), httpManager.isDebugHttp()));
+        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), httpManager.isDebugHttp(), mutedCommands));
     }
 
     @Override

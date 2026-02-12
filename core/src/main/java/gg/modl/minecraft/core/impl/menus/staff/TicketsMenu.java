@@ -228,12 +228,20 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
             return;
         }
 
-        // Open ticket link in chat
+        click.clickedMenu().close();
+
+        // Send clickable ticket link
         String ticketUrl = panelUrl + "/tickets/" + ticket.getId();
-        sendMessage("");
-        sendMessage(MenuItems.COLOR_GOLD + "Ticket #" + ticket.getId() + ":");
-        sendMessage(MenuItems.COLOR_AQUA + ticketUrl);
-        sendMessage("");
+        String escapedUrl = ticketUrl.replace("\"", "\\\"");
+        String json = String.format(
+            "{\"text\":\"\",\"extra\":[" +
+            "{\"text\":\"Ticket #%s: \",\"color\":\"gold\"}," +
+            "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
+            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
+            ticket.getId(), escapedUrl, ticketUrl
+        );
+        platform.sendJsonMessage(viewerUuid, json);
     }
 
     @Override
@@ -258,10 +266,17 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         });
 
         registerActionHandler("openPanel", click -> {
-            sendMessage("");
-            sendMessage(MenuItems.COLOR_GOLD + "Staff Panel:");
-            sendMessage(MenuItems.COLOR_AQUA + panelUrl);
-            sendMessage("");
+            click.clickedMenu().close();
+            String escapedUrl = panelUrl.replace("\"", "\\\"");
+            String panelJson = String.format(
+                "{\"text\":\"\",\"extra\":[" +
+                "{\"text\":\"Staff Panel: \",\"color\":\"gold\"}," +
+                "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
+                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
+                escapedUrl, panelUrl
+            );
+            platform.sendJsonMessage(viewerUuid, panelJson);
         });
 
         registerActionHandler("openSettings", ActionHandlers.openMenu(

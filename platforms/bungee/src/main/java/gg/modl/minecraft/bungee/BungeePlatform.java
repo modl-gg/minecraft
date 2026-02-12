@@ -7,6 +7,7 @@ import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.PermissionUtil;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.bungee.wrapper.BungeePlayerWrapper;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
@@ -47,8 +48,15 @@ public class BungeePlatform implements Platform {
     public void staffBroadcast(String string) {
         TextComponent message = new TextComponent(ChatColor.translateAlternateColorCodes('&', string));
         ProxyServer.getInstance().getPlayers().stream()
-            .filter(player -> player.hasPermission("modl.staff"))
+            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
             .forEach(player -> player.sendMessage(message));
+    }
+
+    @Override
+    public void staffJsonBroadcast(String jsonMessage) {
+        ProxyServer.getInstance().getPlayers().stream()
+            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
+            .forEach(player -> player.sendMessage(net.md_5.bungee.chat.ComponentSerializer.parse(jsonMessage)));
     }
 
     @Override

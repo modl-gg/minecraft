@@ -78,7 +78,18 @@ public class PermissionUtil {
             return true; // Console is considered staff
         }
 
-        return cache.isStaffMemberByPermissions(issuer.getUniqueId()) || cache.isStaffMember(issuer.getUniqueId());
+        return isStaff(issuer.getUniqueId(), cache);
+    }
+
+    /**
+     * Check if a player UUID belongs to a staff member
+     * @param playerUuid The player's UUID
+     * @param cache The cache containing staff data
+     * @return true if the player is staff, false otherwise
+     */
+    public static boolean isStaff(UUID playerUuid, Cache cache) {
+        if (cache == null) return false;
+        return cache.isStaffMemberByPermissions(playerUuid) || cache.isStaffMember(playerUuid);
     }
 
     /**

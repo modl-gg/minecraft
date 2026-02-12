@@ -719,8 +719,12 @@ public class SyncService {
      */
     private void processStaffNotification(SyncResponse.StaffNotification notification) {
         try {
-            String message = "&7&o[" + notification.getMessage() + "&7&o]";
-            platform.staffBroadcast(message);
+            if ("TICKET_CREATED".equals(notification.getType()) && notification.getData() != null) {
+                processTicketCreatedNotification(notification);
+            } else {
+                String message = "&7&o[" + notification.getMessage() + "&7&o]";
+                platform.staffBroadcast(message);
+            }
 
             if (debugMode) {
                 logger.info(String.format("Processed staff notification: %s", notification.getMessage()));
@@ -728,6 +732,49 @@ public class SyncService {
         } catch (Exception e) {
             logger.warning("Error processing staff notification: " + e.getMessage());
         }
+    }
+
+    /**
+     * Process a TICKET_CREATED staff notification with hover text and clickable link
+     */
+    private void processTicketCreatedNotification(SyncResponse.StaffNotification notification) {
+        Map<String, Object> data = notification.getData();
+        String ticketUrl = data.get("ticketUrl") != null ? (String) data.get("ticketUrl") : "";
+        String subject = data.get("subject") != null ? (String) data.get("subject") : "";
+        String firstReply = data.get("firstReplyContent") != null ? (String) data.get("firstReplyContent") : "";
+
+        // Build hover text: subject + reply #0
+        StringBuilder hoverText = new StringBuilder();
+        if (!subject.isEmpty()) {
+            hoverText.append(subject);
+        }
+        if (!firstReply.isEmpty()) {
+            if (hoverText.length() > 0) hoverText.append("\n\n");
+            // Truncate long replies for hover
+            String truncated = firstReply.length() > 200 ? firstReply.substring(0, 200) + "..." : firstReply;
+            hoverText.append(truncated);
+        }
+
+        String escapedMessage = escapeJson(notification.getMessage());
+        String escapedHover = escapeJson(hoverText.toString());
+
+        String json = String.format(
+            "{\"text\":\"\",\"extra\":[" +
+            "{\"text\":\"[%s]\",\"color\":\"gray\",\"italic\":true," +
+            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"%s\"}}]}",
+            escapedMessage, ticketUrl, escapedHover
+        );
+
+        platform.staffJsonBroadcast(json);
+    }
+
+    private String escapeJson(String text) {
+        return text.replace("\\", "\\\\")
+                   .replace("\"", "\\\"")
+                   .replace("\n", "\\n")
+                   .replace("\r", "")
+                   .replace("\t", "\\t");
     }
 
     /**

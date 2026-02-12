@@ -27,6 +27,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 @Plugin(id = PluginInfo.ID,
@@ -97,7 +99,10 @@ public final class VelocityPlugin {
 
         server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClientHolder(), pluginLoader.getCache(), logger, chatMessageCache, platform, pluginLoader.getSyncService(), pluginLoader.getLocaleManager(), httpManager.isDebugHttp()));
 
-        server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache(), chatMessageCache, pluginLoader.getLocaleManager()));
+        @SuppressWarnings("unchecked")
+        List<String> mutedCommands = (List<String>) getNestedConfig("muted_commands", Collections.emptyList());
+
+        server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache(), chatMessageCache, pluginLoader.getLocaleManager(), mutedCommands));
     }
 
     @Subscribe

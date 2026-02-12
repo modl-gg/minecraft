@@ -28,6 +28,17 @@ sync:
   # Default: 2 seconds. Minimum: 1 second
   polling_rate: 2
 
+# Commands that muted players cannot use
+# List command names without the leading slash
+muted_commands:
+  - "msg"
+  - "tell"
+  - "r"
+  - "reply"
+  - "w"
+  - "whisper"
+  - "me"
+
 # Migration Configuration
 migration:
   litebans:

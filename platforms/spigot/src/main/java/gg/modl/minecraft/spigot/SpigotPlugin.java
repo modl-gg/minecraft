@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.List;
 
 public class SpigotPlugin extends JavaPlugin {
     
@@ -64,8 +65,10 @@ public class SpigotPlugin extends JavaPlugin {
         // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)
         int syncPollingRate = Math.max(1, getConfig().getInt("sync.polling_rate", 2));
 
+        List<String> mutedCommands = getConfig().getStringList("muted_commands");
+
         this.loader = new PluginLoader(platform, new SpigotCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
-        getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), loader.getLoginCache(), httpManager.isDebugHttp()), this);
+        getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), loader.getLoginCache(), httpManager.isDebugHttp(), mutedCommands), this);
 
     }
 

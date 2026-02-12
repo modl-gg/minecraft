@@ -87,7 +87,7 @@ public class PardonCommand extends BaseCommand {
 
         getHttpClient().getPlayer(new PlayerNameRequest(playerName)).thenAccept(response -> {
             if (!response.isSuccess() || response.getPlayer() == null) {
-                sender.sendMessage(localeManager.getMessage("pardon.player_not_found", Map.of("player", playerName)));
+                sender.sendMessage(localeManager.getMessage("general.player_not_found"));
                 return;
             }
 
@@ -119,7 +119,7 @@ public class PardonCommand extends BaseCommand {
 
         getHttpClient().getPlayer(new PlayerNameRequest(playerName)).thenAccept(response -> {
             if (!response.isSuccess() || response.getPlayer() == null) {
-                sender.sendMessage(localeManager.getMessage("pardon.player_not_found", Map.of("player", playerName)));
+                sender.sendMessage(localeManager.getMessage("general.player_not_found"));
                 return;
             }
 
@@ -337,7 +337,7 @@ public class PardonCommand extends BaseCommand {
         if (throwable.getCause() instanceof PanelUnavailableException) {
             sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
         } else {
-            sender.sendMessage(localeManager.getMessage("pardon.player_not_found", Map.of("player", playerName)));
+            sender.sendMessage(localeManager.getMessage("general.player_not_found"));
         }
     }
 }

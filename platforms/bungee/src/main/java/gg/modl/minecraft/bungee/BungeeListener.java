@@ -15,6 +15,7 @@ import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
+import gg.modl.minecraft.core.util.MutedCommandUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
 import gg.modl.minecraft.core.util.WebPlayer;
@@ -33,6 +34,7 @@ import net.md_5.bungee.event.EventHandler;
 import net.md_5.bungee.event.EventPriority;
 
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.Map;
@@ -47,6 +49,7 @@ public class BungeeListener implements Listener {
     private final SyncService syncService;
     private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
     private final boolean debugMode;
+    private final List<String> mutedCommands;
 
     /**
      * Get the current HTTP client from the holder.
@@ -208,8 +211,21 @@ public class BungeeListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onChat(ChatEvent event) {
-        if (event.isCommand() || event.getSender() == null) {
-            return; // Ignore commands and non-player senders
+        if (event.getSender() == null) {
+            return;
+        }
+
+        // Handle commands: block muted commands, skip all other commands
+        if (event.isCommand()) {
+            if (!(event.getSender() instanceof ProxiedPlayer)) {
+                return;
+            }
+            ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
+            if (cache.isMuted(sender.getUniqueId()) && MutedCommandUtil.isBlockedCommand(event.getMessage(), mutedCommands)) {
+                event.setCancelled(true);
+                sendMuteMessage(sender);
+            }
+            return;
         }
 
         ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
@@ -233,23 +249,24 @@ public class BungeeListener implements Listener {
         if (cache.isMuted(sender.getUniqueId())) {
             // Cancel the chat event
             event.setCancelled(true);
-            
-            // Get cached mute and send message to player
-            Cache.CachedPlayerData data = cache.getCache().get(sender.getUniqueId());
-            if (data != null) {
-                String muteMessage;
-                if (data.getSimpleMute() != null) {
-                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
-                } else if (data.getMute() != null) {
-                    // Fallback to old punishment format
-                    muteMessage = formatMuteMessage(data.getMute());
-                } else {
-                    muteMessage = "§cYou are muted!";
-                }
-                // Handle both escaped newlines and literal \n sequences
-                String formattedMessage = muteMessage.replace("\\n", "\n").replace("\\\\n", "\n");
-                sender.sendMessage(new TextComponent(formattedMessage));
+            sendMuteMessage(sender);
+        }
+    }
+
+    private void sendMuteMessage(ProxiedPlayer sender) {
+        Cache.CachedPlayerData data = cache.getCache().get(sender.getUniqueId());
+        if (data != null) {
+            String muteMessage;
+            if (data.getSimpleMute() != null) {
+                muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
+            } else if (data.getMute() != null) {
+                muteMessage = formatMuteMessage(data.getMute());
+            } else {
+                muteMessage = "§cYou are muted!";
             }
+            // Handle both escaped newlines and literal \n sequences
+            String formattedMessage = muteMessage.replace("\\n", "\n").replace("\\\\n", "\n");
+            sender.sendMessage(new TextComponent(formattedMessage));
         }
     }
     

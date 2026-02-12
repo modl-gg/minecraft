@@ -155,9 +155,18 @@ public class ReportMenu extends SimpleMenu {
             if (response.isSuccess() && response.getTicketId() != null) {
                 sendMessage(locale.getMessage("messages.success", Map.of("type", "Report")));
                 sendMessage(locale.getMessage("messages.ticket_id", Map.of("ticketId", response.getTicketId())));
-                
+
                 String ticketUrl = panelUrl + "/tickets/" + response.getTicketId();
-                sendMessage(locale.getMessage("messages.view_ticket", Map.of("url", ticketUrl)));
+                String escapedUrl = ticketUrl.replace("\"", "\\\"");
+                String json = String.format(
+                    "{\"text\":\"\",\"extra\":[" +
+                    "{\"text\":\"View your ticket: \",\"color\":\"gray\"}," +
+                    "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
+                    "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+                    "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket\"}}]}",
+                    escapedUrl, ticketUrl
+                );
+                platform.sendJsonMessage(hero.uuid(), json);
                 sendMessage(locale.getMessage("messages.evidence_note"));
             } else {
                 sendMessage(locale.getMessage("messages.failed_submit", Map.of("type", "report", "error", locale.sanitizeErrorMessage(response.getMessage()))));

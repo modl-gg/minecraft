@@ -61,12 +61,19 @@ public class StaffMenu extends BaseStaffMenu {
         registerActionHandler("openSettings", ActionHandlers.openMenu(
                 new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
 
-        // Panel link just sends a message, no menu transition
+        // Panel link closes menu and sends clickable chat link
         registerActionHandler("openPanel", click -> {
-            sendMessage("");
-            sendMessage(MenuItems.COLOR_GOLD + "Staff Panel:");
-            sendMessage(MenuItems.COLOR_AQUA + panelUrl);
-            sendMessage("");
+            click.clickedMenu().close();
+            String escapedUrl = panelUrl.replace("\"", "\\\"");
+            String panelJson = String.format(
+                "{\"text\":\"\",\"extra\":[" +
+                "{\"text\":\"Staff Panel: \",\"color\":\"gold\"}," +
+                "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
+                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
+                escapedUrl, panelUrl
+            );
+            platform.sendJsonMessage(viewerUuid, panelJson);
         });
     }
 

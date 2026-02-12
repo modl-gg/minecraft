@@ -14,6 +14,7 @@ import java.util.UUID;
 public interface Platform {
     void broadcast(String string);
     void staffBroadcast(String string);
+    void staffJsonBroadcast(String jsonMessage);
     void disconnect(UUID uuid, String message);
     void sendMessage(UUID uuid, String message);
     void sendJsonMessage(UUID uuid, String jsonMessage);

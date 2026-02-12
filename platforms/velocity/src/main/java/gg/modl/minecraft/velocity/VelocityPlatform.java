@@ -7,6 +7,7 @@ import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import gg.modl.minecraft.core.util.WebPlayer;
 import com.velocitypowered.api.proxy.Player;
@@ -49,7 +50,22 @@ public class VelocityPlatform implements Platform {
     @Override
     public void staffBroadcast(String string) {
         server.getAllPlayers().forEach(player -> {
-            if (player.hasPermission("modl.staff")) player.sendMessage(get(string));
+            if (PermissionUtil.isStaff(player.getUniqueId(), cache)) player.sendMessage(get(string));
+        });
+    }
+
+    @Override
+    public void staffJsonBroadcast(String jsonMessage) {
+        server.getAllPlayers().forEach(player -> {
+            if (PermissionUtil.isStaff(player.getUniqueId(), cache)) {
+                try {
+                    net.kyori.adventure.text.Component component = net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson().deserialize(jsonMessage);
+                    player.sendMessage(component);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    player.sendMessage(net.kyori.adventure.text.Component.text("Notification: " + jsonMessage));
+                }
+            }
         });
     }
 

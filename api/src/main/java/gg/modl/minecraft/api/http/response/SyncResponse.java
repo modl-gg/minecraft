@@ -146,6 +146,7 @@ public class SyncResponse {
         private String type;    // TICKET_CREATED, PUNISHMENT_ISSUED, PUNISHMENT_PARDONED
         private String message;
         private Long timestamp;
+        private java.util.Map<String, Object> data;
     }
 
     @Data
