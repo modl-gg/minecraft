@@ -1,0 +1,524 @@
+# MODL Minecraft Plugin - Nederlandse Vertaling
+# Kleurcodes: Gebruik & voor kleurcodes (bijv. &c voor rood, &a voor groen)
+# Plaatshouders: {player}, {reason}, {ticketId}, {url}, {title}
+
+# Algemene Berichten
+messages:
+  cannot_report_self: "&cJe kunt jezelf niet rapporteren!"
+  submitting: "&e{type} wordt ingediend..."
+  creating: "&e{type} wordt aangemaakt..."
+  success: "&a{type} succesvol ingediend!"
+  created: "&a{type} succesvol aangemaakt!"
+  ticket_id: "&7Ticket-ID: &f{ticketId}"
+  view_ticket: "&7Bekijk je ticket: &b{url}"
+  complete_form: "&7Vul je {type} in: &b{url}"
+  evidence_note: "&7Je kunt indien nodig aanvullend bewijs aan je ticket toevoegen."
+  form_title_note: "&7Je kunt de titel '&f{title}&7' in het formulier wijzigen voordat je het indient."
+  failed_submit: "&cKon {type} niet indienen: {error}"
+  failed_create: "&cKon {type} niet aanmaken: {error}"
+  try_again: "&cProbeer het later opnieuw of neem rechtstreeks contact op met het personeel."
+  unknown_error: "Onbekende fout"
+  no_details: "Geen aanvullende details opgegeven"
+  no_chat_logs_available: "&cGeen recente chatberichten gevonden voor {player}. Kan geen chatrapport aanmaken zonder chatlogboek."
+  view_ticket_label: "Bekijk je ticket"
+  complete_form_label: "Vul je {type} in"
+  console_ticket_url: "&6{message}: &b{url}"
+  claiming_ticket: "&eTicket &f{ticketId}&e wordt aan je account gekoppeld..."
+  ticket_claimed_success: "&aTicket &f{ticketId}&a is succesvol aan je account gekoppeld!"
+  ticket_claim_failed: "&cKon ticket niet koppelen: {error}"
+  ticket_cooldown: "&cJe moet wachten voordat je nog een ticket van dit type kunt openen."
+
+# Strafsysteem Berichten
+# Beschikbare variabelen: {player}, {target}, {reason}, {duration}, {type}, {id}, {issuer}, {punishment_type}, {expiration}, {server}
+# Algemene strafberichten
+general:
+  # Toestemmingsberichten
+  no_permission: "&cJe hebt geen toestemming om dit commando te gebruiken."
+  no_permission_punishment: "&cJe hebt geen toestemming om '{type}'-straffen toe te passen."
+  no_permission_reload: "&cJe hebt geen toestemming om strafgegevens te herladen."
+  invalid_syntax: "&cOngeldige commandosyntax. Controleer je gebruik."
+  gui_requires_player: "&cDit commando opent een GUI en kan alleen door een speler worden uitgevoerd. Gebruik &f-p &cvoor tekstuitvoer."
+
+  # Foutmeldingen
+  player_not_found: "&cSpeler niet gevonden."
+  punishment_error: "&cFout bij het aanmaken van straf: {error}"
+  punishment_types_not_loaded: "&cStraftypes niet geladen. Probeer &f/modl reload&c of neem contact op met een beheerder."
+  invalid_punishment_type: "&cOngeldig straftype. Beschikbare types: {types}"
+  invalid_duration: "&cOngeldige duurnotatie. Voorbeelden: 1d, 2h, 30m, 1w"
+  cannot_punish_self: "&cJe kunt jezelf niet straffen."
+  target_immune: "&cJe kunt {target} niet straffen omdat deze immuniteit heeft."
+
+  # Succesberichten
+  punishment_issued: "&a{type} succesvol opgelegd aan &f{target}&a."
+  punishment_issued_duration: "&a{type} succesvol opgelegd aan &f{target}&a ({duration})."
+
+  # Herlaadberichten
+  reloading: "&eHerladen..."
+  reload_success: "&aHerladen voltooid."
+  reload_error: "&cFout bij herladen: {error}"
+
+# Straftype validatieberichten
+validation:
+  single_severity_error: "&cKan ernst niet instellen op straftype '{type}' met één ernstniveau. Dit straftype heeft slechts één ernstniveau."
+  permanent_skin_change_error: "&cKan ernst niet instellen op permanent-tot-skinwijziging straftype '{type}'."
+  permanent_username_change_error: "&cKan ernst niet instellen op permanent-tot-gebruikersnaamwijziging straftype '{type}'."
+  alt_blocking_not_supported: "&cAlt-blokkering wordt niet ondersteund voor straftype '{type}'."
+  stat_wiping_not_supported: "&cStat-reset wordt niet ondersteund voor straftype '{type}'."
+
+# Straftype-specifieke Berichten
+# Formaat: punishment_types.ordinal_<ordinal_nummer>
+# Handmatige straftypes (ordinalen 0-5):
+#   0: Kick, 1: Handmatige Mute, 2: Handmatige Ban, 3: Beveiligingsban, 4: Gekoppelde Ban, 5: Blacklist
+# Dynamische straftypes beginnen bij ordinaal 6+
+#
+# Structuur:
+#   public_notification: Enkel bericht getoond aan alle spelers
+#   player_notification: Lijst van strings getoond aan de bestrafte speler (samengevoegd met \n)
+#   Beschikbare plaatshouders:
+#     {target} - De naam van de speler (meestal "Je" voor spelermeldingen)
+#     {reason} - De strafreden
+#     {duration} - Geformatteerde duur (bijv. "7d 3u" of "permanent")
+#     {description} - Hetzelfde als reden
+#     {appeal_url} - Volledige beroeps-URL (api.url + /appeal)
+#     {id} - De straf-ID
+#     {temp} - "tijdelijk" of "permanent"
+#     {issued} - Uitgiftedatum in MM/DD/JJ UU:MM formaat
+#     {player_description} - Spelerbeschrijving van straftype-configuratie
+#     {will_expire} - Leeg als permanent, of "\nDeze ban/mute verloopt over {duration}" als tijdelijk
+#     {issuer} - Naam van het personeelslid dat de straf heeft opgelegd
+#     {tense} - "bent" of "wordt" afhankelijk van context
+#     {tense2} - "is" afhankelijk van context
+punishment_types:
+  ordinal_0: # Kick
+    public_notification: "&c{target} is van de server gekickt."
+    player_notification:
+      - "&c&lJe bent van de server gekickt."
+      - "&f{reason} &7(#{id})"
+
+  ordinal_1: # Handmatige Mute
+    public_notification: "&c{target} is gedempt."
+    player_notification:
+      - ""
+      - "&cJe {tense} {temp} gedempt voor {duration}"
+      - "&7{issued} | #{id} | {appeal_url}"
+      - "&f{reason}"
+      - ""
+
+  ordinal_2: # Handmatige Ban
+    public_notification: "&c{target} is verbannen."
+    player_notification:
+      - "&c&lJe {tense} {temp} verbannen voor:"
+      - ""
+      - "&f{reason}"
+      - "&7{will_expire}"
+      - "&7Is dit een fout? Dien een beroep in op {appeal_url} met ID #{id}."
+
+  # Handmatige straftypes
+  ordinal_3:  # Beveiligingsban
+    public_notification: "&c{target} is verbannen."
+    player_notification:
+      - "&c&lJe account {tense2} beperkt vanwege beveiligingsproblemen."
+      - "&fVerdachte activiteit is gedetecteerd op je account. Beveilig je account en dien een beroep in op {appeal_url} met ID #{id}."
+
+  ordinal_4:  # Gekoppelde Ban
+    public_notification: "&c{target} is verbannen."
+    player_notification:
+      - "&c&lJe account {tense2} gekoppeld aan een verbannen account."
+      - ""
+      - "&fHet ontwijken van bans door het gebruik van alternatieve accounts of het delen van je account is strikt verboden."
+      - ""
+      - "&7Deze ban wordt automatisch opgeheven wanneer de gekoppelde ban verloopt."
+      - "&7Is dit een fout? Dien een beroep in op {appeal_url} met ID #{id}"
+
+  ordinal_5:  # Blacklist
+    public_notification: "&c{target} is op de zwarte lijst geplaatst."
+    player_notification:
+      - "&cJe {tense} op de zwarte lijst geplaatst"
+      - "&7ID: #{id}"
+
+  ordinal_6: # Chatmisbruik
+    public_notification: "&c{target} is gedempt wegens chatmisbruik."
+    player_notification:
+      - ""
+      - "&cJe {tense} {temp} gedempt voor {duration}"
+      - "&7{issued} | #{id} | {appeal_url}"
+      - "&f{player_description}"
+      - ""
+  ordinal_7: # Antisociaal gedrag
+    public_notification: "&c{target} is gedempt wegens antisociaal gedrag."
+    player_notification:
+      - ""
+      - "&cJe {tense} gedempt voor {duration}"
+      - "&7{issued} | #{id} | {appeal_url}"
+      - "&f{player_description}"
+      - ""
+
+  ordinal_8: # Targeting
+    public_notification: "&c{target} is verbannen wegens targeting."
+    player_notification:
+      - "&c&lJe {tense} {temp} verbannen voor:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is dit een fout? Dien een beroep in op {appeal_url} met ID #{id}."
+
+  ordinal_9: # Ongepaste inhoud
+    public_notification: "&c{target} is verbannen wegens ongepaste inhoud."
+    player_notification:
+      - "&c&lJe {tense} {temp} verbannen voor:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is dit een fout? Dien een beroep in op {appeal_url} met ID #{id}."
+
+  ordinal_10: # Ongepaste gebruikersnaam
+    public_notification: "&c{target} is verbannen."
+    player_notification:
+      - "&c&lJe {tense} verbannen vanwege je Minecraft-gebruikersnaam."
+      - ""
+      - "&f{reason}"
+      - ""
+      - "&7Deze ban wordt automatisch opgeheven wanneer je je gebruikersnaam wijzigt."
+      - "&7Is dit een fout? Dien een beroep in op {appeal_url} met ID #{id}"
+
+  ordinal_11: # Ongepaste skin
+    public_notification: "&c{target} is verbannen."
+    player_notification:
+      - "&c&lJe {tense} verbannen vanwege je Minecraft-skin."
+      - ""
+      - "&f{reason}"
+      - ""
+      - "&7Deze ban wordt automatisch opgeheven wanneer je je skin wijzigt."
+      - "&7Is dit een fout? Dien een beroep in op {appeal_url} met ID #{id}"
+
+  ordinal_12: # Teammisbruik
+    public_notification: "&c{target} is verbannen wegens teammisbruik."
+    player_notification:
+      - "&c&lJe {tense} {temp} verbannen voor:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is dit een fout? Dien een beroep in op {appeal_url} met ID #{id}."
+
+  ordinal_13: # Spelmisbruik
+    public_notification: "&c{target} is verbannen wegens spelmisbruik."
+    player_notification:
+      - "&c&lJe {tense} {temp} verbannen voor:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is dit een fout? Dien een beroep in op {appeal_url} met ID #{id}."
+
+  ordinal_14: # Valsspelen
+    public_notification: "&c{target} is verbannen wegens valsspelen."
+    player_notification:
+      - "&c&lJe {tense} {temp} verbannen voor:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is dit een fout? Dien een beroep in op {appeal_url} met ID #{id}."
+
+  ordinal_15: # Spelhandel
+    public_notification: "&c{target} is verbannen wegens spelhandel."
+    player_notification:
+      - "&c&lJe {tense} {temp} verbannen voor:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is dit een fout? Dien een beroep in op {appeal_url} met ID #{id}."
+
+  ordinal_16: # Accountmisbruik
+    public_notification: "&c{target} is verbannen wegens accountmisbruik."
+    player_notification:
+      - "&c&lJe {tense} {temp} verbannen voor:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is dit een fout? Dien een beroep in op {appeal_url} met ID #{id}."
+
+  ordinal_17: # Systeemmisbruik
+    public_notification: "&c{target} is verbannen wegens systeemmisbruik."
+    player_notification:
+      - "&c&lJe {tense} {temp} verbannen voor:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Is dit een fout? Dien een beroep in op {appeal_url} met ID #{id}."
+
+# Meldingen
+notification:
+  ticket_reply: "&6[Ticket] &f{message}"
+  ticket_reply_with_link: "&6[Ticket] &f{message} &b[Klik om te bekijken]"
+  ticket_click_action: "&7Klik om ticket {ticketId} te bekijken"
+
+# IAmMuted Commando Berichten
+iammuted:
+  only_players: "&cDit commando kan alleen door spelers worden gebruikt."
+  not_muted: "&cJe kunt dit commando alleen gebruiken terwijl je gedempt bent."
+  player_not_online: "&cDie speler is niet online."
+  cannot_message_self: "&cJe kunt dit bericht niet naar jezelf sturen."
+  cooldown_message: "&cJe moet {minutes} minuten en {seconds} seconden wachten voordat je dit commando opnieuw kunt gebruiken."
+  notification_to_target: "&6[Gedempte Speler] &f{sender} &7is momenteel gedempt en kan niet reageren in de chat."
+  success_message: "&aJe gedempte status is doorgegeven aan &f{target}&a."
+
+# Speler Opzoeken Berichten
+player_lookup:
+  looking_up: "&7Speler &e{player}&7 wordt opgezocht..."
+  error: "&cFout bij het opzoeken van speler: {error}"
+  uuid: "&7UUID: &f{uuid}"
+  currently_banned: "&7Momenteel verbannen: {status}"
+  currently_muted: "&7Momenteel gedempt: {status}"
+  staff_notes_label: "&7Personeelsnotities:"
+  staff_note_format: "  &8• &f{text} &7- {issuer}"
+  no_staff_notes: "  &8Geen personeelsnotities"
+  total_punishments: "&7Totaal aantal straffen: &f{count}"
+  linked_accounts_label: "&7Gekoppelde accounts:"
+  linked_account_format: "  &8• &f{username}{status}"
+  linked_account_more: "  &8... en {count} meer"
+  no_linked_accounts: "  &8Geen gekoppelde accounts"
+  total_tickets: "&7Totaal aantal tickets: &f{count}"
+  profile_fallback: "&6Profiel: &b{url}"
+
+  # Statusberichten voor gekoppelde accounts
+  status:
+    banned_and_muted: " &c(momenteel verbannen & gedempt)"
+    banned: " &c(momenteel verbannen)"
+    muted: " &e(momenteel gedempt)"
+    no_punishments: " &7(geen actieve straffen)"
+
+# Afdrukmodus Berichten (voor -p vlag op commando's)
+print:
+  # /inspect <speler> -p
+  inspect:
+    header: ""
+    uuid: "&f{player}'s Info &7({uuid})"
+    currently_banned: "&eVerbannen: {status}"
+    currently_muted: "&eGedempt: {status}"
+    notes_label: "&ePersoneelsnotities:"
+    note_entry: "&6{ordinal}. &f{text} &edoor {issuer}"
+    no_notes: "&7Geen personeelsnotities"
+    total_punishments: "&eTotaal aantal straffen: &f{count}"
+    linked_accounts_label: "&eGekoppelde accounts:"
+    linked_account_entry: "&6{ordinal}. &e{username} ({status}&e)"
+    linked_account_more: "&e... en {count} meer"
+    no_linked_accounts: "&7Geen gekoppelde accounts"
+    total_tickets: "&eTotaal aantal tickets: &f{count}"
+    profile_fallback: "&eProfiel: &b{url}"
+    footer: ""
+
+  # /inspect #<strafId>
+  punishment_detail:
+    not_found: "&cStraf #{id} niet gevonden."
+    header: " "
+    type: "&eType: &f{type}"
+    player: "&eSpeler: &f{player}"
+    issuer: "&eUitgegeven door: &f{issuer}"
+    date: "&eDatum: &f{date}"
+    status: "&eStatus: {status}"
+    duration: "&eDuur: &f{duration}"
+    reason: "&eReden: &f{reason}"
+    evidence: "&eBewijs: &f{count} bestand(en)"
+    notes: "&eNotities: &f{count}"
+    modifications: "&eWijzigingen: &f{count}"
+    footer: " "
+
+  # /history <speler> -p
+  history:
+    header: ""
+    entry: "&6{ordinal}. &e#{id} {date} &f{type} &edoor {issuer}."
+    entry_active: "&6{ordinal}. &a#{id} &e{date} &f{type} &edoor {issuer} (verloopt over {expiry})."
+    entry_permanent: "&6{ordinal}. &a#{id} &e{date} &f{type} &edoor {issuer} (verloopt nooit)."
+    entry_inactive: "&6{ordinal}. &7#{id} &e{date} &f{type} &edoor {issuer} (inactief)."
+    entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} &edoor {issuer} (kwijtgescholden)."
+    total: "&eAantal: &f{count}&e straf(fen)"
+    empty: "&7Speler is nooit bestraft."
+    footer: ""
+
+  # /notes <speler> -p
+  notes:
+    header: ""
+    entry: "&6{ordinal}. &e{date} {author}: &f{content}"
+    total: "&eAantal: &f{count}&e notitie(s)"
+    empty: "&7Geen personeelsnotities gevonden."
+    footer: ""
+
+  # /alts <speler> -p
+  alts:
+    header: ""
+    entry: "&6{ordinal}. {color}{username} &e({status}&e)"
+    status_banned: "&cVerbannen"
+    status_muted: "&eGedempt"
+    status_banned_and_muted: "&cVerbannen & Gedempt"
+    status_clean: "&aSchoon"
+    total: "&eAantal: &f{count}&e gekoppeld(e) account(s)"
+    empty: "&7Geen gekoppelde accounts gevonden."
+    footer: ""
+
+  # /reports <speler> -p
+  reports:
+    header: ""
+    entry: "&6{ordinal}. &e#{id} {date} ({status}&e) &f{type} &edoor {reporter}"
+    entry_content: " &f{content}"
+    total: "&eAantal: &f{count}&e rapport(en)"
+    empty: "&7Geen rapporten gevonden."
+    footer: ""
+
+# Strafcommando Berichten
+punishment_commands:
+  invalid_severity: "&cOngeldige ernst. Geldige ernstniveaus: lenient, regular, severe"
+  warning_message: "&c{username} is {punishment_type}."
+
+# API Foutafhandeling
+api_errors:
+  panel_restarting: "&cHet paneel wordt momenteel herstart. Probeer het over 10 seconden opnieuw."
+  panel_unavailable: "&cHet paneel is tijdelijk niet beschikbaar. Probeer het later opnieuw."
+  connection_failed: "&cVerbinding met het paneel mislukt. Probeer het zo opnieuw."
+  ban_check_failed: "&cKan banstatus niet verifiëren. Inloggen is tijdelijk beperkt voor de veiligheid."
+  menus_require_v2: "&cIn-game menu's vereisen de V2 API. De nieuwe API wordt beschikbaar op 11-02-2026."
+
+# Pardon Commando Berichten
+pardon:
+  processing_id: "&7Pardon wordt verwerkt voor straf-ID: &e{id}&7..."
+  processing_player: "&7Pardon wordt verwerkt voor speler: &e{player}&7..."
+  success_id: "&aStraf &e#{id}&a succesvol kwijtgescholden."
+  success_player: "&a{player}'s {type} succesvol kwijtgescholden."
+  already_pardoned_id: "&7Straf &e#{id}&7 is al inactief of kwijtgescholden."
+  no_active_punishment: "&7{player} heeft geen actieve {type} om kwijt te schelden."
+  error: "&cKwijtschelding mislukt: {error}"
+  error_player: "&cKwijtschelding van {player}'s {type} mislukt: {error}"
+  error_wrong_type_ban: "&cStraf &e#{id}&c is geen ban. Gebruik &e/pardon {id}&c om elk straftype kwijt te schelden."
+  error_wrong_type_mute: "&cStraf &e#{id}&c is geen mute. Gebruik &e/pardon {id}&c om elk straftype kwijt te schelden."
+  staff_notification_id: "&7&o[{issuer}: straf #{id} kwijtgescholden&7&o]"
+  staff_notification_player: "&7&o[{issuer}: {player}'s {type} kwijtgescholden&7&o]"
+  disabled_v1: "&cDeze functie is tijdelijk uitgeschakeld in-game tot 11-02-2026 als onderdeel van de V2-migratie. Gebruik het paneel in plaats daarvan."
+
+# Waarschuwing Commando Berichten
+warn:
+  player_message: "&c&lJe hebt een waarschuwing ontvangen van {issuer}.\n&fReden: &7{reason}\n&7Lees de serverregels door en pas je gedrag aan."
+  success: "&a&f{target}&a succesvol gewaarschuwd voor: &7{reason}"
+  staff_notification: "&7&o[{issuer}: {target} gewaarschuwd voor {reason}&7&o]"
+  error: "&cWaarschuwing aanmaken mislukt: {error}"
+
+# Menu Item Lokalisatie
+# Deze definiëren titels en beschrijvingen voor items in inspectiemenu's
+# Beschikbare plaatshouders variëren per itemtype en zijn hieronder gedocumenteerd
+menus:
+  # Spelershoofd in inspectiemenu's
+  player_head:
+    title: "&6Informatie van {player_name}"
+    lore:
+      - "&8{uuid}"
+      - "&f "
+      - "&fEerste login: {first_login}"
+      - "&fOnline: {is_online} ({last_seen_or_session_time} op {server})"
+      - "&fSpeeltijd: {playtime}"
+      - "&fEcht IP gelogd: {real_ip_logged}"
+      - "&fRegio: {region} (Land: {country})"
+      - "&fVerbannen: {is_banned}"
+      - "&fGedempt: {is_muted}"
+
+  # Strafgeschiedenis items
+  history_item:
+    title_active: "&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    title_inactive: "&m&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    lore:
+      - "&7{status_line}"
+      - "&f "
+      - "{notes}"
+      - "&f "
+      - "&fServer: &7{issued_server}"
+      - "&fID: &c{punishment_id}"
+      - "&bKlik om deze straf te wijzigen."
+    status_active: "&7Verloopt over {expiry}."
+    status_inactive: "&7Verlopen {expired} geleden."
+    status_pardoned: "&7Kwijtgescholden {pardoned} geleden."
+    status_permanent: "&7&7Deze permanente straf verloopt nooit."
+    status_unstarted: "&7Straf nog niet gestart."
+    note_format: "&e{note_date} {note_issuer}&f: {note}"
+
+  # Notitie items
+  note_item:
+    title: "&e{date} {author}"
+    lore:
+      - "&f{content}"
+      - "&f "
+      - "&eKlik om notitie in chat te bekijken"
+
+  # Rapport items
+  report_item:
+    title: "&e{date} {id} ({status}&e)"
+    lore:
+      - "&7Gerapporteerd door &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&cLinksklik om speler te inspecteren"
+      - "&aRechtsklik om rapport af te wijzen"
+
+  # Alt-account items
+  alt_item:
+    title: "{color}{player_name}"
+    lore:
+      - "&8{uuid}"
+      - "&f "
+      - "&fOnline: {is_online} ({last_seen_or_session_time})"
+      - "&fEcht IP gelogd: {real_ip}"
+      - "&fEerste login: &f{first_login}"
+      - "&7{punishments}"
+      - "&f "
+      - "&eKlik om {player_name} te inspecteren"
+    punishment_line_active_true:
+      - "&fActieve straffen ({active_count}): &f"
+      - "{active_punishment_list}"
+    punishment_line_active_false:
+      - "&fActieve straffen: &f0"
+      - "&fInactieve straffen: &f{inactive_count}"
+    active_punishment_format: "&7- &e#{punishment_id} {punishment_date}: {punishment_type} ({punishment_remaining})"
+
+
+  # Lege plaatshouders voor lijsten
+  empty:
+    history: "Geen strafgeschiedenis"
+    notes: "Geen personeelsnotities"
+    reports: "Geen rapporten ingediend"
+    alts: "Geen gekoppelde accounts"
+    tickets: "Geen tickets"
+    staff_reports: "Geen rapporten"
+
+  # Personeelsmenu - Tickets
+  ticket_item:
+    title: "&6Ticket #{id}"
+    lore:
+      - "&7Speler: &f{player}"
+      - "&7Titel: &f{title}"
+      - "&7Aangemaakt: &f{date}"
+      - "&7Status: {status}"
+      - "&f "
+      - "&eKlik om in paneel te openen"
+
+  # Personeelsmenu - Rapporten
+  staff_report_item:
+    title: "&e{date} {id} ({status}&e)"
+    lore:
+      - "&c{reported}&7 gerapporteerd door &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&cLinksklik om speler te inspecteren"
+      - "&aRechtsklik om rapport af te wijzen"
+  link_report_item_unselected:
+    title: "&e{date} {id}"
+    lore:
+      - "&7Gerapporteerd door &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&eKlik om te selecteren"
+  link_report_item_selected:
+    title: "&a{date} {id}"
+    lore:
+      - "&7Gerapporteerd door &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&eKlik om te deselecteren"

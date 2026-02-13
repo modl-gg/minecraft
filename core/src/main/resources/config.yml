@@ -230,7 +230,7 @@ locale_config:
   default_reason: "No reason specified"
 
   # Date format for displaying dates
-  date_format: "MMM dd, yyyy 'at' HH:mm"
+  date_format: "MM/dd/yyyy HH:mm"
 
   # Duration format templates
   duration_format:

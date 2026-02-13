@@ -444,13 +444,14 @@ public class SyncService {
         String playerUuid = modified.getMinecraftUuid();
         String username = modified.getUsername();
         SyncResponse.PunishmentWithModifications punishment = modified.getPunishment();
-        
+
         platform.runOnMainThread(() -> {
             for (SyncResponse.PunishmentModification modification : punishment.getModifications()) {
                 handlePunishmentModification(playerUuid, username, punishment.getId(), modification);
             }
         });
     }
+
     
     /**
      * Execute a punishment on the server
@@ -584,7 +585,7 @@ public class SyncService {
                     break;
                 case "MANUAL_DURATION_CHANGE":
                 case "APPEAL_DURATION_CHANGE":
-                    handleDurationChange(uuid, username, punishmentId, modification.getEffectiveDuration());
+                    handleDurationChange(uuid, username, punishmentId, modification.getEffectiveDuration(), modification.getTimestamp());
                     break;
                 default:
                     logger.warning("Unknown modification type: " + modification.getType());
@@ -640,15 +641,36 @@ public class SyncService {
     }
     
     /**
-     * Handle punishment duration change
+     * Handle punishment duration change - update cached expiry so enforcement uses the new duration
      */
-    private void handleDurationChange(UUID uuid, String username, String punishmentId, Long newDuration) {
-        // Update cache if needed
-        // Implementation depends on specific cache structure
-        
+    private void handleDurationChange(UUID uuid, String username, String punishmentId, Long newDuration, Long modificationTimestamp) {
+        // Calculate new expiration: expiry = modification time + newDuration
+        long baseTime = (modificationTimestamp != null) ? modificationTimestamp : System.currentTimeMillis();
+        Long newExpiration = (newDuration != null && newDuration > 0)
+                ? baseTime + newDuration
+                : null; // permanent
+
+        // Update cached mute if it matches
+        SimplePunishment cachedMute = cache.getSimpleMute(uuid);
+        if (cachedMute != null && cachedMute.getId().equals(punishmentId)) {
+            cachedMute.setExpiration(newExpiration);
+            if (debugMode) {
+                logger.info(String.format("Updated cached mute expiration for %s (punishment %s)", username, punishmentId));
+            }
+        }
+
+        // Update cached ban if it matches
+        SimplePunishment cachedBan = cache.getSimpleBan(uuid);
+        if (cachedBan != null && cachedBan.getId().equals(punishmentId)) {
+            cachedBan.setExpiration(newExpiration);
+            if (debugMode) {
+                logger.info(String.format("Updated cached ban expiration for %s (punishment %s)", username, punishmentId));
+            }
+        }
+
         if (debugMode) {
-            logger.info(String.format("Updated punishment %s duration for %s to %d ms",
-                    punishmentId, username, newDuration));
+            logger.info(String.format("Updated punishment %s duration for %s to %s",
+                    punishmentId, username, newDuration != null ? newDuration + " ms" : "permanent"));
         }
     }
     

@@ -161,6 +161,7 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         }
 
         // Slot 31: Change Duration
+        Long effectiveDuration = punishment.getEffectiveDuration();
         if (canModifyDuration) {
             set(CirrusItem.of(
                     CirrusItemType.ANVIL,
@@ -168,7 +169,7 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "Shorten or lengthen punishment duration",
                             "",
-                            MenuItems.COLOR_GRAY + "Current: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(punishment.getDuration())
+                            MenuItems.COLOR_GRAY + "Current: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(effectiveDuration)
                     )
             ).slot(MenuSlots.MODIFY_DURATION).actionHandler("changeDuration"));
         } else {
@@ -176,7 +177,7 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                     CirrusItemType.ANVIL,
                     CirrusChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Change Duration"),
                     MenuItems.lore(
-                            MenuItems.COLOR_GRAY + "Current: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(punishment.getDuration()),
+                            MenuItems.COLOR_GRAY + "Current: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(effectiveDuration),
                             "",
                             MenuItems.COLOR_RED + "No Permission"
                     )

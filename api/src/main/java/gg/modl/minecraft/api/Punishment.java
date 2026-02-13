@@ -329,6 +329,23 @@ public class Punishment {
         return null;
     }
 
+    /**
+     * Get the effective duration accounting for duration change modifications.
+     * Returns the last modification's effectiveDuration, or the original duration if unmodified.
+     */
+    public Long getEffectiveDuration() {
+        Long duration = null;
+        for (Modification mod : getModifications()) {
+            if (mod.getEffectiveDuration() != null) {
+                duration = mod.getEffectiveDuration();
+            }
+        }
+        if (duration == null) {
+            duration = getDuration();
+        }
+        return duration;
+    }
+
     public boolean isSilent() {
         Object silent = getDataMap().get("silent");
         return silent instanceof Boolean && (Boolean) silent;

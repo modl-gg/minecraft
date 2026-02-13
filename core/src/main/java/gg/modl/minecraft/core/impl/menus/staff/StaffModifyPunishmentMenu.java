@@ -127,13 +127,14 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
         ).slot(MenuSlots.MODIFY_PARDON).actionHandler("pardon"));
 
         // Slot 31: Change Duration
+        Long effectiveDuration = punishment.getEffectiveDuration();
         set(CirrusItem.of(
                 CirrusItemType.ANVIL,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Change Duration"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "Shorten or lengthen punishment duration",
                         "",
-                        MenuItems.COLOR_GRAY + "Current: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(punishment.getDuration())
+                        MenuItems.COLOR_GRAY + "Current: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(effectiveDuration)
                 )
         ).slot(MenuSlots.MODIFY_DURATION).actionHandler("changeDuration"));
 

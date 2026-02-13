@@ -91,7 +91,9 @@ public class SyncResponse {
     public static class PunishmentModification {
         @NotNull
         private String type;
-        
+
+        private Long timestamp;
+
         private Long effectiveDuration;
     }
     
