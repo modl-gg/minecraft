@@ -266,9 +266,11 @@ public class Punishment {
     public Date getEffectiveExpiry() {
         // Check modifications for effectiveDuration (last one wins)
         Long duration = null;
+        Date durationBase = null;
         for (Modification mod : getModifications()) {
             if (mod.getEffectiveDuration() != null) {
                 duration = mod.getEffectiveDuration();
+                durationBase = mod.getIssued();
             }
         }
 
@@ -282,7 +284,12 @@ public class Punishment {
             return null;
         }
 
-        // Only calculate expiry from started date - countdown begins at enforcement, not issuance
+        // If duration came from a modification, count from the modification date
+        if (durationBase != null) {
+            return new Date(durationBase.getTime() + duration);
+        }
+
+        // Otherwise count from started date (original unmodified punishment)
         if (started == null) {
             return null; // Not started yet, no expiry
         }
