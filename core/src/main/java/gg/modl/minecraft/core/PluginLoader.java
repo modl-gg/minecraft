@@ -36,7 +36,6 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.logging.Logger;
 
-// import static gg.modl.minecraft.core.Constants.QUERY_MOJANG; // Moved to config
 @Getter
 public class PluginLoader {
     private final HttpClientHolder httpClientHolder;
@@ -45,6 +44,7 @@ public class PluginLoader {
     private final ChatMessageCache chatMessageCache;
     private final LocaleManager localeManager;
     private final LoginCache loginCache;
+    private final boolean queryMojang;
 
     /**
      * Get the current HTTP client from the holder.
@@ -60,6 +60,7 @@ public class PluginLoader {
 
     public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache, HttpManager httpManager, int syncPollingRateSeconds) {
         this.chatMessageCache = chatMessageCache;
+        this.queryMojang = httpManager.isQueryMojang();
         cache = new Cache();
         loginCache = new LoginCache();
 
@@ -117,7 +118,7 @@ public class PluginLoader {
         commandManager.enableUnstableAPI("help");
 
         commandManager.getCommandContexts().registerContext(AbstractPlayer.class, (c)
-                -> fetchPlayer(c.popFirstArg(), platform, getHttpClient()));
+                -> fetchPlayer(c.popFirstArg(), platform, getHttpClient(), queryMojang));
 
         commandManager.getCommandContexts().registerContext(Account.class, (c) -> fetchPlayer(c.popFirstArg(), getHttpClient()));
 
@@ -173,7 +174,7 @@ public class PluginLoader {
 
     }
 
-    public static AbstractPlayer fetchPlayer(String target, Platform platform, ModlHttpClient httpClient) {
+    public static AbstractPlayer fetchPlayer(String target, Platform platform, ModlHttpClient httpClient, boolean queryMojang) {
         AbstractPlayer player = platform.getAbstractPlayer(target, false);
         if (player != null) return player;
 
@@ -182,9 +183,8 @@ public class PluginLoader {
         if (account != null)
             return new AbstractPlayer(account.getMinecraftUuid(), "test", false);
 
-        // Note: QUERY_MOJANG moved to config - for now defaulting to false
-        // if (account == null && queryMojang)
-        //     return platform.getAbstractPlayer(target, true);
+        if (queryMojang)
+            return platform.getAbstractPlayer(target, true);
 
         return null;
     }
@@ -195,9 +195,8 @@ public class PluginLoader {
             if (response != null && response.isSuccess()) {
                 return response.getPlayer();
             }
-        } catch (Exception e) {
-            // Log error but don't crash - return null to indicate player not found
-            System.err.println("[MODL] Error fetching player by name '" + target + "': " + e.getMessage());
+        } catch (Exception ignored) {
+            // Player not found — expected for lookups of players not in the database
         }
         return null;
     }

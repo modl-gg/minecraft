@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class V2LookupRequest {
     private String query;
+    private boolean queryMojang;
 }

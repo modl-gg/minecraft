@@ -116,9 +116,12 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                     long sessionStart = player.getJoinedAt() != null ? player.getJoinedAt().getTime() : System.currentTimeMillis();
                     onlinePlayers.add(new OnlinePlayer(uuid, player.getUsername(), sessionStart, 0, 0));
                 }
+            } else {
+                System.err.println("[MODL] Online players fetch: success=" + response.isSuccess()
+                        + " players=" + (response.getPlayers() != null ? response.getPlayers().size() : "null"));
             }
         }).exceptionally(e -> {
-            // Failed to fetch - list remains empty
+            System.err.println("[MODL] Failed to fetch online players: " + e.getMessage());
             return null;
         });
     }

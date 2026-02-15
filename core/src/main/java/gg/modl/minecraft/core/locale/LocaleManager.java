@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.locale;
 
+import gg.modl.minecraft.core.util.YamlMergeUtil;
 import org.yaml.snakeyaml.Yaml;
 import lombok.Getter;
 
@@ -72,7 +73,10 @@ public class LocaleManager {
         try {
             if (Files.exists(localeFile)) {
                 Yaml yaml = new Yaml();
-                this.messages.putAll(yaml.load(Files.newInputStream(localeFile)));
+                Map<String, Object> fileMessages = yaml.load(Files.newInputStream(localeFile));
+                if (fileMessages != null) {
+                    this.messages = YamlMergeUtil.deepMerge(this.messages, fileMessages);
+                }
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to load locale from file: " + localeFile, e);

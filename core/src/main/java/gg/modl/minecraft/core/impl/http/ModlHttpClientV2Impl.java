@@ -325,7 +325,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @Override
     public CompletableFuture<PlayerLookupResponse> lookupPlayer(@NotNull PlayerLookupRequest request) {
         // Convert to V2 format
-        V2LookupRequest v2Request = new V2LookupRequest(request.getQuery());
+        V2LookupRequest v2Request = new V2LookupRequest(request.getQuery(), false);
         return sendAsync(requestBuilder("/minecraft/players/lookup")
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
@@ -703,24 +703,31 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                                     response.statusCode(), response.body());
                         }
 
-                        circuitBreaker.recordFailure();
-
                         if (response.statusCode() == 502) {
+                            circuitBreaker.recordFailure();
                             throw new PanelUnavailableException(502, request.uri().getPath(),
                                     "V2 API is temporarily unavailable (502 Bad Gateway)");
-                        } else if (response.statusCode() == 401 || response.statusCode() == 403) {
-                            logger.severe(String.format("[V2-REQ-%s] Authentication failed - check API key and server domain", requestId));
                         } else if (response.statusCode() == 404) {
-                            logger.severe(String.format("[V2-REQ-%s] Endpoint not found: %s", requestId, request.uri().getPath()));
+                            // 404 is expected for player/resource lookups — not a real error
+                            if (debugMode) {
+                                logger.fine(String.format("[V2-REQ-%s] Not found (404): %s — %s", requestId, request.uri().getPath(), errorMessage));
+                            }
+                        } else if (response.statusCode() == 401 || response.statusCode() == 403) {
+                            circuitBreaker.recordFailure();
+                            logger.severe(String.format("[V2-REQ-%s] Authentication failed - check API key and server domain", requestId));
                         } else if (response.statusCode() == 405) {
+                            circuitBreaker.recordFailure();
                             logger.severe(String.format("[V2-REQ-%s] Method Not Allowed (405) - %s %s", requestId, request.method(), request.uri()));
                             logger.severe(String.format("[V2-REQ-%s] This usually means the endpoint exists but doesn't accept %s requests", requestId, request.method()));
                         } else if (response.statusCode() == 500) {
+                            circuitBreaker.recordFailure();
                             logger.severe(String.format("[V2-REQ-%s] Server Error (500) - %s %s", requestId, request.method(), request.uri()));
                             logger.severe(String.format("[V2-REQ-%s] Response body: %s", requestId, response.body()));
+                        } else {
+                            circuitBreaker.recordFailure();
+                            logger.warning(String.format("[V2-REQ-%s] %s", requestId, errorMessage));
                         }
 
-                        logger.warning(String.format("[V2-REQ-%s] %s", requestId, errorMessage));
                         throw new RuntimeException(errorMessage);
                     }
                 })

@@ -8,6 +8,7 @@ import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.bungee.factory.BungeePacketEventsBuilder;
 import lombok.Getter;
 import net.byteflux.libby.BungeeLibraryManager;
@@ -39,6 +40,12 @@ public class BungeePlugin extends Plugin {
         loadConfig();
         createLocaleFiles();
 
+        // Auto-merge new keys from plugin update
+        YamlMergeUtil.mergeWithDefaults("/config.yml",
+                getDataFolder().toPath().resolve("config.yml"), getLogger());
+        YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",
+                getDataFolder().toPath().resolve("locale/en_US.yml"), getLogger());
+
         // Validate configuration before proceeding
         String apiUrl = configuration.getString("api.url");
         if ("https://yourserver.modl.gg".equals(apiUrl)) {
@@ -57,7 +64,8 @@ public class BungeePlugin extends Plugin {
                 configuration.getString("api.key"),
                 apiUrl,
                 configuration.getBoolean("api.debug", false),
-                configuration.getBoolean("api.testing-api", false)
+                configuration.getBoolean("api.testing-api", false),
+                configuration.getBoolean("server.query_mojang", false)
         );
 
         BungeeCommandManager commandManager = new BungeeCommandManager(this);

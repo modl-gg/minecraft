@@ -17,6 +17,7 @@ import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.velocity.factory.VelocityPacketEventsBuilder;
 import net.byteflux.libby.Library;
 import net.byteflux.libby.VelocityLibraryManager;
@@ -65,6 +66,12 @@ public final class VelocityPlugin {
         loadConfig();
         createLocaleFiles();
 
+        // Auto-merge new keys from plugin update
+        YamlMergeUtil.mergeWithDefaults("/config.yml",
+                folder.resolve("config.yml"), java.util.logging.Logger.getLogger("MODL"));
+        YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",
+                folder.resolve("locale/en_US.yml"), java.util.logging.Logger.getLogger("MODL"));
+
         // Validate configuration before proceeding
         String apiUrl = getConfigString("api.url", "https://yourserver.modl.gg");
         if ("https://yourserver.modl.gg".equals(apiUrl)) {
@@ -86,7 +93,8 @@ public final class VelocityPlugin {
                 getConfigString("api.key", "your-api-key-here"),
                 apiUrl,
                 (Boolean) getNestedConfig("api.debug", false),
-                (Boolean) getNestedConfig("api.testing-api", false)
+                (Boolean) getNestedConfig("api.testing-api", false),
+                (Boolean) getNestedConfig("server.query_mojang", false)
         );
 
         VelocityPlatform platform = new VelocityPlatform(this.server, commandManager, logger, folder.toFile(), getConfigString("server.name", "Server 1"));

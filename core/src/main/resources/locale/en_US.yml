@@ -381,7 +381,7 @@ pardon:
   processing_id: "&7Processing pardon for punishment ID: &e{id}&7..."
   processing_player: "&7Processing pardon for player: &e{player}&7..."
   success_id: "&aSuccessfully pardoned punishment &e#{id}&a."
-  success_player: "&aSuccessfully pardoned {player}'s {type}."
+  success_player: "&aSuccessfully pardoned {player}'s {count} {type}(s)."
   already_pardoned_id: "&7Punishment &e#{id}&7 is already inactive or has been pardoned."
   no_active_punishment: "&7{player} does not have an active {type} to pardon."
   error: "&cFailed to pardon: {error}"

@@ -4,13 +4,10 @@ import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
 import gg.modl.minecraft.api.AbstractPlayer;
-import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.Modification;
-import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
+import gg.modl.minecraft.api.http.request.PardonPlayerRequest;
 import gg.modl.minecraft.api.http.request.PardonPunishmentRequest;
-import gg.modl.minecraft.api.http.request.PlayerNameRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
@@ -18,9 +15,6 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class PardonCommand extends BaseCommand {
@@ -45,7 +39,7 @@ public class PardonCommand extends BaseCommand {
         if (isPunishmentId(target)) {
             tryPunishmentIdWithFallback(sender, target, issuerName, reason, null);
         } else {
-            pardonAllByPlayerName(sender, target, issuerName, reason);
+            pardonByPlayerName(sender, target, issuerName, reason, null);
         }
     }
 
@@ -60,7 +54,7 @@ public class PardonCommand extends BaseCommand {
         if (isPunishmentId(target)) {
             tryPunishmentIdWithFallback(sender, target, issuerName, reason, "ban");
         } else {
-            pardonSingleByPlayerName(sender, target, issuerName, reason, "ban");
+            pardonByPlayerName(sender, target, issuerName, reason, "ban");
         }
     }
 
@@ -75,189 +69,37 @@ public class PardonCommand extends BaseCommand {
         if (isPunishmentId(target)) {
             tryPunishmentIdWithFallback(sender, target, issuerName, reason, "mute");
         } else {
-            pardonSingleByPlayerName(sender, target, issuerName, reason, "mute");
+            pardonByPlayerName(sender, target, issuerName, reason, "mute");
         }
     }
 
     /**
-     * /pardon <player> — pardon ALL active and unstarted punishments.
+     * Pardon by player name — delegates to the backend's bulk pardon endpoint.
+     * @param type "ban", "mute", or null for all types
      */
-    private void pardonAllByPlayerName(CommandIssuer sender, String playerName, String issuerName, String reason) {
+    private void pardonByPlayerName(CommandIssuer sender, String playerName, String issuerName, String reason, String type) {
         sender.sendMessage(localeManager.getMessage("pardon.processing_player", Map.of("player", playerName)));
 
-        getHttpClient().getPlayer(new PlayerNameRequest(playerName)).thenAccept(response -> {
-            if (!response.isSuccess() || response.getPlayer() == null) {
-                sender.sendMessage(localeManager.getMessage("general.player_not_found"));
-                return;
-            }
+        String displayType = type != null ? type : "punishment";
 
-            Account account = response.getPlayer();
-            List<Punishment> toPardon = account.getPunishments().stream()
-                    .filter(this::isPardonable)
-                    .filter(p -> p.isActive() || isUnstarted(p))
-                    .collect(Collectors.toList());
-
-            if (toPardon.isEmpty()) {
+        getHttpClient().pardonPlayer(new PardonPlayerRequest(
+            playerName, issuerName, type, reason.isEmpty() ? null : reason
+        )).thenAccept(response -> {
+            if (response.hasPardoned()) {
+                sender.sendMessage(localeManager.getMessage("pardon.success_player",
+                    Map.of("player", playerName, "type", displayType, "count", String.valueOf(response.getPardonedCount()))));
+                invalidatePlayerCache(playerName, type);
+            } else {
                 sender.sendMessage(localeManager.getMessage("pardon.no_active_punishment",
-                    Map.of("player", playerName, "type", "punishment")));
-                return;
+                    Map.of("player", playerName, "type", displayType)));
             }
-
-            pardonPunishmentList(sender, toPardon, playerName, issuerName, reason, "all");
         }).exceptionally(throwable -> {
-            handleLookupError(sender, throwable, playerName);
+            handleError(sender, throwable);
             return null;
         });
     }
 
-    /**
-     * /unban or /unmute <player> — pardon the 1 active punishment of that type,
-     * or the oldest unstarted punishment of that type if no active ones exist.
-     */
-    private void pardonSingleByPlayerName(CommandIssuer sender, String playerName, String issuerName, String reason, String type) {
-        sender.sendMessage(localeManager.getMessage("pardon.processing_player", Map.of("player", playerName)));
-
-        getHttpClient().getPlayer(new PlayerNameRequest(playerName)).thenAccept(response -> {
-            if (!response.isSuccess() || response.getPlayer() == null) {
-                sender.sendMessage(localeManager.getMessage("general.player_not_found"));
-                return;
-            }
-
-            Account account = response.getPlayer();
-
-            // Filter to pardonable punishments of the correct type
-            List<Punishment> candidates = account.getPunishments().stream()
-                    .filter(this::isPardonable)
-                    .filter(p -> matchesType(p, type))
-                    .collect(Collectors.toList());
-
-            // First: find an active punishment (started and not expired)
-            Punishment target = candidates.stream()
-                    .filter(Punishment::isActive)
-                    .findFirst()
-                    .orElse(null);
-
-            // If no active punishment, find the oldest unstarted one
-            if (target == null) {
-                target = candidates.stream()
-                        .filter(this::isUnstarted)
-                        .min(Comparator.comparing(Punishment::getIssued))
-                        .orElse(null);
-            }
-
-            if (target == null) {
-                sender.sendMessage(localeManager.getMessage("pardon.no_active_punishment",
-                    Map.of("player", playerName, "type", type)));
-                return;
-            }
-
-            pardonPunishmentList(sender, List.of(target), playerName, issuerName, reason, type);
-        }).exceptionally(throwable -> {
-            handleLookupError(sender, throwable, playerName);
-            return null;
-        });
-    }
-
-    /**
-     * Pardon a list of punishments by ID, then send success/failure messages.
-     */
-    private void pardonPunishmentList(CommandIssuer sender, List<Punishment> punishments, String playerName, String issuerName, String reason, String type) {
-        AtomicInteger pardoned = new AtomicInteger(0);
-        AtomicInteger failed = new AtomicInteger(0);
-        AtomicReference<String> firstError = new AtomicReference<>();
-        int total = punishments.size();
-
-        for (Punishment p : punishments) {
-            PardonPunishmentRequest request = new PardonPunishmentRequest(
-                p.getId(), issuerName, reason.isEmpty() ? null : reason, null
-            );
-
-            getHttpClient().pardonPunishment(request).thenAccept(pardonResponse -> {
-                if (pardonResponse.hasPardoned()) {
-                    pardoned.incrementAndGet();
-                }
-                checkCompletion(sender, pardoned, failed, firstError, total, playerName, issuerName, type);
-            }).exceptionally(ex -> {
-                Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                firstError.compareAndSet(null, cause.getMessage());
-                failed.incrementAndGet();
-                checkCompletion(sender, pardoned, failed, firstError, total, playerName, issuerName, type);
-                return null;
-            });
-        }
-    }
-
-    /**
-     * Check if all pardon requests completed and send the final message.
-     */
-    private void checkCompletion(CommandIssuer sender, AtomicInteger pardoned, AtomicInteger failed, AtomicReference<String> firstError, int total, String playerName, String issuerName, String type) {
-        if (pardoned.get() + failed.get() < total) {
-            return; // Not all done yet
-        }
-
-        int pardonedCount = pardoned.get();
-        if (pardonedCount > 0) {
-            sender.sendMessage(localeManager.getMessage("pardon.success_player",
-                Map.of("player", playerName, "type", type, "count", String.valueOf(pardonedCount))));
-
-            // Staff notification is sent by backend via sync — don't duplicate here
-            invalidatePlayerCache(playerName, type);
-        }
-
-        if (failed.get() > 0 && pardonedCount == 0) {
-            String errorMsg = firstError.get() != null ? firstError.get() : "Unknown error";
-            sender.sendMessage(localeManager.getMessage("pardon.error",
-                Map.of("error", localeManager.sanitizeErrorMessage(errorMsg))));
-        }
-    }
-
-    /**
-     * Check if a punishment is pardonable: not a kick, not already pardoned, not expired.
-     */
-    private boolean isPardonable(Punishment p) {
-        // Skip kicks
-        if (p.isKickType()) return false;
-
-        // Check if already pardoned (data.active = false)
-        Object activeFlag = p.getDataMap().get("active");
-        if (activeFlag instanceof Boolean && !((Boolean) activeFlag)) {
-            return false;
-        }
-
-        // Check for existing pardon modifications
-        for (Modification mod : p.getModifications()) {
-            if (mod.getType() == Modification.Type.MANUAL_PARDON || mod.getType() == Modification.Type.APPEAL_ACCEPT) {
-                return false;
-            }
-        }
-
-        // Check if expired
-        Date expiry = p.getExpires();
-        if (expiry != null && expiry.before(new Date())) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Check if a punishment is unstarted: pardonable but started is null (for bans/mutes).
-     */
-    private boolean isUnstarted(Punishment p) {
-        if (!isPardonable(p)) return false;
-        return (p.isBanType() || p.isMuteType()) && p.getStarted() == null;
-    }
-
-    /**
-     * Check if a punishment matches the expected type ("ban" or "mute").
-     */
-    private boolean matchesType(Punishment p, String type) {
-        if ("ban".equals(type)) return p.isBanType();
-        if ("mute".equals(type)) return p.isMuteType();
-        return true;
-    }
-
-    // --- Punishment ID handling (unchanged) ---
+    // --- Punishment ID handling ---
 
     private void tryPunishmentIdWithFallback(CommandIssuer sender, String target, String issuerName, String reason, String expectedType) {
         PardonPunishmentRequest request = new PardonPunishmentRequest(
@@ -268,51 +110,45 @@ public class PardonCommand extends BaseCommand {
             if (response.hasPardoned()) {
                 sender.sendMessage(localeManager.getMessage("pardon.success_id",
                     Map.of("id", target)));
-
-                // Staff notification is sent by backend via sync — don't duplicate here
                 cache.clear();
             } else {
                 sender.sendMessage(localeManager.getMessage("pardon.already_pardoned_id",
                     Map.of("id", target)));
             }
         }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) {
-                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-            } else {
-                Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
-                String errorMessage = cause.getMessage();
+            Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
 
-                // Check if it's a "not found" error — fall back to player name
-                if (errorMessage != null && (errorMessage.contains("No player found with punishment ID") ||
-                    errorMessage.contains("Punishment with ID") || errorMessage.contains("not found") ||
-                    errorMessage.contains("404"))) {
-                    if (expectedType == null) {
-                        pardonAllByPlayerName(sender, target, issuerName, reason);
-                    } else {
-                        pardonSingleByPlayerName(sender, target, issuerName, reason, expectedType);
-                    }
-                } else if (errorMessage != null && errorMessage.toLowerCase().contains("type")) {
-                    if ("ban".equals(expectedType)) {
-                        sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_ban",
-                            Map.of("id", target)));
-                    } else if ("mute".equals(expectedType)) {
-                        sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_mute",
-                            Map.of("id", target)));
-                    } else {
-                        sender.sendMessage(localeManager.getMessage("pardon.error",
-                            Map.of("error", localeManager.sanitizeErrorMessage(errorMessage))));
-                    }
+            if (cause instanceof PanelUnavailableException) {
+                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+                return null;
+            }
+
+            String errorMessage = cause.getMessage();
+
+            // Check if it's a "not found" error — fall back to player name lookup
+            if (errorMessage != null && (errorMessage.contains("not found") || errorMessage.contains("404"))) {
+                pardonByPlayerName(sender, target, issuerName, reason, expectedType);
+            } else if (errorMessage != null && errorMessage.toLowerCase().contains("type")) {
+                if ("ban".equals(expectedType)) {
+                    sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_ban",
+                        Map.of("id", target)));
+                } else if ("mute".equals(expectedType)) {
+                    sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_mute",
+                        Map.of("id", target)));
                 } else {
                     sender.sendMessage(localeManager.getMessage("pardon.error",
-                        Map.of("error", localeManager.sanitizeErrorMessage(errorMessage != null ? errorMessage : "Unknown error"))));
+                        Map.of("error", localeManager.sanitizeErrorMessage(errorMessage))));
                 }
+            } else {
+                sender.sendMessage(localeManager.getMessage("pardon.error",
+                    Map.of("error", localeManager.sanitizeErrorMessage(errorMessage != null ? errorMessage : "Unknown error"))));
             }
             return null;
         });
     }
 
     private boolean isPunishmentId(String target) {
-        return target.length() == 8 && target.matches("^[A-F0-9]+$");
+        return target.length() == 8 && target.matches("^[A-Z0-9]+$");
     }
 
     private void invalidatePlayerCache(String playerName, String type) {
@@ -333,11 +169,18 @@ public class PardonCommand extends BaseCommand {
         }
     }
 
-    private void handleLookupError(CommandIssuer sender, Throwable throwable, String playerName) {
-        if (throwable.getCause() instanceof PanelUnavailableException) {
+    private void handleError(CommandIssuer sender, Throwable throwable) {
+        Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
+        if (cause instanceof PanelUnavailableException) {
             sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
         } else {
-            sender.sendMessage(localeManager.getMessage("general.player_not_found"));
+            String errorMessage = cause.getMessage();
+            if (errorMessage != null && (errorMessage.contains("not found") || errorMessage.contains("404"))) {
+                sender.sendMessage(localeManager.getMessage("general.player_not_found"));
+            } else {
+                sender.sendMessage(localeManager.getMessage("pardon.error",
+                    Map.of("error", localeManager.sanitizeErrorMessage(errorMessage != null ? errorMessage : "Unknown error"))));
+            }
         }
     }
 }

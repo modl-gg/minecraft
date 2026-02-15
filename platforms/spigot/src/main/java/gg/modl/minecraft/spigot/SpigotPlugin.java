@@ -8,6 +8,7 @@ import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import net.byteflux.libby.BukkitLibraryManager;
 import net.byteflux.libby.Library;
@@ -34,6 +35,12 @@ public class SpigotPlugin extends JavaPlugin {
         saveDefaultConfig();
         createLocaleFiles();
 
+        // Auto-merge new keys from plugin update
+        YamlMergeUtil.mergeWithDefaults("/config.yml",
+                getDataFolder().toPath().resolve("config.yml"), getLogger());
+        YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",
+                getDataFolder().toPath().resolve("locale/en_US.yml"), getLogger());
+
         // Validate configuration before proceeding
         String apiUrl = getConfig().getString("api.url");
         if ("https://yourserver.modl.gg".equals(apiUrl)) {
@@ -53,7 +60,8 @@ public class SpigotPlugin extends JavaPlugin {
                 getConfig().getString("api.key"),
                 apiUrl,
                 getConfig().getBoolean("api.debug", false),
-                getConfig().getBoolean("api.testing-api", false)
+                getConfig().getBoolean("api.testing-api", false),
+                getConfig().getBoolean("server.query_mojang", false)
         );
 
         BukkitCommandManager commandManager = new BukkitCommandManager(this);

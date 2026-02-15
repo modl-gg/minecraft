@@ -207,8 +207,15 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
         // Build status line using history_item locale keys (same logic as HistoryMenu)
         String statusLine;
+        // Check for pardon first (pardoned-but-unstarted should show "Pardoned", not "Not started")
+        Date pardonDate = isKick ? null : findPardonDate(punishment);
         if (isKick) {
             statusLine = ""; // Don't show status for kicks
+        } else if (pardonDate != null) {
+            long pardonedAgo = System.currentTimeMillis() - pardonDate.getTime();
+            String pardonedFormatted = MenuItems.formatDuration(pardonedAgo > 0 ? pardonedAgo : 0);
+            statusLine = locale.getMessage("menus.history_item.status_pardoned",
+                    Map.of("pardoned", pardonedFormatted));
         } else if (punishment.getStarted() == null) {
             // Punishment not yet started
             statusLine = locale.getMessage("menus.history_item.status_unstarted");
@@ -225,26 +232,16 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
                         Map.of("expiry", expiryFormatted));
             }
         } else {
-            // Inactive - check if pardoned or naturally expired
-            Date pardonDate = findPardonDate(punishment);
-            if (pardonDate != null) {
-                // Punishment was pardoned - show time since pardon
-                long pardonedAgo = System.currentTimeMillis() - pardonDate.getTime();
-                String pardonedFormatted = MenuItems.formatDuration(pardonedAgo > 0 ? pardonedAgo : 0);
-                statusLine = locale.getMessage("menus.history_item.status_pardoned",
-                        Map.of("pardoned", pardonedFormatted));
+            // Naturally expired - calculate time since expired using effective duration
+            if (effectiveDuration != null && effectiveDuration > 0 && punishment.getStarted() != null) {
+                long expiryTime = punishment.getStarted().getTime() + effectiveDuration;
+                long expiredAgo = System.currentTimeMillis() - expiryTime;
+                String expiredFormatted = MenuItems.formatDuration(expiredAgo > 0 ? expiredAgo : 0);
+                statusLine = locale.getMessage("menus.history_item.status_inactive",
+                        Map.of("expired", expiredFormatted));
             } else {
-                // Naturally expired - calculate time since expired using effective duration
-                if (effectiveDuration != null && effectiveDuration > 0 && punishment.getStarted() != null) {
-                    long expiryTime = punishment.getStarted().getTime() + effectiveDuration;
-                    long expiredAgo = System.currentTimeMillis() - expiryTime;
-                    String expiredFormatted = MenuItems.formatDuration(expiredAgo > 0 ? expiredAgo : 0);
-                    statusLine = locale.getMessage("menus.history_item.status_inactive",
-                            Map.of("expired", expiredFormatted));
-                } else {
-                    statusLine = locale.getMessage("menus.history_item.status_inactive",
-                            Map.of("expired", "N/A"));
-                }
+                statusLine = locale.getMessage("menus.history_item.status_inactive",
+                        Map.of("expired", "N/A"));
             }
         }
 
@@ -317,21 +314,39 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
     }
 
     private CirrusItemType getPunishmentItemType(Punishment punishment) {
-        if (punishment.getType() == null) return CirrusItemType.PAPER;
+        int ordinal = punishment.getTypeOrdinal();
 
-        switch (punishment.getType()) {
-            case BAN:
-            case SECURITY_BAN:
-            case LINKED_BAN:
-            case BLACKLIST:
-                return CirrusItemType.BARRIER;
-            case MUTE:
-                return CirrusItemType.PAPER;
-            case KICK:
-                return CirrusItemType.LEATHER_BOOTS;
-            default:
-                return CirrusItemType.PAPER;
+        // Check config-defined item mapping first
+        gg.modl.minecraft.core.config.PunishGuiConfig guiConfig = getOrLoadGuiConfig();
+        if (guiConfig != null) {
+            String itemId = guiConfig.getItemForOrdinal(ordinal);
+            if (itemId != null) {
+                return CirrusItemType.of(itemId);
+            }
         }
+
+        // Fall back to registry-based detection
+        if (punishment.isBanType()) {
+            return CirrusItemType.BARRIER;
+        } else if (punishment.isMuteType()) {
+            return CirrusItemType.PAPER;
+        } else if (punishment.isKickType()) {
+            return CirrusItemType.LEATHER_BOOTS;
+        }
+        return CirrusItemType.PAPER;
+    }
+
+    private gg.modl.minecraft.core.config.PunishGuiConfig getOrLoadGuiConfig() {
+        gg.modl.minecraft.core.impl.cache.Cache cache = platform.getCache();
+        if (cache == null) return null;
+        gg.modl.minecraft.core.config.PunishGuiConfig config = cache.getCachedPunishGuiConfig();
+        if (config == null) {
+            config = gg.modl.minecraft.core.config.PunishGuiConfig.load(
+                    platform.getDataFolder().toPath(),
+                    java.util.logging.Logger.getLogger("MODL"));
+            cache.cachePunishGuiConfig(config);
+        }
+        return config;
     }
 
     @Override

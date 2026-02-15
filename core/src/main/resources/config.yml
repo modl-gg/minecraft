@@ -57,6 +57,27 @@ migration:
       # Plugin will try to read from LiteBans config first
       table_prefix: "litebans_"
 
+# what item should be used to display punishment type in history/recemt punishment GUI
+punishment_type_items_by_ordinal:
+  0: "minecraft:leather_boots"
+  1: "minecraft:orange_wool" # orange wool
+  2: "minecraft:red_wool" # red wool
+  3: "minecraft:barrier"
+  4: "minecraft:player_head"
+  5: "minecraft:bedrock"
+  6: "minecraft:feather"
+  7: "minecraft:pufferfish"
+  8: "minecraft:creeper_head"
+  9: "minecraft:ink_sac"
+  10: "minecraft:name_tag"
+  11: "minecraft:armor_stand"
+  12: "minecraft:lava_bucket"
+  13: "minecraft:spider_eye"
+  14: "minecraft:diamond_sword"
+  15: "minecraft:gold_ingot"
+  16: "minecraft:experience_bottle"
+  17: "minecraft:barrier"
+
 # Punish GUI Configuration
 # Configures the punishment menu layout (slots 28-34, 37-43 in a 6-row inventory)
 # Slot numbers 1-14 map to these positions:
@@ -213,7 +234,7 @@ punish_gui:
   # Slot 14 - Systems Abuse
   14:
     enabled: true
-    item: "minecraft:barrier"
+    item: "minecraft:repeater"
     title: "Systems Abuse"
     ordinal: 17
     description:

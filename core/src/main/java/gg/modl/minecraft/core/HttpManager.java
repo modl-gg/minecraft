@@ -38,11 +38,17 @@ public class HttpManager {
     private final boolean useTestingApi;
     @NotNull
     private final String panelUrl;
+    private final boolean queryMojang;
 
     public HttpManager(@NotNull String key, @NotNull String url, boolean debugHttp, boolean useTestingApi) {
+        this(key, url, debugHttp, useTestingApi, false);
+    }
+
+    public HttpManager(@NotNull String key, @NotNull String url, boolean debugHttp, boolean useTestingApi, boolean queryMojang) {
         this.apiKey = key;
         this.debugHttp = debugHttp;
         this.useTestingApi = useTestingApi;
+        this.queryMojang = queryMojang;
 
         // Normalize URL: remove trailing slash and /api if present
         String normalizedUrl = url.replaceAll("/+$", "");
