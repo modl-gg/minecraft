@@ -3,6 +3,11 @@ package gg.modl.minecraft.core.util;
 import java.util.Random;
 
 public class StringUtil {
+    public static String unescapeNewlines(String str) {
+        if (str == null) return null;
+        return str.replace("\\n", "\n").replace("\\\\n", "\n");
+    }
+
     public static String generateRandomString(int length) {
         String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         StringBuilder randomString = new StringBuilder();

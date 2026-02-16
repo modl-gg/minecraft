@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.util;
 
+import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
@@ -202,28 +203,7 @@ public class PunishmentMessages {
      * Format duration in milliseconds to human readable string
      */
     public static String formatDuration(long millis) {
-        long seconds = (millis / 1000L) + 1;
-
-        if (seconds < 1) return "0 seconds";
-
-        long minutes = seconds / 60;
-        seconds = seconds % 60;
-        long hours = minutes / 60;
-        minutes = minutes % 60;
-        long day = hours / 24;
-        hours = hours % 24;
-        long years = day / 365;
-        day = day % 365;
-
-        StringBuilder time = new StringBuilder();
-
-        if (years != 0) time.append(years).append("y ");
-        if (day != 0) time.append(day).append("d ");
-        if (hours != 0) time.append(hours).append("h ");
-        if (minutes != 0) time.append(minutes).append("m ");
-        if (seconds != 0) time.append(seconds).append("s ");
-
-        return time.toString().trim();
+        return TimeUtil.formatTimeMillis(millis);
     }
     
     /**
@@ -288,6 +268,26 @@ public class PunishmentMessages {
         return variables;
     }
     
+    /**
+     * Format a legacy mute message for old Punishment format (fallback).
+     * Uses raw section-sign color codes that work on all platforms.
+     */
+    public static String formatLegacyMuteMessage(Punishment mute) {
+        String reason = mute.getReason() != null ? mute.getReason() : "No reason provided";
+        StringBuilder message = new StringBuilder();
+        message.append("\u00A7cYou are muted!\n");
+        message.append("\u00A77Reason: \u00A7f").append(reason);
+        if (mute.getExpires() != null) {
+            long timeLeft = mute.getExpires().getTime() - System.currentTimeMillis();
+            if (timeLeft > 0) {
+                message.append("\n\u00A77Time remaining: \u00A7f").append(formatDuration(timeLeft));
+            }
+        } else {
+            message.append("\n\u00A74This mute is permanent.");
+        }
+        return message.toString();
+    }
+
     /**
      * Create a clean text version without color codes (for console/logs)
      */

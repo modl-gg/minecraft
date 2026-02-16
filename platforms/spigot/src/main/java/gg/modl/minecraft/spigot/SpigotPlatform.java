@@ -8,6 +8,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.util.StringUtil;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.spigot.wrapper.SpigotPlayerWrapper;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
@@ -68,9 +69,7 @@ public class SpigotPlatform implements Platform {
     public void sendMessage(UUID uuid, String message) {
         Player player = Bukkit.getPlayer(uuid);
         if (player != null && player.isOnline()) {
-            // Handle both escaped newlines and literal \n sequences
-            String formattedMessage = message.replace("\\n", "\n").replace("\\\\n", "\n");
-            player.sendMessage(formattedMessage);
+            player.sendMessage(StringUtil.unescapeNewlines(message));
         }
     }
     
@@ -173,9 +172,7 @@ public class SpigotPlatform implements Platform {
     public void kickPlayer(AbstractPlayer player, String reason) {
         Player bukkitPlayer = Bukkit.getPlayer(player.getUuid());
         if (bukkitPlayer != null && bukkitPlayer.isOnline()) {
-            // Handle both escaped newlines and literal \n sequences
-            String formattedReason = reason.replace("\\n", "\n").replace("\\\\n", "\n");
-            bukkitPlayer.kickPlayer(formattedReason);
+            bukkitPlayer.kickPlayer(StringUtil.unescapeNewlines(reason));
         }
     }
 

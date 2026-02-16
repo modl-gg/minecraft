@@ -8,6 +8,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.util.StringUtil;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.bungee.wrapper.BungeePlayerWrapper;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
@@ -71,9 +72,7 @@ public class BungeePlatform implements Platform {
     public void sendMessage(UUID uuid, String message) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
         if (player != null && player.isConnected()) {
-            // Handle both escaped newlines and literal \n sequences
-            String formattedMessage = message.replace("\\n", "\n").replace("\\\\n", "\n");
-            player.sendMessage(formattedMessage);
+            player.sendMessage(StringUtil.unescapeNewlines(message));
         }
     }
     
@@ -175,9 +174,7 @@ public class BungeePlatform implements Platform {
     public void kickPlayer(AbstractPlayer player, String reason) {
         ProxiedPlayer bungeePlayer = ProxyServer.getInstance().getPlayer(player.getUuid());
         if (bungeePlayer != null && bungeePlayer.isConnected()) {
-            // Handle both escaped newlines and literal \n sequences
-            String formattedReason = reason.replace("\\n", "\n").replace("\\\\n", "\n");
-            bungeePlayer.disconnect(new TextComponent(formattedReason));
+            bungeePlayer.disconnect(new TextComponent(StringUtil.unescapeNewlines(reason)));
         }
     }
 

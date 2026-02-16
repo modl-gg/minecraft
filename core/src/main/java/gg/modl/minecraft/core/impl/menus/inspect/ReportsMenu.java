@@ -10,6 +10,7 @@ import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.util.StringUtil;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
@@ -193,8 +194,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         String content = report.getContent() != null ? report.getContent() : "";
         String formattedDate = report.getDate() != null ? MenuItems.formatDate(report.getDate()) : "Unknown";
 
-        // Normalize newlines, strip markdown, and wrap content
-        content = content.replace("\\n", "\n");
+        content = StringUtil.unescapeNewlines(content);
         content = content.replace("**", "").replace("```", "");
         List<String> wrappedContent = new ArrayList<>();
         for (String paragraph : content.split("\n")) {

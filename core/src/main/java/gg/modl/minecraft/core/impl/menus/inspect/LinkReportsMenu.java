@@ -15,6 +15,7 @@ import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.StringUtil;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -195,7 +196,7 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
         String formattedDate = report.getDate() != null ? MenuItems.formatDate(report.getDate()) : "Unknown";
 
         // Normalize newlines, strip markdown, and wrap content
-        content = content.replace("\\n", "\n");
+        content = StringUtil.unescapeNewlines(content);
         content = content.replace("**", "").replace("```", "");
         List<String> wrappedContent = new ArrayList<>();
         for (String paragraph : content.split("\n")) {

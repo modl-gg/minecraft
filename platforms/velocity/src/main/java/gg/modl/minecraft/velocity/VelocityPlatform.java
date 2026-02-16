@@ -8,6 +8,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.util.StringUtil;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import gg.modl.minecraft.core.util.WebPlayer;
 import com.velocitypowered.api.proxy.Player;
@@ -76,9 +77,7 @@ public class VelocityPlatform implements Platform {
 
     @Override
     public void sendMessage(UUID uuid, String message) {
-        // Handle both escaped newlines and literal \n sequences
-        String formattedMessage = message.replace("\\n", "\n").replace("\\\\n", "\n");
-        server.getPlayer(uuid).orElseThrow().sendMessage(get(formattedMessage));
+        server.getPlayer(uuid).orElseThrow().sendMessage(get(StringUtil.unescapeNewlines(message)));
     }
     
     @Override
@@ -206,9 +205,7 @@ public class VelocityPlatform implements Platform {
     public void kickPlayer(AbstractPlayer player, String reason) {
         Player velocityPlayer = server.getPlayer(player.getUuid()).orElse(null);
         if (velocityPlayer != null) {
-            // Handle both escaped newlines and literal \n sequences
-            String formattedReason = reason.replace("\\n", "\n").replace("\\\\n", "\n");
-            velocityPlayer.disconnect(get(formattedReason));
+            velocityPlayer.disconnect(get(StringUtil.unescapeNewlines(reason)));
         }
     }
 

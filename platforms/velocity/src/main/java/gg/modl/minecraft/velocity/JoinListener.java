@@ -14,6 +14,7 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
+import gg.modl.minecraft.core.util.ListenerHelper;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
 import gg.modl.minecraft.core.util.WebPlayer;
@@ -107,7 +108,7 @@ public class JoinListener {
             }
 
             // Handle pending IP lookups requested by the backend
-            handlePendingIpLookups(response, event.getPlayer().getUniqueId().toString(), ipAddress, ipInfoFuture);
+            ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getPlayer().getUniqueId().toString(), ipAddress, ipInfoFuture, java.util.logging.Logger.getLogger(JoinListener.class.getName()));
 
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
@@ -122,7 +123,7 @@ public class JoinListener {
 
                 // Acknowledge ban enforcement if it wasn't started yet
                 if (!ban.isStarted()) {
-                    acknowledgeBanEnforcement(ban, event.getPlayer().getUniqueId().toString());
+                    ListenerHelper.acknowledgeBanEnforcement(getHttpClient(), ban, event.getPlayer().getUniqueId().toString(), debugMode, java.util.logging.Logger.getLogger(JoinListener.class.getName()));
                 }
             } else {
                 // Cache active mute if present
@@ -139,7 +140,7 @@ public class JoinListener {
                 if (response.hasNotifications()) {
                     for (Map<String, Object> notificationData : response.getPendingNotifications()) {
                         // Convert map to PlayerNotification and cache for delivery on join
-                        SyncResponse.PlayerNotification notification = mapToPlayerNotification(notificationData);
+                        SyncResponse.PlayerNotification notification = ListenerHelper.mapToPlayerNotification(notificationData, java.util.logging.Logger.getLogger(JoinListener.class.getName()));
                         if (notification != null) {
                             // Cache notification for immediate delivery on post-login
                             cache.cacheNotification(event.getPlayer().getUniqueId(), notification);
@@ -220,94 +221,4 @@ public class JoinListener {
         return chatMessageCache;
     }
     
-    /**
-     * Acknowledge that a ban was successfully enforced (player denied login)
-     */
-    private void acknowledgeBanEnforcement(SimplePunishment ban, String playerUuid) {
-        try {
-            PunishmentAcknowledgeRequest request = new PunishmentAcknowledgeRequest(
-                    ban.getId(),
-                    playerUuid,
-                    java.time.Instant.now().toString(),
-                    true, // success
-                    null // no error message
-            );
-            
-            getHttpClient().acknowledgePunishment(request).thenAccept(response -> {
-                if (debugMode) {
-                    logger.info("Successfully acknowledged ban enforcement for punishment " + ban.getId());
-                }
-            }).exceptionally(throwable -> {
-                logger.error("Failed to acknowledge ban enforcement for punishment " + ban.getId(), throwable);
-                return null;
-            });
-        } catch (Exception e) {
-            logger.error("Error acknowledging ban enforcement for punishment " + ban.getId(), e);
-        }
-    }
-    
-    /**
-     * Handle pending IP lookups requested by the backend.
-     * Reuses the original ipInfoFuture for the player's current IP to avoid redundant API calls.
-     */
-    private void handlePendingIpLookups(PlayerLoginResponse response, String minecraftUUID, String originalIp, CompletableFuture<JsonObject> originalIpInfoFuture) {
-        if (response.getPendingIpLookups() == null || response.getPendingIpLookups().isEmpty()) {
-            return;
-        }
-        for (String ip : response.getPendingIpLookups()) {
-            CompletableFuture<JsonObject> ipInfoFuture = ip.equals(originalIp) && originalIpInfoFuture != null
-                    ? originalIpInfoFuture
-                    : IpApiClient.getIpInfo(ip);
-            ipInfoFuture.thenAccept(ipInfo -> {
-                if (ipInfo != null && ipInfo.has("status") && "success".equals(ipInfo.get("status").getAsString())) {
-                    getHttpClient().submitIpInfo(
-                            minecraftUUID,
-                            ip,
-                            ipInfo.has("countryCode") ? ipInfo.get("countryCode").getAsString() : null,
-                            ipInfo.has("regionName") ? ipInfo.get("regionName").getAsString() : null,
-                            ipInfo.has("as") ? ipInfo.get("as").getAsString() : null,
-                            ipInfo.has("proxy") && ipInfo.get("proxy").getAsBoolean(),
-                            ipInfo.has("hosting") && ipInfo.get("hosting").getAsBoolean()
-                    ).exceptionally(throwable -> {
-                        logger.warn("Failed to submit IP info for {}: {}", ip, throwable.getMessage());
-                        return null;
-                    });
-                }
-            }).exceptionally(throwable -> {
-                logger.warn("Failed to lookup IP {}: {}", ip, throwable.getMessage());
-                return null;
-            });
-        }
-    }
-
-    /**
-     * Convert a map from the login response to a PlayerNotification object
-     */
-    private SyncResponse.PlayerNotification mapToPlayerNotification(Map<String, Object> data) {
-        try {
-            SyncResponse.PlayerNotification notification = new SyncResponse.PlayerNotification();
-            notification.setId((String) data.get("id"));
-            notification.setMessage((String) data.get("message"));
-            notification.setType((String) data.get("type"));
-            
-            if (data.get("timestamp") instanceof Number) {
-                notification.setTimestamp(((Number) data.get("timestamp")).longValue());
-            }
-            
-            notification.setTargetPlayerUuid((String) data.get("targetPlayerUuid"));
-            
-            // Handle nested data map
-            Object nestedData = data.get("data");
-            if (nestedData instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> dataMap = (Map<String, Object>) nestedData;
-                notification.setData(dataMap);
-            }
-            
-            return notification;
-        } catch (Exception e) {
-            logger.warn("Failed to convert notification data: " + e.getMessage());
-            return null;
-        }
-    }
 }

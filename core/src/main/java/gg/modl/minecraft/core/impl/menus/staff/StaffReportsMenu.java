@@ -9,6 +9,7 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.util.StringUtil;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -206,8 +207,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
 
         // Content - normalize newlines, strip markdown, and wrap text
         String content = report.getContent() != null ? report.getContent() : "";
-        // Handle literal \n sequences and actual newlines
-        content = content.replace("\\n", "\n");
+        content = StringUtil.unescapeNewlines(content);
         content = content.replace("**", "").replace("```", "");
         List<String> wrappedContent = new ArrayList<>();
         for (String paragraph : content.split("\n")) {

@@ -1,11 +1,11 @@
 package gg.modl.minecraft.velocity;
 
-import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.MutedCommandUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages;
+import gg.modl.minecraft.core.util.StringUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
 import com.velocitypowered.api.event.PostOrder;
 import com.velocitypowered.api.event.Subscribe;
@@ -52,26 +52,8 @@ public class ChatListener {
         );
 
         if (cache.isMuted(event.getPlayer().getUniqueId())) {
-            // Cancel the chat event
             event.setResult(PlayerChatEvent.ChatResult.denied());
-
-            // Get cached mute and send message to player
-            Cache.CachedPlayerData data = cache.getCache().get(event.getPlayer().getUniqueId());
-            if (data != null) {
-                String muteMessage;
-                if (data.getSimpleMute() != null) {
-                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
-                } else if (data.getMute() != null) {
-                    // Fallback to old punishment format
-                    muteMessage = formatMuteMessage(data.getMute());
-                } else {
-                    muteMessage = "§cYou are muted!";
-                }
-                // Handle both escaped newlines and literal \n sequences
-                String formattedMessage = muteMessage.replace("\\n", "\n").replace("\\\\n", "\n");
-                Component muteComponent = Colors.get(formattedMessage);
-                event.getPlayer().sendMessage(muteComponent);
-            }
+            handleMutedPlayer(event.getPlayer());
         }
     }
     
@@ -90,44 +72,25 @@ public class ChatListener {
         }
 
         event.setResult(CommandExecuteEvent.CommandResult.denied());
+        handleMutedPlayer(player);
+    }
 
-        // Send mute message to player
+    private void handleMutedPlayer(Player player) {
         Cache.CachedPlayerData data = cache.getCache().get(player.getUniqueId());
         if (data != null) {
             String muteMessage;
             if (data.getSimpleMute() != null) {
                 muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
             } else if (data.getMute() != null) {
-                muteMessage = formatMuteMessage(data.getMute());
+                muteMessage = PunishmentMessages.formatLegacyMuteMessage(data.getMute());
             } else {
                 muteMessage = "§cYou are muted!";
             }
-            String formattedMessage = muteMessage.replace("\\n", "\n").replace("\\\\n", "\n");
-            Component muteComponent = Colors.get(formattedMessage);
+            Component muteComponent = Colors.get(StringUtil.unescapeNewlines(muteMessage));
             player.sendMessage(muteComponent);
         }
     }
 
-    private String formatMuteMessage(Punishment mute) {
-        String reason = mute.getReason() != null ? mute.getReason() : "No reason provided";
-        
-        StringBuilder message = new StringBuilder();
-        message.append("§cYou are muted!\n");
-        message.append("§7Reason: §f").append(reason).append("\n");
-        
-        if (mute.getExpires() != null) {
-            long timeLeft = mute.getExpires().getTime() - System.currentTimeMillis();
-            if (timeLeft > 0) {
-                String timeString = PunishmentMessages.formatDuration(timeLeft);
-                message.append("§7Time remaining: §f").append(timeString).append("\n");
-            }
-        } else {
-            message.append("§4This mute is permanent.\n");
-        }
-        
-        return message.toString();
-    }
-    
     public ChatMessageCache getChatMessageCache() {
         return chatMessageCache;
     }

@@ -15,8 +15,10 @@ import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
+import gg.modl.minecraft.core.util.ListenerHelper;
 import gg.modl.minecraft.core.util.MutedCommandUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages;
+import gg.modl.minecraft.core.util.StringUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
 import gg.modl.minecraft.core.util.WebPlayer;
 import com.google.gson.JsonObject;
@@ -95,7 +97,7 @@ public class BungeeListener implements Listener {
             PlayerLoginResponse response = loginFuture.get(5, TimeUnit.SECONDS); // 5 second timeout
             
             // Handle pending IP lookups requested by the backend
-            handlePendingIpLookups(response, event.getConnection().getUniqueId().toString(), ipAddress, ipInfoFuture);
+            ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getConnection().getUniqueId().toString(), ipAddress, ipInfoFuture, java.util.logging.Logger.getLogger(BungeeListener.class.getName()));
 
             if (response.hasActiveBan()) {
                 SimplePunishment ban = response.getActiveBan();
@@ -106,7 +108,7 @@ public class BungeeListener implements Listener {
 
                 // Acknowledge ban enforcement if it wasn't started yet
                 if (!ban.isStarted()) {
-                    acknowledgeBanEnforcement(ban, event.getConnection().getUniqueId().toString());
+                    ListenerHelper.acknowledgeBanEnforcement(getHttpClient(), ban, event.getConnection().getUniqueId().toString(), debugMode, java.util.logging.Logger.getLogger(BungeeListener.class.getName()));
                 }
             }
         } catch (PanelUnavailableException e) {
@@ -166,7 +168,7 @@ public class BungeeListener implements Listener {
             if (response.hasNotifications()) {
                 for (Map<String, Object> notificationData : response.getPendingNotifications()) {
                     // Convert map to PlayerNotification and deliver immediately
-                    SyncResponse.PlayerNotification notification = mapToPlayerNotification(notificationData);
+                    SyncResponse.PlayerNotification notification = ListenerHelper.mapToPlayerNotification(notificationData, java.util.logging.Logger.getLogger(BungeeListener.class.getName()));
                     if (notification != null) {
                         syncService.deliverLoginNotification(event.getPlayer().getUniqueId(), notification);
                     }
@@ -260,38 +262,12 @@ public class BungeeListener implements Listener {
             if (data.getSimpleMute() != null) {
                 muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
             } else if (data.getMute() != null) {
-                muteMessage = formatMuteMessage(data.getMute());
+                muteMessage = PunishmentMessages.formatLegacyMuteMessage(data.getMute());
             } else {
                 muteMessage = "§cYou are muted!";
             }
-            // Handle both escaped newlines and literal \n sequences
-            String formattedMessage = muteMessage.replace("\\n", "\n").replace("\\\\n", "\n");
-            sender.sendMessage(new TextComponent(formattedMessage));
+            sender.sendMessage(new TextComponent(StringUtil.unescapeNewlines(muteMessage)));
         }
-    }
-    
-    /**
-     * Format mute message for old punishment format (fallback)
-     */
-    private String formatMuteMessage(Punishment mute) {
-        String reason = mute.getReason() != null ? mute.getReason() : "No reason provided";
-        
-        StringBuilder message = new StringBuilder();
-        message.append(ChatColor.RED).append("You are muted!\n");
-        message.append(ChatColor.GRAY).append("Reason: ").append(ChatColor.WHITE).append(reason);
-        
-        if (mute.getExpires() != null) {
-            long timeLeft = mute.getExpires().getTime() - System.currentTimeMillis();
-            if (timeLeft > 0) {
-                String timeString = PunishmentMessages.formatDuration(timeLeft);
-                message.append("\n").append(ChatColor.GRAY).append("Time remaining: ")
-                       .append(ChatColor.WHITE).append(timeString);
-            }
-        } else {
-            message.append("\n").append(ChatColor.DARK_RED).append("This mute is permanent.");
-        }
-        
-        return message.toString();
     }
     
     public Cache getPunishmentCache() {
@@ -302,97 +278,6 @@ public class BungeeListener implements Listener {
         return chatMessageCache;
     }
     
-    /**
-     * Acknowledge that a ban was successfully enforced (player denied login)
-     */
-    private void acknowledgeBanEnforcement(SimplePunishment ban, String playerUuid) {
-        try {
-            PunishmentAcknowledgeRequest request = new PunishmentAcknowledgeRequest(
-                    ban.getId(),
-                    playerUuid,
-                    java.time.Instant.now().toString(),
-                    true, // success
-                    null // no error message
-            );
-            
-            getHttpClient().acknowledgePunishment(request).thenAccept(response -> {
-                if (debugMode) {
-                    platform.getLogger().info("Successfully acknowledged ban enforcement for punishment " + ban.getId());
-                }
-            }).exceptionally(throwable -> {
-                platform.getLogger().severe("Failed to acknowledge ban enforcement for punishment " + ban.getId() + ": " + throwable.getMessage());
-                return null;
-            });
-        } catch (Exception e) {
-            platform.getLogger().severe("Error acknowledging ban enforcement for punishment " + ban.getId() + ": " + e.getMessage());
-        }
-    }
-    
-    /**
-     * Handle pending IP lookups requested by the backend.
-     * Reuses the original ipInfoFuture for the player's current IP to avoid redundant API calls.
-     */
-    private void handlePendingIpLookups(gg.modl.minecraft.api.http.response.PlayerLoginResponse response, String minecraftUUID, String originalIp, CompletableFuture<JsonObject> originalIpInfoFuture) {
-        if (response.getPendingIpLookups() == null || response.getPendingIpLookups().isEmpty()) {
-            return;
-        }
-        for (String ip : response.getPendingIpLookups()) {
-            CompletableFuture<JsonObject> ipInfoFuture = ip.equals(originalIp) && originalIpInfoFuture != null
-                    ? originalIpInfoFuture
-                    : IpApiClient.getIpInfo(ip);
-            ipInfoFuture.thenAccept(ipInfo -> {
-                if (ipInfo != null && ipInfo.has("status") && "success".equals(ipInfo.get("status").getAsString())) {
-                    getHttpClient().submitIpInfo(
-                            minecraftUUID,
-                            ip,
-                            ipInfo.has("countryCode") ? ipInfo.get("countryCode").getAsString() : null,
-                            ipInfo.has("regionName") ? ipInfo.get("regionName").getAsString() : null,
-                            ipInfo.has("as") ? ipInfo.get("as").getAsString() : null,
-                            ipInfo.has("proxy") && ipInfo.get("proxy").getAsBoolean(),
-                            ipInfo.has("hosting") && ipInfo.get("hosting").getAsBoolean()
-                    ).exceptionally(throwable -> {
-                        platform.getLogger().warning("Failed to submit IP info for " + ip + ": " + throwable.getMessage());
-                        return null;
-                    });
-                }
-            }).exceptionally(throwable -> {
-                platform.getLogger().warning("Failed to lookup IP " + ip + ": " + throwable.getMessage());
-                return null;
-            });
-        }
-    }
-
-    /**
-     * Convert a map from the login response to a PlayerNotification object
-     */
-    private SyncResponse.PlayerNotification mapToPlayerNotification(Map<String, Object> data) {
-        try {
-            SyncResponse.PlayerNotification notification = new SyncResponse.PlayerNotification();
-            notification.setId((String) data.get("id"));
-            notification.setMessage((String) data.get("message"));
-            notification.setType((String) data.get("type"));
-
-            if (data.get("timestamp") instanceof Number) {
-                notification.setTimestamp(((Number) data.get("timestamp")).longValue());
-            }
-
-            notification.setTargetPlayerUuid((String) data.get("targetPlayerUuid"));
-
-            // Handle nested data map
-            Object nestedData = data.get("data");
-            if (nestedData instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> dataMap = (Map<String, Object>) nestedData;
-                notification.setData(dataMap);
-            }
-
-            return notification;
-        } catch (Exception e) {
-            platform.getLogger().warning("Failed to convert notification data: " + e.getMessage());
-            return null;
-        }
-    }
-
     /**
      * Extract clean IP address from a socket address.
      * Removes leading slash and port number.
