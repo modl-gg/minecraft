@@ -55,23 +55,44 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
     private final String panelUrl;
     private final boolean hasPermission;
 
-    // All available static permission nodes
+    // All available static permission nodes (children listed after their parents)
     private static final List<String> AVAILABLE_PERMISSIONS = Arrays.asList(
             // Admin permissions
             "admin.settings.view",
+            "admin.settings.view.billing",
             "admin.settings.modify",
+            "admin.settings.modify.punishments",
+            "admin.settings.modify.content",
+            "admin.settings.modify.domain",
+            "admin.settings.modify.billing",
+            "admin.settings.modify.migration",
+            "admin.settings.modify.storage",
             "admin.staff.manage",
+            "admin.staff.manage.members",
+            "admin.staff.manage.roles",
             "admin.audit.view",
+            "admin.audit.view.dashboard",
+            "admin.audit.view.analytics",
+            "admin.audit.view.logs",
             // Punishment permissions
             "punishment.modify",
-            "punishment.apply.kick",
-            "punishment.apply.manual-mute",
-            "punishment.apply.manual-ban",
-            "punishment.apply.blacklist",
+            "punishment.modify.pardon",
+            "punishment.modify.duration",
+            "punishment.modify.note",
+            "punishment.modify.evidence",
+            "punishment.modify.options",
+            // punishment.apply.* added dynamically
             // Ticket permissions
             "ticket.view.all",
+            "ticket.view.all.notes",
             "ticket.reply.all",
+            "ticket.reply.all.notes",
             "ticket.close.all",
+            "ticket.close.all.lock",
+            "ticket.manage",
+            "ticket.manage.tags",
+            "ticket.manage.hide",
+            "ticket.manage.subscribe",
             "ticket.delete.all"
     );
 
@@ -146,6 +167,26 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         return allPermissions;
     }
 
+    /**
+     * Get the parent node for a permission (everything up to the last '.' segment).
+     * Returns null if the node has no parent in AVAILABLE_PERMISSIONS.
+     */
+    private static String getParentNode(String node) {
+        int lastDot = node.lastIndexOf('.');
+        if (lastDot <= 0) return null;
+        String candidate = node.substring(0, lastDot);
+        return AVAILABLE_PERMISSIONS.contains(candidate) ? candidate : null;
+    }
+
+    private boolean isChildPermission(String node) {
+        return getParentNode(node) != null;
+    }
+
+    private boolean isParentEnabled(String childNode) {
+        String parent = getParentNode(childNode);
+        return parent != null && enabledPermissions.contains(parent);
+    }
+
     @Override
     protected CirrusItem map(Permission permission) {
         if ("no_permission".equals(permission.getNode())) {
@@ -164,11 +205,26 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
         boolean changed = permission.isEnabled() != originalPermissions.contains(permission.getNode());
         String suffix = changed ? MenuItems.COLOR_YELLOW + " *" : "";
+        boolean isChild = isChildPermission(permission.getNode());
+        String displayPrefix = isChild ? "  \u21b3 " : "";
+
+        // Child permission auto-granted by parent
+        if (isChild && isParentEnabled(permission.getNode())) {
+            CirrusItem item = CirrusItem.of(
+                    CirrusItemType.LIME_DYE,
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_GREEN + displayPrefix + permission.getNode()),
+                    MenuItems.lore(
+                            MenuItems.COLOR_DARK_GRAY + "Auto-granted by parent"
+                    )
+            );
+            item.glow();
+            return item;
+        }
 
         return CirrusItem.of(
                 permission.isEnabled() ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
             CirrusChatElement.ofLegacyText(
-                        (permission.isEnabled() ? MenuItems.COLOR_GREEN : MenuItems.COLOR_GRAY) + permission.getNode() + suffix
+                        (permission.isEnabled() ? MenuItems.COLOR_GREEN : MenuItems.COLOR_GRAY) + displayPrefix + permission.getNode() + suffix
                 ),
                 MenuItems.lore(
                         MenuItems.COLOR_YELLOW + "Click to toggle"
@@ -182,12 +238,25 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             return;
         }
 
+        // If child is auto-granted by parent, clicking does nothing
+        if (isChildPermission(permission.getNode()) && isParentEnabled(permission.getNode())) {
+            return;
+        }
+
         // Toggle permission locally (no API call)
         boolean newState = !permission.isEnabled();
         permission.setEnabled(newState);
 
         if (newState) {
             enabledPermissions.add(permission.getNode());
+            // When toggling parent ON, also enable all children
+            for (Permission p : allPermissions) {
+                String parent = getParentNode(p.getNode());
+                if (permission.getNode().equals(parent)) {
+                    p.setEnabled(true);
+                    enabledPermissions.add(p.getNode());
+                }
+            }
         } else {
             enabledPermissions.remove(permission.getNode());
         }
