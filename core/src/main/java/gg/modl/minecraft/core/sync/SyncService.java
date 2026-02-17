@@ -2,7 +2,6 @@ package gg.modl.minecraft.core.sync;
 
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.SimplePunishment;
-import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.NotificationAcknowledgeRequest;
 import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
@@ -20,6 +19,9 @@ import gg.modl.minecraft.core.service.MigrationService;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 
 import java.io.File;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Instant;
@@ -28,10 +30,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -57,7 +60,10 @@ public class SyncService {
     private final boolean debugMode;
 
     private String lastSyncTimestamp;
+
     private ScheduledExecutorService syncExecutor;
+    private ExecutorService taskExecutor;
+
     private boolean isRunning = false;
     private MigrationService migrationService;
 
@@ -114,9 +120,10 @@ public class SyncService {
             t.setDaemon(true);
             return t;
         });
-        
-        // Start sync task with configurable rate
-        syncExecutor.scheduleAtFixedRate(this::performSync, 5, actualPollingRate, TimeUnit.SECONDS);
+        this.taskExecutor = Executors.newCachedThreadPool();
+
+        // dont run next sync until last one finishes. we have timeouts on sync so it wont freeze thread
+        syncExecutor.scheduleWithFixedDelay(this::performSync, 5, actualPollingRate, TimeUnit.SECONDS);
         isRunning = true;
         
         if (debugMode) {
@@ -159,38 +166,47 @@ public class SyncService {
      * Perform a sync operation
      */
     private void performSync() {
-        try {
-            // Get online players
-            Collection<AbstractPlayer> onlinePlayers = platform.getOnlinePlayers();
+        final Callable<Void> work = () -> {
+            try {
+                // Get online players
+                Collection<AbstractPlayer> onlinePlayers = platform.getOnlinePlayers();
 
-            // Build sync request
-            SyncRequest request = new SyncRequest();
-            request.setLastSyncTimestamp(lastSyncTimestamp);
-            request.setOnlinePlayers(buildOnlinePlayersList(onlinePlayers));
-            request.setServerStatus(buildServerStatus(onlinePlayers));
+                // Build sync request
+                SyncRequest request = new SyncRequest();
+                request.setLastSyncTimestamp(lastSyncTimestamp);
+                request.setOnlinePlayers(buildOnlinePlayersList(onlinePlayers));
+                request.setServerStatus(buildServerStatus(onlinePlayers));
 
-
-            // Send sync request
-            CompletableFuture<SyncResponse> syncFuture = httpClientHolder.getClient().sync(request);
-
-            syncFuture.thenAccept(response -> {
-                try {
-                    handleSyncResponse(response);
-                } catch (Exception e) {
-                    logger.severe("Error handling sync response: " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }).exceptionally(throwable -> {
-                if (throwable.getCause() instanceof PanelUnavailableException) {
-                    //logger.warning("Sync request failed: Panel temporarily unavailable (502 error)");
+                SyncResponse response = httpClientHolder.getClient().sync(request)
+                    .orTimeout(5, TimeUnit.SECONDS)
+                    .join();
+                handleSyncResponse(response);
+            } catch (CompletionException e) {
+                Throwable cause = e.getCause() != null ? e.getCause() : e;
+                if (cause instanceof PanelUnavailableException) {
+                    // dont log so no error spam when backend goes out for whatever reason
+                } else if (cause instanceof TimeoutException) {
+                    logger.warning("Sync request timed out");
                 } else {
-                    logger.warning("Sync request failed: " + throwable.getMessage());
+                    logger.warning("Sync request failed: " + cause.getMessage());
                 }
-                return null;
-            });
+            } catch (Exception e) {
+                logger.warning("Sync request failed: " + e.getMessage());
+            } catch (Throwable t) {
+                logger.severe("Error during sync: " + t.getMessage());
+                t.printStackTrace();
+            }
 
+            return null;
+        };
+
+        final Future<Void> future = taskExecutor.submit(work);
+        try {
+            future.get(10, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            System.out.println("Task timed out, cancelling...");
+            future.cancel(true);
         } catch (Exception e) {
-            logger.severe("Error during sync: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -311,7 +327,7 @@ public class SyncService {
                 logger.warning("Failed to refresh staff permissions: " + throwable.getMessage());
             }
             return null;
-        });
+        }).orTimeout(5, TimeUnit.SECONDS);
     }
 
     private void refreshPunishmentTypes() {
@@ -335,7 +351,7 @@ public class SyncService {
                 logger.warning("Failed to refresh punishment types: " + throwable.getMessage());
             }
             return null;
-        });
+        }).orTimeout(5, TimeUnit.SECONDS);
     }
 
     /**
@@ -700,7 +716,8 @@ public class SyncService {
                         logger.warning("Failed to acknowledge punishment " + punishmentId + ": " + throwable.getMessage());
                     }
                     return null;
-                });
+                })
+                .orTimeout(5, TimeUnit.SECONDS);
     }
     
     /**
@@ -1191,12 +1208,12 @@ public class SyncService {
                             logger.warning("Failed to acknowledge notifications for player " + playerUuid + ": " + throwable.getMessage());
                         }
                         return null;
-                    });
+                    })
+                    .orTimeout(5, TimeUnit.SECONDS);
                     
         } catch (Exception e) {
             logger.severe("Error acknowledging notifications: " + e.getMessage());
             e.printStackTrace();
         }
     }
-    
 }
