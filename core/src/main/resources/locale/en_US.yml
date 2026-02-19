@@ -88,6 +88,14 @@ validation:
 #     {issuer} - Staff name who issued the punishment
 #     {tense} - "have been" or "are" depending on context
 #     {tense2} - "has been" or "is" depending on context
+
+punishments:
+  public_notification:
+    ban_default: "&c{target} has been banned."
+    mute_default: "&c{target} has been muted."
+    kick_default: "&c{target} has been kicked."
+    default: "&c{target} has been punished."
+
 punishment_types:
   ordinal_0: # Kick
     public_notification: "&c{target} has been kicked."
