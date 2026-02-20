@@ -4,6 +4,7 @@ import co.aikar.commands.BungeeCommandManager;
 import com.github.retrooper.packetevents.PacketEvents;
 import dev.simplix.cirrus.bungee.CirrusBungee;
 import gg.modl.minecraft.api.LibraryRecord;
+import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
@@ -13,10 +14,16 @@ import io.github.retrooper.packetevents.bungee.factory.BungeePacketEventsBuilder
 import lombok.Getter;
 import net.byteflux.libby.BungeeLibraryManager;
 import net.byteflux.libby.Library;
+import net.md_5.bungee.api.CommandSender;
+import net.md_5.bungee.api.connection.ProxiedPlayer;
+import net.md_5.bungee.api.event.ChatEvent;
+import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
 import net.md_5.bungee.config.YamlConfiguration;
+import net.md_5.bungee.event.EventHandler;
+import net.md_5.bungee.event.EventPriority;
 
 import java.io.File;
 import java.io.IOException;
@@ -80,7 +87,29 @@ public class BungeePlugin extends Plugin {
         List<String> mutedCommands = configuration.getStringList("muted_commands");
 
         this.loader = new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
-        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), httpManager.isDebugHttp(), mutedCommands));
+        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), httpManager.isDebugHttp(), mutedCommands, this));
+
+        // Register async command interceptor — dispatches modl commands off the network thread
+        AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
+        getProxy().getPluginManager().registerListener(this, new Listener() {
+            @EventHandler(priority = EventPriority.LOWEST)
+            public void onChat(ChatEvent event) {
+                if (event.isCancelled() || !event.isCommand()) return;
+                if (!(event.getSender() instanceof ProxiedPlayer player)) return;
+
+                String message = event.getMessage();
+                if (message.length() <= 1) return;
+
+                String stripped = message.substring(1).trim();
+                String baseCommand = stripped.split("\\s")[0].toLowerCase();
+
+                if (asyncExecutor.isAsyncCommand(baseCommand) || asyncExecutor.isAsyncCommand(baseCommand.replace("modl:", ""))) {
+                    event.setCancelled(true);
+                    asyncExecutor.execute(() ->
+                            getProxy().getPluginManager().dispatchCommand((CommandSender) player, stripped));
+                }
+            }
+        });
     }
 
     @Override

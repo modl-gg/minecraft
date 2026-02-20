@@ -163,11 +163,9 @@ public class BungeePlatform implements Platform {
 
     @Override
     public void runOnMainThread(Runnable task) {
-        ProxyServer.getInstance().getScheduler().schedule(
-            ProxyServer.getInstance().getPluginManager().getPlugin("modl"),
-            task,
-            0, TimeUnit.MILLISECONDS
-        );
+        // Execute directly — menus (Cirrus/PacketEvents) and messages are thread-safe.
+        // BungeeCord has no main thread concept; all APIs are safe from any thread.
+        task.run();
     }
 
     @Override

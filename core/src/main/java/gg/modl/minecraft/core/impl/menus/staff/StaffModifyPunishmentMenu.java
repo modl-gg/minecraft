@@ -422,10 +422,47 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
     }
 
     private void refreshMenu(Click click) {
-        platform.runOnMainThread(() -> {
-            // Return to recent punishments menu
-            new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)
-                    .display(click.player());
+        httpClient.getRecentPunishments(48).thenAccept(response -> {
+            if (response.isSuccess() && response.getPunishments() != null) {
+                List<RecentPunishmentsMenu.PunishmentWithPlayer> freshData = new ArrayList<>();
+                for (var p : response.getPunishments()) {
+                    UUID playerUuid = null;
+                    try {
+                        if (p.getPlayerUuid() != null) {
+                            playerUuid = UUID.fromString(p.getPlayerUuid());
+                        }
+                    } catch (Exception ignored) {}
+
+                    Punishment freshPunishment = new Punishment();
+                    freshPunishment.setId(p.getId());
+                    freshPunishment.setIssuerName(p.getIssuerName());
+                    freshPunishment.setIssued(p.getIssued());
+                    freshPunishment.setStarted(p.getStarted());
+                    freshPunishment.setTypeOrdinal(p.getTypeOrdinal());
+                    freshPunishment.setModifications(p.getModifications());
+                    freshPunishment.setNotes(new ArrayList<>(p.getNotes()));
+                    freshPunishment.setEvidence(new ArrayList<>(p.getEvidence()));
+                    freshPunishment.setDataMap(new java.util.HashMap<>(p.getData()));
+
+                    if (p.getType() != null) {
+                        try {
+                            freshPunishment.setType(Punishment.Type.valueOf(p.getType()));
+                        } catch (IllegalArgumentException ignored) {}
+                    }
+
+                    freshData.add(new RecentPunishmentsMenu.PunishmentWithPlayer(freshPunishment, playerUuid, p.getPlayerName(), null));
+                }
+                platform.runOnMainThread(() -> {
+                    new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null, freshData)
+                            .display(click.player());
+                });
+            } else {
+                // Fallback: use menuBackAction which has the previous snapshot
+                platform.runOnMainThread(() -> menuBackAction.accept(click.player()));
+            }
+        }).exceptionally(e -> {
+            platform.runOnMainThread(() -> menuBackAction.accept(click.player()));
+            return null;
         });
     }
 

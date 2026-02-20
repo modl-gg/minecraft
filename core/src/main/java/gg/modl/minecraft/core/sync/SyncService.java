@@ -436,10 +436,11 @@ public class SyncService {
                     punishment.isBan(), punishment.isMute(), punishment.isKick()));
         }
         
-        // Execute on main thread for platform-specific operations
-        platform.runOnMainThread(() -> {
+        // Execute on game thread — executePunishment may kick players, which requires
+        // the Bukkit main thread on Spigot/Paper (AsyncCatcher blocks async kicks)
+        platform.runOnGameThread(() -> {
             boolean success = executePunishment(playerUuid, username, punishment);
-            
+
             // Acknowledge the punishment execution (this will start the punishment)
             acknowledgePunishment(punishment.getId(), playerUuid, success, null);
         });

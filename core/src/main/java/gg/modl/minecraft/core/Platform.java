@@ -30,6 +30,16 @@ public interface Platform {
     int getMaxPlayers();
     String getServerVersion();
     void runOnMainThread(Runnable task);
+
+    /**
+     * Run a task on the game/server thread. Only needed for operations that
+     * truly require the game thread, such as kicking players on Spigot/Paper
+     * (Paper's AsyncCatcher blocks player.kickPlayer() from async threads).
+     * Default: execute directly (safe on BungeeCord and Velocity).
+     */
+    default void runOnGameThread(Runnable task) {
+        task.run();
+    }
     void kickPlayer(AbstractPlayer player, String reason);
     String getServerName();
     default String getPlayerServer(UUID uuid) { return getServerName(); }

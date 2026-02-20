@@ -161,6 +161,15 @@ public class SpigotPlatform implements Platform {
 
     @Override
     public void runOnMainThread(Runnable task) {
+        // Execute directly — menus (Cirrus/PacketEvents) and messages are thread-safe.
+        // Use runOnGameThread() for operations that require the Bukkit main thread.
+        task.run();
+    }
+
+    @Override
+    public void runOnGameThread(Runnable task) {
+        // Schedule to Bukkit main thread — required for operations that Paper's
+        // AsyncCatcher blocks from async threads (e.g. player.kickPlayer())
         if (Bukkit.isPrimaryThread()) {
             task.run();
         } else {

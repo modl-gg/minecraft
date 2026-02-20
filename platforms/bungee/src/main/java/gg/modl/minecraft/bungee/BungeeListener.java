@@ -32,6 +32,7 @@ import net.md_5.bungee.api.event.PlayerDisconnectEvent;
 import net.md_5.bungee.api.event.PostLoginEvent;
 import net.md_5.bungee.api.event.ServerSwitchEvent;
 import net.md_5.bungee.api.plugin.Listener;
+import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.event.EventHandler;
 import net.md_5.bungee.event.EventPriority;
 
@@ -52,6 +53,7 @@ public class BungeeListener implements Listener {
     private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
     private final boolean debugMode;
     private final List<String> mutedCommands;
+    private final Plugin plugin;
 
     /**
      * Get the current HTTP client from the holder.
@@ -62,71 +64,77 @@ public class BungeeListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(LoginEvent event) {
-        // Extract clean IP address from socket address
-        String ipAddress = extractIpAddress(event.getConnection().getSocketAddress());
+        // Register async intent so BungeeCord waits for our check to complete
+        // without blocking the Netty network thread
+        event.registerIntent(plugin);
 
-        // Start IP lookup and skin hash fetch in parallel (non-blocking)
-        CompletableFuture<JsonObject> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
-        CompletableFuture<String> skinHashFuture = WebPlayer.get(event.getConnection().getUniqueId())
-                .thenApply(wp -> wp != null && wp.valid() ? wp.skin() : null)
-                .exceptionally(t -> null);
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Extract clean IP address from socket address
+                String ipAddress = extractIpAddress(event.getConnection().getSocketAddress());
 
-        // Wait briefly for both to complete, but don't block login
-        JsonObject ipInfo = null;
-        String skinHash = null;
-        try {
-            // Give parallel tasks a short window before proceeding
-            ipInfo = ipInfoFuture.getNow(null);
-            skinHash = skinHashFuture.getNow(null);
-        } catch (Exception e) {
-            // Continue without - backend will request IP lookup via pendingIpLookups
-        }
+                // Start IP lookup and skin hash fetch in parallel (non-blocking)
+                CompletableFuture<JsonObject> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
+                CompletableFuture<String> skinHashFuture = WebPlayer.get(event.getConnection().getUniqueId())
+                        .thenApply(wp -> wp != null && wp.valid() ? wp.skin() : null)
+                        .exceptionally(t -> null);
 
-        PlayerLoginRequest request = new PlayerLoginRequest(
-                event.getConnection().getUniqueId().toString(),
-                event.getConnection().getName(),
-                ipAddress,
-                skinHash,
-                ipInfo,
-                platform.getServerName()
-        );
-
-        try {
-            // Check for active punishments and prevent login if banned
-            CompletableFuture<PlayerLoginResponse> loginFuture = getHttpClient().playerLogin(request);
-            PlayerLoginResponse response = loginFuture.get(5, TimeUnit.SECONDS); // 5 second timeout
-            
-            // Handle pending IP lookups requested by the backend
-            ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getConnection().getUniqueId().toString(), ipAddress, ipInfoFuture, java.util.logging.Logger.getLogger(BungeeListener.class.getName()));
-
-            if (response.hasActiveBan()) {
-                SimplePunishment ban = response.getActiveBan();
-                String banText = PunishmentMessages.formatBanMessage(ban, localeManager, MessageContext.LOGIN);
-                TextComponent kickMessage = new TextComponent(banText);
-                event.setCancelReason(kickMessage);
-                event.setCancelled(true);
-
-                // Acknowledge ban enforcement if it wasn't started yet
-                if (!ban.isStarted()) {
-                    ListenerHelper.acknowledgeBanEnforcement(getHttpClient(), ban, event.getConnection().getUniqueId().toString(), debugMode, java.util.logging.Logger.getLogger(BungeeListener.class.getName()));
+                // Wait briefly for both to complete, but don't block login
+                JsonObject ipInfo = null;
+                String skinHash = null;
+                try {
+                    ipInfo = ipInfoFuture.getNow(null);
+                    skinHash = skinHashFuture.getNow(null);
+                } catch (Exception e) {
+                    // Continue without - backend will request IP lookup via pendingIpLookups
                 }
+
+                PlayerLoginRequest request = new PlayerLoginRequest(
+                        event.getConnection().getUniqueId().toString(),
+                        event.getConnection().getName(),
+                        ipAddress,
+                        skinHash,
+                        ipInfo,
+                        platform.getServerName()
+                );
+
+                // Check for active punishments and prevent login if banned
+                CompletableFuture<PlayerLoginResponse> loginFuture = getHttpClient().playerLogin(request);
+                PlayerLoginResponse response = loginFuture.get(5, TimeUnit.SECONDS);
+
+                // Handle pending IP lookups requested by the backend
+                ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getConnection().getUniqueId().toString(), ipAddress, ipInfoFuture, java.util.logging.Logger.getLogger(BungeeListener.class.getName()));
+
+                if (response.hasActiveBan()) {
+                    SimplePunishment ban = response.getActiveBan();
+                    String banText = PunishmentMessages.formatBanMessage(ban, localeManager, MessageContext.LOGIN);
+                    TextComponent kickMessage = new TextComponent(banText);
+                    event.setCancelReason(kickMessage);
+                    event.setCancelled(true);
+
+                    // Acknowledge ban enforcement if it wasn't started yet
+                    if (!ban.isStarted()) {
+                        ListenerHelper.acknowledgeBanEnforcement(getHttpClient(), ban, event.getConnection().getUniqueId().toString(), debugMode, java.util.logging.Logger.getLogger(BungeeListener.class.getName()));
+                    }
+                }
+            } catch (java.util.concurrent.TimeoutException e) {
+                platform.getLogger().warning("Login check timed out for " + event.getConnection().getName() + " - blocking login for safety");
+                event.setCancelReason(new TextComponent("Login verification timed out. Please try again."));
+                event.setCancelled(true);
+            } catch (Exception e) {
+                // Unwrap ExecutionException to check for PanelUnavailableException
+                Throwable cause = e instanceof java.util.concurrent.ExecutionException && e.getCause() != null ? e.getCause() : e;
+                if (cause instanceof PanelUnavailableException) {
+                    platform.getLogger().warning("Panel 502 during login check for " + event.getConnection().getName() + " - blocking login for safety");
+                    event.setCancelReason(new TextComponent("Unable to verify ban status. Login temporarily restricted for safety."));
+                    event.setCancelled(true);
+                } else {
+                    platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + e.getMessage());
+                }
+            } finally {
+                event.completeIntent(plugin);
             }
-        } catch (PanelUnavailableException e) {
-            // Panel is restarting (502 error) - deny login for safety to prevent banned players from connecting
-            platform.getLogger().warning("Panel 502 during login check for " + event.getConnection().getName() + " - blocking login for safety");
-            TextComponent errorMessage = new TextComponent("Unable to verify ban status. Login temporarily restricted for safety.");
-            event.setCancelReason(errorMessage);
-            event.setCancelled(true);
-        } catch (java.util.concurrent.TimeoutException e) {
-            // Login check timed out - deny for safety
-            platform.getLogger().warning("Login check timed out for " + event.getConnection().getName() + " - blocking login for safety");
-            TextComponent errorMessage = new TextComponent("Login verification timed out. Please try again.");
-            event.setCancelReason(errorMessage);
-            event.setCancelled(true);
-        } catch (Exception e) {
-            // On other errors, allow login but log warning
-            platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + e.getMessage());
-        }
+        });
     }
 
     @EventHandler
@@ -134,51 +142,46 @@ public class BungeeListener implements Listener {
         // Mark player as online
         cache.setOnline(event.getPlayer().getUniqueId());
 
-        // Get player skin hash for punishment tracking
-        String skinHash = null;
-        try {
-            WebPlayer webPlayer = WebPlayer.get(event.getPlayer().getUniqueId()).get(3, TimeUnit.SECONDS);
-            if (webPlayer != null && webPlayer.valid()) {
-                skinHash = webPlayer.skin();
-            }
-        } catch (Exception e) {
-            platform.getLogger().warning("Failed to get skin hash for " + event.getPlayer().getName() + ": " + e.getMessage());
-            // Continue without skin hash
-        }
-        
-        // Extract clean IP address
         String ipAddress = extractIpAddress(event.getPlayer().getSocketAddress());
 
-        // Cache mute status after successful join
-        PlayerLoginRequest request = new PlayerLoginRequest(
-                event.getPlayer().getUniqueId().toString(),
-                event.getPlayer().getName(),
-                ipAddress,
-                skinHash,
-                null,
-                platform.getServerName()
-        );
-        
-        getHttpClient().playerLogin(request).thenAccept(response -> {
-            if (response.hasActiveMute()) {
-                cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
-            }
-            
-            // Process pending notifications from login response
-            if (response.hasNotifications()) {
-                for (Map<String, Object> notificationData : response.getPendingNotifications()) {
-                    // Convert map to PlayerNotification and deliver immediately
-                    SyncResponse.PlayerNotification notification = ListenerHelper.mapToPlayerNotification(notificationData, java.util.logging.Logger.getLogger(BungeeListener.class.getName()));
-                    if (notification != null) {
-                        syncService.deliverLoginNotification(event.getPlayer().getUniqueId(), notification);
-                    }
-                }
-            }
-        }).exceptionally(throwable -> {
-            platform.getLogger().severe("Failed to cache mute for " + event.getPlayer().getName() + ": " + throwable.getMessage());
-            return null;
-        });
-        
+        // Get skin hash asynchronously (non-blocking — avoids blocking the network thread)
+        WebPlayer.get(event.getPlayer().getUniqueId())
+                .thenApply(wp -> wp != null && wp.valid() ? wp.skin() : null)
+                .exceptionally(t -> {
+                    platform.getLogger().warning("Failed to get skin hash for " + event.getPlayer().getName() + ": " + t.getMessage());
+                    return null;
+                })
+                .thenAccept(skinHash -> {
+                    // Cache mute status after successful join
+                    PlayerLoginRequest request = new PlayerLoginRequest(
+                            event.getPlayer().getUniqueId().toString(),
+                            event.getPlayer().getName(),
+                            ipAddress,
+                            skinHash,
+                            null,
+                            platform.getServerName()
+                    );
+
+                    getHttpClient().playerLogin(request).thenAccept(response -> {
+                        if (response.hasActiveMute()) {
+                            cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
+                        }
+
+                        // Process pending notifications from login response
+                        if (response.hasNotifications()) {
+                            for (Map<String, Object> notificationData : response.getPendingNotifications()) {
+                                SyncResponse.PlayerNotification notification = ListenerHelper.mapToPlayerNotification(notificationData, java.util.logging.Logger.getLogger(BungeeListener.class.getName()));
+                                if (notification != null) {
+                                    syncService.deliverLoginNotification(event.getPlayer().getUniqueId(), notification);
+                                }
+                            }
+                        }
+                    }).exceptionally(throwable -> {
+                        platform.getLogger().severe("Failed to cache mute for " + event.getPlayer().getName() + ": " + throwable.getMessage());
+                        return null;
+                    });
+                });
+
         // Also deliver any cached notifications (fallback)
         syncService.deliverPendingNotifications(event.getPlayer().getUniqueId());
     }

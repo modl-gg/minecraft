@@ -45,6 +45,7 @@ public class PluginLoader {
     private final LocaleManager localeManager;
     private final LoginCache loginCache;
     private final boolean queryMojang;
+    private final AsyncCommandExecutor asyncCommandExecutor;
 
     /**
      * Get the current HTTP client from the holder.
@@ -61,6 +62,7 @@ public class PluginLoader {
     public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache, HttpManager httpManager, int syncPollingRateSeconds) {
         this.chatMessageCache = chatMessageCache;
         this.queryMojang = httpManager.isQueryMojang();
+        this.asyncCommandExecutor = new AsyncCommandExecutor();
         cache = new Cache();
         loginCache = new LoginCache();
 
@@ -172,6 +174,23 @@ public class PluginLoader {
         commandManager.registerCommand(new ReportsCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
         commandManager.registerCommand(new PunishmentActionCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
 
+        // Register all command aliases for async execution (everything except ModlReloadCommand's "modl")
+        String[] asyncAliases = {
+                "ban", "mute", "kick", "blacklist", "pardon", "unban", "unmute", "warn",
+                "punish", "p",
+                "inspect", "ins", "check", "lookup", "look", "info",
+                "staffmenu", "sm",
+                "history", "hist",
+                "alts", "alt",
+                "notes",
+                "reports",
+                "iammuted",
+                "report", "chatreport", "apply", "bugreport", "support", "tclaim", "claimticket",
+                "modl:punishment-action"
+        };
+        for (String alias : asyncAliases) {
+            asyncCommandExecutor.registerAsyncAlias(alias);
+        }
     }
 
     public static AbstractPlayer fetchPlayer(String target, Platform platform, ModlHttpClient httpClient, boolean queryMojang) {
@@ -363,6 +382,9 @@ public class PluginLoader {
         }
         if (loginCache != null) {
             loginCache.shutdown();
+        }
+        if (asyncCommandExecutor != null) {
+            asyncCommandExecutor.shutdown();
         }
     }
 
