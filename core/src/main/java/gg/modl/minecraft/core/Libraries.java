@@ -142,25 +142,25 @@ public final class Libraries {
     public static final LibraryRecord CIRRUS_SPIGOT = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-spigot",
-            "4.1.0-SNAPSHOT",
+            "4.1.2-SNAPSHOT",
             "cirrus-spigot",
-            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.0-SNAPSHOT/cirrus-spigot-4.1.0.jar"
+            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.2-SNAPSHOT/cirrus-spigot-4.1.2-SNAPSHOT.jar"
     );
 
     public static final LibraryRecord CIRRUS_VELOCITY = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-velocity",
-            "4.1.0-SNAPSHOT",
+            "4.1.2-SNAPSHOT",
             "cirrus-velocity",
-            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.0-SNAPSHOT/cirrus-velocity-4.1.0.jar"
+            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.2-SNAPSHOT/cirrus-velocity-4.1.2-SNAPSHOT.jar"
     );
 
     public static final LibraryRecord CIRRUS_BUNGEECORD = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-bungeecord",
-            "4.1.0-SNAPSHOT",
+            "4.1.2-SNAPSHOT",
             "cirrus-bungeecord",
-            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.0-SNAPSHOT/cirrus-bungeecord-4.1.0.jar"
+            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.2-SNAPSHOT/cirrus-bungeecord-4.1.2-SNAPSHOT.jar"
     );
 
     // Adventure - UI library for Minecraft (adventure-api requires adventure-key and examination libs)

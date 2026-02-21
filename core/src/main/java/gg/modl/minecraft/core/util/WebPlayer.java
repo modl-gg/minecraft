@@ -13,7 +13,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
-public record WebPlayer(String name, UUID uuid, String skin, boolean valid) {
+public record WebPlayer(String name, UUID uuid, String skin, String textureValue, boolean valid) {
     private static final Logger logger = Logger.getLogger(WebPlayer.class.getName());
     private static final String REGEX_PATTERN = "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)";
 
@@ -52,19 +52,19 @@ public record WebPlayer(String name, UUID uuid, String skin, boolean valid) {
                         try {
                             if (response.statusCode() != 200) {
                                 logger.warning("Mojang API returned status " + response.statusCode() + " for URL: " + rawUrl);
-                                return new WebPlayer(null, null, null, false);
+                                return new WebPlayer(null, null, null, null, false);
                             }
 
                             String jsonString = response.body();
                             if (jsonString == null || jsonString.trim().isEmpty()) {
                                 logger.warning("Empty response from Mojang API for URL: " + rawUrl);
-                                return new WebPlayer(null, null, null, false);
+                                return new WebPlayer(null, null, null, null, false);
                             }
 
                             JsonObject json = JsonParser.parseString(jsonString).getAsJsonObject();
                             if (json == null) {
                                 logger.warning("Invalid JSON response from Mojang API for URL: " + rawUrl);
-                                return new WebPlayer(null, null, null, false);
+                                return new WebPlayer(null, null, null, null, false);
                             }
 
                             String name = json.has("name") ? json.get("name").getAsString() : null;
@@ -72,25 +72,35 @@ public record WebPlayer(String name, UUID uuid, String skin, boolean valid) {
 
                             if (name == null || idString == null) {
                                 logger.warning("Missing name or id in Mojang API response for URL: " + rawUrl);
-                                return new WebPlayer(null, null, null, false);
+                                return new WebPlayer(null, null, null, null, false);
                             }
 
                             UUID playerUuid = UUID.fromString(idString.replaceFirst(REGEX_PATTERN, "$1-$2-$3-$4-$5"));
+
+                            // Capture raw base64 texture value before extracting skin ID
+                            String textureValue = null;
+                            if (json.has("properties") && json.getAsJsonArray("properties").size() > 0) {
+                                JsonObject properties = json.getAsJsonArray("properties").get(0).getAsJsonObject();
+                                if (properties.has("value")) {
+                                    textureValue = properties.get("value").getAsString();
+                                }
+                            }
+
                             String skinId = getSkinId(json);
 
-                            return new WebPlayer(name, playerUuid, skinId, true);
+                            return new WebPlayer(name, playerUuid, skinId, textureValue, true);
                         } catch (Exception e) {
                             logger.warning("Error parsing Mojang API response for URL " + rawUrl + ": " + e.getMessage());
-                            return new WebPlayer(null, null, null, false);
+                            return new WebPlayer(null, null, null, null, false);
                         }
                     })
                     .exceptionally(throwable -> {
                         logger.warning("Failed to fetch player data from Mojang API for URL " + rawUrl + ": " + throwable.getMessage());
-                        return new WebPlayer(null, null, null, false);
+                        return new WebPlayer(null, null, null, null, false);
                     });
         } catch (Exception e) {
             logger.warning("Error creating request for Mojang API URL " + rawUrl + ": " + e.getMessage());
-            return CompletableFuture.completedFuture(new WebPlayer(null, null, null, false));
+            return CompletableFuture.completedFuture(new WebPlayer(null, null, null, null, false));
         }
     }
 
@@ -163,7 +173,7 @@ public record WebPlayer(String name, UUID uuid, String skin, boolean valid) {
                                    java.util.concurrent.TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             logger.warning("Synchronous WebPlayer.get() failed for username " + username + ": " + e.getMessage());
-            return new WebPlayer(null, null, null, false);
+            return new WebPlayer(null, null, null, null, false);
         }
     }
 
@@ -178,7 +188,7 @@ public record WebPlayer(String name, UUID uuid, String skin, boolean valid) {
                                 java.util.concurrent.TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             logger.warning("Synchronous WebPlayer.get() failed for UUID " + uuid + ": " + e.getMessage());
-            return new WebPlayer(null, null, null, false);
+            return new WebPlayer(null, null, null, null, false);
         }
     }
 }

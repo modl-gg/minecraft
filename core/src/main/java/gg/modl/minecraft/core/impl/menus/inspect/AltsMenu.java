@@ -68,6 +68,27 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
             var response = httpClient.getLinkedAccounts(targetUuid).join();
             if (response.getStatus() == 200 && response.getLinkedAccounts() != null) {
                 linkedAccounts = new ArrayList<>(response.getLinkedAccounts());
+
+                // Batch-fetch textures for uncached alt UUIDs and wait briefly
+                if (platform.getCache() != null) {
+                    List<java.util.concurrent.CompletableFuture<Void>> futures = new ArrayList<>();
+                    for (Account alt : linkedAccounts) {
+                        if (alt.getMinecraftUuid() != null && platform.getCache().getSkinTexture(alt.getMinecraftUuid()) == null) {
+                            final UUID altUuid = alt.getMinecraftUuid();
+                            futures.add(gg.modl.minecraft.core.util.WebPlayer.get(altUuid).thenAccept(wp -> {
+                                if (wp != null && wp.valid() && wp.textureValue() != null) {
+                                    platform.getCache().cacheSkinTexture(altUuid, wp.textureValue());
+                                }
+                            }));
+                        }
+                    }
+                    if (!futures.isEmpty()) {
+                        try {
+                            java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0]))
+                                    .get(5, java.util.concurrent.TimeUnit.SECONDS);
+                        } catch (Exception ignored) {}
+                    }
+                }
             }
         } catch (Exception e) {
             logger.log(Level.WARNING, "Failed to fetch linked accounts for " + targetUuid, e);
@@ -233,11 +254,21 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         // Get title from locale
         String title = locale.getMessage("menus.alt_item.title", vars);
 
-        return CirrusItem.of(
+        CirrusItem headItem = CirrusItem.of(
                 CirrusItemType.PLAYER_HEAD,
                 CirrusChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
+
+        // Apply skin texture from cache (pre-fetched in loadLinkedAccounts)
+        if (platform.getCache() != null) {
+            String cachedTexture = platform.getCache().getSkinTexture(alt.getMinecraftUuid());
+            if (cachedTexture != null) {
+                headItem = headItem.texture(cachedTexture);
+            }
+        }
+
+        return headItem;
     }
 
     @Override

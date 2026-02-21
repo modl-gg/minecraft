@@ -219,6 +219,29 @@ public class BungeePlatform implements Platform {
     }
 
     @Override
+    public String getPlayerSkinTexture(UUID uuid) {
+        ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
+        if (player == null) return null;
+        try {
+            // InitialHandler.getLoginProfile() is an internal BungeeCord class - use reflection
+            Object pendingConnection = player.getPendingConnection();
+            Object profile = pendingConnection.getClass().getMethod("getLoginProfile").invoke(pendingConnection);
+            if (profile == null) return null;
+            Object[] properties = (Object[]) profile.getClass().getMethod("getProperties").invoke(profile);
+            if (properties == null) return null;
+            for (Object prop : properties) {
+                String name = (String) prop.getClass().getMethod("getName").invoke(prop);
+                if ("textures".equals(name)) {
+                    return (String) prop.getClass().getMethod("getValue").invoke(prop);
+                }
+            }
+        } catch (Exception e) {
+            // Reflection failure - return null
+        }
+        return null;
+    }
+
+    @Override
     public void log(String msg) {
         logger.info(msg);
     }

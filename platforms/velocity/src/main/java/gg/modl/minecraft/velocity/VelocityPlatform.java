@@ -247,6 +247,16 @@ public class VelocityPlatform implements Platform {
     }
 
     @Override
+    public String getPlayerSkinTexture(UUID uuid) {
+        Player player = getOnlinePlayer(uuid);
+        if (player == null) return null;
+        for (com.velocitypowered.api.util.GameProfile.Property prop : player.getGameProfileProperties()) {
+            if ("textures".equals(prop.getName())) return prop.getValue();
+        }
+        return null;
+    }
+
+    @Override
     public void log(String msg) {
         logger.info(msg);
     }

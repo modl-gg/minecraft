@@ -142,6 +142,12 @@ public class BungeeListener implements Listener {
         // Mark player as online
         cache.setOnline(event.getPlayer().getUniqueId());
 
+        // Cache skin texture from native BungeeCord API
+        String texture = platform.getPlayerSkinTexture(event.getPlayer().getUniqueId());
+        if (texture != null) {
+            cache.cacheSkinTexture(event.getPlayer().getUniqueId(), texture);
+        }
+
         String ipAddress = extractIpAddress(event.getPlayer().getSocketAddress());
 
         // Get skin hash asynchronously (non-blocking — avoids blocking the network thread)

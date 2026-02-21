@@ -54,6 +54,14 @@ public interface Platform {
     void log(String msg);
 
     /**
+     * Get the base64 skin texture value for an online player using native platform APIs.
+     * Returns null if the player is offline or texture is unavailable.
+     * @param uuid The player's UUID
+     * @return Base64 encoded texture value, or null
+     */
+    default String getPlayerSkinTexture(UUID uuid) { return null; }
+
+    /**
      * Get the cache instance for permission and data caching
      * @return The cache instance
      */

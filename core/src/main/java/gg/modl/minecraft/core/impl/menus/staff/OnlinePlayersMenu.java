@@ -190,11 +190,29 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
         lore.add("");
         lore.add(MenuItems.COLOR_YELLOW + "Click to inspect player");
 
-        return CirrusItem.of(
+        CirrusItem headItem = CirrusItem.of(
                 CirrusItemType.PLAYER_HEAD,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + player.getName()),
                 MenuItems.lore(lore)
         );
+
+        // Apply skin texture from cache if available
+        if (player.getUuid() != null && platform.getCache() != null) {
+            String cachedTexture = platform.getCache().getSkinTexture(player.getUuid());
+            if (cachedTexture != null) {
+                headItem = headItem.texture(cachedTexture);
+            } else {
+                // Async fire-and-forget to populate cache for next menu open
+                final UUID uuid = player.getUuid();
+                gg.modl.minecraft.core.util.WebPlayer.get(uuid).thenAccept(wp -> {
+                    if (wp != null && wp.valid() && wp.textureValue() != null) {
+                        platform.getCache().cacheSkinTexture(uuid, wp.textureValue());
+                    }
+                });
+            }
+        }
+
+        return headItem;
     }
 
     @Override

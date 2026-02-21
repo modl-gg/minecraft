@@ -181,6 +181,12 @@ public class JoinListener {
         // Mark player as online
         cache.setOnline(event.getPlayer().getUniqueId());
 
+        // Cache skin texture from native Velocity API
+        String texture = platform.getPlayerSkinTexture(event.getPlayer().getUniqueId());
+        if (texture != null) {
+            cache.cacheSkinTexture(event.getPlayer().getUniqueId(), texture);
+        }
+
         // Deliver pending notifications
         syncService.deliverPendingNotifications(event.getPlayer().getUniqueId());
     }

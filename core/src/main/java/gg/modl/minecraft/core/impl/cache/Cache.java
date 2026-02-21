@@ -19,6 +19,13 @@ public class Cache {
     private final Map<UUID, List<PendingNotification>> pendingNotificationsCache = new ConcurrentHashMap<>();
     // Online players tracking
     private final Set<UUID> onlinePlayers = ConcurrentHashMap.newKeySet();
+    // Skin texture cache - maps player UUID to base64 texture value with TTL
+    private static final long TEXTURE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+    private static final int TEXTURE_CACHE_MAX_SIZE = 500;
+    private final Map<UUID, CachedTexture> skinTextureCache = new ConcurrentHashMap<>();
+    // Whether Mojang API queries are enabled for on-demand texture fetches
+    @Getter @Setter
+    private boolean queryMojang;
     
     public void cacheMute(UUID playerUuid, Punishment mute) {
         cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData()).setMute(mute);
@@ -159,6 +166,7 @@ public class Cache {
     public void setOffline(UUID playerUuid) {
         onlinePlayers.remove(playerUuid);
         joinTimes.remove(playerUuid);
+        skinTextureCache.remove(playerUuid);
     }
 
     /**
@@ -191,6 +199,63 @@ public class Cache {
      */
     public Set<UUID> getOnlinePlayers() {
         return Collections.unmodifiableSet(onlinePlayers);
+    }
+
+    // ==================== SKIN TEXTURE CACHE ====================
+
+    /**
+     * Cache a skin texture for a player.
+     * Entries expire after {@link #TEXTURE_TTL_MS} and the cache is capped at {@link #TEXTURE_CACHE_MAX_SIZE}.
+     * @param playerUuid The player's UUID
+     * @param textureValue The base64 encoded texture value
+     */
+    public void cacheSkinTexture(UUID playerUuid, String textureValue) {
+        if (textureValue == null) return;
+        // Evict expired entries if we're at capacity
+        if (skinTextureCache.size() >= TEXTURE_CACHE_MAX_SIZE) {
+            evictExpiredTextures();
+        }
+        // If still at capacity after eviction, remove oldest entry
+        if (skinTextureCache.size() >= TEXTURE_CACHE_MAX_SIZE) {
+            skinTextureCache.entrySet().stream()
+                    .min(java.util.Comparator.comparingLong(e -> e.getValue().cachedAt))
+                    .ifPresent(e -> skinTextureCache.remove(e.getKey()));
+        }
+        skinTextureCache.put(playerUuid, new CachedTexture(textureValue, System.currentTimeMillis()));
+    }
+
+    /**
+     * Get the cached skin texture for a player.
+     * Returns null if not cached or if the entry has expired.
+     * @param playerUuid The player's UUID
+     * @return The base64 encoded texture value, or null if not cached/expired
+     */
+    public String getSkinTexture(UUID playerUuid) {
+        CachedTexture entry = skinTextureCache.get(playerUuid);
+        if (entry == null) return null;
+        if (System.currentTimeMillis() - entry.cachedAt > TEXTURE_TTL_MS) {
+            skinTextureCache.remove(playerUuid);
+            return null;
+        }
+        return entry.value;
+    }
+
+    /**
+     * Remove expired texture cache entries.
+     */
+    private void evictExpiredTextures() {
+        long now = System.currentTimeMillis();
+        skinTextureCache.entrySet().removeIf(e -> now - e.getValue().cachedAt > TEXTURE_TTL_MS);
+    }
+
+    private static class CachedTexture {
+        final String value;
+        final long cachedAt;
+
+        CachedTexture(String value, long cachedAt) {
+            this.value = value;
+            this.cachedAt = cachedAt;
+        }
     }
 
     public void cacheStaffMember(UUID playerUuid, SyncResponse.ActiveStaffMember staffMember) {
@@ -339,6 +404,7 @@ public class Cache {
         pendingNotificationsCache.clear();
         onlinePlayers.clear();
         joinTimes.clear();
+        skinTextureCache.clear();
         cachedPunishmentTypes = null;
         cachedPunishGuiConfig = null;
     }

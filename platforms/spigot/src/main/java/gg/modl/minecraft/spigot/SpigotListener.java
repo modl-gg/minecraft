@@ -188,6 +188,12 @@ public class SpigotListener implements Listener {
         // Mark player as online
         cache.setOnline(event.getPlayer().getUniqueId());
 
+        // Cache skin texture - try native API first (1.18.1+), falls back to WebPlayer.get() chain below
+        String nativeTexture = platform.getPlayerSkinTexture(event.getPlayer().getUniqueId());
+        if (nativeTexture != null) {
+            cache.cacheSkinTexture(event.getPlayer().getUniqueId(), nativeTexture);
+        }
+
         // Update chat message cache with player's server (for chat reports)
         chatMessageCache.updatePlayerServer(
             platform.getServerName(),
@@ -200,6 +206,10 @@ public class SpigotListener implements Listener {
                 String skinHash = null;
                 if (webPlayer != null && webPlayer.valid()) {
                     skinHash = webPlayer.skin();
+                    // On pre-1.18.1 Spigot, cache texture from WebPlayer if native API was unavailable
+                    if (cache.getSkinTexture(event.getPlayer().getUniqueId()) == null && webPlayer.textureValue() != null) {
+                        cache.cacheSkinTexture(event.getPlayer().getUniqueId(), webPlayer.textureValue());
+                    }
                 }
 
                 // Cache mute status after successful join

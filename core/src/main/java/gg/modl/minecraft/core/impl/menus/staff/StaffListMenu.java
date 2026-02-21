@@ -138,6 +138,20 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
                         viewerRole = entry.getRole();
                     }
                 }
+
+                // Pre-fetch textures for staff members not in cache
+                if (platform.getCache() != null) {
+                    for (StaffMember staff : staffMembers) {
+                        if (staff.getUuid() != null && platform.getCache().getSkinTexture(staff.getUuid()) == null) {
+                            final UUID staffUuid = staff.getUuid();
+                            gg.modl.minecraft.core.util.WebPlayer.get(staffUuid).thenAccept(wp -> {
+                                if (wp != null && wp.valid() && wp.textureValue() != null) {
+                                    platform.getCache().cacheSkinTexture(staffUuid, wp.textureValue());
+                                }
+                            });
+                        }
+                    }
+                }
             }
         }).exceptionally(e -> null);
     }
@@ -224,12 +238,30 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
             lore.add(MenuItems.COLOR_YELLOW + "Left-click to apply selected role");
         }
 
-        return CirrusItem.of(
+        CirrusItem headItem = CirrusItem.of(
                 CirrusItemType.PLAYER_HEAD,
                 CirrusChatElement.ofLegacyText(
                         (canMod ? MenuItems.COLOR_GOLD : MenuItems.COLOR_GRAY) + staff.getUsername()),
                 MenuItems.lore(lore)
         );
+
+        // Apply skin texture from cache if available
+        if (staff.getUuid() != null && platform.getCache() != null) {
+            String cachedTexture = platform.getCache().getSkinTexture(staff.getUuid());
+            if (cachedTexture != null) {
+                headItem = headItem.texture(cachedTexture);
+            } else {
+                // Async fire-and-forget to populate cache for next menu open
+                final UUID uuid = staff.getUuid();
+                gg.modl.minecraft.core.util.WebPlayer.get(uuid).thenAccept(wp -> {
+                    if (wp != null && wp.valid() && wp.textureValue() != null) {
+                        platform.getCache().cacheSkinTexture(uuid, wp.textureValue());
+                    }
+                });
+            }
+        }
+
+        return headItem;
     }
 
     @Override

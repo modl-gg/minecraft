@@ -198,11 +198,32 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
         String title = locale.getMessage("menus.player_head.title", Map.of("player_name", targetName));
         title = MenuItems.translateColorCodes(title);
 
-        return CirrusItem.of(
+        CirrusItem headItem = CirrusItem.of(
                 CirrusItemType.PLAYER_HEAD,
                 CirrusChatElement.ofLegacyText(title),
                 MenuItems.lore(lore)
         );
+
+        // Apply skin texture from cache, or fetch from Mojang for offline players
+        if (platform.getCache() != null) {
+            String cachedTexture = platform.getCache().getSkinTexture(targetUuid);
+            if (cachedTexture == null) {
+                // Fetch texture synchronously with short timeout (single player, acceptable delay)
+                try {
+                    gg.modl.minecraft.core.util.WebPlayer wp = gg.modl.minecraft.core.util.WebPlayer.get(targetUuid)
+                            .get(3, java.util.concurrent.TimeUnit.SECONDS);
+                    if (wp != null && wp.valid() && wp.textureValue() != null) {
+                        platform.getCache().cacheSkinTexture(targetUuid, wp.textureValue());
+                        cachedTexture = wp.textureValue();
+                    }
+                } catch (Exception ignored) {}
+            }
+            if (cachedTexture != null) {
+                headItem = headItem.texture(cachedTexture);
+            }
+        }
+
+        return headItem;
     }
 
     /**

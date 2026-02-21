@@ -64,6 +64,7 @@ public class PluginLoader {
         this.queryMojang = httpManager.isQueryMojang();
         this.asyncCommandExecutor = new AsyncCommandExecutor();
         cache = new Cache();
+        cache.setQueryMojang(httpManager.isQueryMojang());
         loginCache = new LoginCache();
 
         // Set the cache on the platform for menu access

@@ -219,6 +219,26 @@ public class SpigotPlatform implements Platform {
     }
 
     @Override
+    public String getPlayerSkinTexture(UUID uuid) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player == null) return null;
+        try {
+            // Player.getPlayerProfile() added in Spigot 1.18.1
+            Object profile = player.getClass().getMethod("getPlayerProfile").invoke(player);
+            java.util.Collection<?> properties = (java.util.Collection<?>) profile.getClass().getMethod("getProperties").invoke(profile);
+            for (Object prop : properties) {
+                String name = (String) prop.getClass().getMethod("getName").invoke(prop);
+                if ("textures".equals(name)) {
+                    return (String) prop.getClass().getMethod("getValue").invoke(prop);
+                }
+            }
+        } catch (Exception e) {
+            // Pre-1.18.1 server or reflection failure - return null
+        }
+        return null;
+    }
+
+    @Override
     public void log(String msg) {
         logger.info(msg);
     }
