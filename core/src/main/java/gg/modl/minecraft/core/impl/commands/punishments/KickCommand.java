@@ -30,7 +30,7 @@ public class KickCommand extends BaseCommand {
     }
 
     @CommandCompletion("@players")
-    @CommandAlias("kick")
+    @CommandAlias("%cmd_kick")
     @Syntax("<target> [reason...] [-silent]")
     @Conditions("permission:value=punishment.apply.kick")
     public void kick(CommandIssuer sender, @Name("target") Account target, @Default("") String args) {

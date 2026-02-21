@@ -207,6 +207,11 @@ iammuted:
   notification_to_target: "&6[Jugador Silenciado] &f{sender} &7está actualmente silenciado y no puede responder en el chat."
   success_message: "&aTu estado de silenciado ha sido comunicado a &f{target}&a."
 
+standing:
+  loading: "&7Cargando tu estado..."
+  error: "&cError al cargar tu estado. Por favor, inténtalo de nuevo más tarde."
+  cooldown: "&cPor favor espera {seconds}s antes de usar este comando de nuevo."
+
 player_lookup:
   looking_up: "&7Buscando jugador &e{player}&7..."
   error: "&cError al buscar jugador: {error}"

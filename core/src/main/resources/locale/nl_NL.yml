@@ -261,6 +261,11 @@ iammuted:
   notification_to_target: "&6[Gedempte Speler] &f{sender} &7is momenteel gedempt en kan niet reageren in de chat."
   success_message: "&aJe gedempte status is doorgegeven aan &f{target}&a."
 
+standing:
+  loading: "&7Je standing wordt geladen..."
+  error: "&cKon je standing niet laden. Probeer het later opnieuw."
+  cooldown: "&cWacht {seconds}s voordat je dit commando opnieuw gebruikt."
+
 # Speler Opzoeken Berichten
 player_lookup:
   looking_up: "&7Speler &e{player}&7 wordt opgezocht..."

@@ -30,7 +30,7 @@ public class MuteCommand extends BaseCommand {
     }
 
     @CommandCompletion("@players")
-    @CommandAlias("mute")
+    @CommandAlias("%cmd_mute")
     @Syntax("<target> [duration] [reason...] [-silent]")
     @Conditions("permission:value=punishment.apply.manual-mute")
     public void mute(CommandIssuer sender, @Name("target") Account target, @Default("") String args) {

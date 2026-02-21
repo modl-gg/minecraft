@@ -43,7 +43,7 @@ public class HistoryCommand extends BaseCommand {
     }
 
     @CommandCompletion("@players")
-    @CommandAlias("history|hist")
+    @CommandAlias("%cmd_history")
     @Syntax("<player> [-p]")
     @Description("Open the punishment history menu for a player, or use -p to print to chat")
     @Conditions("player|staff")

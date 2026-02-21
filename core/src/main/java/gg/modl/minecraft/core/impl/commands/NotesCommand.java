@@ -42,7 +42,7 @@ public class NotesCommand extends BaseCommand {
     }
 
     @CommandCompletion("@players")
-    @CommandAlias("notes")
+    @CommandAlias("%cmd_notes")
     @Syntax("<player> [-p]")
     @Description("Open the notes menu for a player, or use -p to print to chat")
     @Conditions("player|staff")

@@ -179,6 +179,10 @@ public class BungeePlugin extends Plugin {
             builder.url(record.url());
         }
 
+        if (record.hasChecksum()) {
+            builder.checksum(record.checksum());
+        }
+
         libraryManager.loadLibrary(builder.build());
     }
 

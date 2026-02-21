@@ -10,6 +10,7 @@ package gg.modl.minecraft.api;
  * @param oldRelocation Package to relocate from (null if no relocation)
  * @param newRelocation Package to relocate to (null if no relocation)
  * @param url           Direct download URL (null to use standard Maven resolution)
+ * @param checksum      SHA-256 checksum for integrity verification (null to skip verification)
  */
 public record LibraryRecord(
         String groupId,
@@ -18,13 +19,21 @@ public record LibraryRecord(
         String id,
         String oldRelocation,
         String newRelocation,
-        String url
+        String url,
+        String checksum
 ) {
     /**
      * Creates a LibraryRecord without relocation.
      */
     public static LibraryRecord of(String groupId, String artifactId, String version, String id) {
-        return new LibraryRecord(groupId, artifactId, version, id, null, null, null);
+        return new LibraryRecord(groupId, artifactId, version, id, null, null, null, null);
+    }
+
+    /**
+     * Creates a LibraryRecord without relocation, with a checksum.
+     */
+    public static LibraryRecord of(String groupId, String artifactId, String version, String id, String checksum) {
+        return new LibraryRecord(groupId, artifactId, version, id, null, null, null, checksum);
     }
 
     /**
@@ -32,14 +41,21 @@ public record LibraryRecord(
      */
     public static LibraryRecord ofRelocated(String groupId, String artifactId, String version, String id,
                                             String oldRelocation, String newRelocation) {
-        return new LibraryRecord(groupId, artifactId, version, id, oldRelocation, newRelocation, null);
+        return new LibraryRecord(groupId, artifactId, version, id, oldRelocation, newRelocation, null, null);
     }
 
     /**
      * Creates a LibraryRecord with a direct download URL (for SNAPSHOT or non-standard repos).
      */
     public static LibraryRecord ofUrl(String groupId, String artifactId, String version, String id, String url) {
-        return new LibraryRecord(groupId, artifactId, version, id, null, null, url);
+        return new LibraryRecord(groupId, artifactId, version, id, null, null, url, null);
+    }
+
+    /**
+     * Creates a LibraryRecord with a direct download URL and checksum.
+     */
+    public static LibraryRecord ofUrl(String groupId, String artifactId, String version, String id, String url, String checksum) {
+        return new LibraryRecord(groupId, artifactId, version, id, null, null, url, checksum);
     }
 
     /**
@@ -47,5 +63,12 @@ public record LibraryRecord(
      */
     public boolean hasRelocation() {
         return oldRelocation != null && newRelocation != null;
+    }
+
+    /**
+     * Returns true if this library has a checksum for integrity verification.
+     */
+    public boolean hasChecksum() {
+        return checksum != null;
     }
 }

@@ -207,6 +207,11 @@ iammuted:
   notification_to_target: "&6[Stummgeschalteter Spieler] &f{sender} &7ist derzeit stummgeschaltet und kann nicht im Chat antworten."
   success_message: "&aDein Stummschaltungsstatus wurde &f{target}&a mitgeteilt."
 
+standing:
+  loading: "&7Dein Standing wird geladen..."
+  error: "&cFehler beim Laden deines Standings. Bitte versuche es später erneut."
+  cooldown: "&cBitte warte {seconds}s, bevor du diesen Befehl erneut verwendest."
+
 player_lookup:
   looking_up: "&7Spieler &e{player}&7 wird nachgeschlagen..."
   error: "&cFehler beim Nachschlagen des Spielers: {error}"

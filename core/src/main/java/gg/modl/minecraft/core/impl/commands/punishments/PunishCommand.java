@@ -55,7 +55,7 @@ public class PunishCommand extends BaseCommand {
     private static final Set<String> VALID_SEVERITIES = Set.of("low", "regular", "severe");
 
     @CommandCompletion("@players @punishment-types")
-    @CommandAlias("punish|p")
+    @CommandAlias("%cmd_punish")
     @Syntax("<target> [type] [reason...] [-lenient|regular|severe] [-ab (alt block)] [-s (silent)] [-sw (stat-wipe)]")
     @Description("Issue a punishment to a player. With no type specified and as a player, opens the punishment GUI.")
     @Conditions("staff")

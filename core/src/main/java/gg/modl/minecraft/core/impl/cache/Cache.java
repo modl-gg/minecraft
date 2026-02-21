@@ -565,6 +565,31 @@ public class Cache {
         this.cachedPunishGuiConfig = null;
     }
 
+    // ==================== REPORT GUI CONFIG CACHE ====================
+
+    private volatile gg.modl.minecraft.core.config.ReportGuiConfig cachedReportGuiConfig;
+
+    /**
+     * Cache the report GUI config.
+     */
+    public void cacheReportGuiConfig(gg.modl.minecraft.core.config.ReportGuiConfig config) {
+        this.cachedReportGuiConfig = config;
+    }
+
+    /**
+     * Get cached report GUI config, or null if not cached.
+     */
+    public gg.modl.minecraft.core.config.ReportGuiConfig getCachedReportGuiConfig() {
+        return cachedReportGuiConfig;
+    }
+
+    /**
+     * Clear the cached report GUI config (e.g., on reload).
+     */
+    public void clearReportGuiConfig() {
+        this.cachedReportGuiConfig = null;
+    }
+
     /**
      * Get the number of staff members with cached permissions
      */

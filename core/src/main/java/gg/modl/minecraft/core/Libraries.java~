@@ -24,7 +24,7 @@ public final class Libraries {
             "snakeyaml",
             "2.3",
             "snakeyaml",
-            "Y6dv5mtlI2C9TCwQfm8CWNqn1LtJIAi6jCb80jD/kUY="
+            "NjNhNzZmZTY2YjY1MjM2MGJkNGMyYzEwN2U2ZjAyNThkYWE3ZDRiYjQ5MjAwOGJhOGMyNmZjZDIzMGZmOTE0Ng=="
     );
 
     // Gson - JSON serialization library (no relocation - uses com.google.gson)
@@ -33,7 +33,7 @@ public final class Libraries {
             "gson",
             "2.12.1",
             "gson",
-            "6+4T1ft0d81/HMAQ4MNW34yoBwlxUkjal/eeNcy0++w="
+            "ZWJlZTEzZDVmYjc0NzdjZDdmMWNjMDEwZTBjMzU2ZGY4Y2E4MDcwOTcxNTI0OGRhOTdmNzllMzVjY2I0ZmJlYw=="
     );
 
     // Apache HttpClient5 - HTTP client library
@@ -42,7 +42,7 @@ public final class Libraries {
             "httpclient5",
             "5.2.1",
             "httpclient5",
-            "k1Xzh2uvgv7BPO0iwSti1XU2Iwg2QG01lFkSjk9z7VE="
+            "OTM1NWYzODc2YmFmODJmZWMxM2NlZDIyYzEyYjYyZDU3NTM2MjMwODM2NDA2ZDM1OTQ1OTEyOGU0ZjczZWQ1MQ=="
     );
 
     // Apache HttpCore5 - Required by HttpClient5
@@ -51,7 +51,7 @@ public final class Libraries {
             "httpcore5",
             "5.2.4",
             "httpcore5",
-            "p/YklhE/ZvnifCa4TET1zkVVxicAg83y1F8lUzbNUq8="
+            "YTdmNjI0OTYxMTNmNjZmOWUyN2MyNmI4NGM0NGY1Y2U0NTU1YzYyNzAwODNjZGYyZDQ1ZjI1NTMzNmNkNTJhZg=="
     );
 
     // Apache HttpCore5 H2 - HTTP/2 support
@@ -60,7 +60,7 @@ public final class Libraries {
             "httpcore5-h2",
             "5.2.4",
             "httpcore5-h2",
-            "3BqV5z6wTbk0UVM9OQzgLFOzAaENw0PQjIYvKTSz0w4="
+            "ZGMxYTk1ZTczZWIwNGRiOTM0NTE1MzNkMzkwY2UwMmM1M2IzMDFhMTBkYzM0M2QwOGM4NjJmMjkzNGIzZDMwZQ=="
     );
 
     // PacketEvents API (must be loaded before platform-specific implementations)
@@ -69,7 +69,7 @@ public final class Libraries {
             "packetevents-api",
             "2.11.2",
             "packetevents-api",
-            "3iUlwXnzZ8UYPrcUG5inerI6qdtMmpvZ3M9KBvon8OM="
+            "ZGUyNTI1YzE3OWYzNjdjNTE4M2ViNzE0MWI5OGE3N2FiMjNhYTlkYjRjOWE5YmQ5ZGNjZjRhMDZmYTI3ZjBlMw=="
     );
 
     // PacketEvents Netty (required by platform implementations)
@@ -78,7 +78,7 @@ public final class Libraries {
             "packetevents-netty-common",
             "2.11.2",
             "packetevents-netty-common",
-            "iFUyY8j/9ZIJGQI9KNkvS8TBuLIBLqpvt+RQALSipCM="
+            "ODg1NTMyNjNjOGZmZjU5MjA5MTkwMjNkMjhkOTJmNGJjNGMxYjhiMjAxMmVhYTZmYjdlNDUwMDBiNGEyYTQyMw=="
     );
 
     // PacketEvents Spigot
@@ -87,7 +87,7 @@ public final class Libraries {
             "packetevents-spigot",
             "2.11.2",
             "packetevents-spigot",
-            "DNgWUMmOnz3rH65hM9MeSFYWWPwrXIU33FvsBxYD/+E="
+            "MGNkODE2NTBjOThlOWYzZGViMWZhZTYxMzNkMzFlNDg1NjE2NThmYzJiNWM4NTM3ZGM1YmVjMDcxNjAzZmZlMQ=="
     );
 
     // PacketEvents BungeeCord
@@ -96,7 +96,7 @@ public final class Libraries {
             "packetevents-bungeecord",
             "2.11.2",
             "packetevents-bungeecord",
-            "uqfNJPYZEG8ZpvC9VXGKorGs/9e+rDd8RBsLSxOyAGc="
+            "YmFhN2NkMjRmNjE5MTA2ZjE5YTZmMGJkNTU3MThhYTJiMWFjZmZkN2JlYWMzNzdjNDQxYjBiNGIxM2IyMDA2Nw=="
     );
 
     // PacketEvents Velocity
@@ -104,8 +104,7 @@ public final class Libraries {
             "com{}github{}retrooper",
             "packetevents-velocity",
             "2.11.2",
-            "packetevents-velocity",
-            "FsSHtExrXGXiXrswQIGAO46DaIZDIiVwKgzZw1BRGXA="
+            "packetevents-velocity"
     );
 
     public static final LibraryRecord ADVENTURE_NBT = LibraryRecord.of(
@@ -113,7 +112,7 @@ public final class Libraries {
         "adventure-nbt",
         "4.25.0",
         "adventure-nbt",
-        "jubaYh9JbxbGGd5uxcC5wUDOrJuJwqWzN3k429VaFi4="
+        "OGVlNmRhNjIxZjQ5NmYxNmM2MTlkZTZlYzVjMGI5YzE0MGNlYWM5Yjg5YzJhNWIzMzc3OTM4ZGJkNTVhMTYyZQ=="
     );
 
     // ACF - Annotation Command Framework (SNAPSHOT, loaded via direct URL)
@@ -123,7 +122,7 @@ public final class Libraries {
             "0.5.1-SNAPSHOT",
             "acf-core",
             "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-core/0.5.1-SNAPSHOT/acf-core-0.5.1-20260118.005649-52.jar",
-            "zh32bc5eNCJzsRJTGYP2NyWhuf1JrwgqwEcZZfJ801A="
+            "Y2UxZGY2NmRjZTVlMzQyMjczYjExMjUzMTk4M2Y2MzcyNWExYjlmZDQ5YWYwODJhYzA0NzE5NjVmMjdjZDM1MA=="
     );
 
     public static final LibraryRecord ACF_BUKKIT = LibraryRecord.ofUrl(
@@ -132,7 +131,7 @@ public final class Libraries {
             "0.5.1-SNAPSHOT",
             "acf-bukkit",
             "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-bukkit/0.5.1-SNAPSHOT/acf-bukkit-0.5.1-20260118.005649-52.jar",
-            "McXMmPGrl6kbVHVxImCWCq7pJROFbqB3j0DT1vWDFFs="
+            "MzFjNWNjOThmMWFiOTdhOTFiNTQ3NTcxMjI2MDk2MGFhZWU5MjUxMzg1NmVhMDc3OGY0MGQzZDZmNTgzMTQ1Yg=="
     );
 
     public static final LibraryRecord ACF_VELOCITY = LibraryRecord.ofUrl(
@@ -141,7 +140,7 @@ public final class Libraries {
             "0.5.1-SNAPSHOT",
             "acf-velocity",
             "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-velocity/0.5.1-SNAPSHOT/acf-velocity-0.5.1-20260118.005649-51.jar",
-            "+MRdScJFX9qVtgdXYeWZA9CahltfHQUbzbppMAPVrVA="
+            "ZjhjNDVkNDljMjQ1NWZkYTk1YjYwNzU3NjFlNTk5MDNkMDlhODY1YjVmMWQwNTFiY2RiYTY5MzAwM2Q1YWQ1MA=="
     );
 
     public static final LibraryRecord ACF_BUNGEE = LibraryRecord.ofUrl(
@@ -150,7 +149,7 @@ public final class Libraries {
             "0.5.1-SNAPSHOT",
             "acf-bungee",
             "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-bungee/0.5.1-SNAPSHOT/acf-bungee-0.5.1-20260118.005649-52.jar",
-            "QC6rQuPHfRNWa/qqcM1ly9L3eKhZdGB41f0jYLBkP/s="
+            "NDAyZWFiNDJlM2M3N2QxMzU2NmJmYWFhNzBjZDY1Y2JkMmY3NzhhODU5NzQ2MDc4ZDVmZDIzNjBiMDY0M2ZmYg=="
     );
 
     // Cirrus - Inventory GUI framework (loaded via JitPack)
@@ -160,7 +159,7 @@ public final class Libraries {
             "4.1.2-SNAPSHOT",
             "cirrus-spigot",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.2-SNAPSHOT/cirrus-spigot-4.1.2-SNAPSHOT.jar",
-            "VJAxGO/PWJjNkZi4Jn5cTHYW7vprbn5uMBiVdDW4L5o="
+            "NTQ5MDMxMThlZmNmNTg5OGNkOTE5OGI4MjY3ZTVjNGM3NjE2ZWVmYTZiNmU3ZTZlMzAxODk1NzQzNWI4MmY5YQ=="
     );
 
     public static final LibraryRecord CIRRUS_VELOCITY = LibraryRecord.ofUrl(
@@ -169,7 +168,7 @@ public final class Libraries {
             "4.1.2-SNAPSHOT",
             "cirrus-velocity",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.2-SNAPSHOT/cirrus-velocity-4.1.2-SNAPSHOT.jar",
-            "Bo0r1cfK6+SS7fx1Sdlga5Dfkp345fXrt63UJPBkKHw="
+            "MDY4ZDJiZDVjN2NhZWJlNDkyZWRmYzc1NDlkOTYwNmI5MGRmOTI5ZGY4ZTVmNWViYjdhZGQ0MjRmMDY0Mjg3Yw=="
     );
 
     public static final LibraryRecord CIRRUS_BUNGEECORD = LibraryRecord.ofUrl(
@@ -178,7 +177,7 @@ public final class Libraries {
             "4.1.2-SNAPSHOT",
             "cirrus-bungeecord",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.2-SNAPSHOT/cirrus-bungeecord-4.1.2-SNAPSHOT.jar",
-            "2FWz88Iji1BJ74Qr5elfrW5F7sjiOZJHzlBco8IwIPo="
+            "ZDg1NWIzZjNjMjIzOGI1MDQ5ZWY4NDJiZTVlOTVmYWQ2ZTQ1ZWVjOGUyMzk5MjQ3Y2U1MDVjYTNjMjMwMjBmYQ=="
     );
 
     // Adventure - UI library for Minecraft (adventure-api requires adventure-key and examination libs)
@@ -187,7 +186,7 @@ public final class Libraries {
             "adventure-key",
             "4.26.1",
             "adventure-key",
-            "7sFy1j23e0Drer7rJfZe7eqJvTAmTQV7aLEv7Lcxvl4="
+            "ZWVjMTcyZDYzZGI3N2I0MGViN2FiZWViMjVmNjVlZWRlYTg5YmQzMDI2NGQwNTdiNjhiMTJmZWNiNzMxYmU1ZQ=="
     );
 
     public static final LibraryRecord EXAMINATION_API = LibraryRecord.of(
@@ -195,7 +194,7 @@ public final class Libraries {
             "examination-api",
             "1.3.0",
             "examination-api",
-            "ySN//ssFQo9u/4YhYkascM4LR7BMCOp8o1Ag/eV/hJI="
+            "YzkyMzdmZmVjYjA1NDI4ZjZlZmY4NjIxNjI0NmFjNzBjZTBiNDdiMDRjMDhlYTdjYTM1MDIwZmRlNTdmODQ5Mg=="
     );
 
     public static final LibraryRecord EXAMINATION_STRING = LibraryRecord.of(
@@ -203,7 +202,7 @@ public final class Libraries {
             "examination-string",
             "1.3.0",
             "examination-string",
-            "fQH8JaS7OvDhZiaFRV9FQfv0YmIW6lhG5FXBSR4Va4w="
+            "N2QwMWZjMjVhNGJiM2FmMGUxNjYyNjg1NDU1ZjQ1NDFmYmY0NjI2MjE2ZWE1ODQ2ZTQ1NWMxNDkxZTE1NmI4Yw=="
     );
 
     public static final LibraryRecord ADVENTURE_API = LibraryRecord.of(
@@ -211,7 +210,7 @@ public final class Libraries {
             "adventure-api",
             "4.26.1",
             "adventure-api",
-            "VR5Ta56oaPMOcseQCjCbNRJO59SIn6OzrtCRApl1GiY="
+            "NTUxZTUzNmI5ZWE4NjhmMzBlNzJjNzkwMGEzMDliMzUxMjRlZTdkNDg4OWZhM2IzYWVkMDkxMDI5OTc1MWEyNg=="
     );
 
     public static final LibraryRecord ADVENTURE_TEXT_SERIALIZER_LEGACY = LibraryRecord.of(
@@ -219,7 +218,7 @@ public final class Libraries {
             "adventure-text-serializer-legacy",
             "4.26.1",
             "adventure-text-serializer-legacy",
-            "chEHvCE1ckVN8b++Q426Yw4wRXVQx1C3oVSzXcMmSqg="
+            "NzIxMTA3YmMyMTM1NzI0NTRkZjFiZmJlNDM4ZGJhNjMwZTMwNDU3NTUwYzc1MGI3YTE1NGIzNWRjMzI2NGFhOA=="
     );
 
     /**

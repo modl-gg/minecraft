@@ -44,7 +44,7 @@ public class PunishmentActionCommand extends BaseCommand {
         return httpClientHolder.getClient();
     }
 
-    @CommandAlias("modl:punishment-action")
+    @CommandAlias("%cmd_punishment_action")
     @Conditions("staff")
     public void punishmentAction(CommandIssuer sender, String action, String punishmentId) {
         if (!sender.isPlayer()) {

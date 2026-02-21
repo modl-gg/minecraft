@@ -20,6 +20,7 @@ import gg.modl.minecraft.core.impl.commands.NotesCommand;
 import gg.modl.minecraft.core.impl.commands.ReportsCommand;
 import gg.modl.minecraft.core.impl.commands.PunishmentActionCommand;
 import gg.modl.minecraft.core.impl.commands.player.IAmMutedCommand;
+import gg.modl.minecraft.core.impl.commands.player.StandingCommand;
 import gg.modl.minecraft.core.impl.commands.punishments.*;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
@@ -33,7 +34,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 
 @Getter
@@ -120,6 +121,10 @@ public class PluginLoader {
         CommandManager<?, ?, ?, ?, ?, ?> commandManager = platform.getCommandManager();
         commandManager.enableUnstableAPI("help");
 
+        // Load and register command aliases from config before registering commands
+        Map<String, String> commandAliases = loadCommandAliases(dataDirectory, logger);
+        registerCommandReplacements(commandManager, commandAliases);
+
         commandManager.getCommandContexts().registerContext(AbstractPlayer.class, (c)
                 -> fetchPlayer(c.popFirstArg(), platform, getHttpClient(), queryMojang));
 
@@ -129,16 +134,16 @@ public class PluginLoader {
         registerCommandConditions(commandManager, cache, this.localeManager);
 //
         // Removed duplicate - TicketCommands registered below with proper panelUrl
-        
+
         // Register punishment command with tab completion
         PunishCommand punishCommand = new PunishCommand(httpClientHolder, platform, cache, this.localeManager);
         commandManager.registerCommand(punishCommand);
-        
+
         // Set up punishment types tab completion
-        commandManager.getCommandCompletions().registerCompletion("punishment-types", c -> 
+        commandManager.getCommandCompletions().registerCompletion("punishment-types", c ->
             punishCommand.getPunishmentTypeNames()
         );
-        
+
         // Initialize punishment types cache
         punishCommand.initializePunishmentTypes();
 
@@ -150,7 +155,7 @@ public class PluginLoader {
 
         // Register reload command
         commandManager.registerCommand(new ModlReloadCommand(platform, cache, this.localeManager));
-        
+
         // Register manual punishment commands
         commandManager.registerCommand(new BanCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new MuteCommand(httpClientHolder, platform, cache, this.localeManager));
@@ -158,9 +163,10 @@ public class PluginLoader {
         commandManager.registerCommand(new BlacklistCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new PardonCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new WarnCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
-        
+
         // Register player commands
         commandManager.registerCommand(new IAmMutedCommand(platform, cache, this.localeManager));
+        commandManager.registerCommand(new StandingCommand(httpClientHolder, platform, this.localeManager));
         commandManager.registerCommand(new TicketCommands(platform, httpClientHolder, httpManager.getHttpClient(), httpManager.getPanelUrl(), this.localeManager, chatMessageCache));
 
         // Register GUI commands (menus require V2 API - commands will check dynamically via holder)
@@ -176,21 +182,12 @@ public class PluginLoader {
         commandManager.registerCommand(new PunishmentActionCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
 
         // Register all command aliases for async execution (everything except ModlReloadCommand's "modl")
-        String[] asyncAliases = {
-                "ban", "mute", "kick", "blacklist", "pardon", "unban", "unmute", "warn",
-                "punish", "p",
-                "inspect", "ins", "check", "lookup", "look", "info",
-                "staffmenu", "sm",
-                "history", "hist",
-                "alts", "alt",
-                "notes",
-                "reports",
-                "iammuted",
-                "report", "chatreport", "apply", "bugreport", "support", "tclaim", "claimticket",
-                "modl:punishment-action"
-        };
-        for (String alias : asyncAliases) {
-            asyncCommandExecutor.registerAsyncAlias(alias);
+        // Built dynamically from configured aliases
+        for (Map.Entry<String, String> entry : commandAliases.entrySet()) {
+            if (entry.getKey().equals("modl")) continue; // ModlReloadCommand runs synchronously
+            for (String alias : entry.getValue().split("\\|")) {
+                asyncCommandExecutor.registerAsyncAlias(alias.trim());
+            }
         }
     }
 
@@ -246,6 +243,80 @@ public class PluginLoader {
             logger.warning("Failed to read locale from config: " + e.getMessage());
         }
         return "en_US";
+    }
+
+    /**
+     * Default command aliases used when no config is present.
+     */
+    private static final Map<String, String> DEFAULT_COMMAND_ALIASES = Map.ofEntries(
+            Map.entry("modl", "modl"),
+            Map.entry("punish", "punish|p"),
+            Map.entry("ban", "ban"),
+            Map.entry("mute", "mute"),
+            Map.entry("kick", "kick"),
+            Map.entry("blacklist", "blacklist"),
+            Map.entry("pardon", "pardon"),
+            Map.entry("unban", "unban"),
+            Map.entry("unmute", "unmute"),
+            Map.entry("warn", "warn"),
+            Map.entry("inspect", "inspect|ins|check|lookup|look|info"),
+            Map.entry("staffmenu", "staffmenu|sm"),
+            Map.entry("history", "history|hist"),
+            Map.entry("alts", "alts|alt"),
+            Map.entry("notes", "notes"),
+            Map.entry("reports", "reports"),
+            Map.entry("iammuted", "iammuted"),
+            Map.entry("report", "report"),
+            Map.entry("chatreport", "chatreport"),
+            Map.entry("apply", "apply"),
+            Map.entry("bugreport", "bugreport"),
+            Map.entry("support", "support"),
+            Map.entry("tclaim", "tclaim|claimticket"),
+            Map.entry("standing", "standing"),
+            Map.entry("punishment_action", "modl:punishment-action")
+    );
+
+    /**
+     * Load command aliases from config.yml, falling back to defaults for missing entries.
+     */
+    @SuppressWarnings("unchecked")
+    private static Map<String, String> loadCommandAliases(Path dataDirectory, Logger logger) {
+        Map<String, String> aliases = new LinkedHashMap<>(DEFAULT_COMMAND_ALIASES);
+        try {
+            Path configFile = dataDirectory.resolve("config.yml");
+            if (!Files.exists(configFile)) {
+                return aliases;
+            }
+            Yaml yaml = new Yaml();
+            try (InputStream inputStream = new FileInputStream(configFile.toFile())) {
+                Map<String, Object> config = yaml.load(inputStream);
+                if (config != null && config.containsKey("commands")) {
+                    Map<String, Object> commands = (Map<String, Object>) config.get("commands");
+                    if (commands != null) {
+                        for (Map.Entry<String, Object> entry : commands.entrySet()) {
+                            String value = String.valueOf(entry.getValue());
+                            if (value != null && !value.isEmpty()) {
+                                aliases.put(entry.getKey(), value);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("Failed to load command aliases from config: " + e.getMessage());
+        }
+        return aliases;
+    }
+
+    /**
+     * Register command aliases as ACF command replacements.
+     * These replacements are used in @CommandAlias("%cmd_xxx") annotations.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void registerCommandReplacements(CommandManager commandManager, Map<String, String> aliases) {
+        for (Map.Entry<String, String> entry : aliases.entrySet()) {
+            commandManager.getCommandReplacements().addReplacement("cmd_" + entry.getKey(), entry.getValue());
+        }
     }
 
     /**

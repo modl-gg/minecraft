@@ -29,7 +29,7 @@ public class BanCommand extends BaseCommand {
     }
 
     @CommandCompletion("@players")
-    @CommandAlias("ban")
+    @CommandAlias("%cmd_ban")
     @Syntax("<target> [duration] [reason...] [-silent] [-alt-blocking] [-stat-wipe]")
     @Conditions("permission:value=punishment.apply.manual-ban")
     public void ban(CommandIssuer sender, @Name("target") Account target, @Default("") String args) {

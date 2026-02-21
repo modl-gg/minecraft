@@ -207,6 +207,9 @@ public class JoinListener {
 
         // Remove player from chat message cache
         chatMessageCache.removePlayer(event.getPlayer().getUniqueId().toString());
+
+        // Clear any pending chat input prompts
+        gg.modl.minecraft.core.impl.menus.util.ChatInputManager.clearOnDisconnect(event.getPlayer().getUniqueId());
     }
 
     @Subscribe

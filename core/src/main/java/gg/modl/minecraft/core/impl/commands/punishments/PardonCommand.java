@@ -28,7 +28,7 @@ public class PardonCommand extends BaseCommand {
     }
 
     @CommandCompletion("@players")
-    @CommandAlias("pardon")
+    @CommandAlias("%cmd_pardon")
     @Syntax("<player/punishment_id> [reason...]")
     @Description("Pardon all of a player's active and unstarted punishments")
     @Conditions("permission:value=punishment.modify")
@@ -43,7 +43,7 @@ public class PardonCommand extends BaseCommand {
         }
     }
 
-    @CommandAlias("unban")
+    @CommandAlias("%cmd_unban")
     @Syntax("<player/punishment_id> [reason...]")
     @Description("Unban a player by name or punishment ID")
     @Conditions("permission:value=punishment.modify")
@@ -58,7 +58,7 @@ public class PardonCommand extends BaseCommand {
         }
     }
 
-    @CommandAlias("unmute")
+    @CommandAlias("%cmd_unmute")
     @Syntax("<player/punishment_id> [reason...]")
     @Description("Unmute a player by name or punishment ID")
     @Conditions("permission:value=punishment.modify")

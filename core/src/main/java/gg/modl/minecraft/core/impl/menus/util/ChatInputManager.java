@@ -134,6 +134,17 @@ public class ChatInputManager {
     }
 
     /**
+     * Clear any pending input for a player on disconnect.
+     * Unlike cancelInput, this does NOT fire the cancel callback
+     * (since the player is no longer online).
+     *
+     * @param playerUuid The player's UUID
+     */
+    public static void clearOnDisconnect(UUID playerUuid) {
+        pendingInputs.remove(playerUuid);
+    }
+
+    /**
      * Check if a player has pending input.
      *
      * @param playerUuid The player's UUID

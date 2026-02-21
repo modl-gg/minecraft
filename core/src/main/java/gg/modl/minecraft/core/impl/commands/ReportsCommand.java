@@ -47,7 +47,7 @@ public class ReportsCommand extends BaseCommand {
     }
 
     @CommandCompletion("@players")
-    @CommandAlias("reports")
+    @CommandAlias("%cmd_reports")
     @Syntax("[player] [-p]")
     @Description("Open the reports menu (for a player or all reports), or use -p to print to chat")
     @Conditions("player|staff")

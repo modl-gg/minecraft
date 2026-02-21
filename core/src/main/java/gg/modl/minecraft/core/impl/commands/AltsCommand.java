@@ -41,7 +41,7 @@ public class AltsCommand extends BaseCommand {
     }
 
     @CommandCompletion("@players")
-    @CommandAlias("alts|alt")
+    @CommandAlias("%cmd_alts")
     @Syntax("<player> [-p]")
     @Description("Open the alts menu for a player, or use -p to print to chat")
     @Conditions("player|staff")

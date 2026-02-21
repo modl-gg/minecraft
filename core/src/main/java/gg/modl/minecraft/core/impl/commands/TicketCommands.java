@@ -3,6 +3,7 @@ package gg.modl.minecraft.core.impl.commands;
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
+import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
@@ -10,6 +11,9 @@ import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.api.http.response.CreateTicketResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.config.ReportGuiConfig;
+import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.menus.ReportGuiMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import lombok.RequiredArgsConstructor;
@@ -31,12 +35,12 @@ public class TicketCommands extends BaseCommand {
 
     private Map<UUID, Map<String, Long>> cooldowns = new ConcurrentHashMap<>();
 
-    @CommandAlias("report")
+    @CommandAlias("%cmd_report")
     @CommandCompletion("@players")
-    @Description("Report a player with a reason")
-    @Syntax("<player> <reason...>")
+    @Description("Report a player")
+    @Syntax("<player>")
     @Conditions("player")
-    public void report(CommandIssuer sender, AbstractPlayer targetPlayer, String reason) {
+    public void report(CommandIssuer sender, AbstractPlayer targetPlayer) {
         if (!checkCooldown(sender, "player")) return;
 
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
@@ -46,26 +50,38 @@ public class TicketCommands extends BaseCommand {
             return;
         }
 
-        String createdServer = platform.getPlayerServer(sender.getUniqueId());
+        // Load report GUI config (cached after first load)
+        ReportGuiConfig guiConfig = getOrLoadReportGuiConfig();
 
-        CreateTicketRequest request = new CreateTicketRequest(
-            reporter.uuid().toString(),
-            reporter.username(),
-            "player",
-            "Player Report: " + targetPlayer.username(),
-            "Reported player: " + targetPlayer.username() + "\nReason: " + reason,
-            targetPlayer.uuid().toString(),
-            targetPlayer.username(),
-            null, // no chat logs for general reports
-            List.of("report"),
-            "normal",
-            createdServer
-        );
-        
-        submitFinishedTicket(sender, request, "Report", "player");
+        UUID senderUuid = sender.getUniqueId();
+        platform.runOnMainThread(() -> {
+            ReportGuiMenu menu = new ReportGuiMenu(
+                    reporter, targetPlayer, httpClient, localeManager, platform, panelUrl,
+                    guiConfig, chatMessageCache
+            );
+            CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+            menu.display(player);
+        });
+    }
+
+    private ReportGuiConfig getOrLoadReportGuiConfig() {
+        Cache cache = platform.getCache();
+        if (cache != null) {
+            ReportGuiConfig cached = cache.getCachedReportGuiConfig();
+            if (cached != null) {
+                return cached;
+            }
+        }
+        ReportGuiConfig config = ReportGuiConfig.load(
+                platform.getDataFolder().toPath(),
+                java.util.logging.Logger.getLogger("MODL"));
+        if (cache != null) {
+            cache.cacheReportGuiConfig(config);
+        }
+        return config;
     }
     
-    @CommandAlias("chatreport")
+    @CommandAlias("%cmd_chatreport")
     @CommandCompletion("@players")
     @Description("Report a player for chat violations (automatically includes recent chat logs)")
     @Syntax("<player>")
@@ -117,7 +133,7 @@ public class TicketCommands extends BaseCommand {
         submitFinishedTicket(sender, request, "Chat report", "chat");
     }
     
-    @CommandAlias("apply")
+    @CommandAlias("%cmd_apply")
     @Description("Submit a staff application")
     @Conditions("player")
     public void staffApplication(CommandIssuer sender) {
@@ -144,7 +160,7 @@ public class TicketCommands extends BaseCommand {
         submitUnfinishedTicket(sender, request, "Staff application", "staff");
     }
     
-    @CommandAlias("bugreport")
+    @CommandAlias("%cmd_bugreport")
     @Description("Report a bug")
     @Syntax("<title...>")
     @Conditions("player")
@@ -172,7 +188,7 @@ public class TicketCommands extends BaseCommand {
         submitUnfinishedTicket(sender, request, "Bug report", "bug");
     }
     
-    @CommandAlias("support")
+    @CommandAlias("%cmd_support")
     @Description("Request support")
     @Syntax("<title...>")
     @Conditions("player")
@@ -200,7 +216,7 @@ public class TicketCommands extends BaseCommand {
         submitUnfinishedTicket(sender, request, "Support request", "support");
     }
 
-    @CommandAlias("tclaim|claimticket")
+    @CommandAlias("%cmd_tclaim")
     @Description("Link an unlinked ticket to your account")
     @Syntax("<ticket-id>")
     @Conditions("player")

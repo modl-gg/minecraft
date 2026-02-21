@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.Map;
 
 @RequiredArgsConstructor
-@CommandAlias("modl")
+@CommandAlias("%cmd_modl")
 public class ModlReloadCommand extends BaseCommand {
     private final Platform platform;
     private final Cache cache;

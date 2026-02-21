@@ -173,6 +173,10 @@ public final class VelocityPlugin {
             builder.url(record.url());
         }
 
+        if (record.hasChecksum()) {
+            builder.checksum(record.checksum());
+        }
+
         libraryManager.loadLibrary(builder.build());
     }
 

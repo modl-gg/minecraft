@@ -86,7 +86,7 @@ public class InspectCommand extends BaseCommand {
     }
 
     @CommandCompletion("@players")
-    @CommandAlias("inspect|ins|check|lookup|look|info")
+    @CommandAlias("%cmd_inspect")
     @Syntax("<player> [-p]")
     @Description("Open the inspect menu for a player, or use -p to print info to chat")
     @Conditions("player|staff")

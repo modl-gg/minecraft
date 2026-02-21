@@ -26,7 +26,7 @@ public class IAmMutedCommand extends BaseCommand {
     private static final long COOLDOWN_DURATION = TimeUnit.MINUTES.toMillis(5); // 5 minute cooldown
     
     @CommandCompletion("@players")
-    @CommandAlias("iammuted")
+    @CommandAlias("%cmd_iammuted")
     @Syntax("<player>")
     @Description("Send a message to another player informing them you are muted (only usable if you are actually muted)")
     public void iAmMuted(CommandIssuer sender, @Name("player") AbstractPlayer targetPlayer) {

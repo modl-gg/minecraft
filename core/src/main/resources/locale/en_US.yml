@@ -27,6 +27,38 @@ messages:
   ticket_claimed_success: "&aTicket &f{ticketId}&a successfully linked to your account!"
   ticket_claim_failed: "&cFailed to link ticket: {error}"
   ticket_cooldown: "&cYou must wait before opening another ticket of this type."
+  report_gui_title: "&fReport {player}"
+  report_skull_chat_log:
+    - "&bReport {player}"
+    - "&7Attach chat logs?"
+  report_skull_details:
+    - "&bReport {player}"
+    - "&7Add more details?"
+  report_skull_confirm:
+    - "&bReport {player}"
+    - "&7Confirm report?"
+  report_attach_chat: "&aAttach Chat Log"
+  report_attach_chat_lore:
+    - "&7Include the target's recent"
+    - "&7chat messages as evidence"
+  report_skip_chat: "&cSkip Chat Log"
+  report_skip_chat_lore:
+    - "&7Do not include chat messages"
+  report_add_details: "&aAdd Details"
+  report_add_details_lore:
+    - "&7Add additional details"
+    - "&7to explain your report"
+  report_skip_details: "&cSkip Details"
+  report_skip_details_lore:
+    - "&7Skip additional details."
+  report_confirm: "&aConfirm Report"
+  report_confirm_lore:
+    - "&7Submit this report"
+  report_cancel: "&cCancel Report"
+  report_cancel_lore:
+    - "&7Cancel without submitting"
+  report_details_prompt: "Enter additional details for your report against {player}:"
+  report_submitted: "&aYour report has been submitted successfully!"
 
 # Punishment System Messages
 # Available variables: {player}, {target}, {reason}, {duration}, {type}, {id}, {issuer}, {punishment_type}, {expiration}, {server}
@@ -268,6 +300,12 @@ iammuted:
   cooldown_message: "&cYou must wait {minutes} minutes and {seconds} seconds before using this command again."
   notification_to_target: "&6[Muted Player] &f{sender} &7is currently muted and cannot respond to chat."
   success_message: "&aYour muted status has been communicated to &f{target}&a."
+
+# Standing Command Messages
+standing:
+  loading: "&7Loading your standing..."
+  error: "&cFailed to load your standing. Please try again later."
+  cooldown: "&cPlease wait {seconds}s before using this command again."
 
 # Player Lookup Messages
 player_lookup:

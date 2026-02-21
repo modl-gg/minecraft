@@ -24,7 +24,7 @@ public class WarnCommand extends BaseCommand {
     private final LocaleManager localeManager;
 
     @CommandCompletion("@players")
-    @CommandAlias("warn")
+    @CommandAlias("%cmd_warn")
     @Syntax("<target> <reason...> [-silent]")
     @Conditions("staff")
     public void warn(CommandIssuer sender, @Name("target") Account target, @Default("") String args) {
