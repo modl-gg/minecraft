@@ -153,4 +153,12 @@ public interface ModlHttpClient {
     // Server tracking
     @NotNull
     CompletableFuture<Void> updatePlayerServer(@NotNull String minecraftUuid, @NotNull String serverName);
+
+    // Punishment ticket modification
+    @NotNull
+    CompletableFuture<Void> modifyPunishmentTickets(@NotNull ModifyPunishmentTicketsRequest request);
+
+    // Batch ticket fetch
+    @NotNull
+    CompletableFuture<TicketsResponse> getTicketsByIds(@NotNull java.util.List<String> ticketIds);
 }

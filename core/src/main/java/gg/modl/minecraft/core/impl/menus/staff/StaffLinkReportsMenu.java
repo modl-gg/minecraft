@@ -1,4 +1,4 @@
-package gg.modl.minecraft.core.impl.menus.inspect;
+package gg.modl.minecraft.core.impl.menus.staff;
 
 import dev.simplix.cirrus.actionhandler.ActionHandler;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
@@ -11,9 +11,8 @@ import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
+import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
-import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.StringUtil;
 
@@ -22,10 +21,10 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
- * Link Reports Menu - allows staff to select reports to link with a punishment.
- * Reports can be toggled on/off, filtered by type, and bulk-selected.
+ * Staff variant of the Link Reports Menu.
+ * Uses the staff menu header instead of the inspect menu header.
  */
-public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report> {
+public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu.Report> {
 
     public static class Report {
         private final String id;
@@ -52,34 +51,26 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
         public String getStatus() { return status; }
     }
 
+    private final Account targetAccount;
+    private final UUID targetUuid;
     private List<Report> reports = new ArrayList<>();
     private final Set<String> selectedReportIds;
     private String currentFilter = "all";
     private final List<String> filterOptions = Arrays.asList("all", "player", "chat");
-    private final Consumer<Set<String>> onComplete; // callback with selected report IDs
-    private final Consumer<CirrusPlayerWrapper> rootBackAction;
+    private final Consumer<Set<String>> onComplete;
+    private final String panelUrl;
 
-    /**
-     * Create a new link reports menu.
-     *
-     * @param platform The platform instance
-     * @param httpClient The HTTP client for API calls
-     * @param viewerUuid The UUID of the staff viewing the menu
-     * @param viewerName The name of the staff viewing the menu
-     * @param targetAccount The account of the player being punished
-     * @param preSelectedIds Already-selected report IDs from PunishSeverityMenu
-     * @param backAction Action to return to parent menu
-     * @param rootBackAction Root back action for primary tab navigation
-     * @param onComplete Callback invoked with selected report IDs when applying
-     */
-    public LinkReportsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
-                           Account targetAccount, Set<String> preSelectedIds,
-                           Consumer<CirrusPlayerWrapper> backAction, Consumer<CirrusPlayerWrapper> rootBackAction,
-                           Consumer<Set<String>> onComplete) {
-        super("Link Reports: " + getPlayerNameStatic(targetAccount), platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
+    public StaffLinkReportsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
+                                 boolean isAdmin, String panelUrl, Account targetAccount, Set<String> preSelectedIds,
+                                 Consumer<CirrusPlayerWrapper> backAction, Consumer<Set<String>> onComplete) {
+        super("Link Reports: " + getPlayerNameStatic(targetAccount), platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
+        this.targetAccount = targetAccount;
+        this.targetUuid = targetAccount.getMinecraftUuid();
         this.selectedReportIds = new LinkedHashSet<>(preSelectedIds);
         this.onComplete = onComplete;
-        this.rootBackAction = rootBackAction;
+        this.panelUrl = panelUrl;
+
+        activeTab = StaffTab.PUNISHMENTS;
 
         fetchReports();
     }
@@ -116,10 +107,7 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
         }
     }
 
-    /**
-     * Set the current filter.
-     */
-    public LinkReportsMenu withFilter(String filter) {
+    public StaffLinkReportsMenu withFilter(String filter) {
         this.currentFilter = filter;
         return this;
     }
@@ -128,8 +116,7 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
-        // Slot 38: Previous page (already set by super)
-        // Slot 39: Filter button (moved 1 left from standard 40)
+        // Slot 39: Filter button
         items.put(39, MenuItems.filterButton(currentFilter, filterOptions));
 
         // Slot 40: Apply selection (sign)
@@ -151,8 +138,6 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
                         MenuItems.COLOR_GRAY + "Toggle all currently filtered reports"
                 )
         ).actionHandler("selectAll"));
-
-        // Slot 42: Next page (already set by super)
 
         return items;
     }
@@ -183,7 +168,6 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
     protected CirrusItem map(Report report) {
         LocaleManager locale = platform.getLocaleManager();
 
-        // Handle placeholder for empty list
         if (report.getId() == null) {
             return createEmptyPlaceholder(locale.getMessage("menus.empty.reports"));
         }
@@ -195,7 +179,6 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
         String content = report.getContent() != null ? report.getContent() : "";
         String formattedDate = report.getDate() != null ? MenuItems.formatDate(report.getDate()) : "Unknown";
 
-        // Normalize newlines, strip markdown, and wrap content
         content = StringUtil.unescapeNewlines(content);
         content = content.replace("**", "").replace("```", "");
         List<String> wrappedContent = new ArrayList<>();
@@ -214,17 +197,14 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
         vars.put("reporter", reporter);
         vars.put("content", String.join("\n", wrappedContent));
 
-        // Use selected or unselected locale key
         String localeKey = selected ? "menus.link_report_item_selected" : "menus.link_report_item_unselected";
 
-        // Get lore from locale
         List<String> lore = new ArrayList<>();
         for (String line : locale.getMessageList(localeKey + ".lore")) {
             String processed = line;
             for (Map.Entry<String, String> entry : vars.entrySet()) {
                 processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
             }
-            // Handle content with newlines - split into separate lore lines
             if (processed.contains("\n")) {
                 for (String subLine : processed.split("\n")) {
                     lore.add(subLine);
@@ -234,7 +214,6 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
             }
         }
 
-        // Get title from locale
         String title = locale.getMessage(localeKey + ".title", vars);
 
         CirrusItemType itemType = selected ? CirrusItemType.LIME_DYE : getReportItemType(report.getType());
@@ -263,16 +242,14 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
             return;
         }
 
-        // Toggle selection
         if (selectedReportIds.contains(report.getId())) {
             selectedReportIds.remove(report.getId());
         } else {
             selectedReportIds.add(report.getId());
         }
 
-        // Reopen menu with updated selection state
-        LinkReportsMenu refreshed = new LinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
-                targetAccount, selectedReportIds, backAction, rootBackAction, onComplete);
+        StaffLinkReportsMenu refreshed = new StaffLinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
+                isAdmin, panelUrl, targetAccount, selectedReportIds, backAction, onComplete);
         refreshed.withFilter(currentFilter);
         ActionHandlers.openMenu(refreshed).handle(click);
     }
@@ -281,21 +258,35 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Inspect tab navigation handlers
-        registerActionHandler("openNotes", ActionHandlers.openMenu(
-                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
-
-        registerActionHandler("openAlts", ActionHandlers.openMenu(
-                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
-
-        registerActionHandler("openHistory", ActionHandlers.openMenu(
-                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
+        // Staff header navigation handlers
+        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
+                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
 
         registerActionHandler("openReports", ActionHandlers.openMenu(
-                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
+                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
 
-        registerActionHandler("openPunish", ActionHandlers.openMenu(
-                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
+        registerActionHandler("openPunishments", ActionHandlers.openMenu(
+                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openTickets", ActionHandlers.openMenu(
+                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+
+        registerActionHandler("openPanel", click -> {
+            click.clickedMenu().close();
+            String escapedUrl = panelUrl.replace("\"", "\\\"");
+            String panelJson = String.format(
+                "{\"text\":\"\",\"extra\":[" +
+                "{\"text\":\"Staff Panel: \",\"color\":\"gold\"}," +
+                "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
+                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
+                escapedUrl, panelUrl
+            );
+            platform.sendJsonMessage(viewerUuid, panelJson);
+        });
+
+        registerActionHandler("openSettings", ActionHandlers.openMenu(
+                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
 
         // Filter handler
         registerActionHandler("filter", this::handleFilter);
@@ -328,8 +319,8 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
         int nextIndex = (currentIndex + 1) % filterOptions.size();
         String newFilter = filterOptions.get(nextIndex);
 
-        LinkReportsMenu refreshed = new LinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
-                targetAccount, selectedReportIds, backAction, rootBackAction, onComplete);
+        StaffLinkReportsMenu refreshed = new StaffLinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
+                isAdmin, panelUrl, targetAccount, selectedReportIds, backAction, onComplete);
         refreshed.withFilter(newFilter);
         ActionHandlers.openMenu(refreshed).handle(click);
     }
@@ -340,7 +331,6 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
     }
 
     private void handleSelectAll(Click click) {
-        // Get currently filtered reports
         List<Report> filtered;
         if (currentFilter.equals("all")) {
             filtered = reports;
@@ -350,20 +340,17 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
                     .collect(Collectors.toList());
         }
 
-        // Check if all filtered reports are already selected
         boolean allSelected = filtered.stream()
                 .filter(r -> r.getId() != null)
                 .allMatch(r -> selectedReportIds.contains(r.getId()));
 
         if (allSelected) {
-            // Deselect all filtered reports
             for (Report report : filtered) {
                 if (report.getId() != null) {
                     selectedReportIds.remove(report.getId());
                 }
             }
         } else {
-            // Select all filtered reports
             for (Report report : filtered) {
                 if (report.getId() != null) {
                     selectedReportIds.add(report.getId());
@@ -371,9 +358,8 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
             }
         }
 
-        // Reopen menu
-        LinkReportsMenu refreshed = new LinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
-                targetAccount, selectedReportIds, backAction, rootBackAction, onComplete);
+        StaffLinkReportsMenu refreshed = new StaffLinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
+                isAdmin, panelUrl, targetAccount, selectedReportIds, backAction, onComplete);
         refreshed.withFilter(currentFilter);
         ActionHandlers.openMenu(refreshed).handle(click);
     }

@@ -59,7 +59,7 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
     private List<Ticket> tickets = new ArrayList<>();
     private String currentFilter = "all";
     private String currentStatusFilter = "open";
-    private final List<String> filterOptions = Arrays.asList("all", "open", "pending", "closed");
+    private final List<String> filterOptions = Arrays.asList("all", "open", "unfinished", "closed");
     private final String panelUrl;
     private final Consumer<CirrusPlayerWrapper> parentBackAction;
 
@@ -211,10 +211,9 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         switch (status.toLowerCase()) {
             case "open":
                 return MenuItems.COLOR_RED;
-            case "pending":
+            case "unfinished":
                 return MenuItems.COLOR_YELLOW;
             case "closed":
-            case "resolved":
                 return MenuItems.COLOR_GREEN;
             default:
                 return MenuItems.COLOR_GRAY;

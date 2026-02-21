@@ -121,6 +121,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
                     punishment.setNotes(new ArrayList<>(p.getNotes()));
                     punishment.setEvidence(new ArrayList<>(p.getEvidence()));
                     punishment.setDataMap(new HashMap<>(p.getData()));
+                    punishment.setAttachedTicketIds(p.getAttachedTicketIds() != null ? new ArrayList<>(p.getAttachedTicketIds()) : null);
 
                     // Set the legacy type enum from the type string
                     if (p.getType() != null) {

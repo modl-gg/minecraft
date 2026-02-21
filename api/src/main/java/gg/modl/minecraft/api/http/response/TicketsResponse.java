@@ -36,5 +36,6 @@ public class TicketsResponse {
         private boolean hasStaffResponse;
         private int replyCount;
         private boolean locked;
+        private String firstReplyContent;
     }
 }

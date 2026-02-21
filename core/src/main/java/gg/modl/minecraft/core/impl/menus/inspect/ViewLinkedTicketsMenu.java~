@@ -1,0 +1,141 @@
+package gg.modl.minecraft.core.impl.menus.inspect;
+
+import dev.simplix.cirrus.item.CirrusItem;
+import dev.simplix.cirrus.item.CirrusItemType;
+import dev.simplix.cirrus.model.Click;
+import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import dev.simplix.cirrus.text.CirrusChatElement;
+import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.response.TicketsResponse;
+import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.menus.base.BaseListMenu;
+import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.locale.LocaleManager;
+
+import java.util.*;
+import java.util.function.Consumer;
+
+/**
+ * View Linked Tickets Menu - displays ticket details for tickets linked to a punishment.
+ * Standalone menu that works from both inspect and staff modify menus.
+ */
+public class ViewLinkedTicketsMenu extends BaseListMenu<TicketsResponse.Ticket> {
+
+    private final List<TicketsResponse.Ticket> tickets = new ArrayList<>();
+
+    /**
+     * Create a new view linked tickets menu.
+     *
+     * @param platform The platform instance
+     * @param httpClient The HTTP client for API calls
+     * @param viewerUuid The UUID of the staff viewing the menu
+     * @param viewerName The name of the staff viewing the menu
+     * @param ticketIds The IDs of tickets to display
+     * @param backAction Action to return to parent menu
+     */
+    public ViewLinkedTicketsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
+                                  List<String> ticketIds, Consumer<CirrusPlayerWrapper> backAction) {
+        super("Linked Tickets", platform, httpClient, viewerUuid, viewerName, backAction);
+
+        if (ticketIds != null && !ticketIds.isEmpty()) {
+            try {
+                httpClient.getTicketsByIds(ticketIds).thenAccept(response -> {
+                    if (response != null && response.isSuccess() && response.getTickets() != null) {
+                        tickets.addAll(response.getTickets());
+                    }
+                }).join();
+            } catch (Exception e) {
+                // Failed to fetch - list remains empty
+            }
+        }
+    }
+
+    @Override
+    protected Collection<TicketsResponse.Ticket> elements() {
+        if (tickets.isEmpty()) {
+            return Collections.singletonList(new TicketsResponse.Ticket());
+        }
+        return tickets;
+    }
+
+    @Override
+    protected CirrusItem map(TicketsResponse.Ticket ticket) {
+        // Handle placeholder for empty list
+        if (ticket.getId() == null) {
+            return createEmptyPlaceholder("No linked tickets");
+        }
+
+        LocaleManager locale = platform.getLocaleManager();
+
+        String ticketType = ticket.getCategory() != null ? ticket.getCategory() : (ticket.getType() != null ? ticket.getType() : "Unknown");
+        String subject = ticket.getSubject() != null ? ticket.getSubject() : "No subject";
+        String status = ticket.getStatus() != null ? ticket.getStatus() : "Unknown";
+        String formattedDate = ticket.getCreatedAt() != null ? MenuItems.formatDate(ticket.getCreatedAt()) : "Unknown";
+        String playerName = ticket.getPlayerName() != null ? ticket.getPlayerName() : "Unknown";
+
+        // Color-code status
+        String statusColored = switch (status.toLowerCase()) {
+            case "open" -> MenuItems.COLOR_GREEN + status;
+            case "closed" -> MenuItems.COLOR_RED + status;
+            case "unfinished" -> MenuItems.COLOR_YELLOW + status;
+            default -> MenuItems.COLOR_GRAY + status;
+        };
+
+        // Build content lines with ticket details
+        List<String> contentLines = new ArrayList<>();
+        contentLines.add(MenuItems.COLOR_GRAY + "Type: " + MenuItems.COLOR_WHITE + ticketType);
+        contentLines.add(MenuItems.COLOR_GRAY + "Subject: " + MenuItems.COLOR_WHITE + subject);
+        contentLines.add(MenuItems.COLOR_GRAY + "Player: " + MenuItems.COLOR_WHITE + playerName);
+
+        Map<String, String> vars = new HashMap<>();
+        vars.put("id", ticket.getId());
+        vars.put("type", ticketType);
+        vars.put("subject", subject);
+        vars.put("status", statusColored);
+        vars.put("date", formattedDate);
+        vars.put("player", playerName);
+        vars.put("content", String.join("\n", contentLines));
+
+        // Get title and lore from locale
+        String title = locale.getMessage("menus.linked_ticket_item.title", vars);
+        List<String> lore = new ArrayList<>();
+        for (String line : locale.getMessageList("menus.linked_ticket_item.lore")) {
+            String processed = line;
+            for (Map.Entry<String, String> entry : vars.entrySet()) {
+                processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
+            }
+            if (processed.contains("\n")) {
+                for (String subLine : processed.split("\n")) {
+                    lore.add(subLine);
+                }
+            } else {
+                lore.add(processed);
+            }
+        }
+
+        CirrusItemType itemType = getTicketItemType(ticketType);
+
+        return CirrusItem.of(
+                itemType,
+                CirrusChatElement.ofLegacyText(title),
+                MenuItems.lore(lore)
+        );
+    }
+
+    @Override
+    protected void handleClick(Click click, TicketsResponse.Ticket ticket) {
+        // No click action for viewing tickets
+    }
+
+    private CirrusItemType getTicketItemType(String type) {
+        if (type == null) return CirrusItemType.PAPER;
+        return switch (type.toLowerCase()) {
+            case "player" -> CirrusItemType.DIAMOND_SWORD;
+            case "chat" -> CirrusItemType.PAPER;
+            case "support" -> CirrusItemType.BOOK;
+            case "appeal" -> CirrusItemType.APPLE;
+            case "bug" -> CirrusItemType.WRITABLE_BOOK;
+            default -> CirrusItemType.PAPER;
+        };
+    }
+}

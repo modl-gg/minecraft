@@ -233,7 +233,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         }
 
         // Add click instructions for open reports
-        if (report.getStatus() == null || "open".equalsIgnoreCase(report.getStatus()) || "in_progress".equalsIgnoreCase(report.getStatus())) {
+        if (report.getStatus() == null || !"closed".equalsIgnoreCase(report.getStatus())) {
             lore.add("");
             lore.add(MenuItems.COLOR_YELLOW + "Right-click to dismiss report");
         }
@@ -255,10 +255,9 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         switch (status.toLowerCase()) {
             case "open":
                 return MenuItems.COLOR_RED;
-            case "in_progress":
+            case "unfinished":
                 return MenuItems.COLOR_YELLOW;
             case "closed":
-            case "resolved":
                 return MenuItems.COLOR_GREEN;
             default:
                 return MenuItems.COLOR_GRAY;

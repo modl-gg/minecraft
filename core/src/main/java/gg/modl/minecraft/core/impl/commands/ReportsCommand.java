@@ -199,11 +199,7 @@ public class ReportsCommand extends BaseCommand {
                         coloredStatus = "&aOpen";
                         break;
                     case "closed":
-                    case "resolved":
                         coloredStatus = "&7Closed";
-                        break;
-                    case "under review":
-                        coloredStatus = "&eUnder Review";
                         break;
                     default:
                         coloredStatus = "&f" + status;

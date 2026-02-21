@@ -514,6 +514,12 @@ menus:
       - "&f "
       - "&cLeft-click to inspect player"
       - "&aRight-click to dismiss report"
+  linked_ticket_item:
+    title: "&e{date} {id} ({status}&e)"
+    lore:
+      - "&7{title}"
+      - "&f "
+      - "{content}"
   link_report_item_unselected:
     title: "&e{date} {id}"
     lore:

@@ -61,6 +61,7 @@ public final class MenuSlots {
     public static final int MODIFY_EVIDENCE = 29;
     public static final int MODIFY_PARDON = 30;
     public static final int MODIFY_DURATION = 31;
+    public static final int MODIFY_LINKED_TICKETS = 32;
     public static final int MODIFY_STAT_WIPE = 33;
     public static final int MODIFY_ALT_BLOCK = 34;
 

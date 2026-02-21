@@ -622,6 +622,33 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
+    @NotNull
+    @Override
+    public CompletableFuture<Void> modifyPunishmentTickets(@NotNull gg.modl.minecraft.api.http.request.ModifyPunishmentTicketsRequest request) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("issuerName", request.getIssuerName());
+        body.put("addTicketIds", request.getAddTicketIds());
+        body.put("removeTicketIds", request.getRemoveTicketIds());
+        body.put("modifyAssociatedTickets", request.isModifyAssociatedTickets());
+
+        return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/tickets")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<TicketsResponse> getTicketsByIds(@NotNull List<String> ticketIds) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("ids", ticketIds);
+
+        return sendAsync(requestBuilder("/minecraft/tickets/by-ids")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), TicketsResponse.class);
+    }
+
     private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {
         return sendAsync(request, responseType, null);
     }

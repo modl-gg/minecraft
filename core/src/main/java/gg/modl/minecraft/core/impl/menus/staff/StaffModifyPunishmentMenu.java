@@ -14,6 +14,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.AddPunishmentEvidenceRequest;
 import gg.modl.minecraft.api.http.request.AddPunishmentNoteRequest;
 import gg.modl.minecraft.api.http.request.ChangePunishmentDurationRequest;
+import gg.modl.minecraft.api.http.request.ModifyPunishmentTicketsRequest;
 import gg.modl.minecraft.api.http.request.PardonPunishmentRequest;
 import gg.modl.minecraft.api.http.request.TogglePunishmentOptionRequest;
 import gg.modl.minecraft.core.Platform;
@@ -23,7 +24,9 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -138,6 +141,30 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
                 )
         ).slot(MenuSlots.MODIFY_DURATION).actionHandler("changeDuration"));
 
+        // Slot 32: Linked Tickets
+        List<String> ticketIds = punishment.getAttachedTicketIds();
+        List<String> ticketLore = new ArrayList<>();
+        if (ticketIds.isEmpty()) {
+            ticketLore.add(MenuItems.COLOR_DARK_GRAY + "(No linked tickets)");
+        } else {
+            ticketLore.add(MenuItems.COLOR_GRAY + "Linked tickets (" + ticketIds.size() + "):");
+            for (int i = 0; i < Math.min(ticketIds.size(), 5); i++) {
+                ticketLore.add(MenuItems.COLOR_WHITE + "- " + ticketIds.get(i));
+            }
+            if (ticketIds.size() > 5) {
+                ticketLore.add(MenuItems.COLOR_DARK_GRAY + "... and " + (ticketIds.size() - 5) + " more");
+            }
+        }
+        ticketLore.add("");
+        ticketLore.add(MenuItems.COLOR_YELLOW + "Left-click to view tickets");
+        ticketLore.add(MenuItems.COLOR_YELLOW + "Right-click to link reports");
+
+        set(CirrusItem.of(
+                CirrusItemType.ENDER_EYE,
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Linked Tickets"),
+                MenuItems.lore(ticketLore)
+        ).slot(MenuSlots.MODIFY_LINKED_TICKETS).actionHandler("linkedTickets"));
+
         // Slot 33: Toggle Stat-Wipe (ban types only)
         if (isBanType) {
             boolean statWipe = punishment.getDataMap() != null &&
@@ -212,6 +239,9 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
 
         // Change duration handler
         registerActionHandler("changeDuration", this::handleChangeDuration);
+
+        // Linked tickets handler
+        registerActionHandler("linkedTickets", this::handleLinkedTickets);
 
         // Toggle stat-wipe handler
         registerActionHandler("toggleStatWipe", this::handleToggleStatWipe);
@@ -381,6 +411,68 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
         return total > 0 ? total : null;
     }
 
+    private void handleLinkedTickets(Click click) {
+        Consumer<CirrusPlayerWrapper> backToModify = player -> {
+            platform.runOnMainThread(() -> {
+                new StaffModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
+                        targetAccount, punishment, isAdmin, panelUrl, menuBackAction)
+                        .display(player);
+            });
+        };
+
+        if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
+            // Right-click: Open StaffLinkReportsMenu for modifying ticket links
+            Set<String> currentIds = new LinkedHashSet<>(punishment.getAttachedTicketIds());
+
+            StaffLinkReportsMenu linkMenu = new StaffLinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
+                    isAdmin, panelUrl, targetAccount, currentIds, backToModify, selectedIds -> {
+                // Compute diff
+                List<String> originalIds = punishment.getAttachedTicketIds();
+                List<String> addIds = new ArrayList<>();
+                List<String> removeIds = new ArrayList<>();
+
+                for (String id : selectedIds) {
+                    if (!originalIds.contains(id)) {
+                        addIds.add(id);
+                    }
+                }
+                for (String id : originalIds) {
+                    if (!selectedIds.contains(id)) {
+                        removeIds.add(id);
+                    }
+                }
+
+                if (addIds.isEmpty() && removeIds.isEmpty()) {
+                    sendMessage(MenuItems.COLOR_GRAY + "No changes to linked tickets.");
+                    platform.runOnMainThread(() -> backToModify.accept(click.player()));
+                    return;
+                }
+
+                ModifyPunishmentTicketsRequest request = new ModifyPunishmentTicketsRequest(
+                        punishment.getId(), addIds, removeIds, true, viewerName
+                );
+
+                httpClient.modifyPunishmentTickets(request).thenAccept(v -> {
+                    sendMessage(MenuItems.COLOR_GREEN + "Linked tickets updated successfully!");
+                    refreshMenu(click);
+                }).exceptionally(e -> {
+                    sendMessage(MenuItems.COLOR_RED + "Failed to update linked tickets: " + e.getMessage());
+                    platform.runOnMainThread(() -> backToModify.accept(click.player()));
+                    return null;
+                });
+            });
+
+            ActionHandlers.openMenu(linkMenu).handle(click);
+        } else {
+            // Left-click: View linked tickets
+            List<String> ticketIds = punishment.getAttachedTicketIds();
+
+            StaffViewLinkedTicketsMenu viewMenu = new StaffViewLinkedTicketsMenu(
+                    platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, ticketIds, backToModify);
+            ActionHandlers.openMenu(viewMenu).handle(click);
+        }
+    }
+
     private void handleToggleStatWipe(Click click) {
         boolean currentStatus = punishment.getDataMap() != null &&
                 Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
@@ -443,6 +535,7 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
                     freshPunishment.setNotes(new ArrayList<>(p.getNotes()));
                     freshPunishment.setEvidence(new ArrayList<>(p.getEvidence()));
                     freshPunishment.setDataMap(new java.util.HashMap<>(p.getData()));
+                    freshPunishment.setAttachedTicketIds(p.getAttachedTicketIds() != null ? new ArrayList<>(p.getAttachedTicketIds()) : null);
 
                     if (p.getType() != null) {
                         try {
