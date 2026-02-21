@@ -167,6 +167,8 @@ public class Cache {
         onlinePlayers.remove(playerUuid);
         joinTimes.remove(playerUuid);
         skinTextureCache.remove(playerUuid);
+        staffPreferencesCache.remove(playerUuid);
+        pendingNotificationsCache.remove(playerUuid);
     }
 
     /**
@@ -359,7 +361,13 @@ public class Cache {
      * Get all pending notifications for a player
      */
     public List<PendingNotification> getPendingNotifications(UUID playerUuid) {
-        return pendingNotificationsCache.getOrDefault(playerUuid, new ArrayList<>());
+        List<PendingNotification> notifications = pendingNotificationsCache.get(playerUuid);
+        if (notifications == null) return new ArrayList<>();
+        notifications.removeIf(PendingNotification::isExpired);
+        if (notifications.isEmpty()) {
+            pendingNotificationsCache.remove(playerUuid);
+        }
+        return notifications;
     }
     
     /**
@@ -405,6 +413,8 @@ public class Cache {
         onlinePlayers.clear();
         joinTimes.clear();
         skinTextureCache.clear();
+        staffPreferencesCache.clear();
+        staffPermissionsCache.clear();
         cachedPunishmentTypes = null;
         cachedPunishGuiConfig = null;
     }
