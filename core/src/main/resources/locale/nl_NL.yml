@@ -506,6 +506,12 @@ menus:
       - "&f "
       - "&cLinksklik om speler te inspecteren"
       - "&aRechtsklik om rapport af te wijzen"
+  linked_ticket_item:
+    title: "&e{date} {id} ({status}&e)"
+    lore:
+      - "&7{title}"
+      - "&f "
+      - "{content}"
   link_report_item_unselected:
     title: "&e{date} {id}"
     lore:

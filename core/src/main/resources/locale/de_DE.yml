@@ -413,6 +413,12 @@ menus:
       - "&f "
       - "&cLinksklick zum Inspizieren des Spielers"
       - "&aRechtsklick zum Ablehnen der Meldung"
+  linked_ticket_item:
+    title: "&e{date} {id} ({status}&e)"
+    lore:
+      - "&7{title}"
+      - "&f "
+      - "{content}"
   link_report_item_unselected:
     title: "&e{date} {id}"
     lore:
