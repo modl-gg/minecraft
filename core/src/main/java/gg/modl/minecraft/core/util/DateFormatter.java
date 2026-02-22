@@ -7,6 +7,7 @@ import java.util.TimeZone;
 
 public class DateFormatter {
     private static String dateFormatPattern = "MM/dd/yyyy HH:mm";
+    private static TimeZone timeZone = null;
 
     /**
      * Set the date format pattern from config. Called during plugin initialization.
@@ -20,10 +21,23 @@ public class DateFormatter {
         }
     }
 
+    /**
+     * Set the timezone from config. Called during plugin initialization.
+     * If null or empty, uses the server's default timezone.
+     */
+    public static void setTimezone(String timezoneId) {
+        if (timezoneId != null && !timezoneId.isEmpty()) {
+            timeZone = TimeZone.getTimeZone(timezoneId);
+        } else {
+            timeZone = null;
+        }
+    }
+
     public static String format(Date dateToFormat) {
         SimpleDateFormat date = new SimpleDateFormat(dateFormatPattern);
-        date.setTimeZone(TimeZone.getTimeZone("EST"));
-
-        return date.format(dateToFormat) + " EST";
+        if (timeZone != null) {
+            date.setTimeZone(timeZone);
+        }
+        return date.format(dateToFormat);
     }
 }

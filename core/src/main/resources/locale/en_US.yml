@@ -26,7 +26,7 @@ messages:
   claiming_ticket: "&eLinking ticket &f{ticketId}&e to your account..."
   ticket_claimed_success: "&aTicket &f{ticketId}&a successfully linked to your account!"
   ticket_claim_failed: "&cFailed to link ticket: {error}"
-  ticket_cooldown: "&cYou must wait before opening another ticket of this type."
+  ticket_cooldown: "&cYou must wait {seconds}s before opening another ticket of this type."
   report_gui_title: "&fReport {player}"
   report_skull_chat_log:
     - "&bReport {player}"

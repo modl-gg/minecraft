@@ -13,7 +13,7 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ReportGuiConfig;
 import gg.modl.minecraft.core.impl.cache.Cache;
-import gg.modl.minecraft.core.impl.menus.ReportGuiMenu;
+import gg.modl.minecraft.core.impl.menus.ReportMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import lombok.RequiredArgsConstructor;
@@ -40,10 +40,16 @@ public class TicketCommands extends BaseCommand {
     @Description("Report a player")
     @Syntax("<player>")
     @Conditions("player")
-    public void report(CommandIssuer sender, AbstractPlayer targetPlayer) {
+    public void report(CommandIssuer sender, String targetName) {
         if (!checkCooldown(sender, "player")) return;
 
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
+        AbstractPlayer targetPlayer = platform.getAbstractPlayer(targetName, false);
+
+        if (targetPlayer == null) {
+            sender.sendMessage(localeManager.getMessage("general.player_not_found"));
+            return;
+        }
 
         if (targetPlayer.username().equalsIgnoreCase(reporter.username())) {
             sender.sendMessage(localeManager.getMessage("messages.cannot_report_self"));
@@ -55,7 +61,7 @@ public class TicketCommands extends BaseCommand {
 
         UUID senderUuid = sender.getUniqueId();
         platform.runOnMainThread(() -> {
-            ReportGuiMenu menu = new ReportGuiMenu(
+            ReportMenu menu = new ReportMenu(
                     reporter, targetPlayer, httpClient, localeManager, platform, panelUrl,
                     guiConfig, chatMessageCache
             );
@@ -132,7 +138,49 @@ public class TicketCommands extends BaseCommand {
 
         submitFinishedTicket(sender, request, "Chat report", "chat");
     }
-    
+
+    @CommandAlias("%cmd_hackreport")
+    @CommandCompletion("@players")
+    @Description("Report a player for cheating/hacking")
+    @Syntax("<player> [details]")
+    @Conditions("player")
+    public void hackReport(CommandIssuer sender, String targetName, @Optional String details) {
+        if (!checkCooldown(sender, "player")) return;
+
+        AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
+        AbstractPlayer targetPlayer = platform.getAbstractPlayer(targetName, false);
+
+        if (targetPlayer == null) {
+            sender.sendMessage(localeManager.getMessage("general.player_not_found"));
+            return;
+        }
+
+        if (targetPlayer.username().equalsIgnoreCase(reporter.username())) {
+            sender.sendMessage(localeManager.getMessage("messages.cannot_report_self"));
+            return;
+        }
+
+        String description = details != null && !details.isEmpty() ? details : null;
+
+        String createdServer = platform.getPlayerServer(sender.getUniqueId());
+
+        CreateTicketRequest request = new CreateTicketRequest(
+            reporter.uuid().toString(),
+            reporter.username(),
+            "player",
+            "Cheating: " + targetPlayer.username(),
+            description,
+            targetPlayer.uuid().toString(),
+            targetPlayer.username(),
+            null,
+            List.of("report", "cheating"),
+            "normal",
+            createdServer
+        );
+
+        submitFinishedTicket(sender, request, "Report", "player");
+    }
+
     @CommandAlias("%cmd_apply")
     @Description("Submit a staff application")
     @Conditions("player")
@@ -259,9 +307,14 @@ public class TicketCommands extends BaseCommand {
         Map<String, Long> playerCooldowns = cooldowns.get(uuid);
         if (playerCooldowns != null) {
             Long lastUsed = playerCooldowns.get(ticketType);
-            if (lastUsed != null && System.currentTimeMillis() - lastUsed < 60_000) {
-                sender.sendMessage(localeManager.getMessage("messages.ticket_cooldown"));
-                return false;
+            if (lastUsed != null) {
+                long elapsed = System.currentTimeMillis() - lastUsed;
+                if (elapsed < 60_000) {
+                    long remainingSeconds = (60_000 - elapsed) / 1000;
+                    sender.sendMessage(localeManager.getMessage("messages.ticket_cooldown",
+                            Map.of("seconds", String.valueOf(remainingSeconds))));
+                    return false;
+                }
             }
         }
         return true;

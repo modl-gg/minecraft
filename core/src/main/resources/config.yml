@@ -4,8 +4,7 @@
 api:
   # Your API key from the panel
   key: "your-api-key-here"
-  # Your panel's base URL (e.g., https://yourserver.modl.gg)
-  # NOTE: Do NOT include /api in the URL - it will be added automatically
+  # Your panel's  URL (e.g., https://yourserver.modl.gg)
   url: "https://yourserver.modl.gg"
   # Enable debug HTTP logging (default: false)
   debug: false
@@ -63,6 +62,7 @@ commands:
   iammuted: "iammuted"
   report: "report"
   chatreport: "chatreport"
+  hackreport: "hackreport|hr"
   apply: "apply"
   bugreport: "bugreport"
   support: "support"
@@ -108,6 +108,27 @@ punishment_type_items_by_ordinal:
   15: "minecraft:gold_ingot"
   16: "minecraft:experience_bottle"
   17: "minecraft:barrier"
+
+# Locale Configuration
+# These values are used by the locale system for URLs, formatting, etc.
+locale_config:
+  # Default reason when none is specified
+  default_reason: "No reason specified"
+
+  # Date format for displaying dates
+  date_format: "MM/dd/yyyy HH:mm"
+
+  # Timezone for displaying dates (e.g. "America/New_York", "UTC", "Europe/London")
+  # Uses server timezone if not set
+  timezone: ""
+
+  # Duration format templates
+  duration_format:
+    days: "{days}d"
+    hours: "{hours}h"
+    minutes: "{minutes}m"
+    seconds: "{seconds}s"
+    permanent: "permanent"
 
 # Punish GUI Configuration
 # Configures the punishment menu layout (slots 28-34, 37-43 in a 6-row inventory)
@@ -468,29 +489,3 @@ standing_gui:
       - "&7{duration} {type} ({status})"
       - ""
       - "&f{reason}"
-
-# Locale Configuration
-# These values are used by the locale system for URLs, formatting, etc.
-locale_config:
-  # Default reason when none is specified
-  default_reason: "No reason specified"
-
-  # Date format for displaying dates
-  date_format: "MM/dd/yyyy HH:mm"
-
-  # Duration format templates
-  duration_format:
-    days: "{days}d"
-    hours: "{hours}h"
-    minutes: "{minutes}m"
-    seconds: "{seconds}s"
-    permanent: "permanent"
-
-# Placeholders available in descriptions:
-#   {staff-description} - The staff description from the punishment type configuration
-#   {social-status}     - The player's current social offender status (Good, Warning, Restricted, Banned)
-#   {gameplay-status}   - The player's current gameplay offender status (Good, Warning, Restricted, Banned)
-#   {social-points}     - The player's current social offense points
-#   {gameplay-points}   - The player's current gameplay offense points
-#
-# Color codes: &7=gray, &f=white, &c=red, &a=green, &e=yellow, &6=gold, &b=aqua

@@ -92,8 +92,8 @@ public class PluginLoader {
         // Load locale config values from config.yml
         loadLocaleConfig(dataDirectory, logger);
 
-        // Set panel URL on locale manager (derived from api.url)
-        this.localeManager.setPanelUrl(httpManager.getPanelUrl());
+        // Set panel URL on PunishmentMessages (derived from api.url config)
+        gg.modl.minecraft.core.util.PunishmentMessages.setPanelUrl(httpManager.getPanelUrl());
 
         // Set the locale manager on the platform for menu access
         platform.setLocaleManager(this.localeManager);
@@ -125,18 +125,25 @@ public class PluginLoader {
         Map<String, String> commandAliases = loadCommandAliases(dataDirectory, logger);
         registerCommandReplacements(commandManager, commandAliases);
 
-        commandManager.getCommandContexts().registerContext(AbstractPlayer.class, (c)
-                -> fetchPlayer(c.popFirstArg(), platform, getHttpClient(), queryMojang));
+        commandManager.getCommandContexts().registerContext(AbstractPlayer.class, (c) -> {
+            AbstractPlayer player = fetchPlayer(c.popFirstArg(), platform, getHttpClient(), queryMojang);
+            if (player == null) throw new ConditionFailedException(localeManager.getMessage("general.player_not_found"));
+            return player;
+        });
 
-        commandManager.getCommandContexts().registerContext(Account.class, (c) -> fetchPlayer(c.popFirstArg(), getHttpClient()));
+        commandManager.getCommandContexts().registerContext(Account.class, (c) -> {
+            Account account = fetchPlayer(c.popFirstArg(), getHttpClient());
+            if (account == null) throw new ConditionFailedException(localeManager.getMessage("general.player_not_found"));
+            return account;
+        });
 
         // Register ACF command conditions for permission checks
         registerCommandConditions(commandManager, cache, this.localeManager);
 //
-        // Removed duplicate - TicketCommands registered below with proper panelUrl
+        // Removed duplicate - TicketCommands registered below
 
         // Register punishment command with tab completion
-        PunishCommand punishCommand = new PunishCommand(httpClientHolder, platform, cache, this.localeManager);
+        PunishCommand punishCommand = new PunishCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl());
         commandManager.registerCommand(punishCommand);
 
         // Set up punishment types tab completion
@@ -195,10 +202,14 @@ public class PluginLoader {
         AbstractPlayer player = platform.getAbstractPlayer(target, false);
         if (player != null) return player;
 
-        Account account = httpClient.getPlayer(new PlayerNameRequest(target)).join().getPlayer();
+        try {
+            Account account = httpClient.getPlayer(new PlayerNameRequest(target)).join().getPlayer();
 
-        if (account != null)
-            return new AbstractPlayer(account.getMinecraftUuid(), "test", false);
+            if (account != null)
+                return new AbstractPlayer(account.getMinecraftUuid(), "test", false);
+        } catch (Exception ignored) {
+            // Player not found — expected for lookups of players not in the database
+        }
 
         if (queryMojang)
             return platform.getAbstractPlayer(target, true);
@@ -268,6 +279,7 @@ public class PluginLoader {
             Map.entry("iammuted", "iammuted"),
             Map.entry("report", "report"),
             Map.entry("chatreport", "chatreport"),
+            Map.entry("hackreport", "hackreport|hr"),
             Map.entry("apply", "apply"),
             Map.entry("bugreport", "bugreport"),
             Map.entry("support", "support"),
@@ -339,11 +351,18 @@ public class PluginLoader {
                     Map<String, Object> localeConfig = (Map<String, Object>) config.get("locale_config");
                     this.localeManager.setConfigValues(localeConfig);
 
-                    // Propagate date format to static utility classes
+                    // Propagate date format and timezone to static utility classes
                     String dateFormat = this.localeManager.getDateFormatPattern();
                     gg.modl.minecraft.core.impl.menus.util.MenuItems.setDateFormat(dateFormat);
                     gg.modl.minecraft.core.util.DateFormatter.setDateFormat(dateFormat);
                     gg.modl.minecraft.core.util.PunishmentMessages.setDateFormat(dateFormat);
+
+                    String timezone = (String) localeConfig.getOrDefault("timezone", "");
+                    if (timezone != null && !timezone.isEmpty()) {
+                        gg.modl.minecraft.core.impl.menus.util.MenuItems.setTimezone(timezone);
+                        gg.modl.minecraft.core.util.DateFormatter.setTimezone(timezone);
+                        gg.modl.minecraft.core.util.PunishmentMessages.setTimezone(timezone);
+                    }
                 }
             }
         } catch (Exception e) {

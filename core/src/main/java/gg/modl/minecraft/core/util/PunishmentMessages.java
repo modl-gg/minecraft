@@ -11,7 +11,34 @@ import java.util.Map;
  * Utility class for formatting punishment messages across all platforms
  */
 public class PunishmentMessages {
-    
+
+    private static String panelUrl;
+
+    /**
+     * Set the panel URL (derived from config's api.url).
+     * Called during plugin initialization.
+     */
+    public static void setPanelUrl(String url) {
+        panelUrl = url;
+    }
+
+    /**
+     * Get the configured panel URL.
+     */
+    public static String getPanelUrl() {
+        return panelUrl;
+    }
+
+    /**
+     * Build the appeal URL from the configured panel URL.
+     */
+    public static String getAppealUrl() {
+        if (panelUrl != null && !panelUrl.isEmpty()) {
+            return panelUrl + "/appeal";
+        }
+        return "https://server.modl.gg/appeal";
+    }
+
     /**
      * Context for punishment messages to determine appropriate tense and formatting
      */
@@ -162,13 +189,7 @@ public class PunishmentMessages {
         variables.put("reason", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
         variables.put("description", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
         variables.put("duration", punishment.isPermanent() ? "permanent" : formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
-        // Appeal URL - derive from api.url
-        String panelUrl = localeManager.getPanelUrl();
-        if (panelUrl != null && !panelUrl.isEmpty()) {
-            variables.put("appeal_url", panelUrl + "/appeal");
-        } else {
-            variables.put("appeal_url", "https://server.modl.gg/appeal");
-        }
+        variables.put("appeal_url", getAppealUrl());
         variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");
 
         // Use public notification message for the actual punishment type ordinal
@@ -176,6 +197,7 @@ public class PunishmentMessages {
     }
     
     private static String dateFormatPattern = "MM/dd/yyyy HH:mm";
+    private static java.util.TimeZone timeZone = null;
 
     /**
      * Set the date format pattern from config. Called during plugin initialization.
@@ -190,12 +212,26 @@ public class PunishmentMessages {
     }
 
     /**
+     * Set the timezone from config. Called during plugin initialization.
+     */
+    public static void setTimezone(String timezoneId) {
+        if (timezoneId != null && !timezoneId.isEmpty()) {
+            timeZone = java.util.TimeZone.getTimeZone(timezoneId);
+        } else {
+            timeZone = null;
+        }
+    }
+
+    /**
      * Format time in a user-friendly way
      */
     public static String formatTime(java.util.Date date) {
         if (date == null) return "Never";
 
         java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat(dateFormatPattern);
+        if (timeZone != null) {
+            formatter.setTimeZone(timeZone);
+        }
         return formatter.format(date);
     }
     
@@ -219,13 +255,7 @@ public class PunishmentMessages {
         variables.put("duration", punishment.isPermanent() ? "permanent" : formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
         variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");
 
-        // Appeal URL - derive from api.url
-        String panelUrl = localeManager.getPanelUrl();
-        if (panelUrl != null && !panelUrl.isEmpty()) {
-            variables.put("appeal_url", panelUrl + "/appeal");
-        } else {
-            variables.put("appeal_url", "https://server.modl.gg/appeal");
-        }
+        variables.put("appeal_url", getAppealUrl());
 
         // Temp - "temporarily" or "permanently"
         variables.put("temp", punishment.isPermanent() ? "permanently" : "temporarily");

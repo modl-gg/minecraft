@@ -1,184 +1,145 @@
 package gg.modl.minecraft.core.impl.menus;
 
+import dev.simplix.cirrus.actionhandler.ActionHandler;
+import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.menu.CirrusInventoryType;
+import dev.simplix.cirrus.model.CallResult;
 import dev.simplix.cirrus.text.CirrusChatElement;
+import dev.simplix.cirrus.menus.SimpleMenu;
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
-import gg.modl.minecraft.api.http.request.CreateTicketRequest;
-import gg.modl.minecraft.api.http.response.CreateTicketResponse;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.config.ReportGuiConfig;
+import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import dev.simplix.cirrus.item.CirrusItem;
-import dev.simplix.cirrus.menus.SimpleMenu;
+import gg.modl.minecraft.core.service.ChatMessageCache;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
-
+/**
+ * Base category selection menu for player reports (6x9 layout).
+ * Players choose a report category, then proceed through the multi-step flow.
+ */
 public class ReportMenu extends SimpleMenu {
-    
-    private final AbstractPlayer hero;
-    private final AbstractPlayer villain;
-    private final String data;
+
+    private final AbstractPlayer reporter;
+    private final AbstractPlayer target;
     private final ModlHttpClient httpClient;
     private final LocaleManager locale;
     private final Platform platform;
     private final String panelUrl;
-    
-    public ReportMenu(AbstractPlayer hero, AbstractPlayer villain, String data, ModlHttpClient httpClient, LocaleManager locale, Platform platform, String panelUrl) {
+    private final ReportGuiConfig guiConfig;
+    private final ChatMessageCache chatMessageCache;
+
+    // Slot mapping: config slots 1-7 -> GUI row 3 (slots 19-25), slots 8-14 -> GUI row 4 (slots 28-34)
+    private static final int[] GUI_SLOTS = {19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34};
+
+    public ReportMenu(AbstractPlayer reporter, AbstractPlayer target, ModlHttpClient httpClient,
+                      LocaleManager locale, Platform platform, String panelUrl,
+                      ReportGuiConfig guiConfig, ChatMessageCache chatMessageCache) {
         super();
-        this.hero = hero;
-        this.villain = villain;
-        this.data = data;
+        this.reporter = reporter;
+        this.target = target;
         this.httpClient = httpClient;
         this.locale = locale;
         this.platform = platform;
         this.panelUrl = panelUrl;
-        
-        title(locale.getMessage("report_gui.title", Map.of("$villain", villain.username())));
-        type(CirrusInventoryType.GENERIC_9X3); // Fixed size from locale
+        this.guiConfig = guiConfig;
+        this.chatMessageCache = chatMessageCache;
+
+        title(locale.getMessage("messages.report_gui_title", Map.of("player", target.username())));
+        type(CirrusInventoryType.GENERIC_9X6);
         buildMenu();
     }
-    
+
     private void buildMenu() {
-        // Create report category items from locale
-        createCategoryItem("chat_violation", "chat_report");
-        createCategoryItem("username", "username_report");
-        createCategoryItem("skin", "skin_report");
-        createCategoryItem("content", "content_report");
-        createCategoryItem("team_griefing", "team_report");
-        createCategoryItem("game_rules", "game_report");
-        createCategoryItem("cheating", "cheating_report");
-        
-        // Close button
-        LocaleManager.ReportCategory closeButton = locale.getCloseButton();
-        List<CirrusChatElement> closeLore = closeButton.getLore().stream()
-            .map(CirrusChatElement::ofLegacyText)
-            .collect(Collectors.toList());
+        // Row 0, slot 4: Player head of target
+        CirrusItem headItem = MenuItems.playerHead(
+                target.username(),
+                locale.getMessage("messages.report_gui_title", Map.of("player", target.username())),
+                List.of()
+        );
+        if (platform.getCache() != null) {
+            String texture = platform.getCache().getSkinTexture(target.uuid());
+            if (texture != null) {
+                headItem = headItem.texture(texture);
+            }
+        }
+        set(headItem.slot(4));
+
+        // Rows 2-3: Category items from config
+        for (int configSlot = 1; configSlot <= 14; configSlot++) {
+            ReportGuiConfig.ReportSlotConfig slotConfig = guiConfig.getSlot(configSlot);
+            if (slotConfig == null || !slotConfig.isEnabled()) {
+                continue;
+            }
+
+            int guiSlot = GUI_SLOTS[configSlot - 1];
+            set(createCategoryItem(slotConfig).slot(guiSlot));
+        }
+
+        // Row 5, slot 49: Info item
+        ReportGuiConfig.InfoConfig infoConfig = guiConfig.getInfoConfig();
+        if (infoConfig != null) {
+            set(CirrusItem.of(
+                    CirrusItemType.of(infoConfig.getItem()),
+                    CirrusChatElement.ofLegacyText(MenuItems.translateColorCodes(infoConfig.getTitle())),
+                    MenuItems.lore(infoConfig.getDescription())
+            ).slot(48));
+        }
+
+        // Row 5, slot 49: Close button
         set(CirrusItem.of(
-                CirrusItemType.of(closeButton.getItemType()),
-                CirrusChatElement.ofLegacyText(closeButton.getName()),
-                closeLore
-            )
-            .slot(closeButton.getSlot())
-            .actionHandler("close"));
+                CirrusItemType.BARRIER,
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + "Close"),
+                MenuItems.lore(MenuItems.COLOR_GRAY + "Close this menu")
+        ).slot(49).actionHandler("close"));
     }
-    
-    private void createCategoryItem(String categoryName, String actionHandler) {
-        LocaleManager.ReportCategory category = locale.getReportCategory(categoryName, villain.username());
-        
-        List<CirrusChatElement> lore = category.getLore().stream()
-            .map(CirrusChatElement::ofLegacyText)
-            .collect(Collectors.toList());
-        set(CirrusItem.of(
-                CirrusItemType.of(category.getItemType()),
-                CirrusChatElement.ofLegacyText(category.getName()),
-                lore
-            )
-            .slot(category.getSlot())
-            .actionHandler(actionHandler));
+
+    private CirrusItem createCategoryItem(ReportGuiConfig.ReportSlotConfig slotConfig) {
+        return CirrusItem.of(
+                CirrusItemType.of(slotConfig.getItem()),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + slotConfig.getTitle()),
+                MenuItems.lore(slotConfig.getDescription())
+        ).actionHandler("category_" + slotConfig.getSlotNumber());
     }
-    
+
     @Override
     protected void registerActionHandlers() {
-        registerActionHandler("chat_report", click -> {
-            click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("chat_violation", villain.username());
-            submitReport(category.getReportType(), category.getSubject());
-        });
-        
-        registerActionHandler("username_report", click -> {
-            click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("username", villain.username());
-            submitReport(category.getReportType(), category.getSubject());
-        });
-        
-        registerActionHandler("skin_report", click -> {
-            click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("skin", villain.username());
-            submitReport(category.getReportType(), category.getSubject());
-        });
-        
-        registerActionHandler("content_report", click -> {
-            click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("content", villain.username());
-            submitReport(category.getReportType(), category.getSubject());
-        });
-        
-        registerActionHandler("team_report", click -> {
-            click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("team_griefing", villain.username());
-            submitReport(category.getReportType(), category.getSubject());
-        });
-        
-        registerActionHandler("game_report", click -> {
-            click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("game_rules", villain.username());
-            submitReport(category.getReportType(), category.getSubject());
-        });
-        
-        registerActionHandler("cheating_report", click -> {
-            click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("cheating", villain.username());
-            submitReport(category.getReportType(), category.getSubject());
-        });
-        
         registerActionHandler("close", click -> {
             click.clickedMenu().close();
         });
-    }
-    
-    private void submitReport(String type, String subject) {
-        
-        CreateTicketRequest request = new CreateTicketRequest(
-            hero.uuid().toString(),                                         // creatorUuid
-            hero.username(),                                         // creatorName
-            type,                                               // type
-            subject + ": " + villain.username(),                     // subject
-            data != null ? data : locale.getMessage("messages.no_details", Map.of()), // description
-            villain.uuid().toString(),                                     // reportedPlayerUuid
-            villain.username(),                                       // reportedPlayerName
-            null,                                              // TODO: chatMessages
-            List.of(), // tags
-            "normal",                           // priority
-            platform.getPlayerServer(hero.uuid())// ""
-        );
-        
-        sendMessage(locale.getMessage("messages.submitting", Map.of("type", "report")));
-        
-        CompletableFuture<CreateTicketResponse> future = httpClient.createTicket(request);
-        
-        future.thenAccept(response -> {
-            if (response.isSuccess() && response.getTicketId() != null) {
-                sendMessage(locale.getMessage("messages.success", Map.of("type", "Report")));
-                sendMessage(locale.getMessage("messages.ticket_id", Map.of("ticketId", response.getTicketId())));
 
-                String ticketUrl = panelUrl + "/tickets/" + response.getTicketId();
-                String escapedUrl = ticketUrl.replace("\"", "\\\"");
-                String json = String.format(
-                    "{\"text\":\"\",\"extra\":[" +
-                    "{\"text\":\"View your ticket: \",\"color\":\"gray\"}," +
-                    "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-                    "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                    "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket\"}}]}",
-                    escapedUrl, ticketUrl
-                );
-                platform.sendJsonMessage(hero.uuid(), json);
-                sendMessage(locale.getMessage("messages.evidence_note"));
-            } else {
-                sendMessage(locale.getMessage("messages.failed_submit", Map.of("type", "report", "error", locale.sanitizeErrorMessage(response.getMessage()))));
+        // Register handler for each enabled category slot
+        for (int configSlot = 1; configSlot <= 14; configSlot++) {
+            ReportGuiConfig.ReportSlotConfig slotConfig = guiConfig.getSlot(configSlot);
+            if (slotConfig == null || !slotConfig.isEnabled()) {
+                continue;
             }
-        }).exceptionally(throwable -> {
-            sendMessage(locale.getMessage("messages.failed_submit", Map.of("type", "report", "error", locale.sanitizeErrorMessage(throwable.getMessage()))));
-            return null;
-        });
-    }
 
+            final ReportGuiConfig.ReportSlotConfig finalSlot = slotConfig;
+            registerActionHandler("category_" + configSlot, (ActionHandler) click -> {
+                ReportData reportData = new ReportData(finalSlot.getTitle(), finalSlot.isChatReport());
 
-    private void sendMessage(String message) {
-        platform.sendMessage(hero.uuid(), message);
+                if (finalSlot.isChatReport()) {
+                    // Open chat log menu
+                    ActionHandlers.openMenu(new ReportChatLogMenu(
+                            reporter, target, httpClient, locale, platform, panelUrl,
+                            guiConfig, chatMessageCache, reportData
+                    )).handle(click);
+                } else {
+                    // Skip chat log, go to details menu
+                    ActionHandlers.openMenu(new ReportDetailsMenu(
+                            reporter, target, httpClient, locale, platform, panelUrl,
+                            guiConfig, chatMessageCache, reportData, null
+                    )).handle(click);
+                }
+
+                return CallResult.DENY_GRABBING;
+            });
+        }
     }
 }

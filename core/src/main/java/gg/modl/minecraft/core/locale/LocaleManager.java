@@ -21,9 +21,6 @@ public class LocaleManager {
     private Map<String, Object> messages;
     private Map<String, Object> configValues;
     private final String currentLocale;
-    @Getter
-    private String panelUrl;
-
     public LocaleManager(String locale) {
         this.currentLocale = locale;
         this.messages = new HashMap<>();
@@ -43,14 +40,6 @@ public class LocaleManager {
         this.configValues = config != null ? config : new HashMap<>();
     }
 
-    /**
-     * Set the panel URL (derived from api.url config).
-     * Used for appeal URLs and other panel links.
-     */
-    public void setPanelUrl(String panelUrl) {
-        this.panelUrl = panelUrl;
-    }
-    
     private void loadLocale(String locale) {
         try {
             // Try to load from resources first
@@ -248,15 +237,8 @@ public class LocaleManager {
      */
     public String getPunishmentMessage(String path, Map<String, String> variables) {
         Map<String, String> allVariables = new HashMap<>(variables);
-        
-        // Add config variables - appeal_url is derived from api.url
-        if (this.panelUrl != null && !this.panelUrl.isEmpty()) {
-            allVariables.putIfAbsent("appeal_url", this.panelUrl + "/appeal");
-        } else {
-            allVariables.putIfAbsent("appeal_url", "https://server.modl.gg/appeal");
-        }
         allVariables.putIfAbsent("default_reason", getMessage("config.default_reason"));
-        
+
         return getMessage(path, allVariables);
     }
     
@@ -409,13 +391,6 @@ public class LocaleManager {
 
         // Add issued date in MM/DD/YY HH:MM format
         variables.put("issued", formatIssuedDate(punishment));
-
-        // Add appeal URL (api.url + /appeal)
-        if (this.panelUrl != null && !this.panelUrl.isEmpty()) {
-            variables.put("appeal_url", this.panelUrl + "/appeal");
-        } else {
-            variables.put("appeal_url", "https://server.modl.gg/appeal");
-        }
 
         // Add player description from punishment type
         String playerDesc = punishment.getPlayerDescription();
@@ -856,6 +831,10 @@ public class LocaleManager {
         String format = getMessage("config.date_format");
         try {
             SimpleDateFormat dateFormat = new SimpleDateFormat(format);
+            String tz = getMessage("config.timezone");
+            if (tz != null && !tz.isEmpty() && !tz.startsWith("§cMissing")) {
+                dateFormat.setTimeZone(java.util.TimeZone.getTimeZone(tz));
+            }
             return dateFormat.format(date);
         } catch (Exception e) {
             return date.toString();

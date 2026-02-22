@@ -230,7 +230,7 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         click.clickedMenu().close();
 
         // Send clickable ticket link
-        String ticketUrl = panelUrl + "/tickets/" + ticket.getId();
+        String ticketUrl = panelUrl + "/ticket/" + ticket.getId();
         String escapedUrl = ticketUrl.replace("\"", "\\\"");
         String json = String.format(
             "{\"text\":\"\",\"extra\":[" +

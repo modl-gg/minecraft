@@ -42,6 +42,7 @@ public class PunishCommand extends BaseCommand {
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
+    private final String panelUrl;
 
     // Helper to get the current HTTP client
     private ModlHttpClient getHttpClient() {
@@ -350,8 +351,6 @@ public class PunishCommand extends BaseCommand {
         variables.put("duration", localeManager.formatDuration(duration));
         variables.put("reason", reason != null ? reason : "No reason specified");
         variables.put("description", punishmentType != null ? punishmentType.getName() : punishmentTypeName);
-        // Appeal URL - derive from api.url
-        String panelUrl = localeManager.getPanelUrl();
         if (panelUrl != null && !panelUrl.isEmpty()) {
             variables.put("appeal_url", panelUrl + "/appeal");
         } else {

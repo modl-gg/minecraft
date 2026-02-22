@@ -70,11 +70,16 @@ public class ReportDetailsMenu extends SimpleMenu {
 
         // P (slot 13): Player skull
         List<String> skullLines = locale.getMessageList("messages.report_skull_details", Map.of("player", target.username()));
-        set(MenuItems.playerHead(
+        CirrusItem detailsHead = MenuItems.playerHead(
                 target.username(),
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
-        ).slot(13));
+        );
+        if (platform.getCache() != null) {
+            String texture = platform.getCache().getSkinTexture(target.uuid());
+            if (texture != null) detailsHead = detailsHead.texture(texture);
+        }
+        set(detailsHead.slot(13));
 
         // N (slot 15): Skip Details
         set(CirrusItem.of(
@@ -143,14 +148,14 @@ public class ReportDetailsMenu extends SimpleMenu {
                             guiConfig, chatMessageCache, reportData
                     )).handle(click);
                 } else {
-                    ActionHandlers.openMenu(new ReportGuiMenu(
+                    ActionHandlers.openMenu(new ReportMenu(
                             reporter, target, httpClient, locale, platform, panelUrl,
                             guiConfig, chatMessageCache
                     )).handle(click);
                 }
             } else {
                 // No previous menu, go to category selection
-                ActionHandlers.openMenu(new ReportGuiMenu(
+                ActionHandlers.openMenu(new ReportMenu(
                         reporter, target, httpClient, locale, platform, panelUrl,
                         guiConfig, chatMessageCache
                 )).handle(click);

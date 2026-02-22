@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -18,16 +19,27 @@ import java.util.stream.Collectors;
 public final class MenuItems {
     private MenuItems() {}
 
-    private static SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MM/dd/yyyy HH:mm");
+    private static String dateFormatPattern = "MM/dd/yyyy HH:mm";
+    private static TimeZone timeZone = null;
 
     /**
      * Set the date format pattern from config. Called during plugin initialization.
      */
     public static void setDateFormat(String pattern) {
         try {
-            DATE_FORMAT = new SimpleDateFormat(pattern);
+            new SimpleDateFormat(pattern); // validate
+            dateFormatPattern = pattern;
         } catch (IllegalArgumentException ignored) {
             // Keep default if pattern is invalid
+        }
+    }
+
+    /**
+     * Set the timezone from config. Called during plugin initialization.
+     */
+    public static void setTimezone(String timezoneId) {
+        if (timezoneId != null && !timezoneId.isEmpty()) {
+            timeZone = TimeZone.getTimeZone(timezoneId);
         }
     }
 
@@ -255,7 +267,11 @@ public final class MenuItems {
      */
     public static String formatDate(Date date) {
         if (date == null) return "Unknown";
-        return DATE_FORMAT.format(date);
+        SimpleDateFormat formatter = new SimpleDateFormat(dateFormatPattern);
+        if (timeZone != null) {
+            formatter.setTimeZone(timeZone);
+        }
+        return formatter.format(date);
     }
 
     /**

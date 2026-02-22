@@ -83,11 +83,16 @@ public class ReportConfirmMenu extends SimpleMenu {
 
         // P (slot 13): Player skull
         List<String> skullLines = locale.getMessageList("messages.report_skull_confirm", Map.of("player", target.username()));
-        set(MenuItems.playerHead(
+        CirrusItem confirmHead = MenuItems.playerHead(
                 target.username(),
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
-        ).slot(13));
+        );
+        if (platform.getCache() != null) {
+            String texture = platform.getCache().getSkinTexture(target.uuid());
+            if (texture != null) confirmHead = confirmHead.texture(texture);
+        }
+        set(confirmHead.slot(13));
 
         // Q (slot 15): Cancel Report
         set(CirrusItem.of(

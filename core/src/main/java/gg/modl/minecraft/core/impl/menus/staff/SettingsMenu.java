@@ -291,7 +291,7 @@ public class SettingsMenu extends BaseStaffMenu {
         click.clickedMenu().close();
         // Open the most recently updated assigned ticket in panel
         TicketsResponse.Ticket ticket = assignedTickets.get(0);
-        String ticketUrl = panelUrl + "/tickets/" + ticket.getId();
+        String ticketUrl = panelUrl + "/ticket/" + ticket.getId();
         String escapedUrl = ticketUrl.replace("\"", "\\\"");
         String json = String.format(
             "{\"text\":\"\",\"extra\":[" +

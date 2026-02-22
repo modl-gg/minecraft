@@ -22,7 +22,7 @@ import gg.modl.minecraft.core.impl.menus.inspect.ReportsMenu;
 import gg.modl.minecraft.core.impl.menus.staff.StaffReportsMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
-import java.text.SimpleDateFormat;
+import gg.modl.minecraft.core.util.DateFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -177,8 +177,6 @@ public class ReportsCommand extends BaseCommand {
     }
 
     private void displayReports(CommandIssuer sender, String playerName, List<ReportsResponse.Report> reports) {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
-
         sender.sendMessage(localeManager.getMessage("print.reports.header", Map.of("player", playerName)));
 
         if (reports == null || reports.isEmpty()) {
@@ -186,7 +184,7 @@ public class ReportsCommand extends BaseCommand {
         } else {
             int ordinal = 1;
             for (ReportsResponse.Report report : reports) {
-                String date = report.getCreatedAt() != null ? dateFormat.format(report.getCreatedAt()) : "Unknown";
+                String date = report.getCreatedAt() != null ? DateFormatter.format(report.getCreatedAt()) : "Unknown";
                 String id = report.getId() != null ? report.getId() : "?";
                 String status = report.getStatus() != null ? report.getStatus() : "Unknown";
                 String type = report.getType() != null ? report.getType() : "Unknown";

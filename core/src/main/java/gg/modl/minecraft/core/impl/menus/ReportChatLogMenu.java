@@ -66,11 +66,16 @@ public class ReportChatLogMenu extends SimpleMenu {
 
         // P (slot 13): Player skull
         List<String> skullLines = locale.getMessageList("messages.report_skull_chat_log", Map.of("player", target.username()));
-        set(MenuItems.playerHead(
+        CirrusItem chatLogHead = MenuItems.playerHead(
                 target.username(),
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
-        ).slot(13));
+        );
+        if (platform.getCache() != null) {
+            String texture = platform.getCache().getSkinTexture(target.uuid());
+            if (texture != null) chatLogHead = chatLogHead.texture(texture);
+        }
+        set(chatLogHead.slot(13));
 
         // N (slot 15): Skip Chat Log
         set(CirrusItem.of(
@@ -122,7 +127,7 @@ public class ReportChatLogMenu extends SimpleMenu {
 
         registerActionHandler("back", (ActionHandler) click -> {
             // Return to category selection
-            ActionHandlers.openMenu(new ReportGuiMenu(
+            ActionHandlers.openMenu(new ReportMenu(
                     reporter, target, httpClient, locale, platform, panelUrl,
                     guiConfig, chatMessageCache
             )).handle(click);

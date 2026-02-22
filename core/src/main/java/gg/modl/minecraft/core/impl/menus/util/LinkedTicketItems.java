@@ -106,9 +106,9 @@ public final class LinkedTicketItems {
 
         click.clickedMenu().close();
 
-        String panelUrl = platform.getLocaleManager().getPanelUrl();
+        String panelUrl = gg.modl.minecraft.core.util.PunishmentMessages.getPanelUrl();
         if (panelUrl != null && !panelUrl.isEmpty()) {
-            String ticketUrl = panelUrl + "/tickets/" + ticket.getId();
+            String ticketUrl = panelUrl + "/ticket/" + ticket.getId();
             String escapedUrl = ticketUrl.replace("\"", "\\\"");
             String json = String.format(
                 "{\"text\":\"\",\"extra\":[" +

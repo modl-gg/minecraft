@@ -21,7 +21,7 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.NotesMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
-import java.text.SimpleDateFormat;
+import gg.modl.minecraft.core.util.DateFormatter;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -142,8 +142,6 @@ public class NotesCommand extends BaseCommand {
     }
 
     private void displayNotes(CommandIssuer sender, String playerName, Account profile) {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
-
         sender.sendMessage(localeManager.getMessage("print.notes.header", Map.of("player", playerName)));
 
         if (profile.getNotes().isEmpty()) {
@@ -151,7 +149,7 @@ public class NotesCommand extends BaseCommand {
         } else {
             int ordinal = 1;
             for (Note note : profile.getNotes()) {
-                String date = dateFormat.format(note.getDate());
+                String date = DateFormatter.format(note.getDate());
                 String author = note.getIssuerName();
                 String content = note.getText();
 
