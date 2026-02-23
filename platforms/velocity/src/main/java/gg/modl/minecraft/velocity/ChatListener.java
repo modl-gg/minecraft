@@ -57,7 +57,7 @@ public class ChatListener {
         }
     }
     
-    @Subscribe(order = PostOrder.LATE)
+    @Subscribe(order = PostOrder.LAST)
     public void onCommandExecute(CommandExecuteEvent event) {
         if (!(event.getCommandSource() instanceof Player)) {
             return;
