@@ -56,8 +56,9 @@ public class ChatListener {
             handleMutedPlayer(event.getPlayer());
         }
     }
-    
-    @Subscribe(order = PostOrder.LAST)
+
+    // don't set this shit to LAST, it WILL not work with SignedVelocity lol
+    @Subscribe(order = PostOrder.LATE)
     public void onCommandExecute(CommandExecuteEvent event) {
         if (!(event.getCommandSource() instanceof Player)) {
             return;
