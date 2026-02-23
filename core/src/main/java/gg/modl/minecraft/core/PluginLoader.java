@@ -23,7 +23,9 @@ import gg.modl.minecraft.core.impl.commands.player.IAmMutedCommand;
 import gg.modl.minecraft.core.impl.commands.player.StandingCommand;
 import gg.modl.minecraft.core.impl.commands.punishments.*;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.service.UpdateCheckerService;
 import gg.modl.minecraft.core.service.database.DatabaseConfig;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.PermissionUtil;
@@ -42,11 +44,15 @@ public class PluginLoader {
     private final HttpClientHolder httpClientHolder;
     private final Cache cache;
     private final SyncService syncService;
+    private final UpdateCheckerService updateCheckerService;
     private final ChatMessageCache chatMessageCache;
     private final LocaleManager localeManager;
     private final LoginCache loginCache;
     private final boolean queryMojang;
     private final AsyncCommandExecutor asyncCommandExecutor;
+    private final Path dataDirectory;
+    private final Logger logger;
+    private final boolean debugMode;
 
     /**
      * Get the current HTTP client from the holder.
@@ -61,6 +67,8 @@ public class PluginLoader {
     }
 
     public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache, HttpManager httpManager, int syncPollingRateSeconds) {
+        this.dataDirectory = dataDirectory;
+        this.debugMode = httpManager.isDebugHttp();
         this.chatMessageCache = chatMessageCache;
         this.queryMojang = httpManager.isQueryMojang();
         this.asyncCommandExecutor = new AsyncCommandExecutor();
@@ -72,9 +80,10 @@ public class PluginLoader {
         platform.setCache(cache);
 
         this.httpClientHolder = httpManager.getHttpClientHolder();
+        this.logger = Logger.getLogger("MODL-" + platform.getClass().getSimpleName());
 
         // Read configured locale from config.yml
-        Logger logger = Logger.getLogger("MODL-" + platform.getClass().getSimpleName());
+        Logger logger = this.logger;
         String configuredLocale = readLocaleFromConfig(dataDirectory, logger);
 
         // Initialize locale manager with support for external locale files
@@ -117,6 +126,11 @@ public class PluginLoader {
         
         // Start sync service
         syncService.start();
+
+        // Start update checker service
+        UpdateCheckerConfig updateCheckerConfig = loadUpdateCheckerConfig(this.dataDirectory, logger);
+        this.updateCheckerService = new UpdateCheckerService(logger, this.debugMode, PluginInfo.VERSION);
+        this.updateCheckerService.start(updateCheckerConfig.enabled, updateCheckerConfig.intervalMinutes);
 
         CommandManager<?, ?, ?, ?, ?, ?> commandManager = platform.getCommandManager();
         commandManager.enableUnstableAPI("help");
@@ -161,7 +175,7 @@ public class PluginLoader {
         initializeStaffPermissions(httpManager.getHttpClient(), cache, logger, httpManager.isDebugHttp());
 
         // Register reload command
-        commandManager.registerCommand(new ModlReloadCommand(platform, cache, this.localeManager));
+        commandManager.registerCommand(new ModlReloadCommand(platform, cache, this.localeManager, this::reloadRuntimeConfiguration));
 
         // Register manual punishment commands
         commandManager.registerCommand(new BanCommand(httpClientHolder, platform, cache, this.localeManager));
@@ -468,6 +482,9 @@ public class PluginLoader {
      * Stop all services (should be called on plugin disable)
      */
     public void shutdown() {
+        if (updateCheckerService != null) {
+            updateCheckerService.stop();
+        }
         if (syncService != null) {
             syncService.stop();
         }
@@ -476,6 +493,82 @@ public class PluginLoader {
         }
         if (asyncCommandExecutor != null) {
             asyncCommandExecutor.shutdown();
+        }
+    }
+
+    private void reloadRuntimeConfiguration() {
+        UpdateCheckerConfig updateCheckerConfig = loadUpdateCheckerConfig(this.dataDirectory, this.logger);
+        updateCheckerService.reload(updateCheckerConfig.enabled, updateCheckerConfig.intervalMinutes);
+    }
+
+    @SuppressWarnings("unchecked")
+    private UpdateCheckerConfig loadUpdateCheckerConfig(Path dataDirectory, Logger logger) {
+        boolean enabled = true;
+        int intervalMinutes = UpdateCheckerService.getDefaultIntervalMinutes();
+
+        try {
+            Path configFile = dataDirectory.resolve("config.yml");
+            if (!Files.exists(configFile)) {
+                return new UpdateCheckerConfig(enabled, intervalMinutes);
+            }
+
+            Yaml yaml = new Yaml();
+            try (InputStream inputStream = new FileInputStream(configFile.toFile())) {
+                Map<String, Object> config = yaml.load(inputStream);
+                if (config == null) {
+                    return new UpdateCheckerConfig(enabled, intervalMinutes);
+                }
+
+                if (config.containsKey("update_checker")) {
+                    Object updateCheckerNode = config.get("update_checker");
+                    if (updateCheckerNode instanceof Map) {
+                        Map<String, Object> updateChecker = (Map<String, Object>) updateCheckerNode;
+
+                        Object enabledValue = updateChecker.get("enabled");
+                        if (enabledValue instanceof Boolean) {
+                            enabled = (Boolean) enabledValue;
+                        } else if (enabledValue instanceof String) {
+                            enabled = Boolean.parseBoolean((String) enabledValue);
+                        }
+
+                        Object intervalValue = updateChecker.get("interval_minutes");
+                        intervalMinutes = parseIntegerValue(intervalValue, intervalMinutes);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("Failed to load update checker config: " + e.getMessage());
+        }
+
+        if (intervalMinutes < 1) {
+            logger.warning("update_checker.interval_minutes must be at least 1. Using 1 minute.");
+            intervalMinutes = 1;
+        }
+
+        return new UpdateCheckerConfig(enabled, intervalMinutes);
+    }
+
+    private int parseIntegerValue(Object value, int defaultValue) {
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        if (value instanceof String) {
+            try {
+                return Integer.parseInt((String) value);
+            } catch (NumberFormatException ignored) {
+                return defaultValue;
+            }
+        }
+        return defaultValue;
+    }
+
+    private static final class UpdateCheckerConfig {
+        private final boolean enabled;
+        private final int intervalMinutes;
+
+        private UpdateCheckerConfig(boolean enabled, int intervalMinutes) {
+            this.enabled = enabled;
+            this.intervalMinutes = intervalMinutes;
         }
     }
 

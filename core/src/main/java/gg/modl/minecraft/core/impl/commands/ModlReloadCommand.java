@@ -7,16 +7,26 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.plugin.PluginInfo;
-import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
 
-@RequiredArgsConstructor
 @CommandAlias("%cmd_modl")
 public class ModlReloadCommand extends BaseCommand {
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
+    private final Runnable reloadHook;
+
+    public ModlReloadCommand(Platform platform, Cache cache, LocaleManager localeManager) {
+        this(platform, cache, localeManager, () -> {});
+    }
+
+    public ModlReloadCommand(Platform platform, Cache cache, LocaleManager localeManager, Runnable reloadHook) {
+        this.platform = platform;
+        this.cache = cache;
+        this.localeManager = localeManager;
+        this.reloadHook = reloadHook != null ? reloadHook : () -> {};
+    }
 
     @Default
     @Description("")
@@ -89,6 +99,7 @@ public class ModlReloadCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("general.reloading"));
         try {
             localeManager.reloadLocale();
+            reloadHook.run();
             sender.sendMessage(localeManager.getMessage("general.reload_success"));
         } catch (Exception e) {
             sender.sendMessage(localeManager.getMessage("general.reload_error", Map.of("error", e.getMessage())));

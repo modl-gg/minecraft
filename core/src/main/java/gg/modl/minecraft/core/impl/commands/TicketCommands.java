@@ -40,11 +40,10 @@ public class TicketCommands extends BaseCommand {
     @Description("Report a player")
     @Syntax("<player>")
     @Conditions("player")
-    public void report(CommandIssuer sender, String targetName) {
+    public void report(CommandIssuer sender, AbstractPlayer targetPlayer) {
         if (!checkCooldown(sender, "player")) return;
 
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
-        AbstractPlayer targetPlayer = platform.getAbstractPlayer(targetName, false);
 
         if (targetPlayer == null) {
             sender.sendMessage(localeManager.getMessage("general.player_not_found"));

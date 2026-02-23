@@ -27,6 +27,14 @@ sync:
   # Default: 2 seconds. Minimum: 1 second
   polling_rate: 2
 
+# Update Checker Configuration
+update_checker:
+  # Enable periodic plugin update checks against GitHub releases
+  enabled: true
+  # How often to check for updates (in minutes)
+  # Default: 60 minutes. Minimum: 1 minute
+  interval_minutes: 60
+
 # Commands that muted players cannot use
 # List command names without the leading slash
 muted_commands:
