@@ -30,7 +30,7 @@ public class TicketsResponse {
         private String playerName;
         private String playerUuid;
         private String priority;
-        private String assignedTo;
+        private List<String> assignedTo;
         private Date createdAt;
         private Date updatedAt;
         private boolean hasStaffResponse;
