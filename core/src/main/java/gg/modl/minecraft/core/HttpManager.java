@@ -65,12 +65,14 @@ public class HttpManager {
         this.httpClient = new ModlHttpClientV2Impl(apiUrl, key, this.serverDomain, debugHttp);
         this.httpClientHolder = new HttpClientHolder(this.httpClient);
 
-        logger.info("==============================================");
-        logger.info("MODL API: Using V2 API (centralized)");
-        logger.info("  Base URL: " + apiUrl);
-        logger.info("  Server Domain: " + this.serverDomain);
-        logger.info("  Testing API: " + useTestingApi);
-        logger.info("==============================================");
+        if (debugHttp) {
+            logger.info("==============================================");
+            logger.info("modl.gg API: Using V2 API (centralized)");
+            logger.info("  Base URL: " + apiUrl);
+            logger.info("  Server Domain: " + this.serverDomain);
+            logger.info("  Testing API: " + useTestingApi);
+            logger.info("==============================================");
+        }
     }
 
     /**

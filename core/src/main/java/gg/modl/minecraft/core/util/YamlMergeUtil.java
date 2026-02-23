@@ -49,7 +49,7 @@ public final class YamlMergeUtil {
             if (!Files.exists(externalFile)) {
                 try (InputStream jarStream = YamlMergeUtil.class.getResourceAsStream(jarResourcePath)) {
                     if (jarStream == null) {
-                        logger.warning("[MODL] JAR resource not found: " + jarResourcePath);
+                        logger.warning("[modl.gg] JAR resource not found: " + jarResourcePath);
                         return;
                     }
                     Files.createDirectories(externalFile.getParent());
@@ -62,7 +62,7 @@ public final class YamlMergeUtil {
             String jarText;
             try (InputStream jarStream = YamlMergeUtil.class.getResourceAsStream(jarResourcePath)) {
                 if (jarStream == null) {
-                    logger.warning("[MODL] JAR resource not found: " + jarResourcePath);
+                    logger.warning("[modl.gg] JAR resource not found: " + jarResourcePath);
                     return;
                 }
                 jarText = readStream(jarStream);
@@ -77,7 +77,7 @@ public final class YamlMergeUtil {
             try {
                 defaults = yaml.load(jarText);
             } catch (Exception e) {
-                logger.warning("[MODL] Failed to parse JAR default " + jarResourcePath + ", skipping merge");
+                logger.warning("[modl.gg] Failed to parse JAR default " + jarResourcePath + ", skipping merge");
                 return;
             }
             if (defaults == null) return;
@@ -89,7 +89,7 @@ public final class YamlMergeUtil {
             try {
                 userValues = yaml.load(userText);
             } catch (Exception e) {
-                logger.warning("[MODL] Failed to parse " + externalFile.getFileName() + ", skipping merge: " + e.getMessage());
+                logger.warning("[modl.gg] Failed to parse " + externalFile.getFileName() + ", skipping merge: " + e.getMessage());
                 return;
             }
             if (userValues == null) userValues = new LinkedHashMap<>();
@@ -124,11 +124,11 @@ public final class YamlMergeUtil {
 
             if (inserted > 0) {
                 Files.writeString(externalFile, String.join("\n", userLines), StandardCharsets.UTF_8);
-                logger.info("[MODL] Merged " + inserted + " new section(s) into " + externalFile.getFileName());
+                logger.info("[modl.gg] Merged " + inserted + " new section(s) into " + externalFile.getFileName());
             }
 
         } catch (IOException e) {
-            logger.warning("[MODL] Failed to merge defaults for " + externalFile.getFileName() + ": " + e.getMessage());
+            logger.warning("[modl.gg] Failed to merge defaults for " + externalFile.getFileName() + ": " + e.getMessage());
         }
     }
 

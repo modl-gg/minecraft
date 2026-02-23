@@ -440,7 +440,7 @@ public class MigrationService {
     }
 
     /**
-     * Upload migration file to MODL panel
+     * Upload migration file to modl.gg panel
      */
     public CompletableFuture<Boolean> uploadMigrationFile(File jsonFile, String taskId) {
         return CompletableFuture.supplyAsync(() -> {

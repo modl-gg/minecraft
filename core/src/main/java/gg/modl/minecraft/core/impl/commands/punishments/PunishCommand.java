@@ -251,21 +251,21 @@ public class PunishCommand extends BaseCommand {
                 cacheInitialized = true;
                 platform.runOnMainThread(() -> {
                     // Log successful initialization
-                    platform.log("[MODL] Loaded " + cachedPunishmentTypes.size() + " punishment types from API");
+                    platform.log("[modl.gg] Loaded " + cachedPunishmentTypes.size() + " punishment types from API");
                 });
             } else {
                 platform.runOnMainThread(() -> {
-                    platform.log("[MODL] Failed to load punishment types from API: " + response.getStatus());
+                    platform.log("[modl.gg] Failed to load punishment types from API: " + response.getStatus());
                 });
             }
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 platform.runOnMainThread(() -> {
-                    platform.log("[MODL] Panel restarting, cannot load punishment types: " + throwable.getMessage());
+                    platform.log("[modl.gg] Panel restarting, cannot load punishment types: " + throwable.getMessage());
                 });
             } else {
                 platform.runOnMainThread(() -> {
-                    platform.log("[MODL] Error loading punishment types: " + throwable.getMessage());
+                    platform.log("[modl.gg] Error loading punishment types: " + throwable.getMessage());
                 });
             }
             return null;
@@ -289,23 +289,23 @@ public class PunishCommand extends BaseCommand {
                         cache.cacheStaffPermissions(uuid, staffMember.getStaffRole(), staffMember.getPermissions());
                     } catch (IllegalArgumentException e) {
                         platform.runOnMainThread(() -> {
-                            platform.log("[MODL] Invalid UUID for staff member " + staffMember.getStaffUsername() + ": " + staffMember.getMinecraftUuid());
+                            platform.log("[modl.gg] Invalid UUID for staff member " + staffMember.getStaffUsername() + ": " + staffMember.getMinecraftUuid());
                         });
                     }
                 }
             }
             
             platform.runOnMainThread(() -> {
-                platform.log("[MODL] Loaded permissions for " + response.getData().getStaff().size() + " staff members");
+                platform.log("[modl.gg] Loaded permissions for " + response.getData().getStaff().size() + " staff members");
             });
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 platform.runOnMainThread(() -> {
-                    System.err.println("[MODL] Panel restarting, cannot load staff permissions: " + throwable.getMessage());
+                    System.err.println("[modl.gg] Panel restarting, cannot load staff permissions: " + throwable.getMessage());
                 });
             } else {
                 platform.runOnMainThread(() -> {
-                    System.err.println("[MODL] Error loading staff permissions: " + throwable.getMessage());
+                    System.err.println("[modl.gg] Error loading staff permissions: " + throwable.getMessage());
                 });
             }
             return null;

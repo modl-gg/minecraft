@@ -67,7 +67,7 @@ public class PunishMenu extends BaseInspectMenu {
             this.guiConfig = cached;
         } else {
             this.guiConfig = PunishGuiConfig.load(platform.getDataFolder().toPath(),
-                    java.util.logging.Logger.getLogger("MODL-PunishMenu"));
+                    java.util.logging.Logger.getLogger("modl-PunishMenu"));
             if (configCache != null) {
                 configCache.cachePunishGuiConfig(this.guiConfig);
             }

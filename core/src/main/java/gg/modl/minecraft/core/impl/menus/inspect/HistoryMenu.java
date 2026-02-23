@@ -292,7 +292,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         if (config == null) {
             config = gg.modl.minecraft.core.config.PunishGuiConfig.load(
                     platform.getDataFolder().toPath(),
-                    java.util.logging.Logger.getLogger("MODL"));
+                    java.util.logging.Logger.getLogger("modl"));
             cache.cachePunishGuiConfig(config);
         }
         return config;

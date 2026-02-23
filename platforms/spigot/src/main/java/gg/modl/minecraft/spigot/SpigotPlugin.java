@@ -52,10 +52,10 @@ public class SpigotPlugin extends JavaPlugin {
         String apiUrl = getConfig().getString("api.url");
         if ("https://yourserver.modl.gg".equals(apiUrl)) {
             getLogger().severe("===============================================");
-            getLogger().severe("MODL CONFIGURATION ERROR");
+            getLogger().severe("modl.gg CONFIGURATION ERROR");
             getLogger().severe("===============================================");
             getLogger().severe("You must configure your API URL in config.yml!");
-            getLogger().severe("Please set 'api.url' to your actual MODL panel URL.");
+            getLogger().severe("Please set 'api.url' to your actual modl.gg panel URL.");
             getLogger().severe("Example: https://yourserver.modl.gg");
             getLogger().severe("Plugin will now disable itself.");
             getLogger().severe("===============================================");

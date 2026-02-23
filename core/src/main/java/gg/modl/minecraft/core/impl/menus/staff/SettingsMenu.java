@@ -89,7 +89,7 @@ public class SettingsMenu extends BaseStaffMenu {
         }
         if (isAdmin) {
             infoLore.add("");
-            infoLore.add(MenuItems.COLOR_GRAY + "MODL Status: " + MenuItems.COLOR_GREEN + "Healthy");
+            infoLore.add(MenuItems.COLOR_GRAY + "modl.gg Status: " + MenuItems.COLOR_GREEN + "Healthy");
             // TODO: Add actual status from API
         }
 
@@ -305,7 +305,7 @@ public class SettingsMenu extends BaseStaffMenu {
     }
 
     private void handleReloadModl(Click click) {
-        sendMessage(MenuItems.COLOR_GREEN + "Reloading MODL configuration...");
+        sendMessage(MenuItems.COLOR_GREEN + "Reloading modl.gg configuration...");
         try {
             LocaleManager localeManager = platform.getLocaleManager();
             if (localeManager != null) {

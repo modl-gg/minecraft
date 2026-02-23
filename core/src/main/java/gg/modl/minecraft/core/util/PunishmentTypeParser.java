@@ -89,7 +89,7 @@ public class PunishmentTypeParser {
             }
         } catch (Exception e) {
             // If parsing fails, log and default to neither
-            System.err.println("[MODL] Failed to parse punishment durations: " + e.getMessage());
+            System.err.println("[modl.gg] Failed to parse punishment durations: " + e.getMessage());
         }
 
         return new DurationInfo(hasBan, hasMute);

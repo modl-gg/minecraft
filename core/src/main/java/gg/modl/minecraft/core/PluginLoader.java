@@ -29,6 +29,7 @@ import gg.modl.minecraft.core.service.UpdateCheckerService;
 import gg.modl.minecraft.core.service.database.DatabaseConfig;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.util.PunishmentMessages;
 import lombok.Getter;
 import org.yaml.snakeyaml.Yaml;
 
@@ -80,7 +81,7 @@ public class PluginLoader {
         platform.setCache(cache);
 
         this.httpClientHolder = httpManager.getHttpClientHolder();
-        this.logger = Logger.getLogger("MODL-" + platform.getClass().getSimpleName());
+        this.logger = Logger.getLogger("modl-" + platform.getClass().getSimpleName());
 
         // Read configured locale from config.yml
         Logger logger = this.logger;
@@ -102,7 +103,7 @@ public class PluginLoader {
         loadLocaleConfig(dataDirectory, logger);
 
         // Set panel URL on PunishmentMessages (derived from api.url config)
-        gg.modl.minecraft.core.util.PunishmentMessages.setPanelUrl(httpManager.getPanelUrl());
+        PunishmentMessages.setPanelUrl(httpManager.getPanelUrl());
 
         // Set the locale manager on the platform for menu access
         platform.setLocaleManager(this.localeManager);
@@ -117,7 +118,7 @@ public class PluginLoader {
         
         // Log configuration details (only in debug mode)
         if (httpManager.isDebugHttp()) {
-            logger.info("MODL Configuration:");
+            logger.info("modl.gg Configuration:");
             logger.info("  API URL: " + httpManager.getApiUrl());
             logger.info("  API Key: " + (httpManager.getApiKey().length() > 8 ?
                 httpManager.getApiKey().substring(0, 8) + "..." : "***"));
@@ -451,7 +452,7 @@ public class PluginLoader {
             Path litebansConfig = dataDirectory.getParent().resolve("LiteBans").resolve("config.yml");
             
             if (!Files.exists(litebansConfig)) {
-                logger.info("[Migration] LiteBans config not found, using prefix from MODL config");
+                logger.info("[Migration] LiteBans config not found, using prefix from modl.gg config");
                 return null;
             }
             

@@ -67,7 +67,7 @@ public class InspectCommand extends BaseCommand {
             }
         }).exceptionally(throwable -> {
             platform.runOnMainThread(() -> {
-                platform.log("[MODL] Error loading punishment types for lookup display: " + throwable.getMessage());
+                platform.log("[modl.gg] Error loading punishment types for lookup display: " + throwable.getMessage());
             });
             return null;
         });

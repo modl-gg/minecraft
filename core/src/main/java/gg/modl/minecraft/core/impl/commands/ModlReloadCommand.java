@@ -36,7 +36,7 @@ public class ModlReloadCommand extends BaseCommand {
     }
 
     @Subcommand("help")
-    @Description("Show available MODL commands")
+    @Description("Show available modl.gg commands")
     public void help(CommandIssuer sender) {
         displayHelp(sender);
     }
@@ -93,7 +93,7 @@ public class ModlReloadCommand extends BaseCommand {
     }
 
     @Subcommand("reload")
-    @Description("Reload MODL configuration and locale files")
+    @Description("Reload modl.gg configuration and locale files")
     @Conditions("admin")
     public void reload(CommandIssuer sender) {
         sender.sendMessage(localeManager.getMessage("general.reloading"));

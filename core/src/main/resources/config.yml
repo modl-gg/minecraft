@@ -1,6 +1,6 @@
-# MODL Minecraft Plugin Configuration
+# modl.gg Minecraft Plugin Configuration
 # 
-# API Configuration - Get these values from your MODL panel
+# API Configuration - Get these values from your modl.gg panel
 api:
   # Your API key from the panel
   key: "your-api-key-here"

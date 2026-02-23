@@ -29,6 +29,7 @@ public class UpdateCheckerService {
     private final Gson gson;
 
     private ScheduledExecutorService scheduler;
+    private volatile boolean isFirstRun = true;
 
     public UpdateCheckerService(Logger logger, boolean debugMode, String currentVersion) {
         this.logger = logger;
@@ -93,10 +94,14 @@ public class UpdateCheckerService {
                 return;
             }
 
-            if (compareVersions(currentVersion, latest.tagName) < 0) {
-                logger.warning("[MODL] Update available: current=" + currentVersion + ", latest=" + latest.tagName);
-                logger.warning("[MODL] Download: " + latest.downloadUrl);
+            if (!currentVersion.equalsIgnoreCase(latest.tagName)) {
+                logger.warning("[modl.gg] Update available: current=" + currentVersion + ", latest=" + latest.tagName);
+                logger.warning("[modl.gg] Download: " + latest.downloadUrl);
+            } else if(isFirstRun) {
+                logger.info("[modl.gg] You are up to date! (" + latest.tagName + ")");
             }
+
+            isFirstRun = false;
         } catch (Exception exception) {
             if (debugMode) {
                 logger.info("[Update Checker] Failed to check for updates: " + exception.getMessage());
@@ -139,90 +144,6 @@ public class UpdateCheckerService {
                 logger.info("[Update Checker] Failed to parse GitHub response: " + exception.getMessage());
             }
             return null;
-        }
-    }
-
-    private int compareVersions(String current, String latest) {
-        int[] currentParts = parseVersionParts(current);
-        int[] latestParts = parseVersionParts(latest);
-
-        int length = Math.max(currentParts.length, latestParts.length);
-        for (int i = 0; i < length; i++) {
-            int left = i < currentParts.length ? currentParts[i] : 0;
-            int right = i < latestParts.length ? latestParts[i] : 0;
-            if (left != right) {
-                return Integer.compare(left, right);
-            }
-        }
-        return 0;
-    }
-
-    private int[] parseVersionParts(String rawVersion) {
-        String normalized = normalizeVersion(rawVersion);
-        if (normalized.isEmpty()) {
-            return new int[] {0, 0, 0};
-        }
-
-        String[] split = normalized.split("\\.");
-        int[] parts = new int[Math.max(split.length, 3)];
-
-        for (int i = 0; i < split.length; i++) {
-            parts[i] = parseLeadingNumber(split[i]);
-        }
-
-        return parts;
-    }
-
-    private String normalizeVersion(String rawVersion) {
-        if (rawVersion == null) {
-            return "";
-        }
-
-        String version = rawVersion.trim();
-        if (version.isEmpty()) {
-            return "";
-        }
-
-        if (version.startsWith("v") || version.startsWith("V")) {
-            version = version.substring(1);
-        }
-
-        int dashIndex = version.indexOf('-');
-        if (dashIndex >= 0) {
-            version = version.substring(0, dashIndex);
-        }
-
-        int plusIndex = version.indexOf('+');
-        if (plusIndex >= 0) {
-            version = version.substring(0, plusIndex);
-        }
-
-        return version.trim();
-    }
-
-    private int parseLeadingNumber(String value) {
-        if (value == null || value.isEmpty()) {
-            return 0;
-        }
-
-        StringBuilder digits = new StringBuilder();
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            if (Character.isDigit(c)) {
-                digits.append(c);
-            } else {
-                break;
-            }
-        }
-
-        if (digits.isEmpty()) {
-            return 0;
-        }
-
-        try {
-            return Integer.parseInt(digits.toString());
-        } catch (NumberFormatException ignored) {
-            return 0;
         }
     }
 

@@ -35,7 +35,7 @@ public class AsyncCommandExecutor {
                 60L, TimeUnit.SECONDS,
                 new SynchronousQueue<>(),
                 r -> {
-                    Thread t = new Thread(r, "MODL-AsyncCmd");
+                    Thread t = new Thread(r, "modl-AsyncCmd");
                     t.setDaemon(true);
                     return t;
                 },

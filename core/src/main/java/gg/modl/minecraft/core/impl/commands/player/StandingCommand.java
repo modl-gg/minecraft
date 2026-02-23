@@ -93,7 +93,7 @@ public class StandingCommand extends BaseCommand {
             // Load config
             StandingGuiConfig guiConfig = StandingGuiConfig.load(
                     platform.getDataFolder().toPath(),
-                    Logger.getLogger("MODL"));
+                    Logger.getLogger("modl"));
 
             // Build and display menu on main thread
             PunishmentPreviewResponse finalPreviewData = previewData;

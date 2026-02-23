@@ -72,18 +72,18 @@ public final class VelocityPlugin {
 
         // Auto-merge new keys from plugin update
         YamlMergeUtil.mergeWithDefaults("/config.yml",
-                folder.resolve("config.yml"), java.util.logging.Logger.getLogger("MODL"));
+                folder.resolve("config.yml"), java.util.logging.Logger.getLogger("modl"));
         YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",
-                folder.resolve("locale/en_US.yml"), java.util.logging.Logger.getLogger("MODL"));
+                folder.resolve("locale/en_US.yml"), java.util.logging.Logger.getLogger("modl"));
 
         // Validate configuration before proceeding
         String apiUrl = getConfigString("api.url", "https://yourserver.modl.gg");
         if ("https://yourserver.modl.gg".equals(apiUrl)) {
             logger.error("===============================================");
-            logger.error("MODL CONFIGURATION ERROR");
+            logger.error("modl.gg CONFIGURATION ERROR");
             logger.error("===============================================");
             logger.error("You must configure your API URL in config.yml!");
-            logger.error("Please set 'api.url' to your actual MODL panel URL.");
+            logger.error("Please set 'api.url' to your actual modl.gg panel URL.");
             logger.error("Example: https://yourserver.modl.gg");
             logger.error("Plugin initialization stopped due to invalid configuration.");
             logger.error("===============================================");;

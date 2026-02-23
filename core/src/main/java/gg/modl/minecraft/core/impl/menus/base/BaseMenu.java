@@ -15,7 +15,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
- * Base class for all MODL menus.
+ * Base class for all modl.gg menus.
  * Provides common functionality like glass pane borders, back button handling,
  * and access to platform/HTTP client.
  */

@@ -127,7 +127,7 @@ public class SyncService {
         isRunning = true;
         
         if (debugMode) {
-            logger.info("MODL Sync service started - syncing every " + actualPollingRate + " seconds");
+            logger.info("modl.gg Sync service started - syncing every " + actualPollingRate + " seconds");
         }
     }
     
@@ -158,7 +158,7 @@ public class SyncService {
         
         isRunning = false;
         if (debugMode) {
-            logger.info("MODL Sync service stopped");
+            logger.info("modl.gg Sync service stopped");
         }
     }
     
