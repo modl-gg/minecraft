@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.List;
+import org.bstats.bungeecord.Metrics;
 
 @Getter
 public class BungeePlugin extends Plugin {
@@ -110,6 +111,8 @@ public class BungeePlugin extends Plugin {
                 }
             }
         });
+
+        new Metrics(this, 29705);
     }
 
     @Override

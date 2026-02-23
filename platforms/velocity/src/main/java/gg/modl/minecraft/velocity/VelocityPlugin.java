@@ -21,6 +21,7 @@ import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.velocity.factory.VelocityPacketEventsBuilder;
 import net.byteflux.libby.Library;
 import net.byteflux.libby.VelocityLibraryManager;
+import org.bstats.velocity.Metrics;
 import org.slf4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
@@ -44,15 +45,18 @@ public final class VelocityPlugin {
     private final ProxyServer server;
     private final Path folder;
     private final Logger logger;
+    private final Metrics.Factory metrics;
+
     private Map<String, Object> configuration;
     private PluginLoader pluginLoader;
 
     @Inject
-    public VelocityPlugin(PluginContainer plugin, ProxyServer server, @DataDirectory Path folder, Logger logger) {
+    public VelocityPlugin(PluginContainer plugin, ProxyServer server, @DataDirectory Path folder, Logger logger, Metrics.Factory metrics) {
         this.plugin = plugin;
         this.server = server;
         this.folder = folder;
         this.logger = logger;
+        this.metrics = metrics;
     }
 
     @Subscribe
@@ -111,6 +115,8 @@ public final class VelocityPlugin {
         List<String> mutedCommands = (List<String>) getNestedConfig("muted_commands", Collections.emptyList());
 
         server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache(), chatMessageCache, pluginLoader.getLocaleManager(), mutedCommands));
+
+        metrics.make(this, 29705);
     }
 
     @Subscribe

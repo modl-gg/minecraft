@@ -13,6 +13,7 @@ import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import net.byteflux.libby.BukkitLibraryManager;
 import net.byteflux.libby.Library;
+import org.bstats.bukkit.Metrics;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -126,6 +127,8 @@ public class SpigotPlugin extends JavaPlugin {
                 }
             }
         }, this);
+
+        new Metrics(this, 29705);
     }
 
     @Override
