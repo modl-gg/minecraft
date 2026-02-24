@@ -902,6 +902,7 @@ public class LocaleManager {
         
         public PunishmentMessageBuilder duration(long durationMs) {
             variables.put("duration", localeManager.formatDuration(durationMs));
+            variables.put("for_duration", " for " +localeManager.formatDuration(durationMs));
             return this;
         }
         

@@ -139,7 +139,7 @@ punishment_types:
     public_notification: "&c{target} has been muted."
     player_notification:
       - ""
-      - "&cYou {tense} {temp} muted for {duration}"
+      - "&cYou {tense} {temp} muted {for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{reason}"
       - ""
@@ -180,7 +180,7 @@ punishment_types:
     public_notification: "&c{target} has been muted for chat abuse."
     player_notification:
       - ""
-      - "&cYou {tense} {temp} muted for {duration}"
+      - "&cYou {tense} {temp} muted {for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{player_description}"
       - ""
@@ -188,7 +188,7 @@ punishment_types:
     public_notification: "&c{target} has been muted for anti social behavior."
     player_notification:
       - ""
-      - "&cYou {tense} muted for {duration}"
+      - "&cYou {tense} {temp} muted {for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{player_description}"
       - ""
