@@ -14,16 +14,10 @@ import io.github.retrooper.packetevents.bungee.factory.BungeePacketEventsBuilder
 import lombok.Getter;
 import net.byteflux.libby.BungeeLibraryManager;
 import net.byteflux.libby.Library;
-import net.md_5.bungee.api.CommandSender;
-import net.md_5.bungee.api.connection.ProxiedPlayer;
-import net.md_5.bungee.api.event.ChatEvent;
-import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
 import net.md_5.bungee.config.YamlConfiguration;
-import net.md_5.bungee.event.EventHandler;
-import net.md_5.bungee.event.EventPriority;
 
 import java.io.File;
 import java.io.IOException;
@@ -91,26 +85,9 @@ public class BungeePlugin extends Plugin {
         getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), httpManager.isDebugHttp(), mutedCommands, this));
 
         // Register async command interceptor — dispatches modl commands off the network thread
+        // Uses a named class (not anonymous) to avoid BungeeCord EventBus reflection issues
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
-        getProxy().getPluginManager().registerListener(this, new Listener() {
-            @EventHandler(priority = EventPriority.LOWEST)
-            public void onChat(ChatEvent event) {
-                if (event.isCancelled() || !event.isCommand()) return;
-                if (!(event.getSender() instanceof ProxiedPlayer player)) return;
-
-                String message = event.getMessage();
-                if (message.length() <= 1) return;
-
-                String stripped = message.substring(1).trim();
-                String baseCommand = stripped.split("\\s")[0].toLowerCase();
-
-                if (asyncExecutor.isAsyncCommand(baseCommand) || asyncExecutor.isAsyncCommand(baseCommand.replace("modl:", ""))) {
-                    event.setCancelled(true);
-                    asyncExecutor.execute(() ->
-                            getProxy().getPluginManager().dispatchCommand((CommandSender) player, stripped));
-                }
-            }
-        });
+        getProxy().getPluginManager().registerListener(this, new AsyncCommandInterceptor(asyncExecutor, getProxy()));
 
         new Metrics(this, 29705);
     }
