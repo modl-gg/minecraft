@@ -260,6 +260,20 @@ public class PunishmentMessages {
         // Temp - "temporarily" or "permanently"
         variables.put("temp", punishment.isPermanent() ? "permanently" : "temporarily");
 
+        // For duration - " for X days" or empty for permanent
+        if (punishment.isPermanent()) {
+            variables.put("for_duration", "");
+        } else if (punishment.getExpiration() != null) {
+            long timeLeft = punishment.getExpiration() - System.currentTimeMillis();
+            if (timeLeft > 0) {
+                variables.put("for_duration", " for " + formatDuration(timeLeft));
+            } else {
+                variables.put("for_duration", "");
+            }
+        } else {
+            variables.put("for_duration", "");
+        }
+
         // Issued date using configured format
         java.util.Date issuedDate = punishment.getIssuedAsDate();
         if (issuedDate != null) {
