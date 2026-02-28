@@ -89,7 +89,7 @@ public class BungeePlugin extends Plugin {
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
         getProxy().getPluginManager().registerListener(this, new AsyncCommandInterceptor(asyncExecutor, getProxy()));
 
-        new Metrics(this, 29705);
+        new Metrics(this, 29831);
     }
 
     @Override

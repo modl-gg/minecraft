@@ -116,7 +116,7 @@ public final class VelocityPlugin {
 
         server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache(), chatMessageCache, pluginLoader.getLocaleManager(), mutedCommands));
 
-        metrics.make(this, 29705);
+        metrics.make(this, 29830);
     }
 
     @Subscribe
