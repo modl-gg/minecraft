@@ -5,6 +5,7 @@
 # General Messages
 messages:
   cannot_report_self: "&cYou cannot report yourself!"
+  player_not_online: "&cThat player is not online."
   submitting: "&eSubmitting {type}..."
   creating: "&eCreating {type}..."
   success: "&a{type} submitted successfully!"

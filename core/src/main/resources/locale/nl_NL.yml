@@ -5,6 +5,7 @@
 # Algemene Berichten
 messages:
   cannot_report_self: "&cJe kunt jezelf niet rapporteren!"
+  player_not_online: "&cDie speler is niet online."
   submitting: "&e{type} wordt ingediend..."
   creating: "&e{type} wordt aangemaakt..."
   success: "&a{type} succesvol ingediend!"

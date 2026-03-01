@@ -5,6 +5,7 @@
 # General Messages
 messages:
   cannot_report_self: "&cDu kannst dich nicht selbst melden!"
+  player_not_online: "&cDieser Spieler ist nicht online."
   submitting: "&e{type} wird eingereicht..."
   creating: "&e{type} wird erstellt..."
   success: "&a{type} erfolgreich eingereicht!"

@@ -57,6 +57,11 @@ public class TicketCommands extends BaseCommand {
             return;
         }
 
+        if (!targetPlayer.isOnline()) {
+            sender.sendMessage(localeManager.getMessage("messages.player_not_online"));
+            return;
+        }
+
         commandExecutor.execute(() -> {
             // Load report GUI config (cached after first load)
             ReportGuiConfig guiConfig = getOrLoadReportGuiConfig();

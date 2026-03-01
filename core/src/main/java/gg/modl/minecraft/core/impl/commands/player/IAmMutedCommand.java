@@ -67,7 +67,7 @@ public class IAmMutedCommand extends BaseCommand {
         }
         
         if (!targetPlayer.isOnline()) {
-            sender.sendMessage(localeManager.getMessage("iammuted.player_not_online"));
+            sender.sendMessage(localeManager.getMessage("messages.player_not_online"));
             return;
         }
         

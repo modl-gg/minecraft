@@ -232,12 +232,6 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
             }
         }
 
-        // Add click instructions for open reports
-        if (report.getStatus() == null || !"closed".equalsIgnoreCase(report.getStatus())) {
-            lore.add("");
-            lore.add(MenuItems.COLOR_YELLOW + "Right-click to dismiss report");
-        }
-
         // Get title from locale
         String title = locale.getMessage("menus.report_item.title", vars);
 
