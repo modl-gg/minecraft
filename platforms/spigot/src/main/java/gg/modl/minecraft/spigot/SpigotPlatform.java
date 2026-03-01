@@ -17,6 +17,7 @@ import lombok.Setter;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import net.md_5.bungee.chat.ComponentSerializer;
 
@@ -32,6 +33,7 @@ public class SpigotPlatform implements Platform {
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
+    private final JavaPlugin plugin;
     @Setter
     private Cache cache;
     @Setter
@@ -161,20 +163,17 @@ public class SpigotPlatform implements Platform {
 
     @Override
     public void runOnMainThread(Runnable task) {
-        // Execute directly — menus (Cirrus/PacketEvents) and messages are thread-safe.
-        // Use runOnGameThread() for operations that require the Bukkit main thread.
-        task.run();
+        if (Bukkit.isPrimaryThread()) {
+            task.run();
+            return;
+        }
+
+        Bukkit.getScheduler().runTask(plugin, task);
     }
 
     @Override
     public void runOnGameThread(Runnable task) {
-        // Schedule to Bukkit main thread — required for operations that Paper's
-        // AsyncCatcher blocks from async threads (e.g. player.kickPlayer())
-        if (Bukkit.isPrimaryThread()) {
-            task.run();
-        } else {
-            Bukkit.getScheduler().runTask(Bukkit.getPluginManager().getPlugin("modl"), task);
-        }
+        runOnMainThread(task);
     }
 
     @Override

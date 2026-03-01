@@ -4,7 +4,6 @@ import co.aikar.commands.BukkitCommandManager;
 import com.github.retrooper.packetevents.PacketEvents;
 import dev.simplix.cirrus.spigot.CirrusSpigot;
 import gg.modl.minecraft.api.LibraryRecord;
-import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
@@ -15,11 +14,6 @@ import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder
 import net.byteflux.libby.BukkitLibraryManager;
 import net.byteflux.libby.Library;
 import org.bstats.bukkit.Metrics;
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -76,7 +70,7 @@ public class SpigotPlugin extends JavaPlugin {
         BukkitCommandManager commandManager = new BukkitCommandManager(this);
         new CirrusSpigot(this).init();
 
-        SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger(), getDataFolder(), getConfig().getString("server.name", "Server 1"));
+        SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger(), getDataFolder(), getConfig().getString("server.name", "Server 1"), this);
         ChatMessageCache chatMessageCache = new ChatMessageCache();
 
         // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)
@@ -102,50 +96,6 @@ public class SpigotPlugin extends JavaPlugin {
             }
         }
         getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), loader.getLoginCache(), httpManager.isDebugHttp(), mutedCommands), this);
-
-        // Get CommandMap via reflection (not exposed in Spigot API, only Paper)
-        // Used to dispatch commands off the main thread without triggering AsyncCatcher
-        org.bukkit.command.CommandMap cmdMap;
-        try {
-            cmdMap = (org.bukkit.command.CommandMap) getServer().getClass()
-                    .getMethod("getCommandMap").invoke(getServer());
-        } catch (Exception e) {
-            getLogger().severe("Cannot access CommandMap for async command dispatch: " + e.getMessage());
-            cmdMap = null;
-        }
-        final org.bukkit.command.CommandMap commandMap = cmdMap;
-
-        // Register async command interceptor — dispatches modl commands off the main thread
-        AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
-        getServer().getPluginManager().registerEvents(new Listener() {
-            @EventHandler(priority = EventPriority.LOWEST)
-            public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
-                if (commandMap == null) return;
-
-                String message = event.getMessage();
-                if (message.length() <= 1) return;
-
-                // Extract the base command name (strip leading /, take first word, handle namespace)
-                String stripped = message.substring(1).trim();
-                String baseCommand = stripped.split("\\s")[0].toLowerCase();
-
-                // Strip namespace prefix (e.g., "modl:punishment-action" -> check both forms)
-                if (asyncExecutor.isAsyncCommand(baseCommand) || asyncExecutor.isAsyncCommand(baseCommand.replace("modl:", ""))) {
-                    event.setCancelled(true);
-                    Player player = event.getPlayer();
-                    // Dispatch via CommandMap.dispatch() to bypass Paper's AsyncCatcher
-                    // in CraftServer.dispatchCommand()
-                    asyncExecutor.execute(() -> {
-                        try {
-                            commandMap.dispatch(player, stripped);
-                        } catch (Exception ex) {
-                            getLogger().severe("Failed to dispatch async command: " + ex.getMessage());
-                        }
-                    });
-                }
-            }
-        }, this);
-
         new Metrics(this, 29705);
     }
 
