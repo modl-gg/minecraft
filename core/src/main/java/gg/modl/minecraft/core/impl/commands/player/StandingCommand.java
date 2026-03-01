@@ -95,16 +95,12 @@ public class StandingCommand extends BaseCommand {
                     platform.getDataFolder().toPath(),
                     Logger.getLogger("modl"));
 
-            // Build and display menu on main thread
-            PunishmentPreviewResponse finalPreviewData = previewData;
-            platform.runOnMainThread(() -> {
-                StandingMenu menu = new StandingMenu(
-                        platform, httpClient, uuid,
-                        platform.getAbstractPlayer(uuid, false).username(),
-                        account, finalPreviewData, guiConfig, typesByOrdinal);
-                CirrusPlayerWrapper player = platform.getPlayerWrapper(uuid);
-                menu.display(player);
-            });
+            StandingMenu menu = new StandingMenu(
+                platform, httpClient, uuid,
+                platform.getAbstractPlayer(uuid, false).username(),
+                account, previewData, guiConfig, typesByOrdinal);
+            CirrusPlayerWrapper player = platform.getPlayerWrapper(uuid);
+            menu.display(player);
         }).exceptionally(throwable -> {
             sender.sendMessage(localeManager.getMessage("standing.error"));
             return null;

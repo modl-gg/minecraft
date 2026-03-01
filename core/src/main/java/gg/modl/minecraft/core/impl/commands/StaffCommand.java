@@ -39,27 +39,25 @@ public class StaffCommand extends BaseCommand {
         // Check if user has admin permissions
         boolean isAdmin = cache.hasPermission(senderUuid, "modl.admin");
 
-        platform.runOnMainThread(() -> {
-            // Get sender name
-            String senderName = "Staff";
-            if (platform.getPlayer(senderUuid) != null) {
-                senderName = platform.getPlayer(senderUuid).username();
-            }
+        // Get sender name
+        String senderName = "Staff";
+        if (platform.getPlayer(senderUuid) != null) {
+            senderName = platform.getPlayer(senderUuid).username();
+        }
 
-            // Open the staff menu
-            StaffMenu menu = new StaffMenu(
-                    platform,
-                    getHttpClient(),
-                    senderUuid,
-                    senderName,
-                    isAdmin,
-                    panelUrl,
-                    null // No parent menu when opened from command
-            );
+        // Open the staff menu
+        StaffMenu menu = new StaffMenu(
+            platform,
+            getHttpClient(),
+            senderUuid,
+            senderName,
+            isAdmin,
+            panelUrl,
+            null // No parent menu when opened from command
+        );
 
-            // Get CirrusPlayerWrapper and display
-            CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-            menu.display(player);
-        });
+        // Get CirrusPlayerWrapper and display
+        CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+        menu.display(player);
     }
 }

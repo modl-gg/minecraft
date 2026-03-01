@@ -322,7 +322,7 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
 
             // Rebuild menu with fresh data
             StaffListMenu newMenu = new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
-            platform.runOnMainThread(() -> ActionHandlers.openMenu(newMenu).handle(click));
+            ActionHandlers.openMenu(newMenu).handle(click);
         }).exceptionally(e -> {
             sendMessage(MenuItems.COLOR_RED + "Failed to update role: " + e.getMessage());
             return null;

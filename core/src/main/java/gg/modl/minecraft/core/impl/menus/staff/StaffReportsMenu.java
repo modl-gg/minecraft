@@ -289,7 +289,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
             // Refresh menu
             StaffReportsMenu refreshed = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
                     .withFilter(currentFilter).withStatusFilter(currentStatusFilter);
-            platform.runOnMainThread(() -> ActionHandlers.openMenu(refreshed).handle(click));
+            ActionHandlers.openMenu(refreshed).handle(click);
         }).exceptionally(e -> {
             sendMessage(MenuItems.COLOR_RED + "Failed to dismiss report: " + e.getMessage());
             return null;
@@ -307,12 +307,10 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         // Fetch player profile and open inspect menu
         httpClient.getPlayerProfile(report.getReportedPlayerUuid()).thenAccept(response -> {
             if (response.getStatus() == 200) {
-                platform.runOnMainThread(() -> {
-                    // Pass back action to return to reports menu
-                    new InspectMenu(platform, httpClient, viewerUuid, viewerName, response.getProfile(),
-                            p -> new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p))
-                            .display(click.player());
-                });
+                // Pass back action to return to reports menu
+                new InspectMenu(platform, httpClient, viewerUuid, viewerName, response.getProfile(),
+                    p -> new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p))
+                    .display(click.player());
             } else {
                 sendMessage(MenuItems.COLOR_RED + "Failed to load player profile");
             }

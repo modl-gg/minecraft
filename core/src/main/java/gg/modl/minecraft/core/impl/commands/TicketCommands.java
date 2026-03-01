@@ -59,14 +59,12 @@ public class TicketCommands extends BaseCommand {
         ReportGuiConfig guiConfig = getOrLoadReportGuiConfig();
 
         UUID senderUuid = sender.getUniqueId();
-        platform.runOnMainThread(() -> {
-            ReportMenu menu = new ReportMenu(
-                    reporter, targetPlayer, httpClient, localeManager, platform, panelUrl,
-                    guiConfig, chatMessageCache
-            );
-            CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-            menu.display(player);
-        });
+        ReportMenu menu = new ReportMenu(
+            reporter, targetPlayer, httpClient, localeManager, platform, panelUrl,
+            guiConfig, chatMessageCache
+        );
+        CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+        menu.display(player);
     }
 
     private ReportGuiConfig getOrLoadReportGuiConfig() {

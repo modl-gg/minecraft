@@ -373,11 +373,9 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
             click.clickedMenu().close();
             httpClient.getPlayerProfile(pwp.getPlayerUuid()).thenAccept(response -> {
                 if (response.getStatus() == 200) {
-                    platform.runOnMainThread(() -> {
-                        new StaffModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
-                                response.getProfile(), pwp.getPunishment(), isAdmin, panelUrl, returnToPunishments)
-                                .display(click.player());
-                    });
+                    new StaffModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
+                        response.getProfile(), pwp.getPunishment(), isAdmin, panelUrl, returnToPunishments)
+                        .display(click.player());
                 } else {
                     sendMessage(MenuItems.COLOR_RED + "Failed to load player profile");
                 }

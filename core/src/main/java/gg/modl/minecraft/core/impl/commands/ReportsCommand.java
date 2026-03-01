@@ -106,28 +106,26 @@ public class ReportsCommand extends BaseCommand {
                 // Fetch full profile for the reports menu
                 getHttpClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
                     if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
-                        platform.runOnMainThread(() -> {
-                            // Get sender name (prefer panel username)
-                            String senderName = cache.getStaffDisplayName(senderUuid);
-                            if (senderName == null && platform.getPlayer(senderUuid) != null) {
-                                senderName = platform.getPlayer(senderUuid).username();
-                            }
-                            if (senderName == null) senderName = "Staff";
+                        // Get sender name (prefer panel username)
+                        String senderName = cache.getStaffDisplayName(senderUuid);
+                        if (senderName == null && platform.getPlayer(senderUuid) != null) {
+                            senderName = platform.getPlayer(senderUuid).username();
+                        }
+                        if (senderName == null) senderName = "Staff";
 
-                            // Open the reports menu (inspect version)
-                            ReportsMenu menu = new ReportsMenu(
-                                    platform,
-                                    getHttpClient(),
-                                    senderUuid,
-                                    senderName,
-                                    profileResponse.getProfile(),
-                                    null // No parent menu when opened from command
-                            );
+                        // Open the reports menu (inspect version)
+                        ReportsMenu menu = new ReportsMenu(
+                            platform,
+                            getHttpClient(),
+                            senderUuid,
+                            senderName,
+                            profileResponse.getProfile(),
+                            null // No parent menu when opened from command
+                        );
 
-                            // Get CirrusPlayerWrapper and display
-                            CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-                            menu.display(player);
-                        });
+                        // Get CirrusPlayerWrapper and display
+                        CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+                        menu.display(player);
                     } else {
                         sender.sendMessage(localeManager.getMessage("general.player_not_found"));
                     }
@@ -239,29 +237,27 @@ public class ReportsCommand extends BaseCommand {
         // Check if user has admin permissions
         boolean isAdmin = cache.hasPermission(senderUuid, "modl.admin");
 
-        platform.runOnMainThread(() -> {
-            // Get sender name (prefer panel username)
-            String senderName = cache.getStaffDisplayName(senderUuid);
-            if (senderName == null && platform.getPlayer(senderUuid) != null) {
-                senderName = platform.getPlayer(senderUuid).username();
-            }
-            if (senderName == null) senderName = "Staff";
+        // Get sender name (prefer panel username)
+        String senderName = cache.getStaffDisplayName(senderUuid);
+        if (senderName == null && platform.getPlayer(senderUuid) != null) {
+            senderName = platform.getPlayer(senderUuid).username();
+        }
+        if (senderName == null) senderName = "Staff";
 
-            // Open the staff reports menu
-            StaffReportsMenu menu = new StaffReportsMenu(
-                    platform,
-                    getHttpClient(),
-                    senderUuid,
-                    senderName,
-                    isAdmin,
-                    panelUrl,
-                    null // No parent menu when opened from command
-            );
+        // Open the staff reports menu
+        StaffReportsMenu menu = new StaffReportsMenu(
+            platform,
+            getHttpClient(),
+            senderUuid,
+            senderName,
+            isAdmin,
+            panelUrl,
+            null // No parent menu when opened from command
+        );
 
-            // Get CirrusPlayerWrapper and display
-            CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-            menu.display(player);
-        });
+        // Get CirrusPlayerWrapper and display
+        CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+        menu.display(player);
     }
 
     private void handleException(CommandIssuer sender, Throwable throwable, String playerQuery) {

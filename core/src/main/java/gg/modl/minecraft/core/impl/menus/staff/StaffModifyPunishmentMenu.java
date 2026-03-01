@@ -266,13 +266,13 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
                         refreshMenu(click);
                     }).exceptionally(e -> {
                         sendMessage(MenuItems.COLOR_RED + "Failed to add note: " + e.getMessage());
-                        platform.runOnMainThread(() -> display(click.player()));
+                        display(click.player());
                         return null;
                     });
                 },
                 () -> {
                     sendMessage(MenuItems.COLOR_GRAY + "Note cancelled.");
-                    platform.runOnMainThread(() -> display(click.player()));
+                    display(click.player());
                 }
         );
     }
@@ -314,13 +314,13 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
                         refreshMenu(click);
                     }).exceptionally(e -> {
                         sendMessage(MenuItems.COLOR_RED + "Failed to add evidence: " + e.getMessage());
-                        platform.runOnMainThread(() -> display(click.player()));
+                        display(click.player());
                         return null;
                     });
                 },
                 () -> {
                     sendMessage(MenuItems.COLOR_GRAY + "Evidence cancelled.");
-                    platform.runOnMainThread(() -> display(click.player()));
+                    display(click.player());
                 }
         );
     }
@@ -357,7 +357,7 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
                     Long durationMs = parseDuration(input);
                     if (durationMs == null && !input.equalsIgnoreCase("perm") && !input.equalsIgnoreCase("permanent")) {
                         sendMessage(MenuItems.COLOR_RED + "Invalid duration format. Examples: 30d, 2h, 30m, 1d2h30m");
-                        platform.runOnMainThread(() -> display(click.player()));
+                        display(click.player());
                         return;
                     }
 
@@ -373,13 +373,13 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
                         refreshMenu(click);
                     }).exceptionally(e -> {
                         sendMessage(MenuItems.COLOR_RED + "Failed to change duration: " + e.getMessage());
-                        platform.runOnMainThread(() -> display(click.player()));
+                        display(click.player());
                         return null;
                     });
                 },
                 () -> {
                     sendMessage(MenuItems.COLOR_GRAY + "Duration change cancelled.");
-                    platform.runOnMainThread(() -> display(click.player()));
+                    display(click.player());
                 }
         );
     }
@@ -413,11 +413,9 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
 
     private void handleLinkedTickets(Click click) {
         Consumer<CirrusPlayerWrapper> backToModify = player -> {
-            platform.runOnMainThread(() -> {
-                new StaffModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
-                        targetAccount, punishment, isAdmin, panelUrl, menuBackAction)
-                        .display(player);
-            });
+            new StaffModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
+                targetAccount, punishment, isAdmin, panelUrl, menuBackAction)
+                .display(player);
         };
 
         if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
@@ -444,7 +442,7 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
 
                 if (addIds.isEmpty() && removeIds.isEmpty()) {
                     sendMessage(MenuItems.COLOR_GRAY + "No changes to linked tickets.");
-                    platform.runOnMainThread(() -> backToModify.accept(click.player()));
+                    backToModify.accept(click.player());
                     return;
                 }
 
@@ -457,7 +455,7 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
                     refreshMenu(click);
                 }).exceptionally(e -> {
                     sendMessage(MenuItems.COLOR_RED + "Failed to update linked tickets: " + e.getMessage());
-                    platform.runOnMainThread(() -> backToModify.accept(click.player()));
+                    backToModify.accept(click.player());
                     return null;
                 });
             });
@@ -545,16 +543,14 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
 
                     freshData.add(new RecentPunishmentsMenu.PunishmentWithPlayer(freshPunishment, playerUuid, p.getPlayerName(), null));
                 }
-                platform.runOnMainThread(() -> {
-                    new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null, freshData)
-                            .display(click.player());
-                });
+                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null, freshData)
+                    .display(click.player());
             } else {
                 // Fallback: use menuBackAction which has the previous snapshot
-                platform.runOnMainThread(() -> menuBackAction.accept(click.player()));
+                menuBackAction.accept(click.player());
             }
         }).exceptionally(e -> {
-            platform.runOnMainThread(() -> menuBackAction.accept(click.player()));
+            menuBackAction.accept(click.player());
             return null;
         });
     }

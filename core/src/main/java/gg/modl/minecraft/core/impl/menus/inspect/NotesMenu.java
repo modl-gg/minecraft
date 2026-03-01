@@ -192,11 +192,9 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
                         // Refresh the account and reopen the menu
                         httpClient.getPlayerProfile(targetUuid).thenAccept(response -> {
                             if (response.getStatus() == 200) {
-                                platform.runOnMainThread(() -> {
-                                    new NotesMenu(platform, httpClient, viewerUuid, viewerName,
-                                            response.getProfile(), backAction)
-                                            .display(click.player());
-                                });
+                                new NotesMenu(platform, httpClient, viewerUuid, viewerName,
+                                    response.getProfile(), backAction)
+                                    .display(click.player());
                             }
                         });
                     }).exceptionally(e -> {
@@ -207,7 +205,7 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
                 () -> {
                     // Cancelled - reopen menu
                     sendMessage(MenuItems.COLOR_GRAY + "Note creation cancelled.");
-                    platform.runOnMainThread(() -> display(click.player()));
+                    display(click.player());
                 }
         );
     }

@@ -331,7 +331,7 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
             // Go back to previous menu (RoleListMenu)
             if (backAction != null) {
-                platform.runOnMainThread(() -> backAction.accept(click.player()));
+                backAction.accept(click.player());
             }
         }).exceptionally(e -> {
             sendMessage(MenuItems.COLOR_RED + "Failed to save: " + e.getMessage());

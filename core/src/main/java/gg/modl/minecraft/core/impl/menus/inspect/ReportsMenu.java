@@ -301,7 +301,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
             // Refresh menu
             ReportsMenu refreshed = new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
                     .withFilter(currentFilter).withStatusFilter(currentStatusFilter);
-            platform.runOnMainThread(() -> ActionHandlers.openMenu(refreshed).handle(click));
+            ActionHandlers.openMenu(refreshed).handle(click);
         }).exceptionally(e -> {
             sendMessage(MenuItems.COLOR_RED + "Failed to dismiss report: " + e.getMessage());
             return null;

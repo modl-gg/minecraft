@@ -216,28 +216,26 @@ public class PunishCommand extends BaseCommand {
     private void openPunishmentGui(CommandIssuer sender, Account target) {
         UUID senderUuid = sender.getUniqueId();
 
-        platform.runOnMainThread(() -> {
-            // Get sender name (prefer panel username)
-            String senderName = cache.getStaffDisplayName(senderUuid);
-            if (senderName == null && platform.getPlayer(senderUuid) != null) {
-                senderName = platform.getPlayer(senderUuid).username();
-            }
-            if (senderName == null) senderName = "Staff";
+        // Get sender name (prefer panel username)
+        String senderName = cache.getStaffDisplayName(senderUuid);
+        if (senderName == null && platform.getPlayer(senderUuid) != null) {
+            senderName = platform.getPlayer(senderUuid).username();
+        }
+        if (senderName == null) senderName = "Staff";
 
-            // Open the punish menu
-            PunishMenu menu = new PunishMenu(
-                    platform,
-                    getHttpClient(),
-                    senderUuid,
-                    senderName,
-                    target,
-                    null // No parent menu when opened from command
-            );
+        // Open the punish menu
+        PunishMenu menu = new PunishMenu(
+            platform,
+            getHttpClient(),
+            senderUuid,
+            senderName,
+            target,
+            null // No parent menu when opened from command
+        );
 
-            // Get CirrusPlayerWrapper and display
-            CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-            menu.display(player);
-        });
+        // Get CirrusPlayerWrapper and display
+        CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+        menu.display(player);
     }
 
     /**

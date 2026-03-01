@@ -231,13 +231,10 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
         httpClient.getPlayerProfile(player.getUuid()).thenAccept(response -> {
             if (response.getStatus() == 200) {
-                platform.runOnMainThread(() -> {
-                    // Opening InspectMenu from Staff menu - back button returns to OnlinePlayersMenu with preserved state
-                    new InspectMenu(platform, httpClient, viewerUuid, viewerName, response.getProfile(),
-                            p -> new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null,
-                                    sortState, playerState).display(p))
-                            .display(click.player());
-                });
+                new InspectMenu(platform, httpClient, viewerUuid, viewerName, response.getProfile(),
+                    p -> new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null,
+                        sortState, playerState).display(p))
+                    .display(click.player());
             } else {
                 sendMessage(MenuItems.COLOR_RED + "Failed to load player profile");
             }

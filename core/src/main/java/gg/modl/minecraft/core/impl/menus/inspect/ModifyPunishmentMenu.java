@@ -330,13 +330,13 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                         refreshMenu(click);
                     }).exceptionally(e -> {
                         sendMessage(MenuItems.COLOR_RED + "Failed to add note: " + e.getMessage());
-                        platform.runOnMainThread(() -> display(click.player()));
+                        display(click.player());
                         return null;
                     });
                 },
                 () -> {
                     sendMessage(MenuItems.COLOR_GRAY + "Note cancelled.");
-                    platform.runOnMainThread(() -> display(click.player()));
+                    display(click.player());
                 }
         );
     }
@@ -379,13 +379,13 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                         refreshMenu(click);
                     }).exceptionally(e -> {
                         sendMessage(MenuItems.COLOR_RED + "Failed to add evidence: " + e.getMessage());
-                        platform.runOnMainThread(() -> display(click.player()));
+                        display(click.player());
                         return null;
                     });
                 },
                 () -> {
                     sendMessage(MenuItems.COLOR_GRAY + "Evidence cancelled.");
-                    platform.runOnMainThread(() -> display(click.player()));
+                    display(click.player());
                 }
         );
     }
@@ -424,7 +424,7 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                     Long durationMs = parseDuration(input);
                     if (durationMs == null && !input.equalsIgnoreCase("perm") && !input.equalsIgnoreCase("permanent")) {
                         sendMessage(MenuItems.COLOR_RED + "Invalid duration format. Examples: 30d, 2h, 30m, 1d2h30m");
-                        platform.runOnMainThread(() -> display(click.player()));
+                        display(click.player());
                         return;
                     }
 
@@ -443,13 +443,13 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                         refreshMenu(click);
                     }).exceptionally(e -> {
                         sendMessage(MenuItems.COLOR_RED + "Failed to change duration: " + e.getMessage());
-                        platform.runOnMainThread(() -> display(click.player()));
+                        display(click.player());
                         return null;
                     });
                 },
                 () -> {
                     sendMessage(MenuItems.COLOR_GRAY + "Duration change cancelled.");
-                    platform.runOnMainThread(() -> display(click.player()));
+                    display(click.player());
                 }
         );
     }
@@ -497,11 +497,9 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
 
             Set<String> currentIds = new LinkedHashSet<>(punishment.getAttachedTicketIds());
             Consumer<CirrusPlayerWrapper> backToModify = player -> {
-                platform.runOnMainThread(() -> {
-                    new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
-                            targetAccount, punishment, rootBackAction, menuBackAction)
-                            .display(player);
-                });
+                new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
+                    targetAccount, punishment, rootBackAction, menuBackAction)
+                    .display(player);
             };
 
             LinkReportsMenu linkMenu = new LinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
@@ -524,7 +522,7 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
 
                 if (addIds.isEmpty() && removeIds.isEmpty()) {
                     sendMessage(MenuItems.COLOR_GRAY + "No changes to linked tickets.");
-                    platform.runOnMainThread(() -> backToModify.accept(click.player()));
+                    backToModify.accept(click.player());
                     return;
                 }
 
@@ -547,11 +545,9 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
             // Left-click: View linked tickets
             List<String> ticketIds = punishment.getAttachedTicketIds();
             Consumer<CirrusPlayerWrapper> backToModify = player -> {
-                platform.runOnMainThread(() -> {
-                    new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
-                            targetAccount, punishment, rootBackAction, menuBackAction)
-                            .display(player);
-                });
+                new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
+                    targetAccount, punishment, rootBackAction, menuBackAction)
+                    .display(player);
             };
 
             ViewLinkedTicketsMenu viewMenu = new ViewLinkedTicketsMenu(
@@ -608,16 +604,12 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
      * Refresh the menu by fetching the updated player profile and returning to history menu.
      */
     private void refreshMenu(Click click) {
-        platform.runOnMainThread(() -> {
-            httpClient.getPlayerProfile(targetUuid).thenAccept(response -> {
-                if (response.getStatus() == 200) {
-                    platform.runOnMainThread(() -> {
-                        new HistoryMenu(platform, httpClient, viewerUuid, viewerName,
-                                response.getProfile(), menuBackAction)
-                                .display(click.player());
-                    });
-                }
-            });
+        httpClient.getPlayerProfile(targetUuid).thenAccept(response -> {
+            if (response.getStatus() == 200) {
+                new HistoryMenu(platform, httpClient, viewerUuid, viewerName,
+                    response.getProfile(), menuBackAction)
+                    .display(click.player());
+            }
         });
     }
 

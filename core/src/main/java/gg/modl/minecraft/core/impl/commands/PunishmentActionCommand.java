@@ -97,21 +97,18 @@ public class PunishmentActionCommand extends BaseCommand {
                     return;
                 }
 
-                Punishment finalPunishment = punishment;
-                platform.runOnMainThread(() -> {
-                    String senderName = "Staff";
-                    if (platform.getPlayer(senderUuid) != null) {
-                        senderName = platform.getPlayer(senderUuid).username();
-                    }
+                String senderName = "Staff";
+                if (platform.getPlayer(senderUuid) != null) {
+                    senderName = platform.getPlayer(senderUuid).username();
+                }
 
-                    ModifyPunishmentMenu menu = new ModifyPunishmentMenu(
-                            platform, getHttpClient(), senderUuid, senderName,
-                            account, finalPunishment, null, null
-                    );
+                ModifyPunishmentMenu menu = new ModifyPunishmentMenu(
+                    platform, getHttpClient(), senderUuid, senderName,
+                    account, punishment, null, null
+                );
 
-                    CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-                    menu.display(player);
-                });
+                CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+                menu.display(player);
             }).exceptionally(throwable -> {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
                 return null;

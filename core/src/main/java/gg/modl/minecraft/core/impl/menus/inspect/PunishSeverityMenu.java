@@ -438,7 +438,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                 },
                 () -> {
                     sendMessage(MenuItems.COLOR_GRAY + "Punishment cancelled.");
-                    platform.runOnMainThread(() -> display(click.player()));
+                    display(click.player());
                 }
         );
     }
@@ -470,11 +470,9 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         Consumer<Set<String>> onComplete = selectedIds -> {
             // Return to PunishSeverityMenu with updated linked report IDs
             List<String> newLinkedIds = new ArrayList<>(selectedIds);
-            platform.runOnMainThread(() -> {
-                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType,
-                        rootBackAction, menuBackAction, silentMode, altBlocking, statWipe, newLinkedIds)
-                        .display(click.player());
-            });
+            new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType,
+                rootBackAction, menuBackAction, silentMode, altBlocking, statWipe, newLinkedIds)
+                .display(click.player());
         };
 
         Consumer<CirrusPlayerWrapper> backToSeverity = player -> {

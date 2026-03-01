@@ -105,25 +105,19 @@ public class ReportDetailsMenu extends SimpleMenu {
                 // Player typed their details
                 reportData.setDetails(input);
 
-                // Open confirm menu on main thread
-                platform.runOnMainThread(() -> {
-                    ReportConfirmMenu confirmMenu = new ReportConfirmMenu(
-                            reporter, target, httpClient, locale, platform, panelUrl,
-                            guiConfig, chatMessageCache, reportData
-                    );
-                    CirrusPlayerWrapper playerWrapper = platform.getPlayerWrapper(reporter.uuid());
-                    confirmMenu.display(playerWrapper);
-                });
+                ReportConfirmMenu confirmMenu = new ReportConfirmMenu(
+                    reporter, target, httpClient, locale, platform, panelUrl,
+                    guiConfig, chatMessageCache, reportData
+                );
+                CirrusPlayerWrapper playerWrapper = platform.getPlayerWrapper(reporter.uuid());
+                confirmMenu.display(playerWrapper);
             }, () -> {
-                // Cancelled - reopen this menu
-                platform.runOnMainThread(() -> {
-                    ReportDetailsMenu detailsMenu = new ReportDetailsMenu(
-                            reporter, target, httpClient, locale, platform, panelUrl,
-                            guiConfig, chatMessageCache, reportData, previousMenu
-                    );
-                    CirrusPlayerWrapper playerWrapper = platform.getPlayerWrapper(reporter.uuid());
-                    detailsMenu.display(playerWrapper);
-                });
+                ReportDetailsMenu detailsMenu = new ReportDetailsMenu(
+                    reporter, target, httpClient, locale, platform, panelUrl,
+                    guiConfig, chatMessageCache, reportData, previousMenu
+                );
+                CirrusPlayerWrapper playerWrapper = platform.getPlayerWrapper(reporter.uuid());
+                detailsMenu.display(playerWrapper);
             });
 
             return CallResult.DENY_GRABBING;
