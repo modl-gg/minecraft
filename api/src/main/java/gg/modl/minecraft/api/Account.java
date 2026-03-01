@@ -28,7 +28,7 @@ public class Account {
     @SerializedName("notes")
     private List<Note> notes;
 
-    @SerializedName("ipList")
+    @SerializedName("ipAddresses")
     private List<IPAddress> ipList;
 
     @SerializedName("punishments")

@@ -70,6 +70,7 @@ public class SyncService {
     private Long lastKnownStaffPermissionsTimestamp = null;
     private Long lastKnownPunishmentTypesTimestamp = null;
     private final List<PunishmentTypesRefreshListener> punishmentTypesListeners = new ArrayList<>();
+    private StatWipeExecutor statWipeExecutor;
 
     /**
      * Create a new SyncService.
@@ -97,6 +98,10 @@ public class SyncService {
 
     public void addPunishmentTypesListener(PunishmentTypesRefreshListener listener) {
         punishmentTypesListeners.add(listener);
+    }
+
+    public void setStatWipeExecutor(StatWipeExecutor executor) {
+        this.statWipeExecutor = executor;
     }
     
     /**
@@ -176,6 +181,7 @@ public class SyncService {
                 request.setLastSyncTimestamp(lastSyncTimestamp);
                 request.setOnlinePlayers(buildOnlinePlayersList(onlinePlayers));
                 request.setServerStatus(buildServerStatus(onlinePlayers));
+                request.setServerName(platform.getServerName());
 
                 SyncResponse response = httpClientHolder.getClient().sync(request)
                     .orTimeout(5, TimeUnit.SECONDS)
@@ -422,6 +428,47 @@ public class SyncService {
         }
     }
     
+    /**
+     * Check if the stat wipe executor is available (bridge plugin detected).
+     */
+    public boolean isStatWipeAvailable() {
+        return statWipeExecutor != null;
+    }
+
+    /**
+     * Execute a stat wipe triggered by a player login and acknowledge on success.
+     */
+    public void executeStatWipeFromLogin(SyncResponse.PendingStatWipe statWipe) {
+        if (statWipeExecutor == null) return;
+
+        logger.info(String.format("[StatWipe] Executing stat wipe for %s (punishment: %s)",
+                statWipe.getUsername(), statWipe.getPunishmentId()));
+
+        statWipeExecutor.executeStatWipe(
+                statWipe.getUsername(),
+                statWipe.getMinecraftUuid(),
+                statWipe.getPunishmentId(),
+                (success, serverName) -> {
+                    if (success) {
+                        logger.info("[StatWipe] Completed for " + statWipe.getUsername() +
+                                " on server " + serverName + " — acknowledging to backend");
+                        gg.modl.minecraft.api.http.request.StatWipeAcknowledgeRequest request =
+                                new gg.modl.minecraft.api.http.request.StatWipeAcknowledgeRequest(
+                                        statWipe.getPunishmentId(), serverName, true);
+                        httpClientHolder.getClient().acknowledgeStatWipe(request)
+                                .exceptionally(throwable -> {
+                                    logger.warning("[StatWipe] Failed to acknowledge for punishment " +
+                                            statWipe.getPunishmentId() + ": " + throwable.getMessage());
+                                    return null;
+                                });
+                    } else {
+                        logger.warning("[StatWipe] Failed for " + statWipe.getUsername() +
+                                " — will retry on next sync");
+                    }
+                }
+        );
+    }
+
     /**
      * Process a pending punishment that needs to be executed
      */

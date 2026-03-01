@@ -371,11 +371,12 @@ print:
   # /history <player> -p
   history:
     header: ""
-    entry: "&6{ordinal}. &e#{id} {date} &f{type} &eby {issuer}."
-    entry_active: "&6{ordinal}. &a#{id} &e{date} &f{type} &eby {issuer} (expires in {expiry})."
-    entry_permanent: "&6{ordinal}. &a#{id} &e{date} &f{type} &eby {issuer} (never expires)."
-    entry_inactive: "&6{ordinal}. &7#{id} &e{date} &f{type} &eby {issuer} (inactive)."
-    entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} &eby {issuer} (pardoned)."
+    entry_kick: "&6{ordinal}. &7#{id} &e{date} &f{type} &eby {issuer} for &f{reason}"
+    entry_active: "&6{ordinal}. &c#{id} &e{date} &f{type} ({duration}) &eby {issuer} for &f{reason} &7(expires in {expiry})"
+    entry_permanent: "&6{ordinal}. &c#{id} &e{date} &f{type} (permanent) &eby {issuer} for &f{reason}"
+    entry_unstarted: "&6{ordinal}. &c#{id} &e{date} &f{type} ({duration}) &eby {issuer} for &f{reason} &7(not started yet)"
+    entry_expired: "&6{ordinal}. &7#{id} &e{date} &f{type} ({duration}) &eby {issuer} for &f{reason} &7(expired {expired_ago} ago)"
+    entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} ({duration}) &eby {issuer} for &f{reason} &7(pardoned {pardoned_ago} ago"
     total: "&eCount: &f{count}&e punishment(s)"
     empty: "&7Player has never been punished."
     footer: ""
@@ -574,3 +575,86 @@ menus:
       - "{content}"
       - "&f "
       - "&eClick to deselect"
+
+# Help Command
+# Set usage to "" to hide a command from the help list (e.g. if you disabled it).
+help:
+  header: "&a&lmodl.gg &av{version} &f- &eCommand List (Page {page}/{total_pages})"
+  entry: "&f/{command} &7- {description}"
+  footer: "&ePage {page}/{total_pages}. Use &a/modl help {next_page}&e for the next page."
+  no_more_pages: "&7No more pages."
+  player_commands:
+    iammuted:
+      usage: "iammuted <player>"
+      description: "Tell someone you are muted"
+    standing:
+      usage: "standing"
+      description: "View your punishment standing"
+    report:
+      usage: "report <player> <reason>"
+      description: "Report a player"
+    chatreport:
+      usage: "chatreport <player>"
+      description: "Report a player's chat"
+    claimticket:
+      usage: "claimticket <id>"
+      description: "Link a ticket to your account"
+    apply:
+      usage: "apply"
+      description: "Apply for a staff position"
+    bugreport:
+      usage: "bugreport <title>"
+      description: "Report a bug"
+    support:
+      usage: "support <title>"
+      description: "Open support ticket"
+  staff_commands:
+    staffmenu:
+      usage: "staffmenu"
+      description: "Open staff menu"
+    inspect:
+      usage: "inspect <player> [-p]"
+      description: "Open player inspect menu (-p for print)"
+    history:
+      usage: "history <player> [-p]"
+      description: "Open player history (-p for print)"
+    notes:
+      usage: "notes <player> [-p]"
+      description: "Open player notes (-p for print)"
+    alts:
+      usage: "alts <player> [-p]"
+      description: "Open player alts (-p for print)"
+    reports:
+      usage: "reports [player] [-p]"
+      description: "Open reports menu (-p for print)"
+    punish:
+      usage: "punish <player> [type] [reason]"
+      description: "Issue a punishment"
+    ban:
+      usage: "ban <player> [duration] [reason]"
+      description: "Ban a player"
+    mute:
+      usage: "mute <player> [duration] [reason]"
+      description: "Mute a player"
+    kick:
+      usage: "kick <player> [reason]"
+      description: "Kick a player"
+    blacklist:
+      usage: "blacklist <player> [reason]"
+      description: "Blacklist a player"
+    pardon:
+      usage: "pardon <player>"
+      description: "Pardon ALL active punishments"
+    unban:
+      usage: "unban <player>"
+      description: "Pardon active or oldest unstarted ban"
+    unmute:
+      usage: "unmute <player>"
+      description: "Pardon active or oldest unstarted mute"
+    modl_reload:
+      usage: "modl reload"
+      description: "Reload configuration"
+
+# Stat Wipe
+stat_wipe:
+  kick_message: "&cPlease re-log momentarily. Your statistics are being reset pursuant to a recently expired ban."

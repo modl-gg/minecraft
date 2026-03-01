@@ -116,11 +116,13 @@ public final class Libraries {
         "jubaYh9JbxbGGd5uxcC5wUDOrJuJwqWzN3k429VaFi4="
     );
 
-    // ACF - Annotation Command Framework (SNAPSHOT, loaded via direct URL)
+    // ACF - Annotation Command Framework (pinned snapshot build, loaded via direct URL)
+    // Version uses timestamp instead of "-SNAPSHOT" to prevent libby from re-downloading every startup
+    // (libby 1.3.1 always deletes and re-downloads any library whose version ends with "-SNAPSHOT")
     public static final LibraryRecord ACF_CORE = LibraryRecord.ofUrl(
             "co{}aikar",
             "acf-core",
-            "0.5.1-SNAPSHOT",
+            "0.5.1-20260118.005649-52",
             "acf-core",
             "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-core/0.5.1-SNAPSHOT/acf-core-0.5.1-20260118.005649-52.jar",
             "zh32bc5eNCJzsRJTGYP2NyWhuf1JrwgqwEcZZfJ801A="
@@ -129,7 +131,7 @@ public final class Libraries {
     public static final LibraryRecord ACF_BUKKIT = LibraryRecord.ofUrl(
             "co{}aikar",
             "acf-bukkit",
-            "0.5.1-SNAPSHOT",
+            "0.5.1-20260118.005649-52",
             "acf-bukkit",
             "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-bukkit/0.5.1-SNAPSHOT/acf-bukkit-0.5.1-20260118.005649-52.jar",
             "McXMmPGrl6kbVHVxImCWCq7pJROFbqB3j0DT1vWDFFs="
@@ -138,7 +140,7 @@ public final class Libraries {
     public static final LibraryRecord ACF_VELOCITY = LibraryRecord.ofUrl(
             "co{}aikar",
             "acf-velocity",
-            "0.5.1-SNAPSHOT",
+            "0.5.1-20260118.005649-51",
             "acf-velocity",
             "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-velocity/0.5.1-SNAPSHOT/acf-velocity-0.5.1-20260118.005649-51.jar",
             "+MRdScJFX9qVtgdXYeWZA9CahltfHQUbzbppMAPVrVA="
@@ -147,17 +149,17 @@ public final class Libraries {
     public static final LibraryRecord ACF_BUNGEE = LibraryRecord.ofUrl(
             "co{}aikar",
             "acf-bungee",
-            "0.5.1-SNAPSHOT",
+            "0.5.1-20260118.005649-52",
             "acf-bungee",
             "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-bungee/0.5.1-SNAPSHOT/acf-bungee-0.5.1-20260118.005649-52.jar",
             "QC6rQuPHfRNWa/qqcM1ly9L3eKhZdGB41f0jYLBkP/s="
     );
 
-    // Cirrus - Inventory GUI framework (loaded via JitPack)
+    // Cirrus - Inventory GUI framework (pinned snapshot build, loaded via direct URL)
     public static final LibraryRecord CIRRUS_SPIGOT = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-spigot",
-            "4.1.2-SNAPSHOT",
+            "4.1.2",
             "cirrus-spigot",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.2-SNAPSHOT/cirrus-spigot-4.1.2-SNAPSHOT.jar",
             "VJAxGO/PWJjNkZi4Jn5cTHYW7vprbn5uMBiVdDW4L5o="
@@ -166,7 +168,7 @@ public final class Libraries {
     public static final LibraryRecord CIRRUS_VELOCITY = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-velocity",
-            "4.1.2-SNAPSHOT",
+            "4.1.2",
             "cirrus-velocity",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.2-SNAPSHOT/cirrus-velocity-4.1.2-SNAPSHOT.jar",
             "Bo0r1cfK6+SS7fx1Sdlga5Dfkp345fXrt63UJPBkKHw="
@@ -175,7 +177,7 @@ public final class Libraries {
     public static final LibraryRecord CIRRUS_BUNGEECORD = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-bungeecord",
-            "4.1.2-SNAPSHOT",
+            "4.1.2",
             "cirrus-bungeecord",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.2-SNAPSHOT/cirrus-bungeecord-4.1.2-SNAPSHOT.jar",
             "2FWz88Iji1BJ74Qr5elfrW5F7sjiOZJHzlBco8IwIPo="

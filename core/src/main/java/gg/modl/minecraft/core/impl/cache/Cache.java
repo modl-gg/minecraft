@@ -273,6 +273,19 @@ public class Cache {
         CachedPlayerData data = cache.get(playerUuid);
         return data != null && data.getStaffMember() != null;
     }
+
+    /**
+     * Get the panel display name for a staff member.
+     * Returns the panel username (staffUsername) if available, otherwise null.
+     * Callers should fall back to Minecraft username if null is returned.
+     */
+    public String getStaffDisplayName(UUID playerUuid) {
+        SyncResponse.ActiveStaffMember staff = getStaffMember(playerUuid);
+        if (staff != null && staff.getStaffUsername() != null && !staff.getStaffUsername().isEmpty()) {
+            return staff.getStaffUsername();
+        }
+        return null;
+    }
     
     public boolean hasPermission(UUID playerUuid, String permission) {
         // Check new staff permissions cache first

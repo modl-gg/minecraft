@@ -71,4 +71,5 @@ public record LibraryRecord(
     public boolean hasChecksum() {
         return checksum != null;
     }
+
 }

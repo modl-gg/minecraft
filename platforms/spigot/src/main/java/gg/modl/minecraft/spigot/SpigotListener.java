@@ -180,6 +180,12 @@ public class SpigotListener implements Listener {
             if (!ban.isStarted()) {
                 ListenerHelper.acknowledgeBanEnforcement(getHttpClient(), ban, event.getPlayer().getUniqueId().toString(), debugMode, java.util.logging.Logger.getLogger(SpigotListener.class.getName()));
             }
+        } else if (syncService.isStatWipeAvailable() && response.hasPendingStatWipes()) {
+            event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
+            event.setKickMessage(localeManager.getMessage("stat_wipe.kick_message"));
+            for (SyncResponse.PendingStatWipe statWipe : response.getPendingStatWipes()) {
+                syncService.executeStatWipeFromLogin(statWipe);
+            }
         }
     }
     

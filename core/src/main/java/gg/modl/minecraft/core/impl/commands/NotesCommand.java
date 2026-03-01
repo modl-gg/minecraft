@@ -75,11 +75,12 @@ public class NotesCommand extends BaseCommand {
                 getHttpClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
                     if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
                         platform.runOnMainThread(() -> {
-                            // Get sender name
-                            String senderName = "Staff";
-                            if (platform.getPlayer(senderUuid) != null) {
+                            // Get sender name (prefer panel username)
+                            String senderName = cache.getStaffDisplayName(senderUuid);
+                            if (senderName == null && platform.getPlayer(senderUuid) != null) {
                                 senderName = platform.getPlayer(senderUuid).username();
                             }
+                            if (senderName == null) senderName = "Staff";
 
                             // Open the notes menu
                             NotesMenu menu = new NotesMenu(

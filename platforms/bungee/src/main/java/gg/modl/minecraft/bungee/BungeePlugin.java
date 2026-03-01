@@ -8,6 +8,7 @@ import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.bungee.factory.BungeePacketEventsBuilder;
@@ -30,6 +31,7 @@ import org.bstats.bungeecord.Metrics;
 public class BungeePlugin extends Plugin {
     private Configuration configuration;
     private PluginLoader loader;
+    private QueryStatWipeExecutor queryStatWipeExecutor;
 
     @Override
     public synchronized void onEnable() {
@@ -82,6 +84,17 @@ public class BungeePlugin extends Plugin {
         List<String> mutedCommands = configuration.getStringList("muted_commands");
 
         this.loader = new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
+
+        // Set up bridge TCP connection for stat-wipe execution
+        // Uses the API key as shared secret for bridge authentication
+        String bridgeHost = configuration.getString("bridge.host", "");
+        if (!bridgeHost.isEmpty()) {
+            int bridgePort = configuration.getInt("bridge.port", 25590);
+            String apiKey = configuration.getString("api.key");
+            queryStatWipeExecutor = new QueryStatWipeExecutor(getLogger(), httpManager.isDebugHttp());
+            queryStatWipeExecutor.addBridge("bridge", bridgeHost, bridgePort, apiKey);
+            loader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
+        }
         getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), httpManager.isDebugHttp(), mutedCommands, this));
 
         // Register async command interceptor — dispatches modl commands off the network thread
@@ -94,6 +107,9 @@ public class BungeePlugin extends Plugin {
 
     @Override
     public synchronized void onDisable() {
+        if (queryStatWipeExecutor != null) {
+            queryStatWipeExecutor.shutdown();
+        }
         if (loader != null) {
             loader.shutdown();
         }

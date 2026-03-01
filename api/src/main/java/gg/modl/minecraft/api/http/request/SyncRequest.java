@@ -14,12 +14,15 @@ import java.util.List;
 public class SyncRequest {
     @NotNull
     private String lastSyncTimestamp;
-    
+
     @NotNull
     private List<OnlinePlayer> onlinePlayers;
-    
+
     @NotNull
     private ServerStatus serverStatus;
+
+    @Nullable
+    private String serverName;
     
     @Data
     @AllArgsConstructor

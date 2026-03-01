@@ -41,6 +41,8 @@ public class SyncResponse {
 
         private List<StaffNotification> staffNotifications;
 
+        private List<PendingStatWipe> pendingStatWipes;
+
         private Long staffPermissionsUpdatedAt;
 
         private Long punishmentTypesUpdatedAt;
@@ -149,6 +151,20 @@ public class SyncResponse {
         private String message;
         private Long timestamp;
         private java.util.Map<String, Object> data;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class PendingStatWipe {
+        @NotNull
+        private String minecraftUuid;
+
+        @NotNull
+        private String username;
+
+        @NotNull
+        private String punishmentId;
     }
 
     @Data

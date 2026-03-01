@@ -125,6 +125,13 @@ public class JoinListener {
                 if (!ban.isStarted()) {
                     ListenerHelper.acknowledgeBanEnforcement(getHttpClient(), ban, event.getPlayer().getUniqueId().toString(), debugMode, java.util.logging.Logger.getLogger(JoinListener.class.getName()));
                 }
+            } else if (syncService.isStatWipeAvailable() && response.hasPendingStatWipes()) {
+                // Kick the player and immediately execute stat wipe commands via TCP bridge
+                Component kickMessage = Colors.get(localeManager.getMessage("stat_wipe.kick_message"));
+                event.setResult(ResultedEvent.ComponentResult.denied(kickMessage));
+                for (SyncResponse.PendingStatWipe statWipe : response.getPendingStatWipes()) {
+                    syncService.executeStatWipeFromLogin(statWipe);
+                }
             } else {
                 // Cache active mute if present
                 if (response.hasActiveMute()) {

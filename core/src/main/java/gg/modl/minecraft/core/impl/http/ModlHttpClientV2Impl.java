@@ -259,7 +259,8 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                         request.getServerStatus().getMaxPlayers(),
                         request.getServerStatus().getServerVersion(),
                         request.getServerStatus().getTimestamp()
-                )
+                ),
+                request.getServerName()
         );
         String requestBody = gson.toJson(v2Request);
         if (debugMode) {
@@ -632,6 +633,20 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         body.put("modifyAssociatedTickets", request.isModifyAssociatedTickets());
 
         return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/tickets")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> acknowledgeStatWipe(@NotNull gg.modl.minecraft.api.http.request.StatWipeAcknowledgeRequest request) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("punishmentId", request.getPunishmentId());
+        body.put("serverName", request.getServerName());
+        body.put("success", request.isSuccess());
+
+        return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/stat-wipe-acknowledge")
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);

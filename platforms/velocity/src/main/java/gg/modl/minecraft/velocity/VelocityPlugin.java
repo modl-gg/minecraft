@@ -16,6 +16,7 @@ import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.plugin.PluginInfo;
+import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.velocity.factory.VelocityPacketEventsBuilder;
@@ -49,6 +50,7 @@ public final class VelocityPlugin {
 
     private Map<String, Object> configuration;
     private PluginLoader pluginLoader;
+    private QueryStatWipeExecutor queryStatWipeExecutor;
 
     @Inject
     public VelocityPlugin(PluginContainer plugin, ProxyServer server, @DataDirectory Path folder, Logger logger, Metrics.Factory metrics) {
@@ -109,6 +111,18 @@ public final class VelocityPlugin {
         
         this.pluginLoader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder, chatMessageCache, httpManager, syncPollingRate);
 
+        // Set up bridge TCP connection for stat-wipe execution
+        // Uses the API key as shared secret for bridge authentication
+        String bridgeHost = getConfigString("bridge.host", "");
+        if (!bridgeHost.isEmpty()) {
+            int bridgePort = getConfigInt("bridge.port", 25590);
+            String apiKey = getConfigString("api.key", "your-api-key-here");
+            queryStatWipeExecutor = new QueryStatWipeExecutor(
+                    java.util.logging.Logger.getLogger("modl"), httpManager.isDebugHttp());
+            queryStatWipeExecutor.addBridge("bridge", bridgeHost, bridgePort, apiKey);
+            pluginLoader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
+        }
+
         server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClientHolder(), pluginLoader.getCache(), logger, chatMessageCache, platform, pluginLoader.getSyncService(), pluginLoader.getLocaleManager(), httpManager.isDebugHttp()));
 
         @SuppressWarnings("unchecked")
@@ -121,6 +135,9 @@ public final class VelocityPlugin {
 
     @Subscribe
     public synchronized void onProxyShutdown(ProxyShutdownEvent evt) {
+        if (queryStatWipeExecutor != null) {
+            queryStatWipeExecutor.shutdown();
+        }
         if (pluginLoader != null) {
             pluginLoader.shutdown();
         }

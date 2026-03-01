@@ -116,6 +116,13 @@ public class BungeeListener implements Listener {
                     if (!ban.isStarted()) {
                         ListenerHelper.acknowledgeBanEnforcement(getHttpClient(), ban, event.getConnection().getUniqueId().toString(), debugMode, java.util.logging.Logger.getLogger(BungeeListener.class.getName()));
                     }
+                } else if (syncService.isStatWipeAvailable() && response.hasPendingStatWipes()) {
+                    // Kick the player and immediately execute stat wipe commands via TCP bridge
+                    event.setCancelReason(new TextComponent(localeManager.getMessage("stat_wipe.kick_message")));
+                    event.setCancelled(true);
+                    for (SyncResponse.PendingStatWipe statWipe : response.getPendingStatWipes()) {
+                        syncService.executeStatWipeFromLogin(statWipe);
+                    }
                 }
             } catch (java.util.concurrent.TimeoutException e) {
                 platform.getLogger().warning("Login check timed out for " + event.getConnection().getName() + " - blocking login for safety");

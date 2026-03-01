@@ -126,11 +126,12 @@ public class InspectCommand extends BaseCommand {
                 getHttpClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
                     if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
                         platform.runOnMainThread(() -> {
-                            // Get sender name
-                            String senderName = "Staff";
-                            if (platform.getPlayer(senderUuid) != null) {
+                            // Get sender name (prefer panel username)
+                            String senderName = cache.getStaffDisplayName(senderUuid);
+                            if (senderName == null && platform.getPlayer(senderUuid) != null) {
                                 senderName = platform.getPlayer(senderUuid).username();
                             }
+                            if (senderName == null) senderName = "Staff";
 
                             // Open the inspect menu
                             InspectMenu menu = new InspectMenu(
@@ -411,26 +412,12 @@ public class InspectCommand extends BaseCommand {
         String name = punishmentTypeNames.get(typeId);
         if (name != null) return name;
 
-        try {
-            int id = Integer.parseInt(typeId);
-            switch (id) {
-                case 1: return "Ban";
-                case 2: return "Mute";
-                case 3: return "Kick";
-                case 4: return "Warning";
-                case 5: return "Blacklist";
-                case 6: return "Silence";
-                default: break;
-            }
-        } catch (NumberFormatException ignored) {
-            String lower = typeId.toLowerCase();
-            if (lower.contains("ban")) return "Ban";
-            if (lower.contains("mute")) return "Mute";
-            if (lower.contains("kick")) return "Kick";
-            if (lower.contains("warn")) return "Warning";
-            if (lower.contains("blacklist")) return "Blacklist";
-            if (lower.contains("silence")) return "Silence";
-        }
+        // Fallback: try to detect category from string content
+        String lower = typeId.toLowerCase();
+        if (lower.contains("ban")) return "Ban";
+        if (lower.contains("mute")) return "Mute";
+        if (lower.contains("kick")) return "Kick";
+        if (lower.contains("blacklist")) return "Blacklist";
 
         return typeId;
     }

@@ -16,6 +16,7 @@ public class V2SyncRequest {
     private String lastSyncTimestamp;
     private List<OnlinePlayer> onlinePlayers;
     private ServerStatus serverStatus;
+    private String serverName;
 
     @Data
     @AllArgsConstructor

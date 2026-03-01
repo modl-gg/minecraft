@@ -8,6 +8,7 @@ import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
@@ -30,6 +31,7 @@ import java.util.List;
 public class SpigotPlugin extends JavaPlugin {
     
     private PluginLoader loader;
+    private QueryStatWipeExecutor queryStatWipeExecutor;
 
     @Override
     public synchronized void onEnable() {
@@ -83,6 +85,22 @@ public class SpigotPlugin extends JavaPlugin {
         List<String> mutedCommands = getConfig().getStringList("muted_commands");
 
         this.loader = new PluginLoader(platform, new SpigotCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
+
+        // Set up stat wipe executor — prefer direct Java (same-server bridge), fall back to TCP
+        if (getServer().getPluginManager().getPlugin("modl-bridge") != null) {
+            loader.getSyncService().setStatWipeExecutor(new SpigotStatWipeExecutor(getLogger(), httpManager.isDebugHttp()));
+        } else {
+            String bridgeHost = getConfig().getString("bridge.host", "");
+            if (!bridgeHost.isEmpty()) {
+                int bridgePort = getConfig().getInt("bridge.port", 25590);
+                String apiKey = getConfig().getString("api.key");
+                queryStatWipeExecutor = new QueryStatWipeExecutor(getLogger(), httpManager.isDebugHttp());
+                queryStatWipeExecutor.addBridge("bridge", bridgeHost, bridgePort, apiKey);
+                loader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
+            } else {
+                getLogger().warning("[modl] modl-bridge plugin not found and bridge.host not configured — stat wipe commands will not execute");
+            }
+        }
         getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), loader.getLoginCache(), httpManager.isDebugHttp(), mutedCommands), this);
 
         // Get CommandMap via reflection (not exposed in Spigot API, only Paper)
@@ -133,6 +151,9 @@ public class SpigotPlugin extends JavaPlugin {
 
     @Override
     public synchronized void onDisable() {
+        if (queryStatWipeExecutor != null) {
+            queryStatWipeExecutor.shutdown();
+        }
         if (loader != null) {
             loader.shutdown();
         }

@@ -35,6 +35,17 @@ update_checker:
   # Default: 60 minutes. Minimum: 1 minute
   interval_minutes: 60
 
+# Bridge Configuration (for stat-wipe execution via direct TCP)
+# The modl-bridge plugin on the backend Spigot server runs a TCP query server.
+# This plugin connects to it to send stat-wipe commands without needing any
+# players online. Authentication uses the API key configured above.
+bridge:
+  # IP/hostname of the server running modl-bridge (leave empty to disable)
+  # set this to 127.0.0.1 if the bridge is running on the same server as this plugin
+  host: ""
+  # TCP port the bridge query server listens on (must match bridge config)
+  port: 25590
+
 # Commands that muted players cannot use
 # List command names without the leading slash
 muted_commands:
@@ -50,6 +61,7 @@ muted_commands:
 # Customize which commands are registered by the plugin.
 # Use pipe-separated values for multiple aliases (e.g., "punish|p|pun")
 # The first alias in the list is considered the primary command name.
+# To disable a command, just leave the value blank (ie: punish: "")
 commands:
   modl: "modl"
   punish: "punish|p"
@@ -318,7 +330,7 @@ report_gui:
   2:
     enabled: true
     item: "minecraft:feather"
-    title: "&cChat Abuse"
+    title: "Chat Abuse"
     chat-report: true
     description:
       - "&7Low-quality chat, spam, or inappropriate language"
@@ -329,7 +341,7 @@ report_gui:
   3:
     enabled: true
     item: "minecraft:pufferfish"
-    title: "&cAnti-social"
+    title: "Anti-social"
     chat-report: true
     description:
       - "&7Harassment, threats, or bullying"
@@ -340,7 +352,7 @@ report_gui:
   4:
     enabled: true
     item: "minecraft:name_tag"
-    title: "&cInappropriate Username/Skin"
+    title: "Inappropriate Username/Skin"
     chat-report: false
     description:
       - "&7Offensive username or skin"
@@ -351,7 +363,7 @@ report_gui:
   5:
     enabled: true
     item: "minecraft:diamond_sword"
-    title: "&cCheating"
+    title: "Cheating"
     chat-report: false
     description:
       - "&7Hacking or using unfair modifications"
@@ -362,7 +374,7 @@ report_gui:
   6:
     enabled: true
     item: "minecraft:book"
-    title: "&cGame Rule Violation"
+    title: "Game Rule Violation"
     chat-report: false
     description:
       - "&7Violating server-specific game rules"
@@ -381,7 +393,7 @@ report_gui:
   9:
     enabled: true
     item: "minecraft:tnt"
-    title: "&cExploits"
+    title: "Exploits"
     chat-report: false
     description:
       - "&7Abusing bugs or exploits"
@@ -392,7 +404,7 @@ report_gui:
   10:
     enabled: true
     item: "minecraft:experience_bottle"
-    title: "&cStats Boosting"
+    title: "Stats Boosting"
     chat-report: false
     description:
       - "&7Artificially inflating stats"
@@ -403,7 +415,7 @@ report_gui:
   11:
     enabled: true
     item: "minecraft:paper"
-    title: "&cOther"
+    title: "Other"
     chat-report: false
     description:
       - "&7Any other rule violation"

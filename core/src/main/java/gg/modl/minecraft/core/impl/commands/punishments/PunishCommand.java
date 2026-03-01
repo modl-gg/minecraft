@@ -133,9 +133,14 @@ public class PunishCommand extends BaseCommand {
         String calculatedOffenseLevel = calculateOffenseLevel(target, punishmentType);
         punishmentArgs.offenseLevel = calculatedOffenseLevel;
 
-        // Get issuer information
-        final String issuerName = sender.isPlayer() ? 
-            platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
+        // Get issuer information (prefer panel username)
+        final String issuerName;
+        if (sender.isPlayer()) {
+            String panelName = cache.getStaffDisplayName(sender.getUniqueId());
+            issuerName = panelName != null ? panelName : platform.getAbstractPlayer(sender.getUniqueId(), false).username();
+        } else {
+            issuerName = "Console";
+        }
 
         // Build punishment data (matching panel logic)
         Map<String, Object> data = buildPunishmentData(punishmentArgs, punishmentType, target);
@@ -212,11 +217,12 @@ public class PunishCommand extends BaseCommand {
         UUID senderUuid = sender.getUniqueId();
 
         platform.runOnMainThread(() -> {
-            // Get sender name
-            String senderName = "Staff";
-            if (platform.getPlayer(senderUuid) != null) {
+            // Get sender name (prefer panel username)
+            String senderName = cache.getStaffDisplayName(senderUuid);
+            if (senderName == null && platform.getPlayer(senderUuid) != null) {
                 senderName = platform.getPlayer(senderUuid).username();
             }
+            if (senderName == null) senderName = "Staff";
 
             // Open the punish menu
             PunishMenu menu = new PunishMenu(

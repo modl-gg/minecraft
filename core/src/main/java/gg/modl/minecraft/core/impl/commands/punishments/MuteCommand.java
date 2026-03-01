@@ -42,9 +42,14 @@ public class MuteCommand extends BaseCommand {
         // Parse arguments
         MuteArgs muteArgs = parseArguments(args);
         
-        // Get issuer information
-        final String issuerName = sender.isPlayer() ? 
-            platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
+        // Get issuer information (prefer panel username)
+        final String issuerName;
+        if (sender.isPlayer()) {
+            String panelName = cache.getStaffDisplayName(sender.getUniqueId());
+            issuerName = panelName != null ? panelName : platform.getAbstractPlayer(sender.getUniqueId(), false).username();
+        } else {
+            issuerName = "Console";
+        }
 
         // Build punishment data as JsonObject
         JsonObject data = new JsonObject();

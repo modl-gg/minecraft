@@ -197,7 +197,10 @@ public class PluginLoader {
         inspectCommand.initializePunishmentTypes();
         syncService.addPunishmentTypesListener(inspectCommand::updatePunishmentTypesCache);
         commandManager.registerCommand(new StaffCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
-        commandManager.registerCommand(new HistoryCommand(httpClientHolder, platform, cache, this.localeManager));
+        HistoryCommand historyCommand = new HistoryCommand(httpClientHolder, platform, cache, this.localeManager);
+        commandManager.registerCommand(historyCommand);
+        historyCommand.initializePunishmentTypes();
+        syncService.addPunishmentTypesListener(historyCommand::updatePunishmentTypesCache);
         commandManager.registerCommand(new AltsCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new NotesCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new ReportsCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
@@ -207,6 +210,7 @@ public class PluginLoader {
         // Built dynamically from configured aliases
         for (Map.Entry<String, String> entry : commandAliases.entrySet()) {
             if (entry.getKey().equals("modl")) continue; // ModlReloadCommand runs synchronously
+            if (entry.getValue().isEmpty()) continue; // Command disabled via empty alias
             for (String alias : entry.getValue().split("\\|")) {
                 asyncCommandExecutor.registerAsyncAlias(alias.trim());
             }
@@ -305,6 +309,7 @@ public class PluginLoader {
 
     /**
      * Load command aliases from config.yml, falling back to defaults for missing entries.
+     * An empty alias ("") disables the command entirely.
      */
     @SuppressWarnings("unchecked")
     private static Map<String, String> loadCommandAliases(Path dataDirectory, Logger logger) {
@@ -321,9 +326,12 @@ public class PluginLoader {
                     Map<String, Object> commands = (Map<String, Object>) config.get("commands");
                     if (commands != null) {
                         for (Map.Entry<String, Object> entry : commands.entrySet()) {
-                            String value = String.valueOf(entry.getValue());
-                            if (value != null && !value.isEmpty()) {
-                                aliases.put(entry.getKey(), value);
+                            Object rawValue = entry.getValue();
+                            if (rawValue == null || String.valueOf(rawValue).trim().isEmpty()) {
+                                // Empty alias = disabled command
+                                aliases.put(entry.getKey(), "");
+                            } else {
+                                aliases.put(entry.getKey(), String.valueOf(rawValue));
                             }
                         }
                     }
@@ -338,11 +346,17 @@ public class PluginLoader {
     /**
      * Register command aliases as ACF command replacements.
      * These replacements are used in @CommandAlias("%cmd_xxx") annotations.
+     * Disabled commands (empty alias) get an unreachable alias so ACF doesn't error out.
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static void registerCommandReplacements(CommandManager commandManager, Map<String, String> aliases) {
         for (Map.Entry<String, String> entry : aliases.entrySet()) {
-            commandManager.getCommandReplacements().addReplacement("cmd_" + entry.getKey(), entry.getValue());
+            if (entry.getValue().isEmpty()) {
+                // Register an unreachable alias so ACF doesn't fail on unresolved %cmd_ replacements
+                commandManager.getCommandReplacements().addReplacement("cmd_" + entry.getKey(), "modl:__disabled_" + entry.getKey());
+            } else {
+                commandManager.getCommandReplacements().addReplacement("cmd_" + entry.getKey(), entry.getValue());
+            }
         }
     }
 

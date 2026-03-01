@@ -161,4 +161,8 @@ public interface ModlHttpClient {
     // Batch ticket fetch
     @NotNull
     CompletableFuture<TicketsResponse> getTicketsByIds(@NotNull java.util.List<String> ticketIds);
+
+    // Stat wipe acknowledgment
+    @NotNull
+    CompletableFuture<Void> acknowledgeStatWipe(@NotNull StatWipeAcknowledgeRequest request);
 }

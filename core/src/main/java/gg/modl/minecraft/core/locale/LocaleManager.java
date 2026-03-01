@@ -673,17 +673,17 @@ public class LocaleManager {
     private String getDefaultPublicPathForOrdinal(int ordinal) {
         if (ordinal == 0) {
             // Kick
-            return "punishments.public_notifications.kick_default";
+            return "punishments.public_notification.kick_default";
         } else if (ordinal == 1) {
             // Mute (manual or other)
-            return "punishments.public_notifications.mute_default";
+            return "punishments.public_notification.mute_default";
         } else if (ordinal >= 2) {
             // Ban (manual, security, linked, blacklist, etc.)
-            return "punishments.public_notifications.ban_default";
+            return "punishments.public_notification.ban_default";
         }
         
         // Fallback to universal default for unknown ordinals
-        return "punishments.public_notifications.default";
+        return "punishments.public_notification.default";
     }
     
     /**
@@ -691,15 +691,15 @@ public class LocaleManager {
      */
     private String getDefaultPublicPathForType(String punishmentType) {
         if ("KICK".equalsIgnoreCase(punishmentType)) {
-            return "punishments.public_notifications.kick_default";
+            return "punishments.public_notification.kick_default";
         } else if ("MUTE".equalsIgnoreCase(punishmentType)) {
-            return "punishments.public_notifications.mute_default";
+            return "punishments.public_notification.mute_default";
         } else if ("BAN".equalsIgnoreCase(punishmentType)) {
-            return "punishments.public_notifications.ban_default";
+            return "punishments.public_notification.ban_default";
         }
         
         // Fallback to universal default for unknown types
-        return "punishments.public_notifications.default";
+        return "punishments.public_notification.default";
     }
     
     /**

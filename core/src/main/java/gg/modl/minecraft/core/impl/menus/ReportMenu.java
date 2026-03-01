@@ -102,7 +102,7 @@ public class ReportMenu extends SimpleMenu {
     private CirrusItem createCategoryItem(ReportGuiConfig.ReportSlotConfig slotConfig) {
         return CirrusItem.of(
                 CirrusItemType.of(slotConfig.getItem()),
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + slotConfig.getTitle()),
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + slotConfig.getTitle()),
                 MenuItems.lore(slotConfig.getDescription())
         ).actionHandler("category_" + slotConfig.getSlotNumber());
     }

@@ -284,16 +284,20 @@ public abstract class BaseInspectMenu extends BaseMenu {
             country = latestIp.getCountry();
         }
 
-        // Playtime from data
+        // Playtime from data (add current session time if player is online)
         String playtime = "N/A";
         Object playtimeObj = targetAccount.getData().get("totalPlaytimeSeconds");
+        long totalSeconds = 0;
         if (playtimeObj instanceof Number) {
-            long totalSeconds = ((Number) playtimeObj).longValue();
-            if (totalSeconds > 0) {
-                long hours = totalSeconds / 3600;
-                long minutes = (totalSeconds % 3600) / 60;
-                playtime = hours > 0 ? hours + "h " + minutes + "m" : minutes + "m";
-            }
+            totalSeconds = ((Number) playtimeObj).longValue();
+        }
+        if (isOnline && platform.getCache() != null) {
+            totalSeconds += platform.getCache().getSessionDuration(targetUuid) / 1000;
+        }
+        if (totalSeconds > 0) {
+            long hours = totalSeconds / 3600;
+            long minutes = (totalSeconds % 3600) / 60;
+            playtime = hours > 0 ? hours + "h " + minutes + "m" : minutes + "m";
         }
 
         // Build variables map using HashMap to allow more entries

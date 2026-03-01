@@ -8,6 +8,8 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @CommandAlias("%cmd_modl")
@@ -35,60 +37,124 @@ public class ModlReloadCommand extends BaseCommand {
         sender.sendMessage("§7GNU AGPLv3 Free Software. Use /modl help for command information.");
     }
 
+    private static final int ENTRIES_PER_PAGE = 8;
+
     @Subcommand("help")
     @Description("Show available modl.gg commands")
-    public void help(CommandIssuer sender) {
-        displayHelp(sender);
+    public void help(CommandIssuer sender, @Default("1") String pageArg) {
+        int page;
+        try {
+            page = Integer.parseInt(pageArg);
+        } catch (NumberFormatException e) {
+            page = 1;
+        }
+        if (page < 1) page = 1;
+
+        displayHelp(sender, page);
     }
 
-    private void displayHelp(CommandIssuer sender) {
-        sender.sendMessage("");
-
+    private void displayHelp(CommandIssuer sender, int page) {
         java.util.UUID senderUuid = sender.isPlayer() ? sender.getUniqueId() : null;
         boolean isStaff = senderUuid != null && cache.isStaffMember(senderUuid);
         boolean isAdmin = senderUuid != null && cache.hasPermission(senderUuid, "modl.admin");
 
-        // Punishment Commands - show if staff
-        if (isStaff) {
-            sender.sendMessage("§7/staffmenu§f - Open staff menu");
-            sender.sendMessage("§7/inspect <player> [-p]§f - Open player inspection menu (-p for print)");
-            sender.sendMessage("§7/history <player> [-p]§f - Open player history menu (-p for print)");
-            sender.sendMessage("§7/notes <player> [-p]§f - Open player notes menu (-p for print)");
-            sender.sendMessage("§7/alts <player> [-p]§f - Open player alts menu (-p for print)");
-            sender.sendMessage("§7/reports [player] [-p]§f - Open reports menu (-p for print)");
-            sender.sendMessage("§7/punish <player> [type] [reason] [-s] [-ab] [-sw] [-lenient|regular|severe]");
+        // Build command list: player commands first, then staff commands for staff members
+        List<HelpEntry> entries = new ArrayList<>();
 
-            if (cache.hasPermission(senderUuid, "punishment.apply.manual-ban")) {
-                sender.sendMessage("§7/ban <player> [duration] [reason]§f - Ban a player");
+        // Player commands - everyone sees these
+        addEntry(entries, "player_commands.iammuted");
+        addEntry(entries, "player_commands.standing");
+        addEntry(entries, "player_commands.report");
+        addEntry(entries, "player_commands.chatreport");
+        addEntry(entries, "player_commands.claimticket");
+        addEntry(entries, "player_commands.apply");
+        addEntry(entries, "player_commands.bugreport");
+        addEntry(entries, "player_commands.support");
+
+        // Staff commands - only staff see these, appended after player commands
+        if (isStaff || !sender.isPlayer()) {
+            addEntry(entries, "staff_commands.staffmenu");
+            addEntry(entries, "staff_commands.inspect");
+            addEntry(entries, "staff_commands.history");
+            addEntry(entries, "staff_commands.notes");
+            addEntry(entries, "staff_commands.alts");
+            addEntry(entries, "staff_commands.reports");
+            addEntry(entries, "staff_commands.punish");
+
+            if (!sender.isPlayer() || cache.hasPermission(senderUuid, "punishment.apply.manual-ban")) {
+                addEntry(entries, "staff_commands.ban");
             }
-            if (cache.hasPermission(senderUuid, "punishment.apply.manual-mute")) {
-                sender.sendMessage("§7/mute <player> [duration] [reason]§f - Mute a player");
+            if (!sender.isPlayer() || cache.hasPermission(senderUuid, "punishment.apply.manual-mute")) {
+                addEntry(entries, "staff_commands.mute");
             }
-            if (cache.hasPermission(senderUuid, "punishment.apply.kick")) {
-                sender.sendMessage("§7/kick <player> [reason]§f - Kick a player");
+            if (!sender.isPlayer() || cache.hasPermission(senderUuid, "punishment.apply.kick")) {
+                addEntry(entries, "staff_commands.kick");
             }
-            if (cache.hasPermission(senderUuid, "punishment.apply.blacklist")) {
-                sender.sendMessage("§7/blacklist <player> [reason]§f - Blacklist a player");
+            if (!sender.isPlayer() || cache.hasPermission(senderUuid, "punishment.apply.blacklist")) {
+                addEntry(entries, "staff_commands.blacklist");
             }
-            if (cache.hasPermission(senderUuid, "punishment.modify.pardon")) {
-                sender.sendMessage("§7/pardon <player>§f - Pardon ALL active/unstarted punishments");
-                sender.sendMessage("§7/unban <player>§f - Pardon active or oldest unstarted ban");
-                sender.sendMessage("§7/unmute <player>§f - Pardon active or oldest unstarted mute");
+            if (!sender.isPlayer() || cache.hasPermission(senderUuid, "punishment.modify")) {
+                addEntry(entries, "staff_commands.pardon");
+                addEntry(entries, "staff_commands.unban");
+                addEntry(entries, "staff_commands.unmute");
+            }
+
+            if (isAdmin || !sender.isPlayer()) {
+                addEntry(entries, "staff_commands.modl_reload");
             }
         }
 
-        // Player Commands - always show
-        sender.sendMessage("§7/iammuted <player>§f - Tell someone you are muted");
-        sender.sendMessage("§7/report <player> <reason>§f - Report a player");
-        sender.sendMessage("§7/chatreport <player>§f - Report a player's chat messages");
-        sender.sendMessage("§7/apply§f - Apply for a staff position");
-        sender.sendMessage("§7/bugreport <title>§f - Report a bug");
-        sender.sendMessage("§7/support <title>§f - Open support ticket");
+        int totalPages = Math.max(1, (int) Math.ceil((double) entries.size() / ENTRIES_PER_PAGE));
+        if (page > totalPages) {
+            sender.sendMessage(localeManager.getMessage("help.no_more_pages"));
+            return;
+        }
 
-        // Admin Commands - show if admin
-        if (isAdmin || !sender.isPlayer()) {
-            sender.sendMessage("§7/modl reload§f - Reload configuration");
-            sender.sendMessage("");
+        // Header
+        sender.sendMessage("");
+        sender.sendMessage(localeManager.getMessage("help.header", Map.of(
+                "version", PluginInfo.VERSION,
+                "page", String.valueOf(page),
+                "total_pages", String.valueOf(totalPages)
+        )));
+
+        int start = (page - 1) * ENTRIES_PER_PAGE;
+        int end = Math.min(start + ENTRIES_PER_PAGE, entries.size());
+
+        for (int i = start; i < end; i++) {
+            HelpEntry entry = entries.get(i);
+            sender.sendMessage(localeManager.getMessage("help.entry", Map.of(
+                    "command", entry.command,
+                    "description", entry.description
+            )));
+        }
+
+        // Footer
+        if (page < totalPages) {
+            sender.sendMessage(localeManager.getMessage("help.footer", Map.of(
+                    "page", String.valueOf(page),
+                    "total_pages", String.valueOf(totalPages),
+                    "next_page", String.valueOf(page + 1)
+            )));
+        }
+        sender.sendMessage("");
+    }
+
+    private void addEntry(List<HelpEntry> entries, String localeKey) {
+        String usage = localeManager.getMessage("help." + localeKey + ".usage");
+        // Skip entries with blank usage (command disabled via empty alias)
+        if (usage == null || usage.isEmpty() || usage.startsWith("§cMissing")) return;
+        String description = localeManager.getMessage("help." + localeKey + ".description");
+        entries.add(new HelpEntry(usage, description));
+    }
+
+    private static class HelpEntry {
+        final String command;
+        final String description;
+
+        HelpEntry(String command, String description) {
+            this.command = command;
+            this.description = description;
         }
     }
 
