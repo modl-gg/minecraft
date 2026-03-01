@@ -7,6 +7,7 @@ import co.aikar.commands.annotation.Conditions;
 import co.aikar.commands.annotation.Description;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
  */
 @RequiredArgsConstructor
 public class StaffCommand extends BaseCommand {
+    private final AsyncCommandExecutor commandExecutor;
     private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
@@ -40,24 +42,28 @@ public class StaffCommand extends BaseCommand {
         boolean isAdmin = cache.hasPermission(senderUuid, "modl.admin");
 
         // Get sender name
-        String senderName = "Staff";
+        String senderName;
         if (platform.getPlayer(senderUuid) != null) {
             senderName = platform.getPlayer(senderUuid).username();
+        } else {
+            senderName = "Staff";
         }
 
-        // Open the staff menu
-        StaffMenu menu = new StaffMenu(
-            platform,
-            getHttpClient(),
-            senderUuid,
-            senderName,
-            isAdmin,
-            panelUrl,
-            null // No parent menu when opened from command
-        );
+        commandExecutor.execute(() -> {
+            // Open the staff menu
+            StaffMenu menu = new StaffMenu(
+                platform,
+                getHttpClient(),
+                senderUuid,
+                senderName,
+                isAdmin,
+                panelUrl,
+                null // No parent menu when opened from command
+            );
 
-        // Get CirrusPlayerWrapper and display
-        CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-        menu.display(player);
+            // Get CirrusPlayerWrapper and display
+            CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+            menu.display(player);
+        });
     }
 }

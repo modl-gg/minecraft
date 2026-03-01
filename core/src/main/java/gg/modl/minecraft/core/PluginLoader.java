@@ -189,14 +189,16 @@ public class PluginLoader {
         // Register player commands
         commandManager.registerCommand(new IAmMutedCommand(platform, cache, this.localeManager));
         commandManager.registerCommand(new StandingCommand(httpClientHolder, platform, this.localeManager));
-        commandManager.registerCommand(new TicketCommands(platform, httpClientHolder, httpManager.getHttpClient(), httpManager.getPanelUrl(), this.localeManager, chatMessageCache));
+        commandManager.registerCommand(new TicketCommands(asyncCommandExecutor, platform, httpClientHolder, httpManager.getHttpClient(), httpManager.getPanelUrl(),
+            this.localeManager, chatMessageCache));
 
         // Register GUI commands (menus require V2 API - commands will check dynamically via holder)
         InspectCommand inspectCommand = new InspectCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl());
         commandManager.registerCommand(inspectCommand);
         inspectCommand.initializePunishmentTypes();
         syncService.addPunishmentTypesListener(inspectCommand::updatePunishmentTypesCache);
-        commandManager.registerCommand(new StaffCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
+        commandManager.registerCommand(new StaffCommand(asyncCommandExecutor, httpClientHolder, platform, cache, this.localeManager,
+            httpManager.getPanelUrl()));
         HistoryCommand historyCommand = new HistoryCommand(httpClientHolder, platform, cache, this.localeManager);
         commandManager.registerCommand(historyCommand);
         historyCommand.initializePunishmentTypes();

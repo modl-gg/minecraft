@@ -9,6 +9,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.api.http.response.CreateTicketResponse;
+import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ReportGuiConfig;
@@ -26,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @RequiredArgsConstructor
 public class TicketCommands extends BaseCommand {
+    private final AsyncCommandExecutor commandExecutor;
     private final Platform platform;
     private final HttpClientHolder httpClientHolder;
     private final ModlHttpClient httpClient;
@@ -55,16 +57,18 @@ public class TicketCommands extends BaseCommand {
             return;
         }
 
-        // Load report GUI config (cached after first load)
-        ReportGuiConfig guiConfig = getOrLoadReportGuiConfig();
+        commandExecutor.execute(() -> {
+            // Load report GUI config (cached after first load)
+            ReportGuiConfig guiConfig = getOrLoadReportGuiConfig();
 
-        UUID senderUuid = sender.getUniqueId();
-        ReportMenu menu = new ReportMenu(
-            reporter, targetPlayer, httpClient, localeManager, platform, panelUrl,
-            guiConfig, chatMessageCache
-        );
-        CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-        menu.display(player);
+            UUID senderUuid = sender.getUniqueId();
+            ReportMenu menu = new ReportMenu(
+                reporter, targetPlayer, httpClient, localeManager, platform, panelUrl,
+                guiConfig, chatMessageCache
+            );
+            CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+            menu.display(player);
+        });
     }
 
     private ReportGuiConfig getOrLoadReportGuiConfig() {
