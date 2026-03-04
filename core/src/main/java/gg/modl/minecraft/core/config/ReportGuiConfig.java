@@ -57,67 +57,88 @@ public class ReportGuiConfig {
     }
 
     /**
-     * Load the report GUI config from a file.
+     * Load the report GUI config from report_gui.yml first, falling back to config.yml.
      */
     @SuppressWarnings("unchecked")
     public static ReportGuiConfig load(Path dataDirectory, Logger logger) {
         ReportGuiConfig config = new ReportGuiConfig();
 
         try {
-            Path configFile = dataDirectory.resolve("config.yml");
-            if (!Files.exists(configFile)) {
-                logger.info("[ReportGuiConfig] Config file not found, using defaults");
-                return createDefault();
+            // Try dedicated report_gui.yml first
+            Map<?, ?> reportGui = null;
+            Path dedicatedFile = dataDirectory.resolve("report_gui.yml");
+            if (Files.exists(dedicatedFile)) {
+                Yaml yaml = new Yaml();
+                try (InputStream is = Files.newInputStream(dedicatedFile)) {
+                    Map<String, Object> data = yaml.load(is);
+                    if (data != null && data.containsKey("report_gui")) {
+                        reportGui = (Map<?, ?>) data.get("report_gui");
+                    } else if (data != null) {
+                        reportGui = data;
+                    }
+                }
+                if (reportGui != null) {
+                    logger.info("[ReportGuiConfig] Loaded from report_gui.yml");
+                }
             }
 
-            Yaml yaml = new Yaml();
-            try (InputStream inputStream = Files.newInputStream(configFile)) {
-                Map<String, Object> rootConfig = yaml.load(inputStream);
+            // Fall back to config.yml
+            if (reportGui == null) {
+                Path configFile = dataDirectory.resolve("config.yml");
+                if (!Files.exists(configFile)) {
+                    logger.info("[ReportGuiConfig] Config file not found, using defaults");
+                    return createDefault();
+                }
+                Yaml yaml = new Yaml();
+                try (InputStream inputStream = Files.newInputStream(configFile)) {
+                    Map<String, Object> rootConfig = yaml.load(inputStream);
+                    if (rootConfig != null && rootConfig.containsKey("report_gui")) {
+                        reportGui = (Map<?, ?>) rootConfig.get("report_gui");
+                    }
+                }
+            }
 
-                if (rootConfig != null && rootConfig.containsKey("report_gui")) {
-                    Map<?, ?> reportGui = (Map<?, ?>) rootConfig.get("report_gui");
+            if (reportGui != null) {
+                for (Map.Entry<?, ?> entry : reportGui.entrySet()) {
+                    Object key = entry.getKey();
 
-                    for (Map.Entry<?, ?> entry : reportGui.entrySet()) {
-                        Object key = entry.getKey();
+                    // Handle the "info" key separately
+                    if ("info".equals(key)) {
+                        Map<String, Object> infoData = (Map<String, Object>) entry.getValue();
+                        config.infoConfig = parseInfoConfig(infoData);
+                        continue;
+                    }
 
-                        // Handle the "info" key separately
-                        if ("info".equals(key)) {
-                            Map<String, Object> infoData = (Map<String, Object>) entry.getValue();
-                            config.infoConfig = parseInfoConfig(infoData);
+                    try {
+                        int slotNumber;
+                        if (key instanceof Integer) {
+                            slotNumber = (Integer) key;
+                        } else if (key instanceof String) {
+                            slotNumber = Integer.parseInt((String) key);
+                        } else {
                             continue;
                         }
 
-                        try {
-                            int slotNumber;
-                            if (key instanceof Integer) {
-                                slotNumber = (Integer) key;
-                            } else if (key instanceof String) {
-                                slotNumber = Integer.parseInt((String) key);
-                            } else {
-                                continue;
-                            }
-
-                            if (slotNumber < 1 || slotNumber > 14) {
-                                continue;
-                            }
-
-                            Map<String, Object> slotData = (Map<String, Object>) entry.getValue();
-                            ReportSlotConfig slotConfig = parseSlotConfig(slotNumber, slotData);
-                            config.slots.put(slotNumber, slotConfig);
-                        } catch (NumberFormatException e) {
-                            // Skip non-numeric keys
+                        if (slotNumber < 1 || slotNumber > 14) {
+                            continue;
                         }
-                    }
 
-                    if (config.infoConfig == null) {
-                        config.infoConfig = new InfoConfig();
+                        Map<String, Object> slotData = (Map<String, Object>) entry.getValue();
+                        ReportSlotConfig slotConfig = parseSlotConfig(slotNumber, slotData);
+                        config.slots.put(slotNumber, slotConfig);
+                    } catch (NumberFormatException e) {
+                        // Skip non-numeric keys
                     }
-
-                    logger.info("[ReportGuiConfig] Loaded " + config.slots.size() + " report slots from config");
-                } else {
-                    logger.info("[ReportGuiConfig] No report_gui section found, using defaults");
-                    return createDefault();
                 }
+
+                if (config.infoConfig == null) {
+                    config.infoConfig = new InfoConfig();
+                }
+
+                logger.info("[ReportGuiConfig] Loaded " + config.slots.size() + " report slots from config");
+            } else {
+                logger.info("[ReportGuiConfig] No report_gui section found, using defaults");
+                return createDefault();
             }
         } catch (Exception e) {
             logger.warning("[ReportGuiConfig] Failed to load config: " + e.getMessage());

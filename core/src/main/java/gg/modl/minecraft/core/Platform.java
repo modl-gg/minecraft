@@ -5,6 +5,7 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.StaffModeService;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 
 import java.io.File;
@@ -54,6 +55,31 @@ public interface Platform {
     void log(String msg);
 
     /**
+     * Broadcast a message to all staff members who have notifications enabled.
+     * Only sends to staff with staffNotificationsEnabled == true.
+     * @param message The message to send (color codes already translated)
+     */
+    default void staffChatBroadcast(String message) {
+        // Default: delegate to staffBroadcast which sends to all staff
+        staffBroadcast(message);
+    }
+
+    /**
+     * Request the proxy to send a player to a specific server.
+     * Only functional on BungeeCord/Velocity. No-op on Spigot standalone.
+     * @param player The player UUID to connect
+     * @param serverName The target server name
+     */
+    default void connectToServer(UUID player, String serverName) {
+        // No-op on standalone Spigot
+    }
+
+    /**
+     * Dispatch a command as a player. Used by bridge callbacks (e.g., OPEN_STAFF_MENU).
+     */
+    default void dispatchPlayerCommand(UUID uuid, String command) {}
+
+    /**
      * Get the base64 skin texture value for an online player using native platform APIs.
      * Returns null if the player is offline or texture is unavailable.
      * @param uuid The player's UUID
@@ -84,5 +110,18 @@ public interface Platform {
      * @param localeManager The locale manager instance
      */
     void setLocaleManager(LocaleManager localeManager);
+
+    /**
+     * Get the staff mode service for managing staff mode state
+     * @return The staff mode service instance
+     */
+    StaffModeService getStaffModeService();
+
+    /**
+     * Set the staff mode service (called by PluginLoader after initialization)
+     * @param staffModeService The staff mode service instance
+     */
+    void setStaffModeService(StaffModeService staffModeService);
+
 }
 

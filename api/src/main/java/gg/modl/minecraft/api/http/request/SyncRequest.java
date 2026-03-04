@@ -23,7 +23,13 @@ public class SyncRequest {
 
     @Nullable
     private String serverName;
-    
+
+    @Nullable
+    private List<ChatLogEntry> chatLogs;
+
+    @Nullable
+    private List<CommandLogEntry> commandLogs;
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
@@ -46,11 +52,33 @@ public class SyncRequest {
     public static class ServerStatus {
         private int onlinePlayerCount;
         private int maxPlayers;
-        
+
         @NotNull
         private String serverVersion;
-        
+
         @NotNull
         private String timestamp;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ChatLogEntry {
+        private String uuid;
+        private String username;
+        private String message;
+        private long timestamp;
+        private String server;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class CommandLogEntry {
+        private String uuid;
+        private String username;
+        private String command;
+        private long timestamp;
+        private String server;
     }
 }

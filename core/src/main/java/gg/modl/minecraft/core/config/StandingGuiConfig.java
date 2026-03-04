@@ -70,98 +70,114 @@ public class StandingGuiConfig {
     }
 
     /**
-     * Load the standing GUI config from config.yml.
+     * Load the standing GUI config from standing_gui.yml first, falling back to config.yml.
      */
     @SuppressWarnings("unchecked")
     public static StandingGuiConfig load(Path dataDirectory, Logger logger) {
         StandingGuiConfig config = new StandingGuiConfig();
         try {
-            Path configFile = dataDirectory.resolve("config.yml");
-            if (!Files.exists(configFile)) {
-                return config;
+            Map<String, Object> gui = null;
+
+            // Try dedicated standing_gui.yml first
+            Path dedicatedFile = dataDirectory.resolve("standing_gui.yml");
+            if (Files.exists(dedicatedFile)) {
+                Yaml yaml = new Yaml();
+                try (InputStream is = Files.newInputStream(dedicatedFile)) {
+                    Map<String, Object> data = yaml.load(is);
+                    if (data != null && data.containsKey("standing_gui")) {
+                        gui = (Map<String, Object>) data.get("standing_gui");
+                    } else if (data != null) {
+                        gui = data;
+                    }
+                }
             }
-            Yaml yaml = new Yaml();
-            try (InputStream inputStream = Files.newInputStream(configFile)) {
-                Map<String, Object> root = yaml.load(inputStream);
-                if (root == null || !root.containsKey("standing_gui")) {
-                    return config;
-                }
-                Map<String, Object> gui = (Map<String, Object>) root.get("standing_gui");
-                if (gui == null) return config;
 
-                if (gui.containsKey("title")) {
-                    config.title = String.valueOf(gui.get("title"));
+            // Fall back to config.yml
+            if (gui == null) {
+                Path configFile = dataDirectory.resolve("config.yml");
+                if (!Files.exists(configFile)) return config;
+                Yaml yaml = new Yaml();
+                try (InputStream inputStream = Files.newInputStream(configFile)) {
+                    Map<String, Object> root = yaml.load(inputStream);
+                    if (root == null || !root.containsKey("standing_gui")) return config;
+                    gui = (Map<String, Object>) root.get("standing_gui");
                 }
+            }
 
-                // Status display name mapping
-                if (gui.containsKey("status_display")) {
-                    Map<String, Object> display = (Map<String, Object>) gui.get("status_display");
-                    if (display != null) {
-                        config.statusDisplay = new LinkedHashMap<>();
-                        for (Map.Entry<String, Object> entry : display.entrySet()) {
-                            config.statusDisplay.put(entry.getKey(), String.valueOf(entry.getValue()));
-                        }
+            if (gui == null) return config;
+
+            if (gui.containsKey("title")) {
+                config.title = String.valueOf(gui.get("title"));
+            }
+
+            // Status display name mapping
+            if (gui.containsKey("status_display")) {
+                Map<String, Object> display = (Map<String, Object>) gui.get("status_display");
+                if (display != null) {
+                    config.statusDisplay = new LinkedHashMap<>();
+                    for (Map.Entry<String, Object> entry : display.entrySet()) {
+                        config.statusDisplay.put(entry.getKey(), String.valueOf(entry.getValue()));
                     }
                 }
+            }
 
-                // Social status
-                if (gui.containsKey("social_status")) {
-                    Map<String, Object> social = (Map<String, Object>) gui.get("social_status");
-                    if (social != null) {
-                        if (social.containsKey("item")) config.socialItem = String.valueOf(social.get("item"));
-                        if (social.containsKey("title")) config.socialTitle = String.valueOf(social.get("title"));
-                        if (social.containsKey("description")) {
-                            Map<String, Object> descs = (Map<String, Object>) social.get("description");
-                            if (descs != null) {
-                                config.socialDescriptions = new LinkedHashMap<>();
-                                for (Map.Entry<String, Object> entry : descs.entrySet()) {
-                                    if (entry.getValue() instanceof List) {
-                                        List<String> lines = new ArrayList<>();
-                                        for (Object o : (List<?>) entry.getValue()) {
-                                            lines.add(String.valueOf(o));
-                                        }
-                                        config.socialDescriptions.put(entry.getKey(), lines);
+            // Social status
+            if (gui.containsKey("social_status")) {
+                Map<String, Object> social = (Map<String, Object>) gui.get("social_status");
+                if (social != null) {
+                    if (social.containsKey("item")) config.socialItem = String.valueOf(social.get("item"));
+                    if (social.containsKey("title")) config.socialTitle = String.valueOf(social.get("title"));
+                    if (social.containsKey("description")) {
+                        Map<String, Object> descs = (Map<String, Object>) social.get("description");
+                        if (descs != null) {
+                            config.socialDescriptions = new LinkedHashMap<>();
+                            for (Map.Entry<String, Object> entry : descs.entrySet()) {
+                                if (entry.getValue() instanceof List) {
+                                    List<String> lines = new ArrayList<>();
+                                    for (Object o : (List<?>) entry.getValue()) {
+                                        lines.add(String.valueOf(o));
                                     }
+                                    config.socialDescriptions.put(entry.getKey(), lines);
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                // Gameplay status
-                if (gui.containsKey("gameplay_status")) {
-                    Map<String, Object> gameplay = (Map<String, Object>) gui.get("gameplay_status");
-                    if (gameplay != null) {
-                        if (gameplay.containsKey("item")) config.gameplayItem = String.valueOf(gameplay.get("item"));
-                        if (gameplay.containsKey("title")) config.gameplayTitle = String.valueOf(gameplay.get("title"));
-                        if (gameplay.containsKey("description")) {
-                            Map<String, Object> descs = (Map<String, Object>) gameplay.get("description");
-                            if (descs != null) {
-                                config.gameplayDescriptions = new LinkedHashMap<>();
-                                for (Map.Entry<String, Object> entry : descs.entrySet()) {
-                                    if (entry.getValue() instanceof List) {
-                                        List<String> lines = new ArrayList<>();
-                                        for (Object o : (List<?>) entry.getValue()) {
-                                            lines.add(String.valueOf(o));
-                                        }
-                                        config.gameplayDescriptions.put(entry.getKey(), lines);
+            // Gameplay status
+            if (gui.containsKey("gameplay_status")) {
+                Map<String, Object> gameplay = (Map<String, Object>) gui.get("gameplay_status");
+                if (gameplay != null) {
+                    if (gameplay.containsKey("item")) config.gameplayItem = String.valueOf(gameplay.get("item"));
+                    if (gameplay.containsKey("title")) config.gameplayTitle = String.valueOf(gameplay.get("title"));
+                    if (gameplay.containsKey("description")) {
+                        Map<String, Object> descs = (Map<String, Object>) gameplay.get("description");
+                        if (descs != null) {
+                            config.gameplayDescriptions = new LinkedHashMap<>();
+                            for (Map.Entry<String, Object> entry : descs.entrySet()) {
+                                if (entry.getValue() instanceof List) {
+                                    List<String> lines = new ArrayList<>();
+                                    for (Object o : (List<?>) entry.getValue()) {
+                                        lines.add(String.valueOf(o));
                                     }
+                                    config.gameplayDescriptions.put(entry.getKey(), lines);
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                // Punishment item
-                if (gui.containsKey("punishment_item")) {
-                    Map<String, Object> pItem = (Map<String, Object>) gui.get("punishment_item");
-                    if (pItem != null) {
-                        if (pItem.containsKey("title")) config.punishmentTitle = String.valueOf(pItem.get("title"));
-                        if (pItem.containsKey("lore") && pItem.get("lore") instanceof List) {
-                            config.punishmentLore = new ArrayList<>();
-                            for (Object o : (List<?>) pItem.get("lore")) {
-                                config.punishmentLore.add(String.valueOf(o));
-                            }
+            // Punishment item
+            if (gui.containsKey("punishment_item")) {
+                Map<String, Object> pItem = (Map<String, Object>) gui.get("punishment_item");
+                if (pItem != null) {
+                    if (pItem.containsKey("title")) config.punishmentTitle = String.valueOf(pItem.get("title"));
+                    if (pItem.containsKey("lore") && pItem.get("lore") instanceof List) {
+                        config.punishmentLore = new ArrayList<>();
+                        for (Object o : (List<?>) pItem.get("lore")) {
+                            config.punishmentLore.add(String.valueOf(o));
                         }
                     }
                 }

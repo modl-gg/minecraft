@@ -3,6 +3,7 @@ package gg.modl.minecraft.core.impl.menus.staff;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
+import dev.simplix.cirrus.model.CirrusClickType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
@@ -12,6 +13,7 @@ import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.service.StaffModeService;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -188,7 +190,12 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
         // TODO: Add recent reports when data available
 
         lore.add("");
-        lore.add(MenuItems.COLOR_YELLOW + "Click to inspect player");
+        StaffModeService staffModeService = platform.getStaffModeService();
+        if (staffModeService != null && staffModeService.isInStaffMode(viewerUuid)) {
+            lore.add(MenuItems.COLOR_YELLOW + "Left-click to target | Right-click to inspect");
+        } else {
+            lore.add(MenuItems.COLOR_YELLOW + "Click to inspect player");
+        }
 
         CirrusItem headItem = CirrusItem.of(
                 CirrusItemType.PLAYER_HEAD,
@@ -222,7 +229,19 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
             return;
         }
 
-        // Fetch player profile and open inspect menu
+        // Check for left-click target mode when viewer is in staff mode
+        StaffModeService staffModeService = platform.getStaffModeService();
+        if (staffModeService != null
+                && staffModeService.isInStaffMode(viewerUuid)
+                && !click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
+            // Left click in staff mode = target the player
+            click.clickedMenu().close();
+            staffModeService.setTarget(viewerUuid, player.getUuid());
+            sendMessage(MenuItems.COLOR_GREEN + "Now targeting " + MenuItems.COLOR_GOLD + player.getName());
+            return;
+        }
+
+        // Right click (or any click when not in staff mode) = open inspect menu
         click.clickedMenu().close();
 
         // Capture current state for back action

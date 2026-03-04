@@ -15,7 +15,9 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.database.DatabaseConfig;
 import gg.modl.minecraft.core.service.database.JdbcDatabaseProvider;
+import gg.modl.minecraft.core.service.ChatCommandLogService;
 import gg.modl.minecraft.core.service.MigrationService;
+import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 
 import java.io.File;
@@ -71,6 +73,8 @@ public class SyncService {
     private Long lastKnownPunishmentTypesTimestamp = null;
     private final List<PunishmentTypesRefreshListener> punishmentTypesListeners = new ArrayList<>();
     private StatWipeExecutor statWipeExecutor;
+    private Staff2faService staff2faService;
+    private ChatCommandLogService chatCommandLogService;
 
     /**
      * Create a new SyncService.
@@ -78,7 +82,8 @@ public class SyncService {
     public SyncService(@NotNull Platform platform, @NotNull HttpClientHolder httpClientHolder, @NotNull Cache cache,
                        @NotNull Logger logger, @NotNull LocaleManager localeManager, @NotNull String apiUrl,
                        @NotNull String apiKey, int pollingRateSeconds, @NotNull File dataFolder,
-                       DatabaseConfig databaseConfig, boolean debugMode) {
+                       DatabaseConfig databaseConfig, boolean debugMode, Staff2faService staff2faService,
+                       ChatCommandLogService chatCommandLogService) {
         this.platform = platform;
         this.httpClientHolder = httpClientHolder;
         this.cache = cache;
@@ -90,6 +95,8 @@ public class SyncService {
         this.dataFolder = dataFolder;
         this.databaseConfig = databaseConfig;
         this.debugMode = debugMode;
+        this.staff2faService = staff2faService;
+        this.chatCommandLogService = chatCommandLogService;
     }
 
     public interface PunishmentTypesRefreshListener {
@@ -182,6 +189,12 @@ public class SyncService {
                 request.setOnlinePlayers(buildOnlinePlayersList(onlinePlayers));
                 request.setServerStatus(buildServerStatus(onlinePlayers));
                 request.setServerName(platform.getServerName());
+
+                // Include buffered chat/command logs
+                if (chatCommandLogService != null) {
+                    request.setChatLogs(chatCommandLogService.drainChatBuffer());
+                    request.setCommandLogs(chatCommandLogService.drainCommandBuffer());
+                }
 
                 SyncResponse response = httpClientHolder.getClient().sync(request)
                     .orTimeout(5, TimeUnit.SECONDS)
@@ -305,6 +318,19 @@ public class SyncService {
             }
             refreshPunishmentTypes();
             lastKnownPunishmentTypesTimestamp = newPunishmentTypesTimestamp;
+        }
+
+        // Process staff 2FA verifications
+        if (data.getStaff2faVerifications() != null) {
+            for (SyncResponse.Staff2faVerification verification : data.getStaff2faVerifications()) {
+                try {
+                    UUID uuid = UUID.fromString(verification.getMinecraftUuid());
+                    staff2faService.handleVerification(uuid, verification.getIp());
+                    logger.info("[Sync] Staff 2FA verified for " + verification.getMinecraftUuid());
+                } catch (Exception e) {
+                    logger.warning("[Sync] Failed to process staff 2FA verification: " + e.getMessage());
+                }
+            }
         }
     }
 

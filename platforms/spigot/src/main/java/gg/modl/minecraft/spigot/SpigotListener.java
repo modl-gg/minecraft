@@ -18,6 +18,7 @@ import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.ListenerHelper;
 import gg.modl.minecraft.core.util.MutedCommandUtil;
+import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
 import gg.modl.minecraft.core.util.WebPlayer;
@@ -51,6 +52,14 @@ public class SpigotListener implements Listener {
     private final LoginCache loginCache;
     private final boolean debugMode;
     private final List<String> mutedCommands;
+    private final gg.modl.minecraft.core.service.StaffChatService staffChatService;
+    private final gg.modl.minecraft.core.service.ChatManagementService chatManagementService;
+    private final gg.modl.minecraft.core.service.MaintenanceService maintenanceService;
+    private final gg.modl.minecraft.core.service.FreezeService freezeService;
+    private final gg.modl.minecraft.core.service.NetworkChatInterceptService networkChatInterceptService;
+    private final gg.modl.minecraft.core.service.ChatCommandLogService chatCommandLogService;
+    private final gg.modl.minecraft.core.service.Staff2faService staff2faService;
+    private final gg.modl.minecraft.core.config.StaffChatConfig staffChatConfig;
 
     /**
      * Get the current HTTP client from the holder.
@@ -187,12 +196,33 @@ public class SpigotListener implements Listener {
                 syncService.executeStatWipeFromLogin(statWipe);
             }
         }
+
+        // Maintenance mode check
+        if (maintenanceService.isEnabled() && !maintenanceService.canJoin(event.getPlayer().getUniqueId(), cache)) {
+            event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
+            event.setKickMessage(localeManager.getMessage("maintenance.login_denied"));
+            return;
+        }
     }
     
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         // Mark player as online
         cache.setOnline(event.getPlayer().getUniqueId());
+
+        // 2FA check for staff
+        if (staff2faService != null && staff2faService.isEnabled() && PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
+            String ip = event.getPlayer().getAddress() != null ? event.getPlayer().getAddress().getAddress().getHostAddress() : "";
+            staff2faService.onStaffJoin(event.getPlayer().getUniqueId(), ip);
+        }
+
+        // Staff join notification
+        if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
+            String inGameName = event.getPlayer().getName();
+            String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
+            if (panelName == null) panelName = inGameName;
+            platform.staffBroadcast(localeManager.getMessage("staff_notifications.join", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
+        }
 
         // Cache skin texture - try native API first (1.18.1+), falls back to WebPlayer.get() chain below
         String nativeTexture = platform.getPlayerSkinTexture(event.getPlayer().getUniqueId());
@@ -296,8 +326,28 @@ public class SpigotListener implements Listener {
 
         getHttpClient().playerDisconnect(request);
 
+        // Staff leave notification
+        if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
+            String inGameName = event.getPlayer().getName();
+            String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
+            if (panelName == null) panelName = inGameName;
+            platform.staffBroadcast(localeManager.getMessage("staff_notifications.leave", java.util.Map.of("staff", panelName, "in-game-name", inGameName)));
+        }
+
+        // Freeze logout notification
+        if (freezeService.isFrozen(event.getPlayer().getUniqueId())) {
+            platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification", java.util.Map.of("player", event.getPlayer().getName())));
+            freezeService.removePlayer(event.getPlayer().getUniqueId());
+        }
+
         // Mark player as offline
         cache.setOffline(event.getPlayer().getUniqueId());
+
+        // Clean up staff tools state
+        staffChatService.removePlayer(event.getPlayer().getUniqueId());
+        chatManagementService.removePlayer(event.getPlayer().getUniqueId());
+        networkChatInterceptService.removePlayer(event.getPlayer().getUniqueId());
+        if (staff2faService != null) staff2faService.removePlayer(event.getPlayer().getUniqueId());
 
         // Remove player from punishment cache
         cache.removePlayer(event.getPlayer().getUniqueId());
@@ -325,6 +375,52 @@ public class SpigotListener implements Listener {
             event.getMessage()
         );
 
+        // Staff chat: if sender is in staff chat mode, redirect to staff chat
+        if (staffChatService.isInStaffChat(event.getPlayer().getUniqueId())) {
+            event.setCancelled(true);
+            String inGameName = event.getPlayer().getName();
+            String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
+            String format = staffChatConfig.getFormat()
+                    .replace("{player}", inGameName)
+                    .replace("{panel-name}", panelName != null ? panelName : inGameName)
+                    .replace("{message}", event.getMessage())
+                    .replace("&", "§");
+            platform.staffBroadcast(format);
+            return;
+        }
+
+        // Staff chat prefix shortcut
+        if (staffChatConfig.isEnabled() && event.getMessage().startsWith(staffChatConfig.getPrefix())
+                && PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
+            event.setCancelled(true);
+            String msg = event.getMessage().substring(staffChatConfig.getPrefix().length()).trim();
+            if (!msg.isEmpty()) {
+                String inGameName = event.getPlayer().getName();
+                String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
+                String format = staffChatConfig.getFormat()
+                        .replace("{player}", inGameName)
+                        .replace("{panel-name}", panelName != null ? panelName : inGameName)
+                        .replace("{message}", msg)
+                        .replace("&", "§");
+                platform.staffBroadcast(format);
+            }
+            return;
+        }
+
+        // Chat management: chat disabled check
+        boolean isStaff = PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache);
+        if (!chatManagementService.canSendMessage(event.getPlayer().getUniqueId(), isStaff)) {
+            event.setCancelled(true);
+            if (!chatManagementService.isChatEnabled()) {
+                event.getPlayer().sendMessage(localeManager.getMessage("chat_management.chat_disabled"));
+            } else {
+                int remaining = chatManagementService.getSlowModeRemaining(event.getPlayer().getUniqueId());
+                event.getPlayer().sendMessage(localeManager.getMessage("chat_management.slow_mode_wait",
+                        java.util.Map.of("seconds", String.valueOf(remaining))));
+            }
+            return;
+        }
+
         if (cache.isMuted(event.getPlayer().getUniqueId())) {
             // Cancel the chat event
             event.setCancelled(true);
@@ -342,11 +438,50 @@ public class SpigotListener implements Listener {
                 }
                 event.getPlayer().sendMessage(muteMessage);
             }
+            return;
+        }
+
+        // Freeze: redirect frozen player chat to staff
+        if (freezeService.isFrozen(event.getPlayer().getUniqueId())) {
+            event.setCancelled(true);
+            String frozenMsg = "§c[Frozen] §f" + event.getPlayer().getName() + ": §7" + event.getMessage();
+            platform.staffBroadcast(frozenMsg);
+            return;
+        }
+
+        // Log chat message
+        chatCommandLogService.addChatMessage(
+                event.getPlayer().getUniqueId().toString(),
+                event.getPlayer().getName(),
+                event.getMessage(),
+                platform.getServerName()
+        );
+
+        // Forward to interceptors
+        for (java.util.UUID interceptor : networkChatInterceptService.getInterceptors()) {
+            if (!interceptor.equals(event.getPlayer().getUniqueId())) {
+                platform.sendMessage(interceptor, "§8[Intercept] §f" + event.getPlayer().getName() + ": §7" + event.getMessage());
+            }
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onCommandPreprocess(PlayerCommandPreprocessEvent event) {
+        // Freeze: block all commands for frozen players
+        if (freezeService.isFrozen(event.getPlayer().getUniqueId())) {
+            event.setCancelled(true);
+            event.getPlayer().sendMessage("§cYou cannot use commands while frozen.");
+            return;
+        }
+
+        // Log command
+        chatCommandLogService.addCommand(
+                event.getPlayer().getUniqueId().toString(),
+                event.getPlayer().getName(),
+                event.getMessage(),
+                platform.getServerName()
+        );
+
         if (!cache.isMuted(event.getPlayer().getUniqueId())) {
             return;
         }

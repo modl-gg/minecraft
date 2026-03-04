@@ -22,10 +22,11 @@ import gg.modl.minecraft.core.impl.commands.PunishmentActionCommand;
 import gg.modl.minecraft.core.impl.commands.player.IAmMutedCommand;
 import gg.modl.minecraft.core.impl.commands.player.StandingCommand;
 import gg.modl.minecraft.core.impl.commands.punishments.*;
+import gg.modl.minecraft.core.impl.commands.*;
+import gg.modl.minecraft.core.config.ConfigManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.plugin.PluginInfo;
-import gg.modl.minecraft.core.service.ChatMessageCache;
-import gg.modl.minecraft.core.service.UpdateCheckerService;
+import gg.modl.minecraft.core.service.*;
 import gg.modl.minecraft.core.service.database.DatabaseConfig;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.PermissionUtil;
@@ -54,6 +55,17 @@ public class PluginLoader {
     private final Path dataDirectory;
     private final Logger logger;
     private final boolean debugMode;
+    private final ConfigManager configManager;
+    private final StaffChatService staffChatService;
+    private final ChatManagementService chatManagementService;
+    private final Staff2faService staff2faService;
+    private final MaintenanceService maintenanceService;
+    private final NetworkChatInterceptService networkChatInterceptService;
+    private final ChatCommandLogService chatCommandLogService;
+    private final FreezeService freezeService;
+    private final StaffModeService staffModeService;
+    private final VanishService vanishService;
+    private final BridgeService bridgeService;
 
     /**
      * Get the current HTTP client from the holder.
@@ -79,6 +91,9 @@ public class PluginLoader {
 
         // Set the cache on the platform for menu access
         platform.setCache(cache);
+
+        // Initialize ConfigManager for all feature configs
+        this.configManager = new ConfigManager(dataDirectory, Logger.getLogger("modl-config"));
 
         this.httpClientHolder = httpManager.getHttpClientHolder();
         this.logger = Logger.getLogger("modl-" + platform.getClass().getSimpleName());
@@ -111,10 +126,16 @@ public class PluginLoader {
         // Load database configuration for migration
         DatabaseConfig databaseConfig = loadDatabaseConfig(dataDirectory, logger);
 
+        // Initialize staff 2FA service early (needed by sync service)
+        this.staff2faService = new Staff2faService(configManager.getStaff2faConfig());
+
+        // Initialize chat/command log service early (needed by sync service)
+        this.chatCommandLogService = new ChatCommandLogService();
+
         // Initialize sync service with configurable polling rate
         this.syncService = new SyncService(platform, httpClientHolder, cache, logger, this.localeManager,
                 httpManager.getApiUrl(), httpManager.getApiKey(), syncPollingRateSeconds, dataDirectory.toFile(), databaseConfig,
-                httpManager.isDebugHttp());
+                httpManager.isDebugHttp(), this.staff2faService, this.chatCommandLogService);
         
         // Log configuration details (only in debug mode)
         if (httpManager.isDebugHttp()) {
@@ -153,7 +174,7 @@ public class PluginLoader {
         });
 
         // Register ACF command conditions for permission checks
-        registerCommandConditions(commandManager, cache, this.localeManager);
+        registerCommandConditions(commandManager, cache, this.localeManager, this.staff2faService);
 //
         // Removed duplicate - TicketCommands registered below
 
@@ -207,6 +228,49 @@ public class PluginLoader {
         commandManager.registerCommand(new NotesCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new ReportsCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
         commandManager.registerCommand(new PunishmentActionCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
+
+        // ==================== STAFF TOOLS SERVICES ====================
+
+        // Initialize services
+        this.staffChatService = new StaffChatService();
+        this.chatManagementService = new ChatManagementService();
+        // staff2faService already initialized above (needed by sync service)
+        this.maintenanceService = new MaintenanceService();
+        this.networkChatInterceptService = new NetworkChatInterceptService();
+        // chatCommandLogService already initialized above (needed by sync service)
+        this.freezeService = new FreezeService();
+        this.staffModeService = new StaffModeService();
+        platform.setStaffModeService(this.staffModeService);
+        this.vanishService = new VanishService();
+        this.bridgeService = new BridgeService();
+
+        // Register staff chat commands
+        commandManager.registerCommand(new StaffChatCommand(platform, cache, this.localeManager, staffChatService, configManager.getStaffChatConfig()));
+        commandManager.registerCommand(new LocalChatCommand(platform, cache, this.localeManager, staffChatService));
+        commandManager.registerCommand(new ChatCommand(platform, cache, this.localeManager, staffChatService, chatManagementService,
+                configManager.getStaffChatConfig(), configManager.getChatManagementConfig()));
+
+        // Register staff list command
+        commandManager.registerCommand(new StaffListCommand(platform, cache, this.localeManager));
+
+        // Register 2FA command
+        commandManager.registerCommand(new VerifyCommand(platform, cache, this.localeManager, staff2faService, httpManager.getPanelUrl()));
+
+        // Register maintenance command
+        commandManager.registerCommand(new MaintenanceCommand(platform, cache, this.localeManager, maintenanceService));
+
+        // Register intercept and log commands
+        commandManager.registerCommand(new InterceptNetworkChatCommand(networkChatInterceptService, cache, this.localeManager));
+        commandManager.registerCommand(new ChatLogsCommand(httpClientHolder, chatCommandLogService, cache, this.localeManager));
+        commandManager.registerCommand(new CommandLogsCommand(httpClientHolder, chatCommandLogService, cache, this.localeManager));
+
+        // Register freeze command
+        commandManager.registerCommand(new FreezeCommand(platform, cache, this.localeManager, freezeService, bridgeService));
+
+        // Register staff mode and vanish commands
+        commandManager.registerCommand(new StaffModeCommand(platform, cache, this.localeManager, staffModeService, vanishService, bridgeService));
+        commandManager.registerCommand(new VanishCommand(platform, cache, this.localeManager, vanishService, bridgeService));
+        commandManager.registerCommand(new TargetCommand(platform, cache, this.localeManager, staffModeService, bridgeService));
 
         // Register all command aliases for async execution (everything except ModlReloadCommand's "modl")
         // Built dynamically from configured aliases
@@ -306,7 +370,20 @@ public class PluginLoader {
             Map.entry("support", "support"),
             Map.entry("tclaim", "tclaim|claimticket"),
             Map.entry("standing", "standing"),
-            Map.entry("punishment_action", "modl:punishment-action")
+            Map.entry("punishment_action", "modl:punishment-action"),
+            Map.entry("staffchat", "staffchat|sc"),
+            Map.entry("localchat", "localchat|lc"),
+            Map.entry("chat", "chat"),
+            Map.entry("stafflist", "stafflist|sl"),
+            Map.entry("freeze", "freeze"),
+            Map.entry("staffmode", "staffmode"),
+            Map.entry("vanish", "vanish|v"),
+            Map.entry("target", "target"),
+            Map.entry("maintenance", "maintenance"),
+            Map.entry("verify", "verify"),
+            Map.entry("interceptnetworkchat", "interceptnetworkchat|inc"),
+            Map.entry("chatlogs", "chatlogs"),
+            Map.entry("commandlogs", "commandlogs")
     );
 
     /**
@@ -514,6 +591,7 @@ public class PluginLoader {
     }
 
     private void reloadRuntimeConfiguration() {
+        configManager.reloadAll();
         UpdateCheckerConfig updateCheckerConfig = loadUpdateCheckerConfig(this.dataDirectory, this.logger);
         updateCheckerService.reload(updateCheckerConfig.enabled, updateCheckerConfig.intervalMinutes);
     }
@@ -599,14 +677,18 @@ public class PluginLoader {
      * - "player" - Requires the issuer to be a player (not console)
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void registerCommandConditions(CommandManager commandManager, Cache cache, LocaleManager localeManager) {
-        // "staff" condition - checks if the issuer is a staff member
+    private static void registerCommandConditions(CommandManager commandManager, Cache cache, LocaleManager localeManager, Staff2faService staff2faService) {
+        // "staff" condition - checks if the issuer is a staff member and 2FA authenticated
         commandManager.getCommandConditions().addCondition("staff", context -> {
             if (!context.getIssuer().isPlayer()) {
                 return; // Console is always staff
             }
             if (!PermissionUtil.isStaff(context.getIssuer(), cache)) {
                 throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
+            }
+            // Check 2FA if enabled
+            if (staff2faService != null && staff2faService.isEnabled() && !staff2faService.isAuthenticated(context.getIssuer().getUniqueId())) {
+                throw new ConditionFailedException(localeManager.getMessage("staff_2fa.not_verified"));
             }
         });
 

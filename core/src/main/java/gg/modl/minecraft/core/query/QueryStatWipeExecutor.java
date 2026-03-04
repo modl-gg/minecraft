@@ -14,11 +14,16 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
     private final EventLoopGroup eventLoopGroup;
     private final Logger logger;
     private final boolean debugMode;
+    private BridgeMessageDispatcher bridgeMessageDispatcher;
 
     public QueryStatWipeExecutor(Logger logger, boolean debugMode) {
         this.logger = logger;
         this.debugMode = debugMode;
         this.eventLoopGroup = new NioEventLoopGroup(1);
+    }
+
+    public void setBridgeMessageDispatcher(BridgeMessageDispatcher dispatcher) {
+        this.bridgeMessageDispatcher = dispatcher;
     }
 
     public void addBridge(String serverName, String host, int port, String secret) {
@@ -77,9 +82,24 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
             if ("BRIDGE_HELLO".equals(message.getAction())) {
                 String bridgeServerName = message.getData().readUTF();
                 logger.info("[modl] modl-bridge detected on backend server '" + serverName + "' (TCP query)");
+            } else {
+                if (bridgeMessageDispatcher != null) {
+                    bridgeMessageDispatcher.dispatch(message.getAction(), message.getData());
+                }
             }
         } catch (IOException e) {
             logger.warning("[modl] Failed to read query message from " + serverName + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Send a typed message to all connected bridges.
+     */
+    public void sendToAllBridges(String action, String... args) {
+        for (QueryClient client : clients) {
+            if (client.isConnected()) {
+                client.sendTypedMessage(action, args);
+            }
         }
     }
 

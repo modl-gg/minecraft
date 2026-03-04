@@ -165,4 +165,21 @@ public interface ModlHttpClient {
     // Stat wipe acknowledgment
     @NotNull
     CompletableFuture<Void> acknowledgeStatWipe(@NotNull StatWipeAcknowledgeRequest request);
+
+    // Staff 2FA
+    @NotNull
+    CompletableFuture<Staff2faTokenResponse> generateStaff2faToken(@NotNull String minecraftUuid, @NotNull String ip);
+
+    // Chat & Command Logs
+    @NotNull
+    CompletableFuture<Void> submitChatLogs(@NotNull ChatLogBatchRequest request);
+
+    @NotNull
+    CompletableFuture<Void> submitCommandLogs(@NotNull CommandLogBatchRequest request);
+
+    @NotNull
+    CompletableFuture<ChatLogsResponse> getChatLogs(@NotNull String playerUuid, int limit);
+
+    @NotNull
+    CompletableFuture<CommandLogsResponse> getCommandLogs(@NotNull String playerUuid, int limit);
 }

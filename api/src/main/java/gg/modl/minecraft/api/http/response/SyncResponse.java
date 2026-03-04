@@ -46,6 +46,8 @@ public class SyncResponse {
         private Long staffPermissionsUpdatedAt;
 
         private Long punishmentTypesUpdatedAt;
+
+        private List<Staff2faVerification> staff2faVerifications;
     }
     
     @Data
@@ -173,8 +175,16 @@ public class SyncResponse {
     public static class MigrationTask {
         @NotNull
         private String taskId;
-        
+
         @NotNull
         private String type;
+    }
+
+    @Data
+    @NoArgsConstructor
+    public static class Staff2faVerification {
+        private String minecraftUuid;
+        private String ip;
+        private Long verifiedAt;
     }
 }

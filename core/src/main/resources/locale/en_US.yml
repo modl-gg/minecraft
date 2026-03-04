@@ -66,6 +66,7 @@ messages:
 # General punishment messages
 general:
   # Permission messages
+  players_only: "&cThis command can only be used by players."
   no_permission: "&cYou don't have permission to use this command."
   no_permission_punishment: "&cYou don't have permission to apply '{type}' punishments."
   no_permission_reload: "&cYou don't have permission to reload punishment data."
@@ -659,3 +660,129 @@ help:
 # Stat Wipe
 stat_wipe:
   kick_message: "&cPlease re-log momentarily. Your statistics are being reset pursuant to a recently expired ban."
+
+# Staff Chat
+staff_chat:
+  enabled: "&eStaff chat &aenabled&e. Messages will default to staff chat."
+  disabled: "&eStaff chat &cdisabled&e. Messages will default to local chat."
+  feature_disabled: "&cStaff chat is not enabled on this server."
+  already_normal: "&cYou are already in local chat mode."
+  format: "&b[STAFF] &e{panel-name}&f: {message}"
+  local_chat_enabled: "&eStaff chat &cdisabled&e. Messages will default to local chat."
+
+# Chat Management
+chat_management:
+  chat_toggled_on: "&7&o[{staff}: enabled chat]"
+  chat_toggled_off: "&7&o[{staff}: disabled chat]"
+  chat_disabled: "&cChat is currently disabled."
+  chat_cleared: "&7&o[{staff}: cleared chat]"
+  slow_mode_enabled: "&7&o[{staff}: slowed chat to {seconds}s]"
+  slow_mode_disabled: "&7&o[{staff}: disabled slow mode]"
+  slow_mode_wait: "&cPlease wait {seconds} seconds before chatting again."
+  invalid_seconds: "&cPlease enter a valid number of seconds."
+  usage_toggle: "&fUsage: &a/chat &ftoggle"
+  usage_clear: "&fUsage: &a/chat &fclear"
+  usage_slow: "&fUsage: &a/chat &fslow <seconds|off>"
+  help:
+    header: "&eChat Commands:"
+    staff: "&f/chat staff &7- Toggle staff chat mode"
+    toggle: "&f/chat toggle &7- Enable/disable public chat"
+    clear: "&f/chat clear [count] &7- Clear chat"
+    slow: "&f/chat slow [seconds|off] &7- Set/disable slow mode"
+
+# Staff List
+staff_list:
+  header: ""
+  entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &eon &f{server}"
+  empty: "&7No staff members online."
+  footer: "&eCount: &f{count} &estaff online"
+
+# Staff Notifications
+staff_notifications:
+  join: "&7&o[{staff}: joined]"
+  leave: "&7&o[{staff}: left]"
+  switch: "&7&o[{staff}: connected to {server}]"
+
+# Staff 2FA
+staff_2fa:
+  not_verified: "&cYou must verify your identity before using staff commands. Use &f/verify"
+  verify_prompt: "&aClick the link to verify: &f{url}"
+  verify_success: "&aIdentity verified successfully!"
+  verify_error: "&cFailed to generate verification link. Please try again."
+  auto_verified: "&aAuto-verified via trusted IP."
+
+# Verify Command (Staff 2FA)
+verify:
+  only_players: "&cThis command can only be used by players."
+  disabled: "&cStaff 2FA is not enabled on this server."
+  already_verified: "&aYou are already verified."
+  header: "&cStaff authentication is required."
+  instructions: "&aClick the link below to verify your identity:"
+  click_here: "Click here to verify"
+  footer: "&eThis link will expire shortly."
+
+# Maintenance
+maintenance:
+  enabled: "&7&o[{staff}: enabled maintenance]"
+  disabled: "&7&o[{staff}: disabled maintenance]"
+  already_enabled: "&cMaintenance mode is already enabled."
+  already_disabled: "&cMaintenance mode is already disabled."
+  status_enabled: "&eMaintenance mode is currently enabled."
+  status_disabled: "&eMaintenance mode is currently disabled."
+  login_denied: "&cServer is currently under maintenance. Please try again later."
+  kick_message: "&cServer is now in maintenance mode. Please try again later."
+  usage: "&fUsage: &a/maintenance&f <on|off>"
+
+# Freeze
+freeze:
+  frozen_message: "&cYou have been frozen! Do not disconnect."
+  staff_notification_freeze: "&7&o[{staff}: froze {player}]"
+  staff_notification_unfreeze: "&7&o[{staff}: unfroze {player}]"
+  unfrozen: "&aYou have been unfrozen."
+  logout_notification: "&c&l{player} logged out while frozen!"
+  frozen_chat: "&b[FROZEN] &e{player}&f: {message}"
+
+# Intercept Chat
+intercept_chat:
+  enabled: "&aNetwork chat interception enabled"
+  disabled: "&aNetwork chat interception disabled"
+  format: "&8[G-{server}] &e{player}&f: {message}"
+
+# Chat Logs
+chat_logs:
+  header: ""
+  entry: "&7[{timestamp}] &8[{server}] &f{message}"
+  empty: "&7No chat logs found for this player."
+  footer: "&ePage {page}/{total_pages} ({total} total)"
+  error: "&cFailed to fetch chat logs."
+  usage: "&fUsage: &a/chatlogs&f <player>"
+
+# Command Logs
+command_logs:
+  header: ""
+  entry: "&7[{timestamp}] &e{player}&7: &f/{command}"
+  empty: "&7No command logs found for this player."
+  footer: "&ePage {page}/{total_pages} ({total} total)"
+  error: "&cFailed to fetch command logs."
+  usage: "&fUsage: &a/commandlogs&f <player>"
+
+# Staff Mode
+staff_mode:
+  enabled: "&aStaff mode enabled"
+  disabled: "&aStaff mode disabled"
+  enabled_broadcast: "&7&o[{staff}: entered staff mode]"
+  disabled_broadcast: "&7&o[{staff}: exited staff mode]"
+
+# Vanish
+vanish:
+  enabled: "&aYou are now vanished"
+  disabled: "&aYou are no longer vanished"
+  enabled_broadcast: "&7&o[{staff}: vanished]"
+  disabled_broadcast: "&7&o[{staff}: unvanished]"
+
+# Target
+target:
+  targeting: "&eNow targeting &f{player}"
+  cleared: "&aTarget cleared."
+  usage: "&fUsage: &a/target&f <player>"
+  connecting: "&eConnecting to &f{server} &eto target &f{player}&e..."

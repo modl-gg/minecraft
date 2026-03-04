@@ -291,12 +291,22 @@ public class Cache {
         // Check new staff permissions cache first
         StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
         if (staffPerms != null) {
+            // Super Admin has all permissions (consistent with backend behavior)
+            if ("Super Admin".equalsIgnoreCase(staffPerms.getStaffRole())) {
+                return true;
+            }
             return matchesPermission(staffPerms.getPermissions(), permission);
         }
 
         // Fallback to old sync-based staff member (for backward compatibility)
         SyncResponse.ActiveStaffMember staffMember = getStaffMember(playerUuid);
-        return staffMember != null && matchesPermission(staffMember.getPermissions(), permission);
+        if (staffMember != null) {
+            if ("Super Admin".equalsIgnoreCase(staffMember.getStaffRole())) {
+                return true;
+            }
+            return matchesPermission(staffMember.getPermissions(), permission);
+        }
+        return false;
     }
 
     /**
@@ -601,6 +611,16 @@ public class Cache {
      */
     public void clearReportGuiConfig() {
         this.cachedReportGuiConfig = null;
+    }
+
+    // ==================== STAFF PERMISSIONS CACHE ACCESS ====================
+
+    /**
+     * Get the staff permissions cache for enumeration (e.g., staff list).
+     * Returns unmodifiable view.
+     */
+    public Map<UUID, StaffPermissions> getStaffPermissionsCache() {
+        return Collections.unmodifiableMap(staffPermissionsCache);
     }
 
     /**

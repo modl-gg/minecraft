@@ -17,6 +17,7 @@ import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.ListenerHelper;
 import gg.modl.minecraft.core.util.MutedCommandUtil;
+import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.StringUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
@@ -54,6 +55,14 @@ public class BungeeListener implements Listener {
     private final boolean debugMode;
     private final List<String> mutedCommands;
     private final Plugin plugin;
+    private final gg.modl.minecraft.core.service.StaffChatService staffChatService;
+    private final gg.modl.minecraft.core.service.ChatManagementService chatManagementService;
+    private final gg.modl.minecraft.core.service.MaintenanceService maintenanceService;
+    private final gg.modl.minecraft.core.service.FreezeService freezeService;
+    private final gg.modl.minecraft.core.service.NetworkChatInterceptService networkChatInterceptService;
+    private final gg.modl.minecraft.core.service.ChatCommandLogService chatCommandLogService;
+    private final gg.modl.minecraft.core.service.Staff2faService staff2faService;
+    private final gg.modl.minecraft.core.config.StaffChatConfig staffChatConfig;
 
     /**
      * Get the current HTTP client from the holder.
@@ -124,6 +133,12 @@ public class BungeeListener implements Listener {
                         syncService.executeStatWipeFromLogin(statWipe);
                     }
                 }
+
+                // Maintenance mode check
+                if (!event.isCancelled() && maintenanceService.isEnabled() && !maintenanceService.canJoin(event.getConnection().getUniqueId(), cache)) {
+                    event.setCancelReason(new TextComponent(localeManager.getMessage("maintenance.login_denied")));
+                    event.setCancelled(true);
+                }
             } catch (java.util.concurrent.TimeoutException e) {
                 platform.getLogger().warning("Login check timed out for " + event.getConnection().getName() + " - blocking login for safety");
                 event.setCancelReason(new TextComponent("Login verification timed out. Please try again."));
@@ -148,6 +163,20 @@ public class BungeeListener implements Listener {
     public void onPostLogin(PostLoginEvent event) {
         // Mark player as online
         cache.setOnline(event.getPlayer().getUniqueId());
+
+        // 2FA check for staff
+        if (staff2faService != null && staff2faService.isEnabled() && PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
+            String ip = extractIpAddress(event.getPlayer().getSocketAddress());
+            staff2faService.onStaffJoin(event.getPlayer().getUniqueId(), ip);
+        }
+
+        // Staff join notification
+        if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
+            String inGameName = event.getPlayer().getName();
+            String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
+            if (panelName == null) panelName = inGameName;
+            platform.staffBroadcast(localeManager.getMessage("staff_notifications.join", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
+        }
 
         // Cache skin texture from native BungeeCord API
         String texture = platform.getPlayerSkinTexture(event.getPlayer().getUniqueId());
@@ -207,8 +236,28 @@ public class BungeeListener implements Listener {
 
         getHttpClient().playerDisconnect(request);
 
+        // Staff leave notification
+        if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
+            String inGameName = event.getPlayer().getName();
+            String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
+            if (panelName == null) panelName = inGameName;
+            platform.staffBroadcast(localeManager.getMessage("staff_notifications.leave", java.util.Map.of("staff", panelName, "in-game-name", inGameName)));
+        }
+
+        // Freeze logout notification
+        if (freezeService.isFrozen(event.getPlayer().getUniqueId())) {
+            platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification", java.util.Map.of("player", event.getPlayer().getName())));
+            freezeService.removePlayer(event.getPlayer().getUniqueId());
+        }
+
         // Mark player as offline
         cache.setOffline(event.getPlayer().getUniqueId());
+
+        // Clean up staff tools state
+        staffChatService.removePlayer(event.getPlayer().getUniqueId());
+        chatManagementService.removePlayer(event.getPlayer().getUniqueId());
+        networkChatInterceptService.removePlayer(event.getPlayer().getUniqueId());
+        if (staff2faService != null) staff2faService.removePlayer(event.getPlayer().getUniqueId());
 
         // Remove player from punishment cache
         cache.removePlayer(event.getPlayer().getUniqueId());
@@ -228,6 +277,14 @@ public class BungeeListener implements Listener {
                     platform.getLogger().warning("Failed to update server for " + event.getPlayer().getName() + ": " + throwable.getMessage());
                     return null;
                 });
+
+        // Staff server switch notification
+        if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
+            String inGameName = event.getPlayer().getName();
+            String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
+            if (panelName == null) panelName = inGameName;
+            platform.staffBroadcast(localeManager.getMessage("staff_notifications.switch", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", serverName)));
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -242,6 +299,23 @@ public class BungeeListener implements Listener {
                 return;
             }
             ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
+
+            // Freeze: block all commands for frozen players
+            if (freezeService.isFrozen(sender.getUniqueId())) {
+                event.setCancelled(true);
+                sender.sendMessage(new TextComponent("§cYou cannot use commands while frozen."));
+                return;
+            }
+
+            // Log command
+            String cmdServerName = sender.getServer() != null ? sender.getServer().getInfo().getName() : "unknown";
+            chatCommandLogService.addCommand(
+                    sender.getUniqueId().toString(),
+                    sender.getName(),
+                    event.getMessage(),
+                    cmdServerName
+            );
+
             if (cache.isMuted(sender.getUniqueId()) && MutedCommandUtil.isBlockedCommand(event.getMessage(), mutedCommands)) {
                 event.setCancelled(true);
                 sendMuteMessage(sender);
@@ -267,10 +341,80 @@ public class BungeeListener implements Listener {
             event.getMessage()
         );
 
+        // Staff chat: if sender is in staff chat mode, redirect to staff chat
+        if (staffChatService.isInStaffChat(sender.getUniqueId())) {
+            event.setCancelled(true);
+            String inGameName = sender.getName();
+            String panelName = cache.getStaffDisplayName(sender.getUniqueId());
+            String format = staffChatConfig.getFormat()
+                    .replace("{player}", inGameName)
+                    .replace("{panel-name}", panelName != null ? panelName : inGameName)
+                    .replace("{message}", event.getMessage())
+                    .replace("&", "§");
+            platform.staffBroadcast(format);
+            return;
+        }
+
+        // Staff chat prefix shortcut
+        if (staffChatConfig.isEnabled() && event.getMessage().startsWith(staffChatConfig.getPrefix())
+                && PermissionUtil.isStaff(sender.getUniqueId(), cache)) {
+            event.setCancelled(true);
+            String msg = event.getMessage().substring(staffChatConfig.getPrefix().length()).trim();
+            if (!msg.isEmpty()) {
+                String inGameName = sender.getName();
+                String panelName = cache.getStaffDisplayName(sender.getUniqueId());
+                String format = staffChatConfig.getFormat()
+                        .replace("{player}", inGameName)
+                        .replace("{panel-name}", panelName != null ? panelName : inGameName)
+                        .replace("{message}", msg)
+                        .replace("&", "§");
+                platform.staffBroadcast(format);
+            }
+            return;
+        }
+
+        // Chat management: chat disabled check
+        boolean isStaff = PermissionUtil.isStaff(sender.getUniqueId(), cache);
+        if (!chatManagementService.canSendMessage(sender.getUniqueId(), isStaff)) {
+            event.setCancelled(true);
+            if (!chatManagementService.isChatEnabled()) {
+                sender.sendMessage(new TextComponent(localeManager.getMessage("chat_management.chat_disabled")));
+            } else {
+                int remaining = chatManagementService.getSlowModeRemaining(sender.getUniqueId());
+                sender.sendMessage(new TextComponent(localeManager.getMessage("chat_management.slow_mode_wait",
+                        java.util.Map.of("seconds", String.valueOf(remaining)))));
+            }
+            return;
+        }
+
         if (cache.isMuted(sender.getUniqueId())) {
             // Cancel the chat event
             event.setCancelled(true);
             sendMuteMessage(sender);
+            return;
+        }
+
+        // Freeze: redirect frozen player chat to staff
+        if (freezeService.isFrozen(sender.getUniqueId())) {
+            event.setCancelled(true);
+            String frozenMsg = "§c[Frozen] §f" + sender.getName() + ": §7" + event.getMessage();
+            platform.staffBroadcast(frozenMsg);
+            return;
+        }
+
+        // Log chat message
+        chatCommandLogService.addChatMessage(
+                sender.getUniqueId().toString(),
+                sender.getName(),
+                event.getMessage(),
+                serverName
+        );
+
+        // Forward to interceptors
+        for (java.util.UUID interceptor : networkChatInterceptService.getInterceptors()) {
+            if (!interceptor.equals(sender.getUniqueId())) {
+                platform.sendMessage(interceptor, "§8[Intercept] §f" + sender.getName() + ": §7" + event.getMessage());
+            }
         }
     }
 

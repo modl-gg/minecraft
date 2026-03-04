@@ -16,6 +16,7 @@ import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.plugin.PluginInfo;
+import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
 import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
@@ -121,14 +122,24 @@ public final class VelocityPlugin {
                     java.util.logging.Logger.getLogger("modl"), httpManager.isDebugHttp());
             queryStatWipeExecutor.addBridge("bridge", bridgeHost, bridgePort, apiKey);
             pluginLoader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
+
+            // Wire up bridge message dispatcher for incoming messages
+            BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
+                    platform, pluginLoader.getLocaleManager(), pluginLoader.getFreezeService(),
+                    pluginLoader.getStaffModeService(), pluginLoader.getVanishService(),
+                    java.util.logging.Logger.getLogger("modl"));
+            queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
+
+            // Set executor on bridge service for outgoing messages
+            pluginLoader.getBridgeService().setExecutor(queryStatWipeExecutor);
         }
 
-        server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClientHolder(), pluginLoader.getCache(), logger, chatMessageCache, platform, pluginLoader.getSyncService(), pluginLoader.getLocaleManager(), httpManager.isDebugHttp()));
+        server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClientHolder(), pluginLoader.getCache(), logger, chatMessageCache, platform, pluginLoader.getSyncService(), pluginLoader.getLocaleManager(), httpManager.isDebugHttp(), pluginLoader.getStaffChatService(), pluginLoader.getChatManagementService(), pluginLoader.getMaintenanceService(), pluginLoader.getFreezeService(), pluginLoader.getNetworkChatInterceptService(), pluginLoader.getStaff2faService()));
 
         @SuppressWarnings("unchecked")
         List<String> mutedCommands = (List<String>) getNestedConfig("muted_commands", Collections.emptyList());
 
-        server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache(), chatMessageCache, pluginLoader.getLocaleManager(), mutedCommands));
+        server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache(), chatMessageCache, pluginLoader.getLocaleManager(), mutedCommands, pluginLoader.getStaffChatService(), pluginLoader.getChatManagementService(), pluginLoader.getFreezeService(), pluginLoader.getNetworkChatInterceptService(), pluginLoader.getChatCommandLogService(), pluginLoader.getConfigManager().getStaffChatConfig()));
 
         metrics.make(this, 29830);
     }

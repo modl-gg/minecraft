@@ -7,6 +7,7 @@ import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
@@ -38,6 +39,8 @@ public class VelocityPlatform implements Platform {
     private Cache cache;
     @Setter
     private LocaleManager localeManager;
+    @Setter
+    private StaffModeService staffModeService;
 
     private static Component get(String string) {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(string);
@@ -52,6 +55,24 @@ public class VelocityPlatform implements Platform {
     public void staffBroadcast(String string) {
         server.getAllPlayers().forEach(player -> {
             if (PermissionUtil.isStaff(player.getUniqueId(), cache)) player.sendMessage(get(string));
+        });
+    }
+
+    @Override
+    public void staffChatBroadcast(String message) {
+        net.kyori.adventure.text.Component component = Colors.get(message);
+        server.getAllPlayers().stream()
+            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
+            .filter(player -> cache.isStaffNotificationsEnabled(player.getUniqueId()))
+            .forEach(player -> player.sendMessage(component));
+    }
+
+    @Override
+    public void connectToServer(java.util.UUID playerUuid, String serverName) {
+        server.getPlayer(playerUuid).ifPresent(player -> {
+            server.getServer(serverName).ifPresent(srv -> {
+                player.createConnectionRequest(srv).fireAndForget();
+            });
         });
     }
 
@@ -247,6 +268,12 @@ public class VelocityPlatform implements Platform {
     }
 
     @Override
+    public void dispatchPlayerCommand(UUID uuid, String command) {
+        server.getPlayer(uuid).ifPresent(player ->
+                server.getCommandManager().executeAsync(player, command));
+    }
+
+    @Override
     public String getPlayerSkinTexture(UUID uuid) {
         Player player = getOnlinePlayer(uuid);
         if (player == null) return null;
@@ -269,5 +296,10 @@ public class VelocityPlatform implements Platform {
     @Override
     public LocaleManager getLocaleManager() {
         return localeManager;
+    }
+
+    @Override
+    public StaffModeService getStaffModeService() {
+        return staffModeService;
     }
 }

@@ -7,6 +7,7 @@ import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -38,6 +39,8 @@ public class SpigotPlatform implements Platform {
     private Cache cache;
     @Setter
     private LocaleManager localeManager;
+    @Setter
+    private StaffModeService staffModeService;
 
     @Override
     public void broadcast(String string) {
@@ -50,6 +53,15 @@ public class SpigotPlatform implements Platform {
         Bukkit.getOnlinePlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
             .forEach(player -> player.sendMessage(message));
+    }
+
+    @Override
+    public void staffChatBroadcast(String message) {
+        String msg = ChatColor.translateAlternateColorCodes('&', message);
+        Bukkit.getOnlinePlayers().stream()
+            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
+            .filter(player -> cache.isStaffNotificationsEnabled(player.getUniqueId()))
+            .forEach(player -> player.sendMessage(msg));
     }
 
     @Override
@@ -218,6 +230,14 @@ public class SpigotPlatform implements Platform {
     }
 
     @Override
+    public void dispatchPlayerCommand(UUID uuid, String command) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null) {
+            Bukkit.getScheduler().runTask(plugin, () -> player.performCommand(command));
+        }
+    }
+
+    @Override
     public String getPlayerSkinTexture(UUID uuid) {
         Player player = Bukkit.getPlayer(uuid);
         if (player == null) return null;
@@ -250,5 +270,10 @@ public class SpigotPlatform implements Platform {
     @Override
     public LocaleManager getLocaleManager() {
         return localeManager;
+    }
+
+    @Override
+    public StaffModeService getStaffModeService() {
+        return staffModeService;
     }
 }

@@ -7,6 +7,7 @@ import gg.modl.minecraft.api.LibraryRecord;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
 import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
@@ -26,6 +27,7 @@ public class SpigotPlugin extends JavaPlugin {
     
     private PluginLoader loader;
     private QueryStatWipeExecutor queryStatWipeExecutor;
+
 
     @Override
     public synchronized void onEnable() {
@@ -91,11 +93,21 @@ public class SpigotPlugin extends JavaPlugin {
                 queryStatWipeExecutor = new QueryStatWipeExecutor(getLogger(), httpManager.isDebugHttp());
                 queryStatWipeExecutor.addBridge("bridge", bridgeHost, bridgePort, apiKey);
                 loader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
+
+                // Wire up bridge message dispatcher for incoming messages
+                BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
+                        platform, loader.getLocaleManager(), loader.getFreezeService(),
+                        loader.getStaffModeService(), loader.getVanishService(), getLogger());
+                queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
+
+                // Set executor on bridge service for outgoing messages
+                loader.getBridgeService().setExecutor(queryStatWipeExecutor);
             } else {
                 getLogger().warning("[modl] modl-bridge plugin not found and bridge.host not configured — stat wipe commands will not execute");
             }
         }
-        getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), loader.getLoginCache(), httpManager.isDebugHttp(), mutedCommands), this);
+        getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), loader.getLoginCache(), httpManager.isDebugHttp(), mutedCommands, loader.getStaffChatService(), loader.getChatManagementService(), loader.getMaintenanceService(), loader.getFreezeService(), loader.getNetworkChatInterceptService(), loader.getChatCommandLogService(), loader.getStaff2faService(), loader.getConfigManager().getStaffChatConfig()), this);
+
         new Metrics(this, 29705);
     }
 

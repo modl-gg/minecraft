@@ -664,6 +664,50 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), TicketsResponse.class);
     }
 
+    @NotNull
+    @Override
+    public CompletableFuture<Staff2faTokenResponse> generateStaff2faToken(@NotNull String minecraftUuid, @NotNull String ip) {
+        Map<String, String> body = Map.of("minecraftUuid", minecraftUuid, "ip", ip);
+        return sendAsync(requestBuilder("/minecraft/staff/2fa/generate")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Staff2faTokenResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> submitChatLogs(@NotNull ChatLogBatchRequest chatLogBatch) {
+        return sendAsync(requestBuilder("/minecraft/players/chat-log")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(chatLogBatch)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<Void> submitCommandLogs(@NotNull CommandLogBatchRequest commandLogBatch) {
+        return sendAsync(requestBuilder("/minecraft/players/command-log")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(commandLogBatch)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<ChatLogsResponse> getChatLogs(@NotNull String playerUuid, int limit) {
+        return sendAsync(requestBuilder("/minecraft/players/" + playerUuid + "/chat-logs?limit=" + limit)
+                .GET()
+                .build(), ChatLogsResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<CommandLogsResponse> getCommandLogs(@NotNull String playerUuid, int limit) {
+        return sendAsync(requestBuilder("/minecraft/players/" + playerUuid + "/command-logs?limit=" + limit)
+                .GET()
+                .build(), CommandLogsResponse.class);
+    }
+
     private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {
         return sendAsync(request, responseType, null);
     }

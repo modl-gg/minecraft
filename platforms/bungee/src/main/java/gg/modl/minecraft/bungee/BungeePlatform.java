@@ -7,6 +7,7 @@ import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -38,6 +39,8 @@ public class BungeePlatform implements Platform {
     private Cache cache;
     @Setter
     private LocaleManager localeManager;
+    @Setter
+    private StaffModeService staffModeService;
 
     @Override
     public void broadcast(String string) {
@@ -51,6 +54,26 @@ public class BungeePlatform implements Platform {
         ProxyServer.getInstance().getPlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
             .forEach(player -> player.sendMessage(message));
+    }
+
+    @Override
+    public void staffChatBroadcast(String message) {
+        String msg = ChatColor.translateAlternateColorCodes('&', message);
+        ProxyServer.getInstance().getPlayers().stream()
+            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
+            .filter(player -> cache.isStaffNotificationsEnabled(player.getUniqueId()))
+            .forEach(player -> player.sendMessage(new TextComponent(msg)));
+    }
+
+    @Override
+    public void connectToServer(java.util.UUID player, String serverName) {
+        ProxiedPlayer pp = ProxyServer.getInstance().getPlayer(player);
+        if (pp != null) {
+            net.md_5.bungee.api.config.ServerInfo server = ProxyServer.getInstance().getServerInfo(serverName);
+            if (server != null) {
+                pp.connect(server);
+            }
+        }
     }
 
     @Override
@@ -219,6 +242,14 @@ public class BungeePlatform implements Platform {
     }
 
     @Override
+    public void dispatchPlayerCommand(UUID uuid, String command) {
+        ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
+        if (player != null) {
+            ProxyServer.getInstance().getPluginManager().dispatchCommand(player, command);
+        }
+    }
+
+    @Override
     public String getPlayerSkinTexture(UUID uuid) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
         if (player == null) return null;
@@ -254,5 +285,10 @@ public class BungeePlatform implements Platform {
     @Override
     public LocaleManager getLocaleManager() {
         return localeManager;
+    }
+
+    @Override
+    public StaffModeService getStaffModeService() {
+        return staffModeService;
     }
 }

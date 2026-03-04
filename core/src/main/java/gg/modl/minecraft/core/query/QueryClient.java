@@ -119,6 +119,57 @@ public class QueryClient {
         return serverName;
     }
 
+    public void sendFreezePlayer(String targetUuid, String staffUuid) {
+        sendTypedMessage("FREEZE_PLAYER", targetUuid, staffUuid);
+    }
+
+    public void sendUnfreezePlayer(String targetUuid) {
+        sendTypedMessage("UNFREEZE_PLAYER", targetUuid);
+    }
+
+    public void sendFreezeLogout(String playerUuid, String playerName) {
+        sendTypedMessage("FREEZE_LOGOUT", playerUuid, playerName);
+    }
+
+    public void sendStaffModeEnter(String staffUuid, String inGameName, String panelName) {
+        sendTypedMessage("STAFF_MODE_ENTER", staffUuid, inGameName, panelName);
+    }
+
+    public void sendStaffModeExit(String staffUuid, String inGameName, String panelName) {
+        sendTypedMessage("STAFF_MODE_EXIT", staffUuid, inGameName, panelName);
+    }
+
+    public void sendTargetRequest(String staffUuid, String targetUuid) {
+        sendTypedMessage("TARGET_REQUEST", staffUuid, targetUuid);
+    }
+
+    public void sendVanishEnter(String staffUuid, String inGameName, String panelName) {
+        sendTypedMessage("VANISH_ENTER", staffUuid, inGameName, panelName);
+    }
+
+    public void sendVanishExit(String staffUuid, String inGameName, String panelName) {
+        sendTypedMessage("VANISH_EXIT", staffUuid, inGameName, panelName);
+    }
+
+    public void sendConnectServer(String playerUuid, String serverName) {
+        sendTypedMessage("CONNECT_SERVER", playerUuid, serverName);
+    }
+
+    void sendTypedMessage(String action, String... args) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            DataOutputStream dos = new DataOutputStream(baos);
+            dos.writeUTF(action);
+            for (String arg : args) {
+                dos.writeUTF(arg);
+            }
+            dos.flush();
+            sendMessage(baos.toByteArray());
+        } catch (IOException e) {
+            logger.warning("[QueryClient] Failed to send " + action + ": " + e.getMessage());
+        }
+    }
+
     public void shutdown() {
         shuttingDown = true;
         connected = false;

@@ -15,6 +15,7 @@ import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.ListenerHelper;
+import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
 import gg.modl.minecraft.core.util.WebPlayer;
@@ -45,6 +46,12 @@ public class JoinListener {
     private final SyncService syncService;
     private final gg.modl.minecraft.core.locale.LocaleManager localeManager;
     private final boolean debugMode;
+    private final gg.modl.minecraft.core.service.StaffChatService staffChatService;
+    private final gg.modl.minecraft.core.service.ChatManagementService chatManagementService;
+    private final gg.modl.minecraft.core.service.MaintenanceService maintenanceService;
+    private final gg.modl.minecraft.core.service.FreezeService freezeService;
+    private final gg.modl.minecraft.core.service.NetworkChatInterceptService networkChatInterceptService;
+    private final gg.modl.minecraft.core.service.Staff2faService staff2faService;
 
     /**
      * Get the current HTTP client from the holder.
@@ -132,6 +139,10 @@ public class JoinListener {
                 for (SyncResponse.PendingStatWipe statWipe : response.getPendingStatWipes()) {
                     syncService.executeStatWipeFromLogin(statWipe);
                 }
+            } else if (maintenanceService.isEnabled() && !maintenanceService.canJoin(event.getPlayer().getUniqueId(), cache)) {
+                // Maintenance mode check
+                Component maintenanceMessage = Colors.get(localeManager.getMessage("maintenance.login_denied"));
+                event.setResult(ResultedEvent.ComponentResult.denied(maintenanceMessage));
             } else {
                 // Cache active mute if present
                 if (response.hasActiveMute()) {
@@ -188,6 +199,20 @@ public class JoinListener {
         // Mark player as online
         cache.setOnline(event.getPlayer().getUniqueId());
 
+        // 2FA check for staff
+        if (staff2faService != null && staff2faService.isEnabled() && PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
+            String ip = event.getPlayer().getRemoteAddress() != null ? event.getPlayer().getRemoteAddress().getAddress().getHostAddress() : "";
+            staff2faService.onStaffJoin(event.getPlayer().getUniqueId(), ip);
+        }
+
+        // Staff join notification
+        if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
+            String inGameName = event.getPlayer().getUsername();
+            String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
+            if (panelName == null) panelName = inGameName;
+            platform.staffBroadcast(localeManager.getMessage("staff_notifications.join", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
+        }
+
         // Cache skin texture from native Velocity API
         String texture = platform.getPlayerSkinTexture(event.getPlayer().getUniqueId());
         if (texture != null) {
@@ -206,8 +231,28 @@ public class JoinListener {
 
         getHttpClient().playerDisconnect(request);
 
+        // Staff leave notification
+        if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
+            String inGameName = event.getPlayer().getUsername();
+            String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
+            if (panelName == null) panelName = inGameName;
+            platform.staffBroadcast(localeManager.getMessage("staff_notifications.leave", java.util.Map.of("staff", panelName, "in-game-name", inGameName)));
+        }
+
+        // Freeze logout notification
+        if (freezeService.isFrozen(event.getPlayer().getUniqueId())) {
+            platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification", java.util.Map.of("player", event.getPlayer().getUsername())));
+            freezeService.removePlayer(event.getPlayer().getUniqueId());
+        }
+
         // Mark player as offline
         cache.setOffline(event.getPlayer().getUniqueId());
+
+        // Clean up staff tools state
+        staffChatService.removePlayer(event.getPlayer().getUniqueId());
+        chatManagementService.removePlayer(event.getPlayer().getUniqueId());
+        networkChatInterceptService.removePlayer(event.getPlayer().getUniqueId());
+        if (staff2faService != null) staff2faService.removePlayer(event.getPlayer().getUniqueId());
 
         // Remove player from punishment cache
         cache.removePlayer(event.getPlayer().getUniqueId());
@@ -227,6 +272,14 @@ public class JoinListener {
                     logger.warn("Failed to update server for {}: {}", event.getPlayer().getUsername(), throwable.getMessage());
                     return null;
                 });
+
+        // Staff server switch notification
+        if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
+            String inGameName = event.getPlayer().getUsername();
+            String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
+            if (panelName == null) panelName = inGameName;
+            platform.staffBroadcast(localeManager.getMessage("staff_notifications.switch", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", serverName)));
+        }
     }
 
     public Cache getPunishmentCache() {
