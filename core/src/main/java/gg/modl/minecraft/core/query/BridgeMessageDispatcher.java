@@ -46,6 +46,8 @@ public class BridgeMessageDispatcher {
                 case "VANISH_EXIT" -> handleVanishExit(data);
                 case "TARGET_RESPONSE" -> handleTargetResponse(data);
                 case "OPEN_STAFF_MENU" -> handleOpenStaffMenu(data);
+                case "OPEN_INSPECT_MENU" -> handleOpenInspectMenu(data);
+                case "PROXY_CMD" -> handleProxyCmd(data);
                 default -> logger.fine("[Bridge] Unknown action: " + action);
             }
         } catch (Exception e) {
@@ -124,6 +126,12 @@ public class BridgeMessageDispatcher {
         platform.dispatchPlayerCommand(playerUuid, "staffmenu");
     }
 
+    private void handleOpenInspectMenu(DataInputStream data) throws Exception {
+        UUID playerUuid = UUID.fromString(data.readUTF());
+        String targetName = data.readUTF();
+        platform.dispatchPlayerCommand(playerUuid, "inspect " + targetName);
+    }
+
     private void handleTargetResponse(DataInputStream data) throws Exception {
         UUID staffUuid = UUID.fromString(data.readUTF());
         UUID targetUuid = UUID.fromString(data.readUTF());
@@ -132,5 +140,11 @@ public class BridgeMessageDispatcher {
         staffModeService.setTarget(staffUuid, targetUuid);
         platform.connectToServer(staffUuid, targetServer);
         logger.info("[Bridge] Target response: staff " + staffUuid + " -> target " + targetUuid + " on " + targetServer);
+    }
+
+    private void handleProxyCmd(DataInputStream data) throws Exception {
+        String command = data.readUTF();
+        logger.info("[Bridge] Executing proxy command: " + command);
+        platform.dispatchConsoleCommand(command);
     }
 }

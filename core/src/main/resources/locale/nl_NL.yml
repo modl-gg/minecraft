@@ -534,3 +534,79 @@ menus:
       - "{content}"
       - "&f "
       - "&eKlik om te deselecteren"
+
+  # Staff Members Menu
+  staff_members:
+    title: "&e{panel_name}"
+    lore:
+      - "&7Rol: &f{role}"
+      - "&7Minecraft: &f{minecraft_username}"
+      - ""
+      - "&7Online: {is_online} ({last_seen_or_session_time} op {server})"
+      - "&7Speeltijd: &f{playtime}"
+      - "&7Straffen uitgedeeld: &f{punishments_count}"
+
+  # Online Players Menu
+  online_players:
+    title: "&6{player_name}"
+    lore:
+      - "&7Sessie: &f{session_duration}"
+      - "&7Totale Speeltijd: &f{total_playtime}"
+      - "&7Straffen: {punishments}"
+      - ""
+      - "&eLinksklick om te richten | Rechtsklick om te inspecteren"
+
+# Standing GUI (player-facing)
+standing_gui:
+  title: "&fJouw Reputatie"
+  social_status:
+    title: "&eSociale Reputatie: {status}"
+    description:
+      Low:
+        - ""
+        - "&fJe sociale overtreding status is laag."
+        - "&fGa zo door, straffen in deze categorie"
+        - "&fzullen milder zijn."
+      Medium:
+        - ""
+        - "&fJe sociale overtreding status is gemiddeld."
+        - "&fJe hebt meerdere overtredingen opgebouwd,"
+        - "&fwees alsjeblieft voorzichtiger aangezien straffen"
+        - "&fin deze categorie strenger zullen zijn."
+      Habitual:
+        - ""
+        - "&fJe sociale overtreding status is gewoonlijk."
+        - "&fJe hebt veel overtredingen opgebouwd,"
+        - "&fwees alsjeblieft voorzichtig aangezien straffen"
+        - "&fin deze categorie zeer streng zullen zijn."
+  gameplay_status:
+    title: "&eGameplay Reputatie: {status}"
+    description:
+      Low:
+        - ""
+        - "&fJe gameplay overtreding status is laag."
+        - "&fGa zo door, straffen in deze categorie"
+        - "&fzullen milder zijn."
+      Medium:
+        - ""
+        - "&fJe gameplay overtreding status is gemiddeld."
+        - "&fJe hebt meerdere overtredingen opgebouwd,"
+        - "&fwees alsjeblieft voorzichtiger aangezien straffen"
+        - "&fin deze categorie strenger zullen zijn."
+      Habitual:
+        - ""
+        - "&fJe gameplay overtreding status is gewoonlijk."
+        - "&fJe hebt veel overtredingen opgebouwd,"
+        - "&fwees alsjeblieft voorzichtig aangezien straffen"
+        - "&fin deze categorie zeer streng zullen zijn."
+  status_display:
+    Low: "&aLaag"
+    Medium: "&6Gemiddeld"
+    Habitual: "&cGewoonlijk"
+  punishment_item:
+    title: "&e#{id} {date}"
+    lore:
+      - "&7{duration} {type} ({status})"
+      - ""
+      - "&f{reason}"
+

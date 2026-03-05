@@ -71,6 +71,18 @@ public class TargetCommand extends BaseCommand {
         // Enable staff mode if not already in it
         if (!staffModeService.isInStaffMode(staffUuid)) {
             staffModeService.enable(staffUuid);
+
+            gg.modl.minecraft.api.AbstractPlayer staffPlayer = platform.getPlayer(staffUuid);
+            String inGameName = staffPlayer != null ? staffPlayer.getName() : "Staff";
+            String panelName = cache.getStaffDisplayName(staffUuid);
+            if (panelName == null) panelName = inGameName;
+
+            sender.sendMessage(localeManager.getMessage("staff_mode.enabled"));
+            platform.staffBroadcast(localeManager.getMessage("staff_mode.enabled_broadcast", Map.of(
+                    "staff", panelName,
+                    "in-game-name", inGameName
+            )));
+            bridgeService.sendStaffModeEnter(staffUuid.toString(), inGameName, panelName);
         }
 
         staffModeService.setTarget(staffUuid, targetUuid);

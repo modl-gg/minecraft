@@ -210,18 +210,9 @@ public class SpigotListener implements Listener {
         // Mark player as online
         cache.setOnline(event.getPlayer().getUniqueId());
 
-        // 2FA check for staff
+        // 2FA: register staff as pending — actual auth check deferred to sync
         if (staff2faService != null && staff2faService.isEnabled() && PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
-            String ip = event.getPlayer().getAddress() != null ? event.getPlayer().getAddress().getAddress().getHostAddress() : "";
-            staff2faService.onStaffJoin(event.getPlayer().getUniqueId(), ip);
-        }
-
-        // Staff join notification
-        if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
-            String inGameName = event.getPlayer().getName();
-            String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
-            if (panelName == null) panelName = inGameName;
-            platform.staffBroadcast(localeManager.getMessage("staff_notifications.join", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
+            staff2faService.onStaffJoin(event.getPlayer().getUniqueId());
         }
 
         // Cache skin texture - try native API first (1.18.1+), falls back to WebPlayer.get() chain below
@@ -273,6 +264,15 @@ public class SpigotListener implements Listener {
                             }
                         }
                     }
+
+                    // Staff join notification (after login response so panel name is available)
+                    if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)
+                            && (staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(event.getPlayer().getUniqueId()))) {
+                        String inGameName = event.getPlayer().getName();
+                        String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
+                        if (panelName == null) panelName = inGameName;
+                        platform.staffBroadcast(localeManager.getMessage("staff_notifications.join", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
+                    }
                 }).exceptionally(throwable -> {
                     platform.getLogger().severe("Failed to cache mute for " + event.getPlayer().getName() + ": " + throwable.getMessage());
                     return null;
@@ -306,6 +306,15 @@ public class SpigotListener implements Listener {
                             }
                         }
                     }
+
+                    // Staff join notification (after login response so panel name is available)
+                    if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)
+                            && (staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(event.getPlayer().getUniqueId()))) {
+                        String inGameName = event.getPlayer().getName();
+                        String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
+                        if (panelName == null) panelName = inGameName;
+                        platform.staffBroadcast(localeManager.getMessage("staff_notifications.join", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
+                    }
                 }).exceptionally(innerThrowable -> {
                     platform.getLogger().severe("Failed to cache mute for " + event.getPlayer().getName() + ": " + innerThrowable.getMessage());
                     return null;
@@ -332,6 +341,7 @@ public class SpigotListener implements Listener {
             String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
             if (panelName == null) panelName = inGameName;
             platform.staffBroadcast(localeManager.getMessage("staff_notifications.leave", java.util.Map.of("staff", panelName, "in-game-name", inGameName)));
+            getHttpClient().reportStaffDisconnect(event.getPlayer().getUniqueId().toString(), sessionDuration);
         }
 
         // Freeze logout notification

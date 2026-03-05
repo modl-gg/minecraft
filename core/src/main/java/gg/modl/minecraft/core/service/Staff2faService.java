@@ -2,7 +2,9 @@ package gg.modl.minecraft.core.service;
 
 import gg.modl.minecraft.core.config.Staff2faConfig;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -10,8 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Service managing staff two-factor authentication.
  * <p>
  * When enabled, staff members must verify their identity after joining.
- * IP addresses are cached with a configurable TTL so that staff connecting
- * from a recently-verified IP are auto-authenticated.
+ * Session validity is determined by the backend (7-day TTL) and delivered
+ * via sync responses — no caching of sessions or IPs on the plugin side.
  */
 public class Staff2faService {
 
@@ -28,8 +30,8 @@ public class Staff2faService {
     /** Current authentication state per player. */
     private final Map<UUID, AuthState> authStates = new ConcurrentHashMap<>();
 
-    /** UUID -> (IP -> timestamp of last successful verification). */
-    private final Map<UUID, Map<String, Long>> ipAuthHistory = new ConcurrentHashMap<>();
+    /** Players who have been notified that they need to verify (to avoid repeating the message). */
+    private final Set<UUID> notifiedPending = ConcurrentHashMap.newKeySet();
 
     private volatile Staff2faConfig config;
 
@@ -69,54 +71,39 @@ public class Staff2faService {
      * Called when a staff member joins the server.
      * <p>
      * If 2FA is disabled the player is immediately authenticated.
-     * Otherwise the player's IP is checked against the auth history;
-     * if the IP was verified within the configured TTL the player is
-     * auto-authenticated, otherwise they are placed in {@link AuthState#PENDING}.
+     * Otherwise the player is placed in {@link AuthState#PENDING} and
+     * the first sync response will determine whether their backend
+     * session is still valid.
      *
      * @param uuid The staff member's UUID
-     * @param ip   The IP address the player connected from
      */
-    public void onStaffJoin(UUID uuid, String ip) {
+    public void onStaffJoin(UUID uuid) {
         if (!isEnabled()) {
             authStates.put(uuid, AuthState.AUTHENTICATED);
             return;
         }
 
-        // Check IP history for auto-auth
-        if (ip != null) {
-            Map<String, Long> history = ipAuthHistory.get(uuid);
-            if (history != null) {
-                Long lastAuth = history.get(ip);
-                if (lastAuth != null) {
-                    long elapsedDays = (System.currentTimeMillis() - lastAuth) / (1000L * 60 * 60 * 24);
-                    if (elapsedDays < config.getIpTtlDays()) {
-                        authStates.put(uuid, AuthState.AUTHENTICATED);
-                        return;
-                    }
-                }
-            }
-        }
-
-        // IP not recently verified – require verification
         authStates.put(uuid, AuthState.PENDING);
     }
 
     /**
      * Handle a successful verification for a staff member.
-     * Sets the player to {@link AuthState#AUTHENTICATED} and records
-     * the IP in the auth history for future auto-auth.
+     * Sets the player to {@link AuthState#AUTHENTICATED}.
      *
      * @param uuid The staff member's UUID
-     * @param ip   The IP address verified from
      */
-    public void handleVerification(UUID uuid, String ip) {
+    public void handleVerification(UUID uuid) {
         authStates.put(uuid, AuthState.AUTHENTICATED);
+        notifiedPending.remove(uuid);
+    }
 
-        if (ip != null) {
-            ipAuthHistory
-                    .computeIfAbsent(uuid, k -> new ConcurrentHashMap<>())
-                    .put(ip, System.currentTimeMillis());
-        }
+    /**
+     * Mark a PENDING player as having been notified about needing to verify.
+     *
+     * @return {@code true} if this is the first notification (was not already notified)
+     */
+    public boolean markNotified(UUID uuid) {
+        return notifiedPending.add(uuid);
     }
 
     /**
@@ -126,6 +113,7 @@ public class Staff2faService {
      */
     public void removePlayer(UUID uuid) {
         authStates.remove(uuid);
+        notifiedPending.remove(uuid);
     }
 
     /**

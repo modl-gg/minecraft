@@ -55,7 +55,7 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
     private List<Report> reports = new ArrayList<>();
     private final Set<String> selectedReportIds;
     private String currentFilter = "all";
-    private final List<String> filterOptions = Arrays.asList("all", "player", "chat");
+    private final List<String> filterOptions = Arrays.asList("all", "gameplay", "chat");
     private final Consumer<Set<String>> onComplete; // callback with selected report IDs
     private final Consumer<CirrusPlayerWrapper> rootBackAction;
 
@@ -100,9 +100,11 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
                 if (response.isSuccess() && response.getReports() != null) {
                     reports.clear();
                     for (var report : response.getReports()) {
+                        String type = report.getType() != null ? report.getType() : report.getCategory();
+                        if ("player".equalsIgnoreCase(type)) type = "gameplay";
                         reports.add(new Report(
                                 report.getId(),
-                                report.getType() != null ? report.getType() : report.getCategory(),
+                                type,
                                 report.getReporterName(),
                                 report.getContent() != null ? report.getContent() : report.getSubject(),
                                 report.getCreatedAt(),
@@ -249,7 +251,7 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
     private CirrusItemType getReportItemType(String type) {
         if (type == null) return CirrusItemType.PAPER;
         return switch (type.toLowerCase()) {
-            case "player" -> CirrusItemType.PLAYER_HEAD;
+            case "gameplay" -> CirrusItemType.PLAYER_HEAD;
             case "chat" -> CirrusItemType.WRITABLE_BOOK;
             case "cheating" -> CirrusItemType.DIAMOND_SWORD;
             case "behavior" -> CirrusItemType.SKELETON_SKULL;

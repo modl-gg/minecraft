@@ -61,7 +61,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
     private List<Report> reports = new ArrayList<>();
     private String currentFilter = "all";
     private String currentStatusFilter = "open";
-    private final List<String> filterOptions = Arrays.asList("all", "player", "chat", "cheating", "behavior", "other");
+    private final List<String> filterOptions = Arrays.asList("all", "gameplay", "chat", "cheating", "behavior", "other");
     private final Consumer<CirrusPlayerWrapper> backAction;
 
     /**
@@ -90,9 +90,11 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
                 if (response.isSuccess() && response.getReports() != null) {
                     reports.clear();
                     for (var report : response.getReports()) {
+                        String type = report.getType() != null ? report.getType() : report.getCategory();
+                        if ("player".equalsIgnoreCase(type)) type = "gameplay";
                         reports.add(new Report(
                                 report.getId(),
-                                report.getType() != null ? report.getType() : report.getCategory(),
+                                type,
                                 report.getReporterName(),
                                 report.getContent() != null ? report.getContent() : report.getSubject(),
                                 report.getCreatedAt(),
@@ -261,7 +263,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
     private CirrusItemType getReportItemType(String type) {
         if (type == null) return CirrusItemType.PAPER;
         switch (type.toLowerCase()) {
-            case "player":
+            case "gameplay":
                 return CirrusItemType.PLAYER_HEAD;
             case "chat":
                 return CirrusItemType.WRITABLE_BOOK;

@@ -320,13 +320,25 @@ public class SyncService {
             lastKnownPunishmentTypesTimestamp = newPunishmentTypesTimestamp;
         }
 
-        // Process staff 2FA verifications
+        // Process staff 2FA verifications (newly verified via link click)
         if (data.getStaff2faVerifications() != null) {
             for (SyncResponse.Staff2faVerification verification : data.getStaff2faVerifications()) {
                 try {
                     UUID uuid = UUID.fromString(verification.getMinecraftUuid());
-                    staff2faService.handleVerification(uuid, verification.getIp());
+                    staff2faService.handleVerification(uuid);
                     logger.info("[Sync] Staff 2FA verified for " + verification.getMinecraftUuid());
+
+                    // Send the staff verified notification now that they're verified
+                    AbstractPlayer player = platform.getPlayer(uuid);
+                    if (player != null) {
+                        // Notify the verified staff member
+                        platform.sendMessage(uuid, localeManager.getMessage("staff_2fa.verify_success"));
+
+                        String inGameName = player.username();
+                        String panelName = cache.getStaffDisplayName(uuid);
+                        if (panelName == null) panelName = inGameName;
+                        platform.staffBroadcast(localeManager.getMessage("staff_notifications.verified", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
+                    }
                 } catch (Exception e) {
                     logger.warning("[Sync] Failed to process staff 2FA verification: " + e.getMessage());
                 }
@@ -342,7 +354,7 @@ public class SyncService {
                 if (staffMember.getMinecraftUuid() != null) {
                     try {
                         UUID uuid = UUID.fromString(staffMember.getMinecraftUuid());
-                        cache.cacheStaffPermissions(uuid, staffMember.getStaffRole(), staffMember.getPermissions());
+                        cache.cacheStaffPermissions(uuid, staffMember.getStaffUsername(), staffMember.getStaffRole(), staffMember.getPermissions());
                         loadedCount++;
                     } catch (IllegalArgumentException e) {
                         logger.warning("Invalid UUID for staff member: " + staffMember.getMinecraftUuid());
@@ -802,6 +814,30 @@ public class SyncService {
             UUID uuid = UUID.fromString(staffMember.getMinecraftUuid());
             AbstractPlayer player = platform.getPlayer(uuid);
 
+            // Check 2FA session validity from backend and update auth state
+            if (staff2faService != null && staff2faService.isEnabled() && player != null && player.isOnline()) {
+                Boolean sessionValid = staffMember.getTwoFactorSessionValid();
+                if (Boolean.TRUE.equals(sessionValid)) {
+                    // Backend says session is valid — auto-authenticate if still pending
+                    if (staff2faService.getAuthState(uuid) == Staff2faService.AuthState.PENDING) {
+                        staff2faService.handleVerification(uuid);
+                        platform.sendMessage(uuid, localeManager.getMessage("staff_2fa.auto_verified"));
+
+                        String inGameName = player.username();
+                        String panelName = cache.getStaffDisplayName(uuid);
+                        if (panelName == null) panelName = inGameName;
+                        platform.staffBroadcast(localeManager.getMessage("staff_notifications.join", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
+                    }
+                } else {
+                    // No valid session — notify once that verification is needed
+                    if (staff2faService.getAuthState(uuid) == Staff2faService.AuthState.PENDING) {
+                        if (staff2faService.markNotified(uuid)) {
+                            platform.sendMessage(uuid, localeManager.getMessage("staff_2fa.not_verified"));
+                        }
+                    }
+                }
+            }
+
             if (player != null && player.isOnline()) {
                 // Check if this is a new staff member or permissions changed
                 SyncResponse.ActiveStaffMember existing = cache.getStaffMember(uuid);
@@ -848,13 +884,17 @@ public class SyncService {
     }
 
     /**
-     * Process a TICKET_CREATED staff notification with hover text and clickable link
+     * Process a TICKET_CREATED staff notification with hover text and clickable link.
+     * Gameplay/player reports use /target click action; other types open the ticket URL.
      */
     private void processTicketCreatedNotification(SyncResponse.StaffNotification notification) {
         Map<String, Object> data = notification.getData();
         String ticketUrl = data.get("ticketUrl") != null ? (String) data.get("ticketUrl") : "";
         String subject = data.get("subject") != null ? (String) data.get("subject") : "";
         String firstReply = data.get("firstReplyContent") != null ? (String) data.get("firstReplyContent") : "";
+        String ticketType = data.get("ticketType") != null ? (String) data.get("ticketType") : "";
+        String category = data.get("category") != null ? (String) data.get("category") : "";
+        String reportedPlayer = data.get("reportedPlayer") != null ? (String) data.get("reportedPlayer") : "";
 
         // Build hover text: subject + reply #0
         StringBuilder hoverText = new StringBuilder();
@@ -863,7 +903,6 @@ public class SyncService {
         }
         if (!firstReply.isEmpty()) {
             if (hoverText.length() > 0) hoverText.append("\n\n");
-            // Truncate long replies for hover
             String truncated = firstReply.length() > 200 ? firstReply.substring(0, 200) + "..." : firstReply;
             hoverText.append(truncated);
         }
@@ -871,12 +910,30 @@ public class SyncService {
         String escapedMessage = escapeJson(notification.getMessage());
         String escapedHover = escapeJson(hoverText.toString());
 
+        // Gameplay/player reports: click to target the reported player
+        boolean isGameplayReport = "REPORT".equalsIgnoreCase(ticketType)
+                && !category.toLowerCase().contains("chat")
+                && !reportedPlayer.isEmpty();
+
+        String clickAction;
+        String clickValue;
+        if (isGameplayReport) {
+            clickAction = "run_command";
+            clickValue = "/target " + escapeJson(reportedPlayer);
+            if (hoverText.length() > 0) hoverText.append("\n\n");
+            hoverText.append("Click to target " + reportedPlayer);
+            escapedHover = escapeJson(hoverText.toString());
+        } else {
+            clickAction = "open_url";
+            clickValue = ticketUrl;
+        }
+
         String json = String.format(
             "{\"text\":\"\",\"extra\":[" +
             "{\"text\":\"[%s]\",\"color\":\"gray\",\"italic\":true," +
-            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+            "\"clickEvent\":{\"action\":\"%s\",\"value\":\"%s\"}," +
             "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"%s\"}}]}",
-            escapedMessage, ticketUrl, escapedHover
+            escapedMessage, clickAction, clickValue, escapedHover
         );
 
         platform.staffJsonBroadcast(json);

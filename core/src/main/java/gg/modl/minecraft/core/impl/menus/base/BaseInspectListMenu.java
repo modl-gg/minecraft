@@ -61,8 +61,8 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
         // Add inspect menu header items in the second row
-        // Slot 10: Player head with info
-        items.put(MenuSlots.INSPECT_PLAYER_HEAD, createPlayerHeadItem());
+        // Slot 10: Player head with info (left-click to target)
+        items.put(MenuSlots.INSPECT_PLAYER_HEAD, createPlayerHeadItem().actionHandler("targetPlayer"));
 
         // Slot 12: Notes
         CirrusItem notesItem = CirrusItem.of(
@@ -291,9 +291,49 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
     @Override
     protected void registerActionHandlers() {
         super.registerActionHandlers();
+        registerActionHandler("targetPlayer", this::handleTargetPlayer);
         // Note: Tab navigation handlers (openNotes, openAlts, openHistory, etc.)
         // MUST be registered by each subclass. Do not register no-op handlers here
         // as they would take precedence over the actual handlers in subclasses.
+    }
+
+    /**
+     * Handle left-click on player head to target the player.
+     */
+    private void handleTargetPlayer(dev.simplix.cirrus.model.Click click) {
+        if (targetUuid == null) return;
+
+        if (platform.getCache() == null || !platform.getCache().isOnline(targetUuid)) {
+            platform.sendMessage(viewerUuid, MenuItems.COLOR_RED + "Player is not online");
+            return;
+        }
+
+        click.clickedMenu().close();
+
+        gg.modl.minecraft.core.service.StaffModeService staffModeService = platform.getStaffModeService();
+        if (staffModeService != null) {
+            if (!staffModeService.isInStaffMode(viewerUuid)) {
+                staffModeService.enable(viewerUuid);
+                gg.modl.minecraft.api.AbstractPlayer staffPlayer = platform.getPlayer(viewerUuid);
+                String inGameName = staffPlayer != null ? staffPlayer.getName() : "Staff";
+                String panelName = platform.getCache() != null ? platform.getCache().getStaffDisplayName(viewerUuid) : null;
+                if (panelName == null) panelName = inGameName;
+                platform.sendMessage(viewerUuid, platform.getLocaleManager().getMessage("staff_mode.enabled"));
+                platform.staffBroadcast(platform.getLocaleManager().getMessage("staff_mode.enabled_broadcast", java.util.Map.of(
+                        "staff", panelName, "in-game-name", inGameName)));
+                gg.modl.minecraft.core.service.BridgeService bridgeService = platform.getBridgeService();
+                if (bridgeService != null) {
+                    bridgeService.sendStaffModeEnter(viewerUuid.toString(), inGameName, panelName);
+                }
+            }
+
+            staffModeService.setTarget(viewerUuid, targetUuid);
+            gg.modl.minecraft.core.service.BridgeService bridgeService = platform.getBridgeService();
+            if (bridgeService != null) {
+                bridgeService.sendTargetRequest(viewerUuid.toString(), targetUuid.toString());
+            }
+            platform.sendMessage(viewerUuid, MenuItems.COLOR_GREEN + "Now targeting " + MenuItems.COLOR_GOLD + targetName);
+        }
     }
 
     /**

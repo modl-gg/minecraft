@@ -14,15 +14,10 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
-import gg.modl.minecraft.api.http.response.SyncResponse;
-import gg.modl.minecraft.api.http.response.TicketsResponse;
-
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 /**
  * Settings Menu - staff settings and admin options.
@@ -31,7 +26,6 @@ public class SettingsMenu extends BaseStaffMenu {
 
     private final String panelUrl;
     private final Consumer<CirrusPlayerWrapper> parentBackAction;
-    private List<TicketsResponse.Ticket> assignedTickets = new ArrayList<>();
 
     // Permission flags
     private final boolean canModifySettings;
@@ -111,65 +105,15 @@ public class SettingsMenu extends BaseStaffMenu {
                 )
         ).slot(MenuSlots.SETTINGS_NOTIFICATIONS).actionHandler("toggleNotifications"));
 
-        // Slot 31: Assigned Ticket Updates
-        List<String> ticketLore = new ArrayList<>();
-        ticketLore.add(MenuItems.COLOR_GRAY + "Your assigned ticket updates:");
-        ticketLore.add(MenuItems.COLOR_DARK_GRAY + "Loading...");
-
+        // Slot 31: Staff List
         set(CirrusItem.of(
-                CirrusItemType.BOOK,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_AQUA + "Assigned Ticket Updates"),
-                MenuItems.lore(ticketLore)
-        ).slot(MenuSlots.SETTINGS_TICKETS).actionHandler("ticketUpdates"));
-
-        // Fetch tickets assigned to this staff member
-        String staffUsername = viewerName;
-        SyncResponse.ActiveStaffMember staffMember = cache != null ? cache.getStaffMember(viewerUuid) : null;
-        if (staffMember != null && staffMember.getStaffUsername() != null && !staffMember.getStaffUsername().isEmpty()) {
-            staffUsername = staffMember.getStaffUsername();
-        }
-        final String assignee = staffUsername;
-
-        httpClient.getTickets(null, null).thenAccept(response -> {
-            if (response.isSuccess() && response.getTickets() != null) {
-                List<TicketsResponse.Ticket> assigned = response.getTickets().stream()
-                        .filter(t -> !"Unfinished".equalsIgnoreCase(t.getStatus()))
-                        .filter(t -> assignee.equals(t.getAssignedTo()))
-                        .sorted(Comparator.comparing(
-                                (TicketsResponse.Ticket t) -> t.getUpdatedAt() != null ? t.getUpdatedAt() : t.getCreatedAt(),
-                                Comparator.nullsLast(Comparator.reverseOrder())))
-                        .collect(Collectors.toList());
-
-                assignedTickets = assigned;
-
-                List<String> updatedLore = new ArrayList<>();
-                updatedLore.add(MenuItems.COLOR_GRAY + "Your assigned ticket updates:");
-
-                if (assigned.isEmpty()) {
-                    updatedLore.add(MenuItems.COLOR_DARK_GRAY + "(No assigned tickets)");
-                } else {
-                    int shown = Math.min(5, assigned.size());
-                    for (int i = 0; i < shown; i++) {
-                        TicketsResponse.Ticket t = assigned.get(i);
-                        String subject = t.getSubject() != null ? t.getSubject() : "No subject";
-                        if (subject.length() > 25) subject = subject.substring(0, 25) + "...";
-                        updatedLore.add(MenuItems.COLOR_WHITE + "#" + t.getId() + " " + MenuItems.COLOR_GRAY + subject);
-                    }
-                    if (assigned.size() > 5) {
-                        updatedLore.add(MenuItems.COLOR_DARK_GRAY + "... and " + (assigned.size() - 5) + " more");
-                    }
-                }
-
-                updatedLore.add("");
-                updatedLore.add(MenuItems.COLOR_YELLOW + "Click to open in panel");
-
-                set(CirrusItem.of(
-                        CirrusItemType.BOOK,
-                        CirrusChatElement.ofLegacyText(MenuItems.COLOR_AQUA + "Assigned Ticket Updates"),
-                        MenuItems.lore(updatedLore)
-                ).slot(MenuSlots.SETTINGS_TICKETS).actionHandler("ticketUpdates"));
-            }
-        }).exceptionally(e -> null);
+                CirrusItemType.PLAYER_HEAD,
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Staff List"),
+                MenuItems.lore(
+                        MenuItems.COLOR_GRAY + "View all staff members",
+                        MenuItems.COLOR_GRAY + "and their online status"
+                )
+        ).slot(MenuSlots.SETTINGS_TICKETS).actionHandler("staffMembers"));
 
         // Permission-based options
         // Edit Roles - requires modl.settings.modify
@@ -213,12 +157,14 @@ public class SettingsMenu extends BaseStaffMenu {
         // Toggle notifications handler
         registerActionHandler("toggleNotifications", this::handleToggleNotifications);
 
-        // Ticket updates handler
-        registerActionHandler("ticketUpdates", this::handleTicketUpdates);
-
-        // Permission-based handlers - secondary menus SHOULD have back action to return to Settings
+        // Staff Members handler
         Consumer<CirrusPlayerWrapper> returnToSettings = p ->
                 new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p);
+
+        registerActionHandler("staffMembers", ActionHandlers.openMenu(
+                new StaffMembersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings)));
+
+        // Permission-based handlers - secondary menus SHOULD have back action to return to Settings
 
         // Edit Roles - requires modl.settings.modify
         if (canModifySettings) {
@@ -280,28 +226,6 @@ public class SettingsMenu extends BaseStaffMenu {
         ActionHandlers.openMenu(
                 new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction))
                 .handle(click);
-    }
-
-    private void handleTicketUpdates(Click click) {
-        if (assignedTickets.isEmpty()) {
-            sendMessage(MenuItems.COLOR_YELLOW + "No assigned tickets to display");
-            return;
-        }
-
-        click.clickedMenu().close();
-        // Open the most recently updated assigned ticket in panel
-        TicketsResponse.Ticket ticket = assignedTickets.get(0);
-        String ticketUrl = panelUrl + "/ticket/" + ticket.getId();
-        String escapedUrl = ticketUrl.replace("\"", "\\\"");
-        String json = String.format(
-            "{\"text\":\"\",\"extra\":[" +
-            "{\"text\":\"Ticket #%s: \",\"color\":\"gold\"}," +
-            "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-            ticket.getId(), escapedUrl, ticketUrl
-        );
-        platform.sendJsonMessage(viewerUuid, json);
     }
 
     private void handleReloadModl(Click click) {

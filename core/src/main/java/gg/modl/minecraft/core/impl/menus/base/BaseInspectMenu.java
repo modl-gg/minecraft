@@ -3,6 +3,7 @@ package gg.modl.minecraft.core.impl.menus.base;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.menu.CirrusInventoryType;
+import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
@@ -12,6 +13,8 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.BridgeService;
+import gg.modl.minecraft.core.service.StaffModeService;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -83,8 +86,8 @@ public abstract class BaseInspectMenu extends BaseMenu {
     protected void buildHeader() {
         fillBorders();
 
-        // Slot 10: Player head with info
-        set(createPlayerHeadItem().slot(MenuSlots.INSPECT_PLAYER_HEAD));
+        // Slot 10: Player head with info (left-click to target)
+        set(createPlayerHeadItem().actionHandler("targetPlayer").slot(MenuSlots.INSPECT_PLAYER_HEAD));
 
         // Slot 12: Notes
         CirrusItem notesItem = createItem(
@@ -150,8 +153,8 @@ public abstract class BaseInspectMenu extends BaseMenu {
      * Build a compact (3-row) inspect menu header for the initial inspect menu.
      */
     protected void buildCompactHeader() {
-        // Slot 10: Player head with info
-        set(createPlayerHeadItem().slot(MenuSlots.COMPACT_INSPECT_HEAD));
+        // Slot 10: Player head with info (left-click to target)
+        set(createPlayerHeadItem().actionHandler("targetPlayer").slot(MenuSlots.COMPACT_INSPECT_HEAD));
 
         // Slot 11: Notes
         CirrusItem notesItem = createItem(
@@ -213,6 +216,53 @@ public abstract class BaseInspectMenu extends BaseMenu {
     protected void addCompactBackButton() {
         if (backAction != null) {
             set(MenuItems.backButton().slot(MenuSlots.COMPACT_BACK_BUTTON));
+        }
+    }
+
+    @Override
+    protected void registerActionHandlers() {
+        super.registerActionHandlers();
+        registerActionHandler("targetPlayer", this::handleTargetPlayer);
+    }
+
+    /**
+     * Handle left-click on player head to target the player.
+     */
+    private void handleTargetPlayer(Click click) {
+        if (targetUuid == null) return;
+
+        // Check if player is online
+        if (platform.getCache() == null || !platform.getCache().isOnline(targetUuid)) {
+            platform.sendMessage(viewerUuid, MenuItems.COLOR_RED + "Player is not online");
+            return;
+        }
+
+        click.clickedMenu().close();
+
+        StaffModeService staffModeService = platform.getStaffModeService();
+        if (staffModeService != null) {
+            // Enter staff mode if not already
+            if (!staffModeService.isInStaffMode(viewerUuid)) {
+                staffModeService.enable(viewerUuid);
+                gg.modl.minecraft.api.AbstractPlayer staffPlayer = platform.getPlayer(viewerUuid);
+                String inGameName = staffPlayer != null ? staffPlayer.getName() : "Staff";
+                String panelName = platform.getCache() != null ? platform.getCache().getStaffDisplayName(viewerUuid) : null;
+                if (panelName == null) panelName = inGameName;
+                platform.sendMessage(viewerUuid, platform.getLocaleManager().getMessage("staff_mode.enabled"));
+                platform.staffBroadcast(platform.getLocaleManager().getMessage("staff_mode.enabled_broadcast", Map.of(
+                        "staff", panelName, "in-game-name", inGameName)));
+                BridgeService bridgeService = platform.getBridgeService();
+                if (bridgeService != null) {
+                    bridgeService.sendStaffModeEnter(viewerUuid.toString(), inGameName, panelName);
+                }
+            }
+
+            staffModeService.setTarget(viewerUuid, targetUuid);
+            BridgeService bridgeService = platform.getBridgeService();
+            if (bridgeService != null) {
+                bridgeService.sendTargetRequest(viewerUuid.toString(), targetUuid.toString());
+            }
+            platform.sendMessage(viewerUuid, MenuItems.COLOR_GREEN + "Now targeting " + MenuItems.COLOR_GOLD + targetName);
         }
     }
 

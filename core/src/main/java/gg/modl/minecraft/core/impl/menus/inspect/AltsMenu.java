@@ -230,6 +230,13 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         vars.put("uuid", alt.getMinecraftUuid().toString());
         vars.put("is_online", isOnline ? "&aYes" : "&cNo");
         vars.put("last_seen_or_session_time", lastSeenOrSessionTime);
+        // Server name for online alts
+        String server = "Unknown";
+        if (isOnline && alt.getMinecraftUuid() != null) {
+            String playerServer = platform.getPlayerServer(alt.getMinecraftUuid());
+            if (playerServer != null) server = playerServer;
+        }
+        vars.put("server", server);
         vars.put("real_ip", realIpLogged ? "&aYes" : "&cNo");
         vars.put("first_login", firstLogin);
         vars.put("punishments", punishmentsBuilder.toString());

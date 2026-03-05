@@ -290,7 +290,7 @@ public class PunishCommand extends BaseCommand {
                 if (staffMember.getMinecraftUuid() != null) {
                     try {
                         UUID uuid = UUID.fromString(staffMember.getMinecraftUuid());
-                        cache.cacheStaffPermissions(uuid, staffMember.getStaffRole(), staffMember.getPermissions());
+                        cache.cacheStaffPermissions(uuid, staffMember.getStaffUsername(), staffMember.getStaffRole(), staffMember.getPermissions());
                     } catch (IllegalArgumentException e) {
                         platform.runOnMainThread(() -> {
                             platform.log("[modl.gg] Invalid UUID for staff member " + staffMember.getStaffUsername() + ": " + staffMember.getMinecraftUuid());

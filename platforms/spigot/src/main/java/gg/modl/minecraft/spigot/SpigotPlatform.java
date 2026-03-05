@@ -7,6 +7,7 @@ import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
@@ -41,6 +42,10 @@ public class SpigotPlatform implements Platform {
     private LocaleManager localeManager;
     @Setter
     private StaffModeService staffModeService;
+    @Setter
+    private gg.modl.minecraft.core.service.BridgeService bridgeService;
+    @Setter
+    private Staff2faService staff2faService;
 
     @Override
     public void broadcast(String string) {
@@ -52,6 +57,7 @@ public class SpigotPlatform implements Platform {
         String message = ChatColor.translateAlternateColorCodes('&', string);
         Bukkit.getOnlinePlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
+            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
             .forEach(player -> player.sendMessage(message));
     }
 
@@ -60,6 +66,7 @@ public class SpigotPlatform implements Platform {
         String msg = ChatColor.translateAlternateColorCodes('&', message);
         Bukkit.getOnlinePlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
+            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
             .filter(player -> cache.isStaffNotificationsEnabled(player.getUniqueId()))
             .forEach(player -> player.sendMessage(msg));
     }
@@ -68,6 +75,7 @@ public class SpigotPlatform implements Platform {
     public void staffJsonBroadcast(String jsonMessage) {
         Bukkit.getOnlinePlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
+            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
             .forEach(player -> player.spigot().sendMessage(ComponentSerializer.parse(jsonMessage)));
     }
 
@@ -275,5 +283,10 @@ public class SpigotPlatform implements Platform {
     @Override
     public StaffModeService getStaffModeService() {
         return staffModeService;
+    }
+
+    @Override
+    public gg.modl.minecraft.core.service.BridgeService getBridgeService() {
+        return bridgeService;
     }
 }

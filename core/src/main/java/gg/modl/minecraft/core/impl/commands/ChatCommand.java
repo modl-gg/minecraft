@@ -29,7 +29,7 @@ import java.util.UUID;
  *   <li>{@code /chat staff} - Toggle staff chat mode</li>
  *   <li>{@code /chat toggle} - Enable/disable public chat</li>
  *   <li>{@code /chat clear [count]} - Clear chat with empty lines</li>
- *   <li>{@code /chat slow [seconds|off]} - Set or disable slow mode</li>
+ *   <li>{@code /chat slow <seconds|off>} - Set or disable slow mode</li>
  * </ul>
  */
 @RequiredArgsConstructor
@@ -150,22 +150,7 @@ public class ChatCommand extends BaseCommand {
         String panelName = getPanelName(sender, inGameName);
 
         if (secondsArg.isEmpty()) {
-            // No argument: use default slow mode seconds, or toggle off if already active
-            if (chatManagementService.isSlowModeActive()) {
-                chatManagementService.disableSlowMode();
-                platform.broadcast(localeManager.getMessage("chat_management.slow_mode_disabled", Map.of(
-                        "staff", panelName,
-                        "in-game-name", inGameName
-                )));
-            } else {
-                int defaultSeconds = chatManagementConfig.getDefaultSlowSeconds();
-                chatManagementService.setSlowMode(defaultSeconds);
-                platform.broadcast(localeManager.getMessage("chat_management.slow_mode_enabled", Map.of(
-                        "staff", panelName,
-                        "in-game-name", inGameName,
-                        "seconds", String.valueOf(defaultSeconds)
-                )));
-            }
+            sender.sendMessage(localeManager.getMessage("chat_management.usage_slow"));
             return;
         }
 

@@ -172,34 +172,25 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
             return createEmptyPlaceholder("No online players");
         }
 
-        List<String> lore = new ArrayList<>();
+        gg.modl.minecraft.core.locale.LocaleManager localeManager = platform.getLocaleManager();
 
-        // Session time
-        lore.add(MenuItems.COLOR_GRAY + "Session: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(player.getSessionDuration()));
+        String punishments = player.getPunishmentCount() > 0
+                ? "&c" + player.getPunishmentCount()
+                : "&a0";
 
-        // Total playtime
-        lore.add(MenuItems.COLOR_GRAY + "Total Playtime: " + MenuItems.COLOR_WHITE + MenuItems.formatDuration(player.getTotalPlaytime()));
+        Map<String, String> placeholders = Map.of(
+                "player_name", player.getName(),
+                "session_duration", MenuItems.formatDuration(player.getSessionDuration()),
+                "total_playtime", MenuItems.formatDuration(player.getTotalPlaytime()),
+                "punishments", punishments
+        );
 
-        // Punishments
-        if (player.getPunishmentCount() > 0) {
-            lore.add(MenuItems.COLOR_GRAY + "Punishments: " + MenuItems.COLOR_RED + player.getPunishmentCount());
-        } else {
-            lore.add(MenuItems.COLOR_GRAY + "Punishments: " + MenuItems.COLOR_GREEN + "0");
-        }
-
-        // TODO: Add recent reports when data available
-
-        lore.add("");
-        StaffModeService staffModeService = platform.getStaffModeService();
-        if (staffModeService != null && staffModeService.isInStaffMode(viewerUuid)) {
-            lore.add(MenuItems.COLOR_YELLOW + "Left-click to target | Right-click to inspect");
-        } else {
-            lore.add(MenuItems.COLOR_YELLOW + "Click to inspect player");
-        }
+        String title = localeManager.getMessage("menus.online_players.title", placeholders);
+        List<String> lore = localeManager.getMessageList("menus.online_players.lore", placeholders);
 
         CirrusItem headItem = CirrusItem.of(
                 CirrusItemType.PLAYER_HEAD,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + player.getName()),
+                CirrusChatElement.ofLegacyText(MenuItems.translateColorCodes(title)),
                 MenuItems.lore(lore)
         );
 
@@ -229,14 +220,32 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
             return;
         }
 
-        // Check for left-click target mode when viewer is in staff mode
+        // Left-click = target the player
         StaffModeService staffModeService = platform.getStaffModeService();
-        if (staffModeService != null
-                && staffModeService.isInStaffMode(viewerUuid)
-                && !click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
-            // Left click in staff mode = target the player
+        if (staffModeService != null && !click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
             click.clickedMenu().close();
+
+            // Enter staff mode if not already in it
+            if (!staffModeService.isInStaffMode(viewerUuid)) {
+                staffModeService.enable(viewerUuid);
+                gg.modl.minecraft.api.AbstractPlayer staffPlayer = platform.getPlayer(viewerUuid);
+                String inGameName = staffPlayer != null ? staffPlayer.getName() : "Staff";
+                String panelName = platform.getCache() != null ? platform.getCache().getStaffDisplayName(viewerUuid) : null;
+                if (panelName == null) panelName = inGameName;
+                platform.sendMessage(viewerUuid, platform.getLocaleManager().getMessage("staff_mode.enabled"));
+                platform.staffBroadcast(platform.getLocaleManager().getMessage("staff_mode.enabled_broadcast", Map.of(
+                        "staff", panelName, "in-game-name", inGameName)));
+                gg.modl.minecraft.core.service.BridgeService bridgeService = platform.getBridgeService();
+                if (bridgeService != null) {
+                    bridgeService.sendStaffModeEnter(viewerUuid.toString(), inGameName, panelName);
+                }
+            }
+
             staffModeService.setTarget(viewerUuid, player.getUuid());
+            gg.modl.minecraft.core.service.BridgeService bridgeService = platform.getBridgeService();
+            if (bridgeService != null) {
+                bridgeService.sendTargetRequest(viewerUuid.toString(), player.getUuid().toString());
+            }
             sendMessage(MenuItems.COLOR_GREEN + "Now targeting " + MenuItems.COLOR_GOLD + player.getName());
             return;
         }

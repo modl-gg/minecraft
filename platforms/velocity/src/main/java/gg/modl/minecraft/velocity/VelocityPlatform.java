@@ -7,6 +7,7 @@ import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
@@ -41,6 +42,10 @@ public class VelocityPlatform implements Platform {
     private LocaleManager localeManager;
     @Setter
     private StaffModeService staffModeService;
+    @Setter
+    private gg.modl.minecraft.core.service.BridgeService bridgeService;
+    @Setter
+    private Staff2faService staff2faService;
 
     private static Component get(String string) {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(string);
@@ -54,7 +59,10 @@ public class VelocityPlatform implements Platform {
     @Override
     public void staffBroadcast(String string) {
         server.getAllPlayers().forEach(player -> {
-            if (PermissionUtil.isStaff(player.getUniqueId(), cache)) player.sendMessage(get(string));
+            if (PermissionUtil.isStaff(player.getUniqueId(), cache)
+                    && (staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))) {
+                player.sendMessage(get(string));
+            }
         });
     }
 
@@ -63,6 +71,7 @@ public class VelocityPlatform implements Platform {
         net.kyori.adventure.text.Component component = Colors.get(message);
         server.getAllPlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
+            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
             .filter(player -> cache.isStaffNotificationsEnabled(player.getUniqueId()))
             .forEach(player -> player.sendMessage(component));
     }
@@ -79,7 +88,8 @@ public class VelocityPlatform implements Platform {
     @Override
     public void staffJsonBroadcast(String jsonMessage) {
         server.getAllPlayers().forEach(player -> {
-            if (PermissionUtil.isStaff(player.getUniqueId(), cache)) {
+            if (PermissionUtil.isStaff(player.getUniqueId(), cache)
+                    && (staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))) {
                 try {
                     net.kyori.adventure.text.Component component = net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson().deserialize(jsonMessage);
                     player.sendMessage(component);
@@ -274,6 +284,11 @@ public class VelocityPlatform implements Platform {
     }
 
     @Override
+    public void dispatchConsoleCommand(String command) {
+        server.getCommandManager().executeAsync(server.getConsoleCommandSource(), command);
+    }
+
+    @Override
     public String getPlayerSkinTexture(UUID uuid) {
         Player player = getOnlinePlayer(uuid);
         if (player == null) return null;
@@ -301,5 +316,10 @@ public class VelocityPlatform implements Platform {
     @Override
     public StaffModeService getStaffModeService() {
         return staffModeService;
+    }
+
+    @Override
+    public gg.modl.minecraft.core.service.BridgeService getBridgeService() {
+        return bridgeService;
     }
 }

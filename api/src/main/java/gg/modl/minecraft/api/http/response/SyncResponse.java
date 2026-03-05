@@ -127,23 +127,25 @@ public class SyncResponse {
     public static class ActiveStaffMember {
         @NotNull
         private String minecraftUuid;
-        
+
         @NotNull
         private String minecraftUsername;
-        
+
         @NotNull
         private String staffUsername;
-        
+
         @NotNull
         private String staffRole;
-        
+
         @NotNull
         private List<String> permissions;
-        
+
         @NotNull
         private String email;
+
+        private Boolean twoFactorSessionValid;
     }
-    
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
@@ -184,7 +186,5 @@ public class SyncResponse {
     @NoArgsConstructor
     public static class Staff2faVerification {
         private String minecraftUuid;
-        private String ip;
-        private Long verifiedAt;
     }
 }

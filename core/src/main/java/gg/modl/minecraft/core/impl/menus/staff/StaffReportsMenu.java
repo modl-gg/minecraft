@@ -67,7 +67,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
     private List<Report> reports = new ArrayList<>();
     private String currentFilter = "all";
     private String currentStatusFilter = "open";
-    private final List<String> filterOptions = Arrays.asList("all", "player", "chat", "cheating", "behavior", "other");
+    private final List<String> filterOptions = Arrays.asList("all", "gameplay", "chat", "cheating", "behavior", "other");
     private final String panelUrl;
     private final Consumer<CirrusPlayerWrapper> parentBackAction;
 
@@ -106,9 +106,11 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
                             }
                         } catch (Exception ignored) {}
 
+                        String type = report.getType() != null ? report.getType() : report.getCategory();
+                        if ("player".equalsIgnoreCase(type)) type = "gameplay";
                         reports.add(new Report(
                                 report.getId(),
-                                report.getType() != null ? report.getType() : report.getCategory(),
+                                type,
                                 report.getReporterName(),
                                 reportedUuid,
                                 report.getReportedPlayerName(),
@@ -251,7 +253,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
     private CirrusItemType getReportItemType(String type) {
         if (type == null) return CirrusItemType.PAPER;
         switch (type.toLowerCase()) {
-            case "player":
+            case "gameplay":
                 return CirrusItemType.PLAYER_HEAD;
             case "chat":
                 return CirrusItemType.WRITABLE_BOOK;

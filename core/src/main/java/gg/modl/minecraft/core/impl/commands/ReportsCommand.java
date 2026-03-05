@@ -187,6 +187,7 @@ public class ReportsCommand extends BaseCommand {
                 String id = report.getId() != null ? report.getId() : "?";
                 String status = report.getStatus() != null ? report.getStatus() : "Unknown";
                 String type = report.getType() != null ? report.getType() : "Unknown";
+                if ("player".equalsIgnoreCase(type)) type = "gameplay";
                 String reporter = report.getReporterName() != null ? report.getReporterName() : "Unknown";
 
                 // Color the status

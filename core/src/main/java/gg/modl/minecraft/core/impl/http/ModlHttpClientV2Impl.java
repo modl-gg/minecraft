@@ -563,6 +563,19 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
 
     @NotNull
     @Override
+    public CompletableFuture<Void> reportStaffDisconnect(@NotNull String minecraftUuid, long sessionDurationMs) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("minecraftUuid", minecraftUuid);
+        body.put("sessionDurationMs", sessionDurationMs);
+
+        return sendAsync(requestBuilder("/minecraft/staff/disconnect")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
     public CompletableFuture<Void> updateStaffRole(@NotNull String staffId, @NotNull String roleName) {
         Map<String, String> body = new HashMap<>();
         body.put("role", roleName);

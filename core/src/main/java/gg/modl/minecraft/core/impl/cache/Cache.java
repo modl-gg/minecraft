@@ -284,6 +284,11 @@ public class Cache {
         if (staff != null && staff.getStaffUsername() != null && !staff.getStaffUsername().isEmpty()) {
             return staff.getStaffUsername();
         }
+        // Fallback to staff permissions cache (available from initial staff sync, before player joins)
+        StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
+        if (staffPerms != null && staffPerms.getStaffUsername() != null && !staffPerms.getStaffUsername().isEmpty()) {
+            return staffPerms.getStaffUsername();
+        }
         return null;
     }
     
@@ -341,8 +346,8 @@ public class Cache {
         return false;
     }
 
-    public void cacheStaffPermissions(UUID playerUuid, String staffRole, List<String> permissions) {
-        staffPermissionsCache.put(playerUuid, new StaffPermissions(staffRole, permissions));
+    public void cacheStaffPermissions(UUID playerUuid, String staffUsername, String staffRole, List<String> permissions) {
+        staffPermissionsCache.put(playerUuid, new StaffPermissions(staffUsername, staffRole, permissions));
     }
     
     public void clearStaffPermissions() {
@@ -469,10 +474,12 @@ public class Cache {
     
     @Getter
     public static class StaffPermissions {
+        private final String staffUsername;
         private final String staffRole;
         private final List<String> permissions;
 
-        public StaffPermissions(String staffRole, List<String> permissions) {
+        public StaffPermissions(String staffUsername, String staffRole, List<String> permissions) {
+            this.staffUsername = staffUsername;
             this.staffRole = staffRole;
             this.permissions = permissions != null ? permissions : List.of();
         }

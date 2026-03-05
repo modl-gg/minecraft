@@ -5,6 +5,8 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.BridgeService;
+import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffModeService;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 
@@ -80,6 +82,11 @@ public interface Platform {
     default void dispatchPlayerCommand(UUID uuid, String command) {}
 
     /**
+     * Dispatch a command as the console. Used by bridge PROXY_CMD forwarding.
+     */
+    default void dispatchConsoleCommand(String command) {}
+
+    /**
      * Get the base64 skin texture value for an online player using native platform APIs.
      * Returns null if the player is offline or texture is unavailable.
      * @param uuid The player's UUID
@@ -122,6 +129,24 @@ public interface Platform {
      * @param staffModeService The staff mode service instance
      */
     void setStaffModeService(StaffModeService staffModeService);
+
+    /**
+     * Get the bridge service for cross-server communication
+     * @return The bridge service instance
+     */
+    BridgeService getBridgeService();
+
+    /**
+     * Set the bridge service (called by PluginLoader after initialization)
+     * @param bridgeService The bridge service instance
+     */
+    void setBridgeService(BridgeService bridgeService);
+
+    /**
+     * Set the staff 2FA service (called by PluginLoader after initialization)
+     * @param staff2faService The staff 2FA service instance
+     */
+    void setStaff2faService(Staff2faService staff2faService);
 
 }
 

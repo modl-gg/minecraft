@@ -3,6 +3,7 @@ package gg.modl.minecraft.core;
 
 import co.aikar.commands.CommandManager;
 import co.aikar.commands.ConditionFailedException;
+import co.aikar.commands.MessageKeys;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
@@ -157,6 +158,9 @@ public class PluginLoader {
         CommandManager<?, ?, ?, ?, ?, ?> commandManager = platform.getCommandManager();
         commandManager.enableUnstableAPI("help");
 
+        // Remove the default "Error: " prefix from ACF error messages — use just the message content
+        commandManager.getLocales().addMessage(java.util.Locale.ENGLISH, MessageKeys.ERROR_PREFIX, "{message}");
+
         // Load and register command aliases from config before registering commands
         Map<String, String> commandAliases = loadCommandAliases(dataDirectory, logger);
         registerCommandReplacements(commandManager, commandAliases);
@@ -241,8 +245,10 @@ public class PluginLoader {
         this.freezeService = new FreezeService();
         this.staffModeService = new StaffModeService();
         platform.setStaffModeService(this.staffModeService);
+        platform.setStaff2faService(this.staff2faService);
         this.vanishService = new VanishService();
         this.bridgeService = new BridgeService();
+        platform.setBridgeService(this.bridgeService);
 
         // Register staff chat commands
         commandManager.registerCommand(new StaffChatCommand(platform, cache, this.localeManager, staffChatService, configManager.getStaffChatConfig()));
@@ -251,10 +257,10 @@ public class PluginLoader {
                 configManager.getStaffChatConfig(), configManager.getChatManagementConfig()));
 
         // Register staff list command
-        commandManager.registerCommand(new StaffListCommand(platform, cache, this.localeManager));
+        commandManager.registerCommand(new StaffListCommand(platform, cache, this.localeManager, vanishService, httpClientHolder, httpManager.getPanelUrl()));
 
         // Register 2FA command
-        commandManager.registerCommand(new VerifyCommand(platform, cache, this.localeManager, staff2faService, httpManager.getPanelUrl()));
+        commandManager.registerCommand(new VerifyCommand(platform, cache, this.localeManager, staff2faService, httpClientHolder));
 
         // Register maintenance command
         commandManager.registerCommand(new MaintenanceCommand(platform, cache, this.localeManager, maintenanceService));
@@ -692,6 +698,16 @@ public class PluginLoader {
             }
         });
 
+        // "staff_no2fa" condition - checks staff membership without 2FA (for /verify command)
+        commandManager.getCommandConditions().addCondition("staff_no2fa", context -> {
+            if (!context.getIssuer().isPlayer()) {
+                return; // Console is always staff
+            }
+            if (!PermissionUtil.isStaff(context.getIssuer(), cache)) {
+                throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
+            }
+        });
+
         // "player" condition - checks if the issuer is a player (not console)
         commandManager.getCommandConditions().addCondition("player", context -> {
             if (!context.getIssuer().isPlayer()) {
@@ -702,12 +718,15 @@ public class PluginLoader {
         // "permission:X" condition - checks if the issuer has a specific permission
         // Usage: @Conditions("permission:punishment.apply.ban")
         commandManager.getCommandConditions().addCondition("permission", context -> {
+            if (!context.getIssuer().isPlayer()) {
+                return; // Console always has permission
+            }
             String permission = context.getConfigValue("value", "");
             if (permission.isEmpty()) {
                 return; // No permission specified, allow
             }
+            // Check permission first so non-staff get "no permission" instead of "verify"
             if (!PermissionUtil.hasPermission(context.getIssuer(), cache, permission)) {
-                // Try to get a nicer message based on permission type
                 String message;
                 if (permission.startsWith("punishment.apply.")) {
                     String type = permission.replace("punishment.apply.", "").replace("-", " ");
@@ -717,6 +736,10 @@ public class PluginLoader {
                     message = localeManager.getMessage("general.no_permission");
                 }
                 throw new ConditionFailedException(message);
+            }
+            // Check 2FA after permission (only staff with the permission need to verify)
+            if (staff2faService != null && staff2faService.isEnabled() && !staff2faService.isAuthenticated(context.getIssuer().getUniqueId())) {
+                throw new ConditionFailedException(localeManager.getMessage("staff_2fa.not_verified"));
             }
         });
 
@@ -741,7 +764,7 @@ public class PluginLoader {
                 if (staffMember.getMinecraftUuid() != null) {
                     try {
                         java.util.UUID uuid = java.util.UUID.fromString(staffMember.getMinecraftUuid());
-                        cache.cacheStaffPermissions(uuid, staffMember.getStaffRole(), staffMember.getPermissions());
+                        cache.cacheStaffPermissions(uuid, staffMember.getStaffUsername(), staffMember.getStaffRole(), staffMember.getPermissions());
                         loadedCount++;
                     } catch (IllegalArgumentException e) {
                         logger.warning("Invalid UUID for staff member: " + staffMember.getMinecraftUuid());

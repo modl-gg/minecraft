@@ -441,3 +441,79 @@ menus:
       - "{content}"
       - "&f "
       - "&eKlicke zum Abwählen"
+
+  # Staff Members Menu
+  staff_members:
+    title: "&e{panel_name}"
+    lore:
+      - "&7Rolle: &f{role}"
+      - "&7Minecraft: &f{minecraft_username}"
+      - ""
+      - "&7Online: {is_online} ({last_seen_or_session_time} auf {server})"
+      - "&7Spielzeit: &f{playtime}"
+      - "&7Strafen ausgesprochen: &f{punishments_count}"
+
+  # Online Players Menu
+  online_players:
+    title: "&6{player_name}"
+    lore:
+      - "&7Sitzung: &f{session_duration}"
+      - "&7Gesamte Spielzeit: &f{total_playtime}"
+      - "&7Strafen: {punishments}"
+      - ""
+      - "&eLinksklick zum Zielen | Rechtsklick zum Inspizieren"
+
+# Standing GUI (player-facing)
+standing_gui:
+  title: "&fDein Ansehen"
+  social_status:
+    title: "&eSoziales Ansehen: {status}"
+    description:
+      Low:
+        - ""
+        - "&fDein sozialer Verstoßstatus ist niedrig."
+        - "&fWeiter so, Strafen in dieser Kategorie"
+        - "&fwerden milder ausfallen."
+      Medium:
+        - ""
+        - "&fDein sozialer Verstoßstatus ist mittel."
+        - "&fDu hast mehrere Verstöße angesammelt,"
+        - "&fbitte sei achtsamer, da Strafen"
+        - "&fin dieser Kategorie strenger werden."
+      Habitual:
+        - ""
+        - "&fDein sozialer Verstoßstatus ist gewohnheitsmäßig."
+        - "&fDu hast viele Verstöße angesammelt,"
+        - "&fbitte sei achtsam, da Strafen"
+        - "&fin dieser Kategorie sehr streng sein werden."
+  gameplay_status:
+    title: "&eGameplay-Ansehen: {status}"
+    description:
+      Low:
+        - ""
+        - "&fDein Gameplay-Verstoßstatus ist niedrig."
+        - "&fWeiter so, Strafen in dieser Kategorie"
+        - "&fwerden milder ausfallen."
+      Medium:
+        - ""
+        - "&fDein Gameplay-Verstoßstatus ist mittel."
+        - "&fDu hast mehrere Verstöße angesammelt,"
+        - "&fbitte sei achtsamer, da Strafen"
+        - "&fin dieser Kategorie strenger werden."
+      Habitual:
+        - ""
+        - "&fDein Gameplay-Verstoßstatus ist gewohnheitsmäßig."
+        - "&fDu hast viele Verstöße angesammelt,"
+        - "&fbitte sei achtsam, da Strafen"
+        - "&fin dieser Kategorie sehr streng sein werden."
+  status_display:
+    Low: "&aNiedrig"
+    Medium: "&6Mittel"
+    Habitual: "&cGewohnheitsmäßig"
+  punishment_item:
+    title: "&e#{id} {date}"
+    lore:
+      - "&7{duration} {type} ({status})"
+      - ""
+      - "&f{reason}"
+

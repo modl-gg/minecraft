@@ -7,6 +7,7 @@ import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
@@ -41,6 +42,10 @@ public class BungeePlatform implements Platform {
     private LocaleManager localeManager;
     @Setter
     private StaffModeService staffModeService;
+    @Setter
+    private gg.modl.minecraft.core.service.BridgeService bridgeService;
+    @Setter
+    private Staff2faService staff2faService;
 
     @Override
     public void broadcast(String string) {
@@ -53,6 +58,7 @@ public class BungeePlatform implements Platform {
         TextComponent message = new TextComponent(ChatColor.translateAlternateColorCodes('&', string));
         ProxyServer.getInstance().getPlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
+            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
             .forEach(player -> player.sendMessage(message));
     }
 
@@ -61,6 +67,7 @@ public class BungeePlatform implements Platform {
         String msg = ChatColor.translateAlternateColorCodes('&', message);
         ProxyServer.getInstance().getPlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
+            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
             .filter(player -> cache.isStaffNotificationsEnabled(player.getUniqueId()))
             .forEach(player -> player.sendMessage(new TextComponent(msg)));
     }
@@ -80,6 +87,7 @@ public class BungeePlatform implements Platform {
     public void staffJsonBroadcast(String jsonMessage) {
         ProxyServer.getInstance().getPlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
+            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
             .forEach(player -> player.sendMessage(net.md_5.bungee.chat.ComponentSerializer.parse(jsonMessage)));
     }
 
@@ -250,6 +258,12 @@ public class BungeePlatform implements Platform {
     }
 
     @Override
+    public void dispatchConsoleCommand(String command) {
+        ProxyServer.getInstance().getPluginManager().dispatchCommand(
+                ProxyServer.getInstance().getConsole(), command);
+    }
+
+    @Override
     public String getPlayerSkinTexture(UUID uuid) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
         if (player == null) return null;
@@ -290,5 +304,10 @@ public class BungeePlatform implements Platform {
     @Override
     public StaffModeService getStaffModeService() {
         return staffModeService;
+    }
+
+    @Override
+    public gg.modl.minecraft.core.service.BridgeService getBridgeService() {
+        return bridgeService;
     }
 }

@@ -441,3 +441,79 @@ menus:
       - "{content}"
       - "&f "
       - "&eClic para deseleccionar"
+
+  # Staff Members Menu
+  staff_members:
+    title: "&e{panel_name}"
+    lore:
+      - "&7Rol: &f{role}"
+      - "&7Minecraft: &f{minecraft_username}"
+      - ""
+      - "&7En línea: {is_online} ({last_seen_or_session_time} en {server})"
+      - "&7Tiempo de juego: &f{playtime}"
+      - "&7Castigos emitidos: &f{punishments_count}"
+
+  # Online Players Menu
+  online_players:
+    title: "&6{player_name}"
+    lore:
+      - "&7Sesión: &f{session_duration}"
+      - "&7Tiempo total: &f{total_playtime}"
+      - "&7Castigos: {punishments}"
+      - ""
+      - "&eClic izquierdo para apuntar | Clic derecho para inspeccionar"
+
+# Standing GUI (player-facing)
+standing_gui:
+  title: "&fTu Reputación"
+  social_status:
+    title: "&eReputación Social: {status}"
+    description:
+      Low:
+        - ""
+        - "&fTu estado de infracciones sociales es bajo."
+        - "&fSigue así, los castigos en esta categoría"
+        - "&fserán más leves."
+      Medium:
+        - ""
+        - "&fTu estado de infracciones sociales es medio."
+        - "&fHas acumulado varias infracciones,"
+        - "&fpor favor ten más cuidado ya que los castigos"
+        - "&fen esta categoría serán más severos."
+      Habitual:
+        - ""
+        - "&fTu estado de infracciones sociales es habitual."
+        - "&fHas acumulado muchas infracciones,"
+        - "&fpor favor ten cuidado ya que los castigos"
+        - "&fen esta categoría serán muy severos."
+  gameplay_status:
+    title: "&eReputación de Juego: {status}"
+    description:
+      Low:
+        - ""
+        - "&fTu estado de infracciones de juego es bajo."
+        - "&fSigue así, los castigos en esta categoría"
+        - "&fserán más leves."
+      Medium:
+        - ""
+        - "&fTu estado de infracciones de juego es medio."
+        - "&fHas acumulado varias infracciones,"
+        - "&fpor favor ten más cuidado ya que los castigos"
+        - "&fen esta categoría serán más severos."
+      Habitual:
+        - ""
+        - "&fTu estado de infracciones de juego es habitual."
+        - "&fHas acumulado muchas infracciones,"
+        - "&fpor favor ten cuidado ya que los castigos"
+        - "&fen esta categoría serán muy severos."
+  status_display:
+    Low: "&aBajo"
+    Medium: "&6Medio"
+    Habitual: "&cHabitual"
+  punishment_item:
+    title: "&e#{id} {date}"
+    lore:
+      - "&7{duration} {type} ({status})"
+      - ""
+      - "&f{reason}"
+

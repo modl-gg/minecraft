@@ -133,6 +133,9 @@ public interface ModlHttpClient {
     CompletableFuture<StaffListResponse> getStaffList();
 
     @NotNull
+    CompletableFuture<Void> reportStaffDisconnect(@NotNull String minecraftUuid, long sessionDurationMs);
+
+    @NotNull
     CompletableFuture<Void> updateStaffRole(@NotNull String staffId, @NotNull String roleName);
 
     // Role management endpoints

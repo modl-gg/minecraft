@@ -34,20 +34,16 @@ staff_chat:
 
 # Staff 2FA Configuration
 # Staff members must verify identity via a panel link before using staff features.
+# Sessions last 7 days (managed by the backend).
 staff_2fa:
   # Enable/disable staff 2FA
   enabled: false
-  # How long an IP-based verification lasts (in days)
-  # Repeat logins from the same IP within this window skip verification
-  ip_ttl_days: 7
 
 # Chat Management Configuration
 # Staff can disable chat, clear chat, or apply slow mode.
 chat_management:
   # Number of blank lines to send when clearing chat
   clear_lines: 100
-  # Default slow mode duration in seconds
-  default_slow_seconds: 5
 
 # Sync Configuration
 sync:
@@ -148,6 +144,14 @@ migration:
       # Table prefix for LiteBans tables (default: "litebans_")
       # Plugin will try to read from LiteBans config first
       table_prefix: "litebans_"
+
+# Staff Mode Settings
+# These control bridge-related staff mode behavior.
+staff_mode:
+  # Automatically vanish when entering staff mode
+  vanish_on_enable: true
+  # Restrict staff tools (punish, inspect, etc.) to only work in staff mode
+  restrict_to_staff_mode: false
 
 # Locale Configuration
 # These values are used by the locale system for URLs, formatting, etc.

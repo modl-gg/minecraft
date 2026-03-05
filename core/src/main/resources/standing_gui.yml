@@ -1,61 +1,14 @@
 # Standing GUI Configuration
 # Player-facing menu for viewing their own social/gameplay standing and punishments.
 # Players can open this with /standing.
+#
+# Text content (titles, descriptions, status display names, punishment lore)
+# is now configured in the locale files (e.g., locale/en_US.yml under "standing_gui").
 
-title: "&fYour Standing"
-
-# Social status item (slot 11 in the GUI)
+# Social status item type (slot 11 in the GUI)
 social_status:
   item: "minecraft:creeper_head"
-  title: "&eSocial Standing: {status}"
-  # Descriptions per status level (keys must match the status names from the backend)
-  description:
-    Low:
-      - ""
-      - "&fYour social infraction status is low."
-      - "&fKeep up the good behavior, punishments"
-      - "&fin this category will be more lenient."
-    Medium:
-      - ""
-      - "&fYour social infraction status is medium."
-      - "&fYou have accrued several infractions,"
-      - "&fplease be more mindful as punishments"
-      - "&fin this category will be more severe."
-    Habitual:
-      - ""
-      - "&fYour social infraction status is habitual."
-      - "&fYou have accrued many infractions,"
-      - "&fplease be mindful as punishments"
-      - "&fin this category will be very severe."
 
-# Gameplay status item (slot 15 in the GUI)
+# Gameplay status item type (slot 15 in the GUI)
 gameplay_status:
   item: "minecraft:tnt"
-  title: "&eGameplay Standing: {status}"
-  description:
-    Low:
-      - ""
-      - "&fYour gameplay infraction status is low."
-      - "&fKeep up the good behavior, punishments"
-      - "&fin this category will be more lenient."
-    Medium:
-      - ""
-      - "&fYour gameplay infraction status is medium."
-      - "&fYou have accrued several infractions,"
-      - "&fplease be more mindful as punishments"
-      - "&fin this category will be more severe."
-    Habitual:
-      - ""
-      - "&fYour gameplay infraction status is habitual."
-      - "&fYou have accrued many infractions,"
-      - "&fplease be mindful as punishments"
-      - "&fin this category will be very severe."
-
-# Punishment item display (each punishment in the list)
-# Available placeholders: {id}, {date}, {duration}, {type}, {type_name}, {status}, {reason}
-punishment_item:
-  title: "&e#{id} {date}"
-  lore:
-    - "&7{duration} {type} ({status})"
-    - ""
-    - "&f{reason}"

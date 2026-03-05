@@ -25,6 +25,7 @@ public final class LinkedTicketItems {
         LocaleManager locale = platform.getLocaleManager();
 
         String ticketType = ticket.getCategory() != null ? ticket.getCategory() : (ticket.getType() != null ? ticket.getType() : "Unknown");
+        if ("player".equalsIgnoreCase(ticketType)) ticketType = "gameplay";
         String subject = ticket.getSubject() != null ? ticket.getSubject() : "No subject";
         String status = ticket.getStatus() != null ? ticket.getStatus() : "Unknown";
         String formattedDate = ticket.getCreatedAt() != null ? MenuItems.formatDate(ticket.getCreatedAt()) : "Unknown";
@@ -130,7 +131,7 @@ public final class LinkedTicketItems {
     public static CirrusItemType getTicketItemType(String type) {
         if (type == null) return CirrusItemType.PAPER;
         return switch (type.toLowerCase()) {
-            case "player" -> CirrusItemType.DIAMOND_SWORD;
+            case "gameplay" -> CirrusItemType.DIAMOND_SWORD;
             case "chat" -> CirrusItemType.PAPER;
             case "support" -> CirrusItemType.BOOK;
             case "appeal" -> CirrusItemType.GOLDEN_APPLE;

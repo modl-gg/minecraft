@@ -14,6 +14,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.StandingGuiConfig;
 import gg.modl.minecraft.core.impl.menus.base.BaseListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.*;
 
@@ -39,18 +40,20 @@ public class StandingMenu extends BaseListMenu<Punishment> {
     private final Account account;
     private final PunishmentPreviewResponse previewData;
     private final StandingGuiConfig guiConfig;
+    private final LocaleManager localeManager;
     private final Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal;
     private final List<Punishment> punishments;
 
     public StandingMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                         Account account, PunishmentPreviewResponse previewData,
-                        StandingGuiConfig guiConfig,
+                        StandingGuiConfig guiConfig, LocaleManager localeManager,
                         Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal) {
-        super(MenuItems.translateColorCodes(guiConfig.getTitle()), platform, httpClient,
+        super(MenuItems.translateColorCodes(localeManager.getMessage("standing_gui.title")), platform, httpClient,
                 viewerUuid, viewerName, null);
         this.account = account;
         this.previewData = previewData;
         this.guiConfig = guiConfig;
+        this.localeManager = localeManager;
         this.typesByOrdinal = typesByOrdinal;
 
         // Filter out kicks and sort newest first
@@ -67,22 +70,23 @@ public class StandingMenu extends BaseListMenu<Punishment> {
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
+        String socialStatus = previewData != null ? previewData.getSocialStatus() : "Unknown";
+        String gameplayStatus = previewData != null ? previewData.getGameplayStatus() : "Unknown";
+        int socialPoints = previewData != null ? previewData.getSocialPoints() : 0;
+        int gameplayPoints = previewData != null ? previewData.getGameplayPoints() : 0;
+
         // Social status item in header row
         items.put(SOCIAL_SLOT, buildStatusItem(
                 guiConfig.getSocialItem(),
-                guiConfig.getSocialTitle(),
-                previewData != null ? previewData.getSocialStatus() : "Unknown",
-                previewData != null ? previewData.getSocialPoints() : 0,
-                guiConfig.getSocialDescriptions()
+                "standing_gui.social_status",
+                socialStatus, socialPoints
         ));
 
         // Gameplay status item in header row
         items.put(GAMEPLAY_SLOT, buildStatusItem(
                 guiConfig.getGameplayItem(),
-                guiConfig.getGameplayTitle(),
-                previewData != null ? previewData.getGameplayStatus() : "Unknown",
-                previewData != null ? previewData.getGameplayPoints() : 0,
-                guiConfig.getGameplayDescriptions()
+                "standing_gui.gameplay_status",
+                gameplayStatus, gameplayPoints
         ));
 
         return items;
@@ -106,7 +110,6 @@ public class StandingMenu extends BaseListMenu<Punishment> {
         String id = punishment.getId();
         String date = MenuItems.formatDate(punishment.getIssued());
         String typeName = getTypeName(punishment);
-        int ordinal = punishment.getTypeOrdinal();
 
         // Duration
         Long effectiveDuration = getEffectiveDuration(punishment);
@@ -133,31 +136,19 @@ public class StandingMenu extends BaseListMenu<Punishment> {
         // Reason - use player description from punishment type (same as ban/mute screen)
         String reason = getPlayerDescription(punishment);
 
-        // Build title from config template
-        Map<String, String> vars = new HashMap<>();
-        vars.put("id", id);
-        vars.put("date", date);
-        vars.put("duration", duration);
-        vars.put("type", typeCategory);
-        vars.put("type_name", typeName);
-        vars.put("status", status);
-        vars.put("reason", reason);
+        // Build title and lore from locale template
+        Map<String, String> vars = Map.of(
+                "id", id,
+                "date", date,
+                "duration", duration,
+                "type", typeCategory,
+                "type_name", typeName,
+                "status", status,
+                "reason", reason
+        );
 
-        String title = guiConfig.getPunishmentTitle();
-        List<String> loreTemplate = guiConfig.getPunishmentLore();
-
-        for (Map.Entry<String, String> entry : vars.entrySet()) {
-            title = title.replace("{" + entry.getKey() + "}", entry.getValue());
-        }
-
-        List<String> lore = new ArrayList<>();
-        for (String line : loreTemplate) {
-            String processed = line;
-            for (Map.Entry<String, String> entry : vars.entrySet()) {
-                processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
-            }
-            lore.add(processed);
-        }
+        String title = localeManager.getMessage("standing_gui.punishment_item.title", vars);
+        List<String> lore = localeManager.getMessageList("standing_gui.punishment_item.lore", vars);
 
         // Item type: sword for ban, paper for mute
         CirrusItemType itemType;
@@ -176,42 +167,35 @@ public class StandingMenu extends BaseListMenu<Punishment> {
         // Player-facing menu - no action on click
     }
 
-    private CirrusItem buildStatusItem(String itemId, String titleTemplate, String status, int points,
-                                       Map<String, List<String>> descriptions) {
-        String displayStatus = guiConfig.getStatusDisplayName(status);
-        String title = titleTemplate
-                .replace("{status}", displayStatus)
-                .replace("{points}", String.valueOf(points));
-
-        // Find matching description - try exact match first, then case-insensitive
-        List<String> desc = null;
-        if (status != null && descriptions != null) {
-            desc = descriptions.get(status);
-            if (desc == null) {
-                desc = descriptions.get(status.toLowerCase());
-            }
-            if (desc == null) {
-                for (Map.Entry<String, List<String>> entry : descriptions.entrySet()) {
-                    if (entry.getKey().equalsIgnoreCase(status)) {
-                        desc = entry.getValue();
-                        break;
-                    }
-                }
-            }
+    private CirrusItem buildStatusItem(String itemId, String localeBasePath, String status, int points) {
+        String displayStatus = localeManager.getMessage("standing_gui.status_display." + status);
+        // If locale returned the "missing" fallback, use raw status
+        if (displayStatus.startsWith("§cMissing")) {
+            displayStatus = status;
         }
 
-        List<String> lore = new ArrayList<>();
-        if (desc != null) {
-            for (String line : desc) {
-                lore.add(line
-                        .replace("{status}", displayStatus)
-                        .replace("{points}", String.valueOf(points)));
+        Map<String, String> placeholders = Map.of(
+                "status", displayStatus,
+                "points", String.valueOf(points)
+        );
+
+        String title = localeManager.getMessage(localeBasePath + ".title", placeholders);
+
+        // Find matching description from locale
+        List<String> desc = localeManager.getMessageList(localeBasePath + ".description." + status, placeholders);
+        // If locale returned missing message, try case-insensitive
+        if (desc.size() == 1 && desc.get(0).contains("Missing locale list")) {
+            // Try capitalized
+            String capitalized = status.substring(0, 1).toUpperCase() + status.substring(1).toLowerCase();
+            desc = localeManager.getMessageList(localeBasePath + ".description." + capitalized, placeholders);
+            if (desc.size() == 1 && desc.get(0).contains("Missing locale list")) {
+                desc = List.of();
             }
         }
 
         CirrusItemType type = CirrusItemType.of(itemId);
         return CirrusItem.of(type, CirrusChatElement.ofLegacyText(MenuItems.translateColorCodes(title)),
-                MenuItems.lore(lore));
+                MenuItems.lore(desc));
     }
 
     private String buildStatusString(Punishment punishment, Long effectiveDuration) {

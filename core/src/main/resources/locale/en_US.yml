@@ -458,13 +458,13 @@ menus:
     lore:
       - "&8{uuid}"
       - "&f "
-      - "&fFirst Login: {first_login}"
-      - "&fOnline: {is_online} ({last_seen_or_session_time} on {server})"
-      - "&fPlaytime: {playtime}"
-      - "&fReal IP Logged: {real_ip_logged}"
-      - "&fRegion: {region} (Country: {country})"
-      - "&fBanned: {is_banned}"
-      - "&fMuted: {is_muted}"
+      - "&7First Login: &f{first_login}"
+      - "&7Online: {is_online} ({last_seen_or_session_time} on {server})"
+      - "&7Playtime: &f{playtime}"
+      - "&7Real IP Logged: &f{real_ip_logged}"
+      - "&7Region: &f{region} (Country: {country})"
+      - "&7Banned: &f{is_banned}"
+      - "&7Muted: &f{is_muted}"
 
   # Punishment history items
   history_item:
@@ -475,8 +475,8 @@ menus:
       - "&f "
       - "{notes}"
       - "&f "
-      - "&fServer: &7{issued_server}"
-      - "&fID: &c{punishment_id}"
+      - "&7Server: &f{issued_server}"
+      - "&7ID: &c{punishment_id}"
       - "&bClick to modify this punishment."
     status_active: "&7Expires in {expiry}."
     status_inactive: "&7Expired {expired} ago."
@@ -510,9 +510,9 @@ menus:
     lore:
       - "&8{uuid}"
       - "&f "
-      - "&fOnline: {is_online} ({last_seen_or_session_time})"
-      - "&fReal IP logged: {real_ip}"
-      - "&fFirst Login: &f{first_login}"
+      - "&7Online: {is_online} ({last_seen_or_session_time} on {server})"
+      - "&7Real IP logged: {real_ip}"
+      - "&7First Login: &f{first_login}"
       - "&7{punishments}"
       - "&f "
       - "&eClick to inspect {player_name}"
@@ -577,6 +577,31 @@ menus:
       - "{content}"
       - "&f "
       - "&eClick to deselect"
+
+  # Staff Members Menu (lore template for each staff entry)
+  # Placeholders: {display_name}, {online_color}, {role}, {minecraft_username},
+  #   {online_status}, {session_duration}, {last_seen}, {playtime}, {punishments_count}
+  staff_members:
+    title: "&e{panel_name}"
+    lore:
+      - "&7Role: &f{role}"
+      - "&7Minecraft: &f{minecraft_username}"
+      - ""
+      - "&7Online: {is_online} ({last_seen_or_session_time} on {server})"
+      - "&7Playtime: &f{playtime}"
+      - "&7Punishments Issued: &f{punishments_count}"
+
+  # Online Players Menu (lore template for each player entry)
+  # Placeholders: {player_name}, {session_duration}, {total_playtime}, {punishments}
+  online_players:
+    title: "&6{player_name}"
+    lore:
+      - "&7Session: &f{session_duration}"
+      - "&7Total Playtime: &f{total_playtime}"
+      - "&7Punishments: &f{punishments}"
+      - ""
+      - "&cLeft-click to target"
+      - "&aRight-click to inspect"
 
 # Help Command
 # Set usage to "" to hide a command from the help list (e.g. if you disabled it).
@@ -688,18 +713,20 @@ chat_management:
     staff: "&f/chat staff &7- Toggle staff chat mode"
     toggle: "&f/chat toggle &7- Enable/disable public chat"
     clear: "&f/chat clear [count] &7- Clear chat"
-    slow: "&f/chat slow [seconds|off] &7- Set/disable slow mode"
+    slow: "&f/chat slow <seconds|off> &7- Set/disable slow mode"
 
 # Staff List
 staff_list:
   header: ""
-  entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &eon &f{server}"
+  entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &eon &f{server}{v}"
+  vanish: " &7[V]"
   empty: "&7No staff members online."
   footer: "&eCount: &f{count} &estaff online"
 
 # Staff Notifications
 staff_notifications:
   join: "&7&o[{staff}: joined]"
+  verified: "&7&o[{staff}: verified]"
   leave: "&7&o[{staff}: left]"
   switch: "&7&o[{staff}: connected to {server}]"
 
@@ -716,9 +743,10 @@ verify:
   only_players: "&cThis command can only be used by players."
   disabled: "&cStaff 2FA is not enabled on this server."
   already_verified: "&aYou are already verified."
-  header: "&cStaff authentication is required."
+  header: ""
   instructions: "&aClick the link below to verify your identity:"
   click_here: "Click here to verify"
+  error: "&cFailed to generate verification link. Please try again."
   footer: "&eThis link will expire shortly."
 
 # Maintenance
@@ -786,3 +814,59 @@ target:
   cleared: "&aTarget cleared."
   usage: "&fUsage: &a/target&f <player>"
   connecting: "&eConnecting to &f{server} &eto target &f{player}&e..."
+
+# Standing GUI (player-facing)
+standing_gui:
+  title: "&fYour Standing"
+  social_status:
+    title: "&eSocial Standing: {status}"
+    description:
+      Low:
+        - ""
+        - "&fYour social infraction status is low."
+        - "&fKeep up the good behavior, punishments"
+        - "&fin this category will be more lenient."
+      Medium:
+        - ""
+        - "&fYour social infraction status is medium."
+        - "&fYou have accrued several infractions,"
+        - "&fplease be more mindful as punishments"
+        - "&fin this category will be more severe."
+      Habitual:
+        - ""
+        - "&fYour social infraction status is habitual."
+        - "&fYou have accrued many infractions,"
+        - "&fplease be mindful as punishments"
+        - "&fin this category will be very severe."
+  gameplay_status:
+    title: "&eGameplay Standing: {status}"
+    description:
+      Low:
+        - ""
+        - "&fYour gameplay infraction status is low."
+        - "&fKeep up the good behavior, punishments"
+        - "&fin this category will be more lenient."
+      Medium:
+        - ""
+        - "&fYour gameplay infraction status is medium."
+        - "&fYou have accrued several infractions,"
+        - "&fplease be more mindful as punishments"
+        - "&fin this category will be more severe."
+      Habitual:
+        - ""
+        - "&fYour gameplay infraction status is habitual."
+        - "&fYou have accrued many infractions,"
+        - "&fplease be mindful as punishments"
+        - "&fin this category will be very severe."
+  status_display:
+    Low: "&aLow"
+    Medium: "&6Medium"
+    Habitual: "&cHabitual"
+  punishment_item:
+    title: "&e#{id} {date}"
+    lore:
+      - "&7{duration} {type} ({status})"
+      - ""
+      - "&f{reason}"
+
+
