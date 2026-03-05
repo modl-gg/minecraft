@@ -224,6 +224,30 @@ public final class Libraries {
             "chEHvCE1ckVN8b++Q426Yw4wRXVQx1C3oVSzXcMmSqg="
     );
 
+    public static final LibraryRecord ADVENTURE_TEXT_MINIMESSAGE = LibraryRecord.of(
+            "net{}kyori",
+            "adventure-text-minimessage",
+            "4.26.1",
+            "adventure-text-minimessage",
+            "HUNFHpr0cyUtyK8+gIQjjVzmitQ68OO3OD6z1LY//58="
+    );
+
+    public static final LibraryRecord ADVENTURE_TEXT_SERIALIZER_JSON = LibraryRecord.of(
+            "net{}kyori",
+            "adventure-text-serializer-json",
+            "4.26.1",
+            "adventure-text-serializer-json",
+            "VcZLQzPV0paKASW48p2ufPuhU5LV+Z94266nEcsNTcI="
+    );
+
+    public static final LibraryRecord ADVENTURE_TEXT_SERIALIZER_GSON = LibraryRecord.of(
+            "net{}kyori",
+            "adventure-text-serializer-gson",
+            "4.26.1",
+            "adventure-text-serializer-gson",
+            "5KkI3txKy0MFCD2RbTYt3Csh7PRS1XegvmZSgL3a6fw="
+    );
+
     /**
      * Common libraries loaded by all platforms.
      * These are the core dependencies needed for the plugin to function.

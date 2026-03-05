@@ -51,6 +51,12 @@ public class TargetCommand extends BaseCommand {
             return;
         }
 
+        // Cannot target yourself
+        if (target.getUuid().equals(staffUuid)) {
+            sender.sendMessage(localeManager.getMessage("target.cannot_target_self"));
+            return;
+        }
+
         // Set target
         java.util.UUID targetUuid = target.getUuid();
         String targetName = target.getName();

@@ -406,7 +406,7 @@ print:
   # /reports <player> -p
   reports:
     header: ""
-    entry: "&6{ordinal}. &e#{id} {date} ({status}&e) &f{type} &eby {reporter}"
+    entry: "&6{ordinal}. &e#{id} {date} ({status}&e) &f{type} report &eby {reporter}"
     entry_content: " &f{content}"
     total: "&eCount: &f{count}&e report(s)"
     empty: "&7No reports found."
@@ -729,6 +729,7 @@ staff_notifications:
   verified: "&7&o[{staff}: verified]"
   leave: "&7&o[{staff}: left]"
   switch: "&7&o[{staff}: connected to {server}]"
+  generic: "&7&o[{message}]"
 
 # Staff 2FA
 staff_2fa:
@@ -769,12 +770,17 @@ freeze:
   unfrozen: "&aYou have been unfrozen."
   logout_notification: "&c&l{player} logged out while frozen!"
   frozen_chat: "&b[FROZEN] &e{player}&f: {message}"
+  command_blocked: "&cYou cannot use commands while frozen."
 
 # Intercept Chat
 intercept_chat:
   enabled: "&aNetwork chat interception enabled"
   disabled: "&aNetwork chat interception disabled"
   format: "&8[G-{server}] &e{player}&f: {message}"
+
+# Intercept (staff-only interception messages)
+intercept:
+  message: "&8[Intercept] &f{player}: &7{message}"
 
 # Chat Logs
 chat_logs:
@@ -814,6 +820,7 @@ target:
   cleared: "&aTarget cleared."
   usage: "&fUsage: &a/target&f <player>"
   connecting: "&eConnecting to &f{server} &eto target &f{player}&e..."
+  cannot_target_self: "&cYou cannot target yourself."
 
 # Standing GUI (player-facing)
 standing_gui:

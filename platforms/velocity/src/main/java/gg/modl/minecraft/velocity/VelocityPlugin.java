@@ -189,6 +189,11 @@ public final class VelocityPlugin {
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_VELOCITY);
 
+        // Load Adventure serializers (Velocity bundles adventure-api but not these)
+        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_JSON);
+        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_GSON);
+        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_MINIMESSAGE);
+
         logger.info("Runtime libraries loaded successfully");
     }
 

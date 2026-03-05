@@ -26,6 +26,7 @@ import gg.modl.minecraft.core.impl.commands.punishments.*;
 import gg.modl.minecraft.core.impl.commands.*;
 import gg.modl.minecraft.core.config.ConfigManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.locale.MessageRenderer;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.service.*;
 import gg.modl.minecraft.core.service.database.DatabaseConfig;
@@ -114,6 +115,10 @@ public class PluginLoader {
             }
             this.localeManager.loadFromFile(localeFile);
         }
+
+        // Initialize MessageRenderer for MiniMessage + legacy auto-detection
+        MessageRenderer messageRenderer = new MessageRenderer();
+        this.localeManager.setRenderer(messageRenderer);
 
         // Load locale config values from config.yml
         loadLocaleConfig(dataDirectory, logger);

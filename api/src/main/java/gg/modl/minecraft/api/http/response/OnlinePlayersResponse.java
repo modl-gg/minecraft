@@ -25,5 +25,6 @@ public class OnlinePlayersResponse {
         private String uuid;
         private String username;
         private Date joinedAt;
+        private Long totalPlaytimeMs;
     }
 }

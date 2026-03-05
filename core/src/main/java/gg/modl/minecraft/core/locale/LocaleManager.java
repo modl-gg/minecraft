@@ -3,6 +3,7 @@ package gg.modl.minecraft.core.locale;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import org.yaml.snakeyaml.Yaml;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -21,6 +22,8 @@ public class LocaleManager {
     private Map<String, Object> messages;
     private Map<String, Object> configValues;
     private final String currentLocale;
+    @Setter
+    private MessageRenderer renderer;
     public LocaleManager(String locale) {
         this.currentLocale = locale;
         this.messages = new HashMap<>();
@@ -126,7 +129,7 @@ public class LocaleManager {
         }
         return List.of("&cMissing locale list: " + path);
     }
-    
+
     public String getItemType(String path) {
         Object value = getNestedValue(messages, path);
         return value instanceof String ? (String) value : "STONE";
@@ -227,6 +230,9 @@ public class LocaleManager {
     }
     
     private String colorize(String message) {
+        if (renderer != null && MessageRenderer.isMiniMessage(message)) {
+            return renderer.componentToLegacy(renderer.render(message));
+        }
         return message.replace("&", "§");
     }
     
@@ -929,11 +935,11 @@ public class LocaleManager {
         public String get(String path) {
             return localeManager.getPunishmentMessage(path, variables);
         }
-        
+
         public String getForType(String punishmentTypeName, String path) {
             return localeManager.getPunishmentTypeMessage(punishmentTypeName, path, variables);
         }
-        
+
         public String getForOrdinal(int ordinal, String path) {
             return localeManager.getPunishmentTypeMessage(ordinal, path, variables);
         }
@@ -982,13 +988,28 @@ public class LocaleManager {
             return getMessage("messages.unknown_error");
         }
 
+        // Unwrap exception class prefixes (e.g. "java.lang.RuntimeException: Player not found")
+        String unwrapped = errorMessage;
+        while (unwrapped.matches("^[a-zA-Z0-9_.]+Exception: .+")) {
+            unwrapped = unwrapped.substring(unwrapped.indexOf(": ") + 2);
+        }
+        // Also unwrap CompletionException-style messages ("java.lang.RuntimeException: ...")
+        while (unwrapped.matches("^java\\.[a-zA-Z0-9_.]+: .+")) {
+            unwrapped = unwrapped.substring(unwrapped.indexOf(": ") + 2);
+        }
+
+        // Check for player not found
+        if (unwrapped.equalsIgnoreCase("Player not found")) {
+            return getMessage("general.player_not_found");
+        }
+
         // Remove "Missing locale:" prefix and locale path patterns
-        if (errorMessage.contains("Missing locale:") || errorMessage.matches(".*\\.[a-z_]+\\.[a-z_]+.*")) {
+        if (unwrapped.contains("Missing locale:") || unwrapped.matches(".*\\.[a-z_]+\\.[a-z_]+.*")) {
             return getMessage("messages.unknown_error");
         }
 
         // Remove color codes that might have leaked through
-        String cleaned = errorMessage.replaceAll("[§&][0-9a-fk-or]", "");
+        String cleaned = unwrapped.replaceAll("[§&][0-9a-fk-or]", "");
 
         // If the message is too technical or looks like an exception, use generic error
         if (cleaned.contains("Exception") || cleaned.contains("java.") || cleaned.contains("null")) {

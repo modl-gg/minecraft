@@ -116,7 +116,8 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                     } catch (Exception ignored) {}
 
                     long sessionStart = player.getJoinedAt() != null ? player.getJoinedAt().getTime() : System.currentTimeMillis();
-                    onlinePlayers.add(new OnlinePlayer(uuid, player.getUsername(), sessionStart, 0, 0));
+                    long totalPlaytime = player.getTotalPlaytimeMs() != null ? player.getTotalPlaytimeMs() : 0;
+                    onlinePlayers.add(new OnlinePlayer(uuid, player.getUsername(), sessionStart, totalPlaytime, 0));
                 }
             } else {
                 System.err.println("[modl.gg] Online players fetch: success=" + response.isSuccess()

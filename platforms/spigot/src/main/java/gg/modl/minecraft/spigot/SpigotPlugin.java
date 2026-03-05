@@ -160,6 +160,9 @@ public class SpigotPlugin extends JavaPlugin {
         loadLibrary(libraryManager, Libraries.ADVENTURE_KEY);
         loadLibrary(libraryManager, Libraries.ADVENTURE_API);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_LEGACY);
+        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_JSON);
+        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_GSON);
+        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_MINIMESSAGE);
 
         getLogger().info("Runtime libraries loaded successfully");
     }
