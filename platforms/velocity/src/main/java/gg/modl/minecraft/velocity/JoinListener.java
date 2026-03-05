@@ -3,9 +3,7 @@ package gg.modl.minecraft.velocity;
 import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
-import gg.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
-import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
@@ -225,44 +223,11 @@ public class JoinListener {
 
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
-        // Compute session duration BEFORE marking offline (which clears join time)
-        long sessionDuration = cache.getSessionDuration(event.getPlayer().getUniqueId());
-        PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString(), sessionDuration);
-
-        getHttpClient().playerDisconnect(request);
-
-        // Staff leave notification
-        if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
-            String inGameName = event.getPlayer().getUsername();
-            String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
-            if (panelName == null) panelName = inGameName;
-            platform.staffBroadcast(localeManager.getMessage("staff_notifications.leave", java.util.Map.of("staff", panelName, "in-game-name", inGameName)));
-            getHttpClient().reportStaffDisconnect(event.getPlayer().getUniqueId().toString(), sessionDuration);
-        }
-
-        // Freeze logout notification
-        if (freezeService.isFrozen(event.getPlayer().getUniqueId())) {
-            platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification", java.util.Map.of("player", event.getPlayer().getUsername())));
-            freezeService.removePlayer(event.getPlayer().getUniqueId());
-        }
-
-        // Mark player as offline
-        cache.setOffline(event.getPlayer().getUniqueId());
-
-        // Clean up staff tools state
-        staffChatService.removePlayer(event.getPlayer().getUniqueId());
-        chatManagementService.removePlayer(event.getPlayer().getUniqueId());
-        networkChatInterceptService.removePlayer(event.getPlayer().getUniqueId());
-        if (staff2faService != null) staff2faService.removePlayer(event.getPlayer().getUniqueId());
-
-        // Remove player from punishment cache
-        cache.removePlayer(event.getPlayer().getUniqueId());
-
-        // Remove player from chat message cache
-        chatMessageCache.removePlayer(event.getPlayer().getUniqueId().toString());
-
-        // Clear any pending chat input prompts
-        gg.modl.minecraft.core.impl.menus.util.ChatInputManager.clearOnDisconnect(event.getPlayer().getUniqueId());
+        ListenerHelper.handlePlayerDisconnect(
+                event.getPlayer().getUniqueId(), event.getPlayer().getUsername(),
+                getHttpClient(), cache, platform, localeManager, freezeService,
+                staffChatService, chatManagementService, networkChatInterceptService,
+                staff2faService, chatMessageCache);
     }
 
     @Subscribe

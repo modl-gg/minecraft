@@ -4,9 +4,7 @@ import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
-import gg.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
-import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
@@ -24,7 +22,6 @@ import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
 import gg.modl.minecraft.core.util.WebPlayer;
 import com.google.gson.JsonObject;
 import lombok.RequiredArgsConstructor;
-import org.bukkit.ChatColor;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -227,101 +224,46 @@ public class SpigotListener implements Listener {
             event.getPlayer().getUniqueId().toString()
         );
 
-        // Get skin hash asynchronously and then cache mute status
-        WebPlayer.get(event.getPlayer().getUniqueId())
-            .thenAccept(webPlayer -> {
-                String skinHash = null;
-                if (webPlayer != null && webPlayer.valid()) {
-                    skinHash = webPlayer.skin();
-                    // On pre-1.18.1 Spigot, cache texture from WebPlayer if native API was unavailable
-                    if (cache.getSkinTexture(event.getPlayer().getUniqueId()) == null && webPlayer.textureValue() != null) {
+        // Cache skin texture from WebPlayer on pre-1.18.1 Spigot (if native API was unavailable)
+        if (cache.getSkinTexture(event.getPlayer().getUniqueId()) == null) {
+            WebPlayer.get(event.getPlayer().getUniqueId())
+                .thenAccept(webPlayer -> {
+                    if (webPlayer != null && webPlayer.valid() && webPlayer.textureValue() != null) {
                         cache.cacheSkinTexture(event.getPlayer().getUniqueId(), webPlayer.textureValue());
                     }
+                })
+                .exceptionally(throwable -> null);
+        }
+
+        // Use cached login response from pre-login instead of making another API call
+        LoginCache.CachedLoginResult cachedResult = loginCache.getCachedLoginResult(event.getPlayer().getUniqueId());
+        PlayerLoginResponse response = cachedResult != null ? cachedResult.getResponse() : null;
+
+        if (response != null) {
+            // Cache mute status
+            if (response.hasActiveMute()) {
+                cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
+            }
+
+            // Process pending notifications from login response
+            if (response.hasNotifications()) {
+                for (Map<String, Object> notificationData : response.getPendingNotifications()) {
+                    SyncResponse.PlayerNotification notification = ListenerHelper.mapToPlayerNotification(notificationData, java.util.logging.Logger.getLogger(SpigotListener.class.getName()));
+                    if (notification != null) {
+                        syncService.deliverLoginNotification(event.getPlayer().getUniqueId(), notification);
+                    }
                 }
+            }
+        }
 
-                // Cache mute status after successful join
-                PlayerLoginRequest request = new PlayerLoginRequest(
-                        event.getPlayer().getUniqueId().toString(),
-                        event.getPlayer().getName(),
-                        event.getPlayer().getAddress().getAddress().getHostAddress(),
-                        skinHash,
-                        null,
-                        platform.getServerName()
-                );
-
-                getHttpClient().playerLogin(request).thenAccept(response -> {
-                    if (response.hasActiveMute()) {
-                        cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
-                    }
-
-                    // Process pending notifications from login response
-                    if (response.hasNotifications()) {
-                        for (Map<String, Object> notificationData : response.getPendingNotifications()) {
-                            // Convert map to PlayerNotification and deliver immediately
-                            SyncResponse.PlayerNotification notification = ListenerHelper.mapToPlayerNotification(notificationData, java.util.logging.Logger.getLogger(SpigotListener.class.getName()));
-                            if (notification != null) {
-                                syncService.deliverLoginNotification(event.getPlayer().getUniqueId(), notification);
-                            }
-                        }
-                    }
-
-                    // Staff join notification (after login response so panel name is available)
-                    if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)
-                            && (staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(event.getPlayer().getUniqueId()))) {
-                        String inGameName = event.getPlayer().getName();
-                        String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
-                        if (panelName == null) panelName = inGameName;
-                        platform.staffBroadcast(localeManager.getMessage("staff_notifications.join", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
-                    }
-                }).exceptionally(throwable -> {
-                    platform.getLogger().severe("Failed to cache mute for " + event.getPlayer().getName() + ": " + throwable.getMessage());
-                    return null;
-                });
-            })
-            .exceptionally(throwable -> {
-                platform.getLogger().warning("Failed to get skin hash for " + event.getPlayer().getName() + ": " + throwable.getMessage());
-
-                // Continue without skin hash
-                PlayerLoginRequest request = new PlayerLoginRequest(
-                        event.getPlayer().getUniqueId().toString(),
-                        event.getPlayer().getName(),
-                        event.getPlayer().getAddress().getAddress().getHostAddress(),
-                        null,
-                        null,
-                        platform.getServerName()
-                );
-
-                getHttpClient().playerLogin(request).thenAccept(response -> {
-                    if (response.hasActiveMute()) {
-                        cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
-                    }
-
-                    // Process pending notifications from login response
-                    if (response.hasNotifications()) {
-                        for (Map<String, Object> notificationData : response.getPendingNotifications()) {
-                            // Convert map to PlayerNotification and deliver immediately
-                            SyncResponse.PlayerNotification notification = ListenerHelper.mapToPlayerNotification(notificationData, java.util.logging.Logger.getLogger(SpigotListener.class.getName()));
-                            if (notification != null) {
-                                syncService.deliverLoginNotification(event.getPlayer().getUniqueId(), notification);
-                            }
-                        }
-                    }
-
-                    // Staff join notification (after login response so panel name is available)
-                    if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)
-                            && (staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(event.getPlayer().getUniqueId()))) {
-                        String inGameName = event.getPlayer().getName();
-                        String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
-                        if (panelName == null) panelName = inGameName;
-                        platform.staffBroadcast(localeManager.getMessage("staff_notifications.join", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
-                    }
-                }).exceptionally(innerThrowable -> {
-                    platform.getLogger().severe("Failed to cache mute for " + event.getPlayer().getName() + ": " + innerThrowable.getMessage());
-                    return null;
-                });
-
-                return null;
-            });
+        // Staff join notification
+        if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)
+                && (staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(event.getPlayer().getUniqueId()))) {
+            String inGameName = event.getPlayer().getName();
+            String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
+            if (panelName == null) panelName = inGameName;
+            platform.staffBroadcast(localeManager.getMessage("staff_notifications.join", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
+        }
 
         // Also deliver any cached notifications (fallback)
         syncService.deliverPendingNotifications(event.getPlayer().getUniqueId());
@@ -329,44 +271,11 @@ public class SpigotListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        // Compute session duration BEFORE marking offline (which clears join time)
-        long sessionDuration = cache.getSessionDuration(event.getPlayer().getUniqueId());
-        PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString(), sessionDuration);
-
-        getHttpClient().playerDisconnect(request);
-
-        // Staff leave notification
-        if (PermissionUtil.isStaff(event.getPlayer().getUniqueId(), cache)) {
-            String inGameName = event.getPlayer().getName();
-            String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
-            if (panelName == null) panelName = inGameName;
-            platform.staffBroadcast(localeManager.getMessage("staff_notifications.leave", java.util.Map.of("staff", panelName, "in-game-name", inGameName)));
-            getHttpClient().reportStaffDisconnect(event.getPlayer().getUniqueId().toString(), sessionDuration);
-        }
-
-        // Freeze logout notification
-        if (freezeService.isFrozen(event.getPlayer().getUniqueId())) {
-            platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification", java.util.Map.of("player", event.getPlayer().getName())));
-            freezeService.removePlayer(event.getPlayer().getUniqueId());
-        }
-
-        // Mark player as offline
-        cache.setOffline(event.getPlayer().getUniqueId());
-
-        // Clean up staff tools state
-        staffChatService.removePlayer(event.getPlayer().getUniqueId());
-        chatManagementService.removePlayer(event.getPlayer().getUniqueId());
-        networkChatInterceptService.removePlayer(event.getPlayer().getUniqueId());
-        if (staff2faService != null) staff2faService.removePlayer(event.getPlayer().getUniqueId());
-
-        // Remove player from punishment cache
-        cache.removePlayer(event.getPlayer().getUniqueId());
-
-        // Remove player from chat message cache
-        chatMessageCache.removePlayer(event.getPlayer().getUniqueId().toString());
-
-        // Clear any pending chat input prompts
-        gg.modl.minecraft.core.impl.menus.util.ChatInputManager.clearOnDisconnect(event.getPlayer().getUniqueId());
+        ListenerHelper.handlePlayerDisconnect(
+                event.getPlayer().getUniqueId(), event.getPlayer().getName(),
+                getHttpClient(), cache, platform, localeManager, freezeService,
+                staffChatService, chatManagementService, networkChatInterceptService,
+                staff2faService, chatMessageCache);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -390,12 +299,7 @@ public class SpigotListener implements Listener {
             event.setCancelled(true);
             String inGameName = event.getPlayer().getName();
             String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
-            String format = staffChatConfig.getFormat()
-                    .replace("{player}", inGameName)
-                    .replace("{panel-name}", panelName != null ? panelName : inGameName)
-                    .replace("{message}", event.getMessage())
-                    .replace("&", "§");
-            platform.staffBroadcast(format);
+            platform.staffBroadcast(staffChatConfig.formatMessage(inGameName, panelName, event.getMessage()));
             return;
         }
 
@@ -407,12 +311,7 @@ public class SpigotListener implements Listener {
             if (!msg.isEmpty()) {
                 String inGameName = event.getPlayer().getName();
                 String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
-                String format = staffChatConfig.getFormat()
-                        .replace("{player}", inGameName)
-                        .replace("{panel-name}", panelName != null ? panelName : inGameName)
-                        .replace("{message}", msg)
-                        .replace("&", "§");
-                platform.staffBroadcast(format);
+                platform.staffBroadcast(staffChatConfig.formatMessage(inGameName, panelName, msg));
             }
             return;
         }
@@ -432,30 +331,16 @@ public class SpigotListener implements Listener {
         }
 
         if (cache.isMuted(event.getPlayer().getUniqueId())) {
-            // Cancel the chat event
             event.setCancelled(true);
-            
-            // Get cached mute and send message to player
-            Cache.CachedPlayerData data = cache.getCache().get(event.getPlayer().getUniqueId());
-            if (data != null) {
-                String muteMessage;
-                if (data.getSimpleMute() != null) {
-                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
-                } else if (data.getMute() != null) {
-                    muteMessage = PunishmentMessages.formatLegacyMuteMessage(data.getMute());
-                } else {
-                    muteMessage = ChatColor.RED + "You are muted!";
-                }
-                event.getPlayer().sendMessage(muteMessage);
-            }
+            event.getPlayer().sendMessage(PunishmentMessages.getMuteMessage(event.getPlayer().getUniqueId(), cache, localeManager));
             return;
         }
 
         // Freeze: redirect frozen player chat to staff
         if (freezeService.isFrozen(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
-            String frozenMsg = "§c[Frozen] §f" + event.getPlayer().getName() + ": §7" + event.getMessage();
-            platform.staffBroadcast(frozenMsg);
+            platform.staffBroadcast(localeManager.getMessage("freeze.frozen_chat",
+                    java.util.Map.of("player", event.getPlayer().getName(), "message", event.getMessage())));
             return;
         }
 
@@ -470,7 +355,8 @@ public class SpigotListener implements Listener {
         // Forward to interceptors
         for (java.util.UUID interceptor : networkChatInterceptService.getInterceptors()) {
             if (!interceptor.equals(event.getPlayer().getUniqueId())) {
-                platform.sendMessage(interceptor, "§8[Intercept] §f" + event.getPlayer().getName() + ": §7" + event.getMessage());
+                platform.sendMessage(interceptor, localeManager.getMessage("intercept.message",
+                        java.util.Map.of("player", event.getPlayer().getName(), "message", event.getMessage())));
             }
         }
     }
@@ -480,7 +366,7 @@ public class SpigotListener implements Listener {
         // Freeze: block all commands for frozen players
         if (freezeService.isFrozen(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage("§cYou cannot use commands while frozen.");
+            event.getPlayer().sendMessage(localeManager.getMessage("freeze.command_blocked"));
             return;
         }
 
@@ -500,20 +386,7 @@ public class SpigotListener implements Listener {
         }
 
         event.setCancelled(true);
-
-        // Send mute message to player
-        Cache.CachedPlayerData data = cache.getCache().get(event.getPlayer().getUniqueId());
-        if (data != null) {
-            String muteMessage;
-            if (data.getSimpleMute() != null) {
-                muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
-            } else if (data.getMute() != null) {
-                muteMessage = PunishmentMessages.formatLegacyMuteMessage(data.getMute());
-            } else {
-                muteMessage = ChatColor.RED + "You are muted!";
-            }
-            event.getPlayer().sendMessage(muteMessage);
-        }
+        event.getPlayer().sendMessage(PunishmentMessages.getMuteMessage(event.getPlayer().getUniqueId(), cache, localeManager));
     }
 
     public Cache getPunishmentCache() {

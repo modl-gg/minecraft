@@ -86,15 +86,6 @@ public class StaffChatCommand extends BaseCommand {
             panelName = display != null ? display : inGameName;
         }
 
-        String format = staffChatConfig.getFormat();
-
-        String formatted = format
-                .replace("{player}", inGameName)
-                .replace("{panel-name}", panelName)
-                .replace("{message}", message);
-
-        // Colorize and broadcast to staff
-        formatted = formatted.replace("&", "\u00a7");
-        platform.staffBroadcast(formatted);
+        platform.staffBroadcast(staffChatConfig.formatMessage(inGameName, panelName, message));
     }
 }

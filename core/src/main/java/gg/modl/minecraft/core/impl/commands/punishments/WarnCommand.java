@@ -5,9 +5,9 @@ import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.CreatePlayerNoteRequest;
+import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
 
 @RequiredArgsConstructor
 public class WarnCommand extends BaseCommand {
-    private final ModlHttpClient httpClient;
+    private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
@@ -41,9 +41,7 @@ public class WarnCommand extends BaseCommand {
             return;
         }
 
-        // Get issuer information
-        final String issuerName = sender.isPlayer() ?
-            platform.getAbstractPlayer(sender.getUniqueId(), false).username() : "Console";
+        final String issuerName = gg.modl.minecraft.core.util.CommandUtil.resolveIssuerName(sender, cache, platform);
 
         // Create the note text for the profile
         final String noteText = String.format("WARNING: %s", warnArgs.reason);
@@ -56,7 +54,7 @@ public class WarnCommand extends BaseCommand {
         );
 
         // Send the note creation request
-        CompletableFuture<Void> future = httpClient.createPlayerNote(noteRequest);
+        CompletableFuture<Void> future = httpClientHolder.getClient().createPlayerNote(noteRequest);
 
         future.thenAccept(response -> {
             String targetName = target.getUsernames().get(0).getUsername();

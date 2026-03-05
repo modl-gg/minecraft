@@ -77,10 +77,6 @@ public class PluginLoader {
         return httpClientHolder.getClient();
     }
 
-    public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache) {
-        throw new UnsupportedOperationException("This constructor is deprecated. Use the HttpManager overload instead.");
-    }
-
     public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache, HttpManager httpManager, int syncPollingRateSeconds) {
         this.dataDirectory = dataDirectory;
         this.debugMode = httpManager.isDebugHttp();
@@ -100,9 +96,12 @@ public class PluginLoader {
         this.httpClientHolder = httpManager.getHttpClientHolder();
         this.logger = Logger.getLogger("modl-" + platform.getClass().getSimpleName());
 
-        // Read configured locale from config.yml
+        // Parse config.yml once for all loader methods
         Logger logger = this.logger;
-        String configuredLocale = readLocaleFromConfig(dataDirectory, logger);
+        Map<String, Object> configYml = readConfigYml(dataDirectory, logger);
+
+        // Read configured locale from config.yml
+        String configuredLocale = readLocaleFromConfig(configYml, logger);
 
         // Initialize locale manager with support for external locale files
         this.localeManager = new LocaleManager(configuredLocale);
@@ -121,7 +120,7 @@ public class PluginLoader {
         this.localeManager.setRenderer(messageRenderer);
 
         // Load locale config values from config.yml
-        loadLocaleConfig(dataDirectory, logger);
+        loadLocaleConfig(configYml, logger);
 
         // Set panel URL on PunishmentMessages (derived from api.url config)
         PunishmentMessages.setPanelUrl(httpManager.getPanelUrl());
@@ -130,7 +129,7 @@ public class PluginLoader {
         platform.setLocaleManager(this.localeManager);
 
         // Load database configuration for migration
-        DatabaseConfig databaseConfig = loadDatabaseConfig(dataDirectory, logger);
+        DatabaseConfig databaseConfig = loadDatabaseConfig(configYml, dataDirectory, logger);
 
         // Initialize staff 2FA service early (needed by sync service)
         this.staff2faService = new Staff2faService(configManager.getStaff2faConfig());
@@ -156,7 +155,7 @@ public class PluginLoader {
         syncService.start();
 
         // Start update checker service
-        UpdateCheckerConfig updateCheckerConfig = loadUpdateCheckerConfig(this.dataDirectory, logger);
+        UpdateCheckerConfig updateCheckerConfig = loadUpdateCheckerConfig(configYml, logger);
         this.updateCheckerService = new UpdateCheckerService(logger, this.debugMode, PluginInfo.VERSION);
         this.updateCheckerService.start(updateCheckerConfig.enabled, updateCheckerConfig.intervalMinutes);
 
@@ -167,7 +166,7 @@ public class PluginLoader {
         commandManager.getLocales().addMessage(java.util.Locale.ENGLISH, MessageKeys.ERROR_PREFIX, "{message}");
 
         // Load and register command aliases from config before registering commands
-        Map<String, String> commandAliases = loadCommandAliases(dataDirectory, logger);
+        Map<String, String> commandAliases = loadCommandAliases(configYml, logger);
         registerCommandReplacements(commandManager, commandAliases);
 
         commandManager.getCommandContexts().registerContext(AbstractPlayer.class, (c) -> {
@@ -214,7 +213,7 @@ public class PluginLoader {
         commandManager.registerCommand(new KickCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new BlacklistCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new PardonCommand(httpClientHolder, platform, cache, this.localeManager));
-        commandManager.registerCommand(new WarnCommand(httpManager.getHttpClient(), platform, cache, this.localeManager));
+        commandManager.registerCommand(new WarnCommand(httpClientHolder, platform, cache, this.localeManager));
 
         // Register player commands
         commandManager.registerCommand(new IAmMutedCommand(platform, cache, this.localeManager));
@@ -301,8 +300,12 @@ public class PluginLoader {
         try {
             Account account = httpClient.getPlayer(new PlayerNameRequest(target)).join().getPlayer();
 
-            if (account != null)
-                return new AbstractPlayer(account.getMinecraftUuid(), "test", false);
+            if (account != null) {
+                String username = !account.getUsernames().isEmpty()
+                        ? account.getUsernames().get(account.getUsernames().size() - 1).getUsername()
+                        : target;
+                return new AbstractPlayer(account.getMinecraftUuid(), username, false);
+            }
         } catch (Exception ignored) {
             // Player not found — expected for lookups of players not in the database
         }
@@ -326,28 +329,36 @@ public class PluginLoader {
     }
     
     /**
-     * Read the locale setting from config.yml, defaulting to "en_US"
+     * Parse config.yml once into a map. Returns empty map if file missing or invalid.
      */
     @SuppressWarnings("unchecked")
-    private static String readLocaleFromConfig(Path dataDirectory, Logger logger) {
+    private static Map<String, Object> readConfigYml(Path dataDirectory, Logger logger) {
         try {
             Path configFile = dataDirectory.resolve("config.yml");
             if (!Files.exists(configFile)) {
-                return "en_US";
+                return Collections.emptyMap();
             }
             Yaml yaml = new Yaml();
             try (InputStream inputStream = new FileInputStream(configFile.toFile())) {
                 Map<String, Object> config = yaml.load(inputStream);
-                if (config != null && config.containsKey("locale")) {
-                    String locale = (String) config.get("locale");
-                    if (locale != null && !locale.isEmpty()) {
-                        logger.info("Using locale: " + locale);
-                        return locale;
-                    }
-                }
+                return config != null ? config : Collections.emptyMap();
             }
         } catch (Exception e) {
-            logger.warning("Failed to read locale from config: " + e.getMessage());
+            logger.warning("Failed to read config.yml: " + e.getMessage());
+            return Collections.emptyMap();
+        }
+    }
+
+    /**
+     * Read the locale setting from parsed config, defaulting to "en_US"
+     */
+    private static String readLocaleFromConfig(Map<String, Object> config, Logger logger) {
+        if (config.containsKey("locale")) {
+            String locale = (String) config.get("locale");
+            if (locale != null && !locale.isEmpty()) {
+                logger.info("Using locale: " + locale);
+                return locale;
+            }
         }
         return "en_US";
     }
@@ -398,31 +409,22 @@ public class PluginLoader {
     );
 
     /**
-     * Load command aliases from config.yml, falling back to defaults for missing entries.
+     * Load command aliases from parsed config, falling back to defaults for missing entries.
      * An empty alias ("") disables the command entirely.
      */
     @SuppressWarnings("unchecked")
-    private static Map<String, String> loadCommandAliases(Path dataDirectory, Logger logger) {
+    private static Map<String, String> loadCommandAliases(Map<String, Object> config, Logger logger) {
         Map<String, String> aliases = new LinkedHashMap<>(DEFAULT_COMMAND_ALIASES);
         try {
-            Path configFile = dataDirectory.resolve("config.yml");
-            if (!Files.exists(configFile)) {
-                return aliases;
-            }
-            Yaml yaml = new Yaml();
-            try (InputStream inputStream = new FileInputStream(configFile.toFile())) {
-                Map<String, Object> config = yaml.load(inputStream);
-                if (config != null && config.containsKey("commands")) {
-                    Map<String, Object> commands = (Map<String, Object>) config.get("commands");
-                    if (commands != null) {
-                        for (Map.Entry<String, Object> entry : commands.entrySet()) {
-                            Object rawValue = entry.getValue();
-                            if (rawValue == null || String.valueOf(rawValue).trim().isEmpty()) {
-                                // Empty alias = disabled command
-                                aliases.put(entry.getKey(), "");
-                            } else {
-                                aliases.put(entry.getKey(), String.valueOf(rawValue));
-                            }
+            if (config.containsKey("commands")) {
+                Map<String, Object> commands = (Map<String, Object>) config.get("commands");
+                if (commands != null) {
+                    for (Map.Entry<String, Object> entry : commands.entrySet()) {
+                        Object rawValue = entry.getValue();
+                        if (rawValue == null || String.valueOf(rawValue).trim().isEmpty()) {
+                            aliases.put(entry.getKey(), "");
+                        } else {
+                            aliases.put(entry.getKey(), String.valueOf(rawValue));
                         }
                     }
                 }
@@ -451,37 +453,26 @@ public class PluginLoader {
     }
 
     /**
-     * Load locale config values from config.yml and pass to LocaleManager
+     * Load locale config values from parsed config and pass to LocaleManager
      */
     @SuppressWarnings("unchecked")
-    private void loadLocaleConfig(Path dataDirectory, Logger logger) {
+    private void loadLocaleConfig(Map<String, Object> config, Logger logger) {
         try {
-            Path configFile = dataDirectory.resolve("config.yml");
-            if (!Files.exists(configFile)) {
-                logger.info("Config file not found, using default locale config values");
-                return;
-            }
+            if (config.containsKey("locale_config")) {
+                Map<String, Object> localeConfig = (Map<String, Object>) config.get("locale_config");
+                this.localeManager.setConfigValues(localeConfig);
 
-            Yaml yaml = new Yaml();
-            try (InputStream inputStream = new FileInputStream(configFile.toFile())) {
-                Map<String, Object> config = yaml.load(inputStream);
+                // Propagate date format and timezone to static utility classes
+                String dateFormat = this.localeManager.getDateFormatPattern();
+                gg.modl.minecraft.core.impl.menus.util.MenuItems.setDateFormat(dateFormat);
+                gg.modl.minecraft.core.util.DateFormatter.setDateFormat(dateFormat);
+                gg.modl.minecraft.core.util.PunishmentMessages.setDateFormat(dateFormat);
 
-                if (config != null && config.containsKey("locale_config")) {
-                    Map<String, Object> localeConfig = (Map<String, Object>) config.get("locale_config");
-                    this.localeManager.setConfigValues(localeConfig);
-
-                    // Propagate date format and timezone to static utility classes
-                    String dateFormat = this.localeManager.getDateFormatPattern();
-                    gg.modl.minecraft.core.impl.menus.util.MenuItems.setDateFormat(dateFormat);
-                    gg.modl.minecraft.core.util.DateFormatter.setDateFormat(dateFormat);
-                    gg.modl.minecraft.core.util.PunishmentMessages.setDateFormat(dateFormat);
-
-                    String timezone = (String) localeConfig.getOrDefault("timezone", "");
-                    if (timezone != null && !timezone.isEmpty()) {
-                        gg.modl.minecraft.core.impl.menus.util.MenuItems.setTimezone(timezone);
-                        gg.modl.minecraft.core.util.DateFormatter.setTimezone(timezone);
-                        gg.modl.minecraft.core.util.PunishmentMessages.setTimezone(timezone);
-                    }
+                String timezone = (String) localeConfig.getOrDefault("timezone", "");
+                if (timezone != null && !timezone.isEmpty()) {
+                    gg.modl.minecraft.core.impl.menus.util.MenuItems.setTimezone(timezone);
+                    gg.modl.minecraft.core.util.DateFormatter.setTimezone(timezone);
+                    gg.modl.minecraft.core.util.PunishmentMessages.setTimezone(timezone);
                 }
             }
         } catch (Exception e) {
@@ -490,56 +481,42 @@ public class PluginLoader {
     }
 
     /**
-     * Load database configuration from config.yml
+     * Load database configuration from parsed config
      */
-    private DatabaseConfig loadDatabaseConfig(Path dataDirectory, Logger logger) {
+    @SuppressWarnings("unchecked")
+    private DatabaseConfig loadDatabaseConfig(Map<String, Object> config, Path dataDirectory, Logger logger) {
         try {
-            Path configFile = dataDirectory.resolve("config.yml");
-            if (!Files.exists(configFile)) {
-                logger.warning("[Migration] Config file not found, using default database config");
-                return createDefaultDatabaseConfig();
-            }
+            if (config.containsKey("migration")) {
+                Map<String, Object> migration = (Map<String, Object>) config.get("migration");
+                Map<String, Object> litebans = (Map<String, Object>) migration.get("litebans");
+                Map<String, Object> database = (Map<String, Object>) litebans.get("database");
 
-            Yaml yaml = new Yaml();
-            try (InputStream inputStream = new FileInputStream(configFile.toFile())) {
-                Map<String, Object> config = yaml.load(inputStream);
-                
-                if (config != null && config.containsKey("migration")) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> migration = (Map<String, Object>) config.get("migration");
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> litebans = (Map<String, Object>) migration.get("litebans");
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> database = (Map<String, Object>) litebans.get("database");
-                    
-                    String host = (String) database.getOrDefault("host", "localhost");
-                    int port = (int) database.getOrDefault("port", 3306);
-                    String dbName = (String) database.getOrDefault("database", "minecraft");
-                    String username = (String) database.getOrDefault("username", "root");
-                    String password = (String) database.getOrDefault("password", "");
-                    String type = (String) database.getOrDefault("type", "mysql");
-                    String tablePrefix = (String) database.getOrDefault("table_prefix", "litebans_");
-                    
-                    DatabaseConfig.DatabaseType dbType = DatabaseConfig.DatabaseType.fromString(type);
-                    
-                    // Try to read table prefix from LiteBans config if it exists
-                    String detectedPrefix = detectLiteBansTablePrefix(dataDirectory, logger);
-                    if (detectedPrefix != null) {
-                        tablePrefix = detectedPrefix;
-                        logger.info("[Migration] Detected LiteBans table prefix from config: " + tablePrefix);
-                    }
-                    
-                    logger.info("[Migration] Loaded database config: " + type + " @ " + host + ":" + port + "/" + dbName);
-                    logger.info("[Migration] Using table prefix: " + tablePrefix);
-                    
-                    return new DatabaseConfig(host, port, dbName, username, password, dbType, tablePrefix);
+                String host = (String) database.getOrDefault("host", "localhost");
+                int port = (int) database.getOrDefault("port", 3306);
+                String dbName = (String) database.getOrDefault("database", "minecraft");
+                String username = (String) database.getOrDefault("username", "root");
+                String password = (String) database.getOrDefault("password", "");
+                String type = (String) database.getOrDefault("type", "mysql");
+                String tablePrefix = (String) database.getOrDefault("table_prefix", "litebans_");
+
+                DatabaseConfig.DatabaseType dbType = DatabaseConfig.DatabaseType.fromString(type);
+
+                // Try to read table prefix from LiteBans config if it exists
+                String detectedPrefix = detectLiteBansTablePrefix(dataDirectory, logger);
+                if (detectedPrefix != null) {
+                    tablePrefix = detectedPrefix;
+                    logger.info("[Migration] Detected LiteBans table prefix from config: " + tablePrefix);
                 }
+
+                logger.info("[Migration] Loaded database config: " + type + " @ " + host + ":" + port + "/" + dbName);
+                logger.info("[Migration] Using table prefix: " + tablePrefix);
+
+                return new DatabaseConfig(host, port, dbName, username, password, dbType, tablePrefix);
             }
         } catch (Exception e) {
             logger.warning("[Migration] Failed to load database config: " + e.getMessage());
-            e.printStackTrace();
         }
-        
+
         return createDefaultDatabaseConfig();
     }
 
@@ -603,43 +580,31 @@ public class PluginLoader {
 
     private void reloadRuntimeConfiguration() {
         configManager.reloadAll();
-        UpdateCheckerConfig updateCheckerConfig = loadUpdateCheckerConfig(this.dataDirectory, this.logger);
+        Map<String, Object> freshConfig = readConfigYml(this.dataDirectory, this.logger);
+        UpdateCheckerConfig updateCheckerConfig = loadUpdateCheckerConfig(freshConfig, this.logger);
         updateCheckerService.reload(updateCheckerConfig.enabled, updateCheckerConfig.intervalMinutes);
     }
 
     @SuppressWarnings("unchecked")
-    private UpdateCheckerConfig loadUpdateCheckerConfig(Path dataDirectory, Logger logger) {
+    private static UpdateCheckerConfig loadUpdateCheckerConfig(Map<String, Object> config, Logger logger) {
         boolean enabled = true;
         int intervalMinutes = UpdateCheckerService.getDefaultIntervalMinutes();
 
         try {
-            Path configFile = dataDirectory.resolve("config.yml");
-            if (!Files.exists(configFile)) {
-                return new UpdateCheckerConfig(enabled, intervalMinutes);
-            }
+            if (config.containsKey("update_checker")) {
+                Object updateCheckerNode = config.get("update_checker");
+                if (updateCheckerNode instanceof Map) {
+                    Map<String, Object> updateChecker = (Map<String, Object>) updateCheckerNode;
 
-            Yaml yaml = new Yaml();
-            try (InputStream inputStream = new FileInputStream(configFile.toFile())) {
-                Map<String, Object> config = yaml.load(inputStream);
-                if (config == null) {
-                    return new UpdateCheckerConfig(enabled, intervalMinutes);
-                }
-
-                if (config.containsKey("update_checker")) {
-                    Object updateCheckerNode = config.get("update_checker");
-                    if (updateCheckerNode instanceof Map) {
-                        Map<String, Object> updateChecker = (Map<String, Object>) updateCheckerNode;
-
-                        Object enabledValue = updateChecker.get("enabled");
-                        if (enabledValue instanceof Boolean) {
-                            enabled = (Boolean) enabledValue;
-                        } else if (enabledValue instanceof String) {
-                            enabled = Boolean.parseBoolean((String) enabledValue);
-                        }
-
-                        Object intervalValue = updateChecker.get("interval_minutes");
-                        intervalMinutes = parseIntegerValue(intervalValue, intervalMinutes);
+                    Object enabledValue = updateChecker.get("enabled");
+                    if (enabledValue instanceof Boolean) {
+                        enabled = (Boolean) enabledValue;
+                    } else if (enabledValue instanceof String) {
+                        enabled = Boolean.parseBoolean((String) enabledValue);
                     }
+
+                    Object intervalValue = updateChecker.get("interval_minutes");
+                    intervalMinutes = parseIntegerValue(intervalValue, intervalMinutes);
                 }
             }
         } catch (Exception e) {
@@ -654,7 +619,7 @@ public class PluginLoader {
         return new UpdateCheckerConfig(enabled, intervalMinutes);
     }
 
-    private int parseIntegerValue(Object value, int defaultValue) {
+    private static int parseIntegerValue(Object value, int defaultValue) {
         if (value instanceof Number) {
             return ((Number) value).intValue();
         }

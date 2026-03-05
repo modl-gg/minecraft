@@ -224,6 +224,12 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
         // Left-click = target the player
         StaffModeService staffModeService = platform.getStaffModeService();
         if (staffModeService != null && !click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
+            // Cannot target yourself
+            if (player.getUuid() != null && player.getUuid().equals(viewerUuid)) {
+                sendMessage(MenuItems.COLOR_RED + "You cannot target yourself");
+                return;
+            }
+
             click.clickedMenu().close();
 
             // Enter staff mode if not already in it

@@ -7,14 +7,11 @@ import gg.modl.minecraft.core.util.MutedCommandUtil;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.StringUtil;
-import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
 import com.velocitypowered.api.event.PostOrder;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.command.CommandExecuteEvent;
 import com.velocitypowered.api.event.player.PlayerChatEvent;
 import com.velocitypowered.api.proxy.Player;
-import net.kyori.adventure.text.Component;
-
 import java.util.List;
 
 public class ChatListener {
@@ -76,12 +73,7 @@ public class ChatListener {
             event.setResult(PlayerChatEvent.ChatResult.denied());
             String inGameName = event.getPlayer().getUsername();
             String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
-            String format = staffChatConfig.getFormat()
-                    .replace("{player}", inGameName)
-                    .replace("{panel-name}", panelName != null ? panelName : inGameName)
-                    .replace("{message}", event.getMessage())
-                    .replace("&", "§");
-            platform.staffBroadcast(format);
+            platform.staffBroadcast(staffChatConfig.formatMessage(inGameName, panelName, event.getMessage()));
             return;
         }
 
@@ -93,12 +85,7 @@ public class ChatListener {
             if (!msg.isEmpty()) {
                 String inGameName = event.getPlayer().getUsername();
                 String panelName = cache.getStaffDisplayName(event.getPlayer().getUniqueId());
-                String format = staffChatConfig.getFormat()
-                        .replace("{player}", inGameName)
-                        .replace("{panel-name}", panelName != null ? panelName : inGameName)
-                        .replace("{message}", msg)
-                        .replace("&", "§");
-                platform.staffBroadcast(format);
+                platform.staffBroadcast(staffChatConfig.formatMessage(inGameName, panelName, msg));
             }
             return;
         }
@@ -119,15 +106,16 @@ public class ChatListener {
 
         if (cache.isMuted(event.getPlayer().getUniqueId())) {
             event.setResult(PlayerChatEvent.ChatResult.denied());
-            handleMutedPlayer(event.getPlayer());
+            event.getPlayer().sendMessage(Colors.get(StringUtil.unescapeNewlines(
+                    PunishmentMessages.getMuteMessage(event.getPlayer().getUniqueId(), cache, localeManager))));
             return;
         }
 
         // Freeze: redirect frozen player chat to staff
         if (freezeService.isFrozen(event.getPlayer().getUniqueId())) {
             event.setResult(PlayerChatEvent.ChatResult.denied());
-            String frozenMsg = "§c[Frozen] §f" + event.getPlayer().getUsername() + ": §7" + event.getMessage();
-            platform.staffBroadcast(frozenMsg);
+            platform.staffBroadcast(localeManager.getMessage("freeze.frozen_chat",
+                    java.util.Map.of("player", event.getPlayer().getUsername(), "message", event.getMessage())));
             return;
         }
 
@@ -142,7 +130,8 @@ public class ChatListener {
         // Forward to interceptors
         for (java.util.UUID interceptor : networkChatInterceptService.getInterceptors()) {
             if (!interceptor.equals(event.getPlayer().getUniqueId())) {
-                platform.sendMessage(interceptor, "§8[Intercept] §f" + event.getPlayer().getUsername() + ": §7" + event.getMessage());
+                platform.sendMessage(interceptor, localeManager.getMessage("intercept.message",
+                        java.util.Map.of("player", event.getPlayer().getUsername(), "message", event.getMessage())));
             }
         }
     }
@@ -158,7 +147,7 @@ public class ChatListener {
         // Freeze: block all commands for frozen players
         if (freezeService.isFrozen(player.getUniqueId())) {
             event.setResult(CommandExecuteEvent.CommandResult.denied());
-            player.sendMessage(Colors.get("§cYou cannot use commands while frozen."));
+            player.sendMessage(Colors.get(localeManager.getMessage("freeze.command_blocked")));
             return;
         }
 
@@ -181,23 +170,8 @@ public class ChatListener {
         }
 
         event.setResult(CommandExecuteEvent.CommandResult.denied());
-        handleMutedPlayer(player);
-    }
-
-    private void handleMutedPlayer(Player player) {
-        Cache.CachedPlayerData data = cache.getCache().get(player.getUniqueId());
-        if (data != null) {
-            String muteMessage;
-            if (data.getSimpleMute() != null) {
-                muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
-            } else if (data.getMute() != null) {
-                muteMessage = PunishmentMessages.formatLegacyMuteMessage(data.getMute());
-            } else {
-                muteMessage = "§cYou are muted!";
-            }
-            Component muteComponent = Colors.get(StringUtil.unescapeNewlines(muteMessage));
-            player.sendMessage(muteComponent);
-        }
+        player.sendMessage(Colors.get(StringUtil.unescapeNewlines(
+                PunishmentMessages.getMuteMessage(player.getUniqueId(), cache, localeManager))));
     }
 
     public ChatMessageCache getChatMessageCache() {

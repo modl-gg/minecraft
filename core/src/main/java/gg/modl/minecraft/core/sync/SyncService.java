@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core.sync;
 
 import gg.modl.minecraft.api.AbstractPlayer;
+import gg.modl.minecraft.api.Modification;
 import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.NotificationAcknowledgeRequest;
@@ -37,6 +38,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -162,7 +164,11 @@ public class SyncService {
                 Thread.currentThread().interrupt();
             }
         }
-        
+
+        if (taskExecutor != null) {
+            taskExecutor.shutdownNow();
+        }
+
         // Shutdown migration service if active
         if (migrationService != null) {
             migrationService.shutdown();
@@ -212,8 +218,7 @@ public class SyncService {
             } catch (Exception e) {
                 logger.warning("Sync request failed: " + e.getMessage());
             } catch (Throwable t) {
-                logger.severe("Error during sync: " + t.getMessage());
-                t.printStackTrace();
+                logger.log(Level.SEVERE, "Error during sync: " + t.getMessage(), t);
             }
 
             return null;
@@ -223,10 +228,10 @@ public class SyncService {
         try {
             future.get(10, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
-            System.out.println("Task timed out, cancelling...");
+            logger.warning("Sync task timed out, cancelling...");
             future.cancel(true);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Sync task failed", e);
         }
     }
 
@@ -424,8 +429,7 @@ public class SyncService {
                     
                     migrationService = new MigrationService(logger, httpClientHolder.getClient(), apiUrl, apiKey, dataFolder, databaseProvider);
                 } catch (Exception e) {
-                    logger.severe("[Migration] Failed to initialize migration service: " + e.getMessage());
-                    e.printStackTrace();
+                    logger.log(Level.SEVERE, "[Migration] Failed to initialize migration service: " + e.getMessage(), e);
                     return;
                 }
             }
@@ -452,8 +456,7 @@ public class SyncService {
                         logger.warning("[Migration] Migration task " + taskId + " export failed - no file generated");
                     }
                 }).exceptionally(throwable -> {
-                    logger.severe("[Migration] Migration task " + taskId + " failed: " + throwable.getMessage());
-                    throwable.printStackTrace();
+                    logger.log(Level.SEVERE, "[Migration] Migration task " + taskId + " failed: " + throwable.getMessage(), throwable);
                     return null;
                 });
             } else {
@@ -461,8 +464,7 @@ public class SyncService {
             }
             
         } catch (Exception e) {
-            logger.severe("[Migration] Error processing migration task: " + e.getMessage());
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "[Migration] Error processing migration task: " + e.getMessage(), e);
         }
     }
     
@@ -531,13 +533,6 @@ public class SyncService {
         });
     }
     
-    /**
-     * Process a recently started punishment
-     */
-    private void processStartedPunishment(SyncResponse.PendingPunishment started) {
-        // Same as pending punishment processing
-        processPendingPunishment(started);
-    }
     
     /**
      * Process a modified punishment (pardon, duration change)
@@ -585,8 +580,7 @@ public class SyncService {
                 return false;
             }
         } catch (Exception e) {
-            logger.severe("Error executing punishment: " + e.getMessage());
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Error executing punishment: " + e.getMessage(), e);
             return false;
         }
     }
@@ -679,22 +673,30 @@ public class SyncService {
                                                SyncResponse.PunishmentModification modification) {
         try {
             UUID uuid = UUID.fromString(playerUuid);
-            
-            switch (modification.getType()) {
-                case "MANUAL_PARDON":
-                case "APPEAL_ACCEPT":
+
+            Modification.Type modType;
+            try {
+                modType = Modification.Type.valueOf(modification.getType());
+            } catch (IllegalArgumentException e) {
+                logger.warning("Unknown modification type: " + modification.getType());
+                return;
+            }
+
+            switch (modType) {
+                case MANUAL_PARDON:
+                case SYSTEM_PARDON:
+                case APPEAL_ACCEPT:
                     handlePardon(uuid, username, punishmentId);
                     break;
-                case "MANUAL_DURATION_CHANGE":
-                case "APPEAL_DURATION_CHANGE":
+                case MANUAL_DURATION_CHANGE:
+                case APPEAL_DURATION_CHANGE:
                     handleDurationChange(uuid, username, punishmentId, modification.getEffectiveDuration(), modification.getTimestamp());
                     break;
                 default:
-                    logger.warning("Unknown modification type: " + modification.getType());
+                    break;
             }
         } catch (Exception e) {
-            logger.severe("Error handling punishment modification: " + e.getMessage());
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Error handling punishment modification: " + e.getMessage(), e);
         }
     }
     
@@ -977,18 +979,10 @@ public class SyncService {
             }
 
         } catch (Exception e) {
-            logger.severe("Error processing player notification: " + e.getMessage());
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Error processing player notification: " + e.getMessage(), e);
         }
     }
     
-    /**
-     * Deliver a notification to a specific player
-     */
-    private void deliverNotificationToPlayer(UUID playerUuid, SyncResponse.PlayerNotification notification) {
-        deliverNotificationToPlayerAndCheck(playerUuid, notification);
-    }
-
     /**
      * Deliver a notification to a specific player and return whether it was delivered
      * @return true if the notification was delivered to an online player, false if cached for later
@@ -1059,7 +1053,7 @@ public class SyncService {
             logger.info(String.format("Delivering login notification %s to player %s",
                     notification.getId(), playerUuid));
         }
-        deliverNotificationToPlayer(playerUuid, notification);
+        deliverNotificationToPlayerAndCheck(playerUuid, notification);
     }
     
     /**
@@ -1081,7 +1075,7 @@ public class SyncService {
                 cache.cacheNotification(playerUuid, notification);
                 
                 // Deliver immediately if player is online
-                deliverNotificationToPlayer(playerUuid, notification);
+                deliverNotificationToPlayerAndCheck(playerUuid, notification);
                 
             } catch (Exception e) {
                 logger.warning("Error handling notification for player " + player.getName() + ": " + e.getMessage());
@@ -1131,25 +1125,8 @@ public class SyncService {
             }
             
         } catch (Exception e) {
-            logger.severe("Error delivering pending notifications: " + e.getMessage());
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Error delivering pending notifications: " + e.getMessage(), e);
         }
-    }
-    
-    /**
-     * Format notification message for display
-     */
-    private String formatNotificationMessage(SyncResponse.PlayerNotification notification) {
-        // Return the message directly without prefix
-        return notification.getMessage();
-    }
-    
-    /**
-     * Format pending notification message for display
-     */
-    private String formatNotificationMessage(Cache.PendingNotification notification) {
-        // Return the message directly without prefix
-        return notification.getMessage();
     }
     
     /**
@@ -1181,7 +1158,7 @@ public class SyncService {
                 });
             } else {
                 // Fallback to regular message format
-                String message = formatNotificationMessage(pending);
+                String message = pending.getMessage();
                 platform.runOnMainThread(() -> {
                     platform.sendMessage(playerUuid, message);
                 });
@@ -1227,9 +1204,6 @@ public class SyncService {
                 // Check if player is still online before delivering
                 AbstractPlayer player = platform.getPlayer(playerUuid);
                 if (player != null && player.isOnline()) {
-                    // Play notification sound effect (placeholder for now)
-                    playNotificationSound(playerUuid);
-                    
                     // Format and send the notification (with clickable links for ticket notifications)
                     deliverPendingNotificationToPlayer(playerUuid, pending);
                     
@@ -1286,25 +1260,8 @@ public class SyncService {
             }
                     
         } catch (Exception e) {
-            logger.severe("Error finalizing pending notification delivery: " + e.getMessage());
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Error finalizing pending notification delivery: " + e.getMessage(), e);
         }
-    }
-    
-    /**
-     * Play notification sound effect (placeholder - to be implemented per platform)
-     */
-    private void playNotificationSound(UUID playerUuid) {
-        // TODO: Implement sound playing per platform
-        // For now, this is a placeholder that can be extended in platform implementations
-        // Example sounds: "entity.experience_orb.pickup", "block.note_block.pling", "entity.player.levelup"
-        
-        // This could be implemented by:
-        // 1. Adding a playSound method to the Platform interface
-        // 2. Implementing it in each platform (Spigot, Velocity, BungeeCord)
-        // 3. Using the appropriate platform-specific sound API
-        
-        logger.fine("Playing notification sound for player " + playerUuid + " (placeholder)");
     }
     
     /**
@@ -1343,8 +1300,7 @@ public class SyncService {
                     .orTimeout(5, TimeUnit.SECONDS);
                     
         } catch (Exception e) {
-            logger.severe("Error acknowledging notifications: " + e.getMessage());
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Error acknowledging notifications: " + e.getMessage(), e);
         }
     }
 }

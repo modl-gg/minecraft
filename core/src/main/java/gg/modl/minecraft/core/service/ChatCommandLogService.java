@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -19,21 +18,25 @@ import java.util.stream.Collectors;
  */
 public class ChatCommandLogService {
 
-    private final List<ChatLogEntry> chatBuffer = Collections.synchronizedList(new ArrayList<>());
-    private final List<CommandLogEntry> commandBuffer = Collections.synchronizedList(new ArrayList<>());
+    private final List<ChatLogEntry> chatBuffer = new ArrayList<>();
+    private final List<CommandLogEntry> commandBuffer = new ArrayList<>();
 
     /**
      * Add a chat message to the buffer.
      */
     public void addChatMessage(String uuid, String username, String message, String server) {
-        chatBuffer.add(new ChatLogEntry(uuid, username, message, System.currentTimeMillis(), server));
+        synchronized (chatBuffer) {
+            chatBuffer.add(new ChatLogEntry(uuid, username, message, System.currentTimeMillis(), server));
+        }
     }
 
     /**
      * Add a command to the buffer.
      */
     public void addCommand(String uuid, String username, String command, String server) {
-        commandBuffer.add(new CommandLogEntry(uuid, username, command, System.currentTimeMillis(), server));
+        synchronized (commandBuffer) {
+            commandBuffer.add(new CommandLogEntry(uuid, username, command, System.currentTimeMillis(), server));
+        }
     }
 
     /**

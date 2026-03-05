@@ -2,12 +2,19 @@ package gg.modl.minecraft.core.util;
 
 import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
+import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
+import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.*;
 import com.google.gson.JsonObject;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -105,5 +112,56 @@ public final class ListenerHelper {
                 return null;
             });
         }
+    }
+
+    /**
+     * Common disconnect handler for all platforms.
+     * Performs staff notifications, service cleanup, and cache removal.
+     */
+    public static void handlePlayerDisconnect(
+            UUID uuid, String playerName,
+            ModlHttpClient httpClient, Cache cache, Platform platform,
+            LocaleManager localeManager, FreezeService freezeService,
+            StaffChatService staffChatService, ChatManagementService chatManagementService,
+            NetworkChatInterceptService networkChatInterceptService, Staff2faService staff2faService,
+            ChatMessageCache chatMessageCache) {
+
+        // Compute session duration BEFORE marking offline (which clears join time)
+        long sessionDuration = cache.getSessionDuration(uuid);
+
+        httpClient.playerDisconnect(new PlayerDisconnectRequest(uuid.toString(), sessionDuration));
+
+        // Staff leave notification
+        if (PermissionUtil.isStaff(uuid, cache)) {
+            String displayName = cache.getDisplayName(uuid, playerName);
+            platform.staffBroadcast(localeManager.getMessage("staff_notifications.leave",
+                    Map.of("staff", displayName, "in-game-name", playerName)));
+            httpClient.reportStaffDisconnect(uuid.toString(), sessionDuration);
+        }
+
+        // Freeze logout notification
+        if (freezeService.isFrozen(uuid)) {
+            platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification",
+                    Map.of("player", playerName)));
+            freezeService.removePlayer(uuid);
+        }
+
+        // Mark player as offline
+        cache.setOffline(uuid);
+
+        // Clean up staff tools state
+        staffChatService.removePlayer(uuid);
+        chatManagementService.removePlayer(uuid);
+        networkChatInterceptService.removePlayer(uuid);
+        if (staff2faService != null) staff2faService.removePlayer(uuid);
+
+        // Remove player from punishment cache
+        cache.removePlayer(uuid);
+
+        // Remove player from chat message cache
+        chatMessageCache.removePlayer(uuid.toString());
+
+        // Clear any pending chat input prompts
+        ChatInputManager.clearOnDisconnect(uuid);
     }
 }

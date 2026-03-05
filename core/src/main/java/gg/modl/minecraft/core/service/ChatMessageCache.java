@@ -20,6 +20,10 @@ public class ChatMessageCache {
     
     // Player -> Server mapping (for cross-platform setups)
     private final Map<String, String> playerToServer = new ConcurrentHashMap<>();
+
+    // Throttle time-based cleanup to at most once per 30 seconds
+    private volatile long lastCleanupTime = 0;
+    private static final long CLEANUP_INTERVAL_MS = 30_000;
     
     public ChatMessageCache() {
         this(100, 600_000); // Default: 100 messages per server, 10 minutes TTL
@@ -55,9 +59,13 @@ public class ChatMessageCache {
         while (messageQueue.size() > maxMessagesPerServer) {
             messageQueue.poll();
         }
-        
-        // Clean up old messages
-        cleanupOldMessages(messageQueue);
+
+        // Periodically clean up time-expired messages (at most once per 30s)
+        long now = System.currentTimeMillis();
+        if (now - lastCleanupTime > CLEANUP_INTERVAL_MS) {
+            lastCleanupTime = now;
+            serverMessages.values().forEach(this::cleanupOldMessages);
+        }
     }
     
     /**

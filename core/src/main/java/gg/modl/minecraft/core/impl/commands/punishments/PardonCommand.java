@@ -33,7 +33,7 @@ public class PardonCommand extends BaseCommand {
     @Description("Pardon all of a player's active and unstarted punishments")
     @Conditions("permission:value=punishment.modify")
     public void pardon(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
-        final String issuerName = resolveIssuerName(sender);
+        final String issuerName = gg.modl.minecraft.core.util.CommandUtil.resolveIssuerName(sender, cache, platform);
 
         if (isPunishmentId(target)) {
             tryPunishmentIdWithFallback(sender, target, issuerName, reason, null);
@@ -47,7 +47,7 @@ public class PardonCommand extends BaseCommand {
     @Description("Unban a player by name or punishment ID")
     @Conditions("permission:value=punishment.modify")
     public void unban(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
-        final String issuerName = resolveIssuerName(sender);
+        final String issuerName = gg.modl.minecraft.core.util.CommandUtil.resolveIssuerName(sender, cache, platform);
 
         if (isPunishmentId(target)) {
             tryPunishmentIdWithFallback(sender, target, issuerName, reason, "ban");
@@ -61,7 +61,7 @@ public class PardonCommand extends BaseCommand {
     @Description("Unmute a player by name or punishment ID")
     @Conditions("permission:value=punishment.modify")
     public void unmute(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
-        final String issuerName = resolveIssuerName(sender);
+        final String issuerName = gg.modl.minecraft.core.util.CommandUtil.resolveIssuerName(sender, cache, platform);
 
         if (isPunishmentId(target)) {
             tryPunishmentIdWithFallback(sender, target, issuerName, reason, "mute");
@@ -144,13 +144,6 @@ public class PardonCommand extends BaseCommand {
         });
     }
 
-    private String resolveIssuerName(CommandIssuer sender) {
-        if (!sender.isPlayer()) return "Console";
-        String panelName = cache.getStaffDisplayName(sender.getUniqueId());
-        if (panelName != null) return panelName;
-        return platform.getAbstractPlayer(sender.getUniqueId(), false).username();
-    }
-
     private boolean isPunishmentId(String target) {
         return target.length() == 8 && target.matches("^[A-Z0-9]+$");
     }
@@ -168,8 +161,8 @@ public class PardonCommand extends BaseCommand {
                     cache.removeMute(player.uuid());
                 }
             }
-        } catch (Exception e) {
-            cache.clear();
+        } catch (Exception ignored) {
+            // Player not online or not found — cache for this player can't be invalidated
         }
     }
 

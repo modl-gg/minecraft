@@ -6,17 +6,16 @@ import co.aikar.commands.annotation.*;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
-import gg.modl.minecraft.api.http.request.CreatePunishmentRequest;
+import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.TimeUtil;
 import lombok.RequiredArgsConstructor;
 
-import com.google.gson.JsonObject;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 @RequiredArgsConstructor
 public class MuteCommand extends BaseCommand {
@@ -42,56 +41,51 @@ public class MuteCommand extends BaseCommand {
         // Parse arguments
         MuteArgs muteArgs = parseArguments(args);
         
-        // Get issuer information (prefer panel username)
-        final String issuerName;
-        if (sender.isPlayer()) {
-            String panelName = cache.getStaffDisplayName(sender.getUniqueId());
-            issuerName = panelName != null ? panelName : platform.getAbstractPlayer(sender.getUniqueId(), false).username();
-        } else {
-            issuerName = "Console";
-        }
+        final String issuerName = gg.modl.minecraft.core.util.CommandUtil.resolveIssuerName(sender, cache, platform);
 
-        // Build punishment data as JsonObject
-        JsonObject data = new JsonObject();
-        data.addProperty("reason", muteArgs.reason.isEmpty() ? "No reason specified" : muteArgs.reason);
-        data.addProperty("silent", muteArgs.silent);
+        // Build punishment data
+        Map<String, Object> dataMap = new HashMap<>();
+        dataMap.put("reason", muteArgs.reason.isEmpty() ? "No reason specified" : muteArgs.reason);
+        dataMap.put("silent", muteArgs.silent);
         if (muteArgs.duration > 0) {
-            data.addProperty("duration", muteArgs.duration);
+            dataMap.put("duration", muteArgs.duration);
         }
-        data.addProperty("issuedServer", sender.isPlayer()
+        dataMap.put("issuedServer", sender.isPlayer()
             ? platform.getPlayerServer(sender.getUniqueId())
             : platform.getServerName());
 
-        // Create manual punishment request for mute (ordinal 1)
-        CreatePunishmentRequest request = new CreatePunishmentRequest(
+        PunishmentCreateRequest request = new PunishmentCreateRequest(
             target.getMinecraftUuid().toString(),
             issuerName,
             1, // Manual mute ordinal
             muteArgs.reason.isEmpty() ? "No reason specified" : muteArgs.reason,
             muteArgs.duration,
-            data, // Pass the JsonObject with all punishment data
-            new ArrayList<>(), // notes
-            new ArrayList<>()  // attachedTicketIds
+            dataMap,
+            new ArrayList<>(),
+            new ArrayList<>(),
+            null, null
         );
 
-        // Make copies for lambda usage
-        final boolean silentMute = muteArgs.silent;
-        final String durationStr = muteArgs.duration > 0 ? TimeUtil.formatTimeMillis(muteArgs.duration) : "permanent";
+        getHttpClient().createPunishmentWithResponse(request).thenAccept(response -> {
+            if (response.isSuccess()) {
+                String targetName = target.getUsernames().get(0).getUsername();
 
-        // Send manual punishment request (uses /minecraft/punishment/create endpoint)
-        CompletableFuture<Void> future = getHttpClient().createPunishment(request);
-        
-        future.thenAccept(response -> {
-            String targetName = target.getUsernames().get(0).getUsername();
-            
-            // Success message to issuer
-            sender.sendMessage(localeManager.punishment()
-                .type("mute")
-                .target(targetName)
-                .duration(muteArgs.duration)
-                .get("general.punishment_issued"));
+                sender.sendMessage(localeManager.punishment()
+                    .type("mute")
+                    .target(targetName)
+                    .duration(muteArgs.duration)
+                    .punishmentId(response.getPunishmentId())
+                    .get("general.punishment_issued"));
 
-
+                if (sender.isPlayer() && response.getPunishmentId() != null) {
+                    platform.runOnMainThread(() -> {
+                        PunishmentActionMessages.sendPunishmentActions(platform, sender.getUniqueId(), response.getPunishmentId());
+                    });
+                }
+            } else {
+                sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
+                    Map.of("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
+            }
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) {
                 sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
@@ -131,22 +125,6 @@ public class MuteCommand extends BaseCommand {
         
         result.reason = reasonBuilder.toString().trim();
         return result;
-    }
-
-    /**
-     * Get public notification message for manual mute using ordinal 1
-     */
-    private String getPublicNotificationMessage(String targetName, long duration) {
-        boolean isTemporary = duration > 0;
-        
-        Map<String, String> variables = Map.of(
-            "target", targetName,
-            "duration", localeManager.formatDuration(duration)
-        );
-        
-        // Use ordinal 1 for manual mute
-        String messagePath = isTemporary ? "public_notification.temporary" : "public_notification.permanent";
-        return localeManager.getPunishmentTypeMessage(1, messagePath, variables);
     }
 
     private static class MuteArgs {

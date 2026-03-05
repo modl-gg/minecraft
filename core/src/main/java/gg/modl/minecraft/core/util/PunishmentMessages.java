@@ -2,10 +2,12 @@ package gg.modl.minecraft.core.util;
 
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.SimplePunishment;
+import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Utility class for formatting punishment messages across all platforms
@@ -96,6 +98,21 @@ public class PunishmentMessages {
         // Import the utility method dynamically to avoid circular imports
         return formatDuration(timeLeft);
     }
+    /**
+     * Resolve and format the mute message for a player from cached data.
+     * Handles SimpleMute, legacy Mute, and fallback.
+     */
+    public static String getMuteMessage(UUID playerUuid, Cache cache, LocaleManager localeManager) {
+        Cache.CachedPlayerData data = cache.getCachedPlayerData(playerUuid);
+        if (data == null) return "§cYou are muted!";
+        if (data.getSimpleMute() != null) {
+            return formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
+        } else if (data.getMute() != null) {
+            return formatLegacyMuteMessage(data.getMute());
+        }
+        return "§cYou are muted!";
+    }
+
     /**
      * Format a mute message with all available punishment data (deprecated - use overload with LocaleManager)
      * @deprecated Use formatMuteMessage(SimplePunishment, LocaleManager) instead

@@ -40,14 +40,7 @@ public class BlacklistCommand extends BaseCommand {
         // Parse arguments
         BlacklistArgs blacklistArgs = parseArguments(args);
 
-        // Get issuer information (prefer panel username)
-        final String issuerName;
-        if (sender.isPlayer()) {
-            String panelName = cache.getStaffDisplayName(sender.getUniqueId());
-            issuerName = panelName != null ? panelName : platform.getAbstractPlayer(sender.getUniqueId(), false).username();
-        } else {
-            issuerName = "Console";
-        }
+        final String issuerName = gg.modl.minecraft.core.util.CommandUtil.resolveIssuerName(sender, cache, platform);
 
         // Build punishment data
         Map<String, Object> dataMap = new HashMap<>();

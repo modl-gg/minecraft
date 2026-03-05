@@ -23,4 +23,12 @@ public class StaffChatConfig {
 
         return config;
     }
+
+    public String formatMessage(String inGameName, String panelName, String message) {
+        return format
+                .replace("{player}", inGameName)
+                .replace("{panel-name}", panelName != null ? panelName : inGameName)
+                .replace("{message}", message)
+                .replace("&", "§");
+    }
 }

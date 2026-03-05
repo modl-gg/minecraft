@@ -24,21 +24,20 @@ public class VanishService {
         return vanished.contains(uuid);
     }
 
+    /**
+     * Toggle vanish state atomically.
+     * @return true if now vanished, false if now visible
+     */
     public boolean toggle(UUID uuid) {
-        if (vanished.contains(uuid)) {
+        // add() returns false if already present
+        if (!vanished.add(uuid)) {
             vanished.remove(uuid);
-            return false; // now visible
-        } else {
-            vanished.add(uuid);
-            return true; // now vanished
+            return false; // was vanished, now visible
         }
+        return true; // now vanished
     }
 
     public Set<UUID> getVanishedPlayers() {
         return Collections.unmodifiableSet(vanished);
-    }
-
-    public void removePlayer(UUID uuid) {
-        vanished.remove(uuid);
     }
 }

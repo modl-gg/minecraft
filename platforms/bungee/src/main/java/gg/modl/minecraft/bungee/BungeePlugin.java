@@ -105,7 +105,7 @@ public class BungeePlugin extends Plugin {
             // Set executor on bridge service for outgoing messages
             loader.getBridgeService().setExecutor(queryStatWipeExecutor);
         }
-        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), httpManager.isDebugHttp(), mutedCommands, this, loader.getStaffChatService(), loader.getChatManagementService(), loader.getMaintenanceService(), loader.getFreezeService(), loader.getNetworkChatInterceptService(), loader.getChatCommandLogService(), loader.getStaff2faService(), loader.getConfigManager().getStaffChatConfig()));
+        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), httpManager.isDebugHttp(), mutedCommands, this, loader.getStaffChatService(), loader.getChatManagementService(), loader.getMaintenanceService(), loader.getFreezeService(), loader.getNetworkChatInterceptService(), loader.getChatCommandLogService(), loader.getStaff2faService(), loader.getConfigManager().getStaffChatConfig(), loader.getLoginCache()));
 
         // Register async command interceptor — dispatches modl commands off the network thread
         // Uses a named class (not anonymous) to avoid BungeeCord EventBus reflection issues

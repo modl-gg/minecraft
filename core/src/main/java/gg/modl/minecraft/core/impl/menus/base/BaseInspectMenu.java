@@ -231,6 +231,12 @@ public abstract class BaseInspectMenu extends BaseMenu {
     private void handleTargetPlayer(Click click) {
         if (targetUuid == null) return;
 
+        // Cannot target yourself
+        if (targetUuid.equals(viewerUuid)) {
+            platform.sendMessage(viewerUuid, MenuItems.COLOR_RED + "You cannot target yourself");
+            return;
+        }
+
         // Check if player is online
         if (platform.getCache() == null || !platform.getCache().isOnline(targetUuid)) {
             platform.sendMessage(viewerUuid, MenuItems.COLOR_RED + "Player is not online");

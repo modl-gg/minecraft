@@ -291,7 +291,15 @@ public class Cache {
         }
         return null;
     }
-    
+
+    /**
+     * Get display name for a staff member, falling back to the provided fallback name.
+     */
+    public String getDisplayName(UUID playerUuid, String fallback) {
+        String panelName = getStaffDisplayName(playerUuid);
+        return panelName != null ? panelName : fallback;
+    }
+
     public boolean hasPermission(UUID playerUuid, String permission) {
         // Check new staff permissions cache first
         StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
@@ -382,7 +390,7 @@ public class Cache {
             notification.getData() // Preserve additional data like ticket URLs
         );
         
-        pendingNotificationsCache.computeIfAbsent(playerUuid, k -> new ArrayList<>()).add(pending);
+        pendingNotificationsCache.computeIfAbsent(playerUuid, k -> Collections.synchronizedList(new ArrayList<>())).add(pending);
     }
     
     /**
@@ -456,6 +464,13 @@ public class Cache {
      */
     public Map<UUID, CachedPlayerData> getCache() {
         return cache;
+    }
+
+    /**
+     * Get cached player data for a specific player.
+     */
+    public CachedPlayerData getCachedPlayerData(UUID playerUuid) {
+        return cache.get(playerUuid);
     }
     
     @Getter
