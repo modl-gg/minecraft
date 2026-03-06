@@ -13,6 +13,8 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.io.ByteArrayInputStream;
@@ -187,8 +189,8 @@ public class QueryClient {
         }
     }
 
-    @lombok.AllArgsConstructor
-    @lombok.Getter
+    @AllArgsConstructor
+    @Getter
     public static class QueryMessage {
         private final String action;
         private final DataInputStream data;
