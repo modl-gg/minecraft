@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.impl.menus;
 
-import dev.simplix.cirrus.actionhandler.ActionHandler;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -65,7 +64,7 @@ public class ReportDetailsMenu extends SimpleMenu {
                 MenuItems.lore(locale.getMessageList("messages.report_add_details_lore"))
         ).slot(SLOT_ADD_DETAILS).actionHandler("addDetails"));
 
-        set(buildTargetHead("messages.report_skull_details").slot(SLOT_PLAYER_HEAD));
+        set(buildTargetHead().slot(SLOT_PLAYER_HEAD));
 
         set(CirrusItem.of(
                 CirrusItemType.of("minecraft:wooden_sword"),
@@ -76,8 +75,8 @@ public class ReportDetailsMenu extends SimpleMenu {
         set(MenuItems.backButton().slot(SLOT_BACK));
     }
 
-    private CirrusItem buildTargetHead(String localeKey) {
-        List<String> skullLines = locale.getMessageList(localeKey, Map.of("player", target.username()));
+    private CirrusItem buildTargetHead() {
+        List<String> skullLines = locale.getMessageList("messages.report_skull_details", Map.of("player", target.username()));
         CirrusItem head = MenuItems.playerHead(
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
@@ -96,7 +95,7 @@ public class ReportDetailsMenu extends SimpleMenu {
 
     @Override
     protected void registerActionHandlers() {
-        registerActionHandler("addDetails", (ActionHandler) click -> {
+        registerActionHandler("addDetails", click -> {
             click.clickedMenu().close();
             String prompt = locale.getMessage("messages.report_details_prompt", Map.of("player", target.username()));
             ChatInputManager.requestInput(platform, reporter.uuid(), prompt, input -> {
@@ -105,16 +104,14 @@ public class ReportDetailsMenu extends SimpleMenu {
                     reporter, target, httpClient, locale, platform, panelUrl,
                     guiConfig, chatMessageCache, reportData
                 ));
-            }, () -> {
-                displayMenu(new ReportDetailsMenu(
-                    reporter, target, httpClient, locale, platform, panelUrl,
-                    guiConfig, chatMessageCache, reportData, previousMenu
-                ));
-            });
+            }, () -> displayMenu(new ReportDetailsMenu(
+                reporter, target, httpClient, locale, platform, panelUrl,
+                guiConfig, chatMessageCache, reportData, previousMenu
+            )));
             return CallResult.DENY_GRABBING;
         });
 
-        registerActionHandler("skipDetails", (ActionHandler) click -> {
+        registerActionHandler("skipDetails", click -> {
             ActionHandlers.openMenu(new ReportConfirmMenu(
                     reporter, target, httpClient, locale, platform, panelUrl,
                     guiConfig, chatMessageCache, reportData

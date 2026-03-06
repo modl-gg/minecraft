@@ -36,8 +36,4 @@ public abstract class BaseStaffListMenu<T> extends BaseListMenu<T> {
         return items;
     }
 
-    @Override
-    protected void registerActionHandlers() {
-        super.registerActionHandlers();
-    }
 }

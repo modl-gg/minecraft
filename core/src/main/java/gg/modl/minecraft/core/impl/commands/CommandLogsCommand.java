@@ -64,9 +64,7 @@ public class CommandLogsCommand extends BaseCommand {
                 String playerName = response.getData().getCurrentUsername();
                 String targetUuid = response.getData().getMinecraftUuid();
 
-                logService.getCommandLogs(httpClientHolder, targetUuid, MAX_ENTRIES).thenAccept(entries -> {
-                    displayCommandLogs(sender, playerName, entries, requestedPage);
-                }).exceptionally(throwable -> {
+                logService.getCommandLogs(httpClientHolder, targetUuid, MAX_ENTRIES).thenAccept(entries -> displayCommandLogs(sender, playerName, entries, requestedPage)).exceptionally(throwable -> {
                     handleException(sender, throwable);
                     return null;
                 });

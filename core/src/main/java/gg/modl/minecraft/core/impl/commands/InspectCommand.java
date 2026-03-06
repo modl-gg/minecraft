@@ -185,9 +185,7 @@ public class InspectCommand extends BaseCommand {
         httpClientHolder.getClient().lookupPlayer(request).thenAccept(response -> {
             if (response.isSuccess() && response.getData() != null) {
                 UUID playerUuid = UUID.fromString(response.getData().getMinecraftUuid());
-                httpClientHolder.getClient().getLinkedAccounts(playerUuid).thenAccept(linkedResponse -> {
-                    displayPlayerInfo(sender, response.getData(), linkedResponse);
-                }).exceptionally(linkedThrowable -> {
+                httpClientHolder.getClient().getLinkedAccounts(playerUuid).thenAccept(linkedResponse -> displayPlayerInfo(sender, response.getData(), linkedResponse)).exceptionally(linkedThrowable -> {
                     if (linkedThrowable.getCause() instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
                     else displayPlayerInfo(sender, response.getData(), null);
                     return null;

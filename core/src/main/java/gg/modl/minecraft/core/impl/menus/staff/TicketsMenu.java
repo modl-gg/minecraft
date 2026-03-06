@@ -15,6 +15,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,11 +30,9 @@ import java.util.function.Consumer;
 
 public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
     public static class Ticket {
-        private final String id;
-        private final String playerName;
-        private final String title;
-        private final Date created;
-        private final String status;
+        @Getter private final String id, playerName, title;
+        @Getter private final Date created;
+        @Getter private final String status;
         private final boolean hasStaffResponse;
 
         public Ticket(String id, String playerName, String title, Date created, String status, boolean hasStaffResponse) {
@@ -45,11 +44,6 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
             this.hasStaffResponse = hasStaffResponse;
         }
 
-        public String getId() { return id; }
-        public String getPlayerName() { return playerName; }
-        public String getTitle() { return title; }
-        public Date getCreated() { return created; }
-        public String getStatus() { return status; }
         public boolean hasStaffResponse() { return hasStaffResponse; }
     }
 
@@ -167,16 +161,12 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
 
     private String getStatusColor(String status) {
         if (status == null) return MenuItems.COLOR_GRAY;
-        switch (status.toLowerCase()) {
-            case "open":
-                return MenuItems.COLOR_RED;
-            case "unfinished":
-                return MenuItems.COLOR_YELLOW;
-            case "closed":
-                return MenuItems.COLOR_GREEN;
-            default:
-                return MenuItems.COLOR_GRAY;
-        }
+        return switch (status.toLowerCase()) {
+            case "open" -> MenuItems.COLOR_RED;
+            case "unfinished" -> MenuItems.COLOR_YELLOW;
+            case "closed" -> MenuItems.COLOR_GREEN;
+            default -> MenuItems.COLOR_GRAY;
+        };
     }
 
     @Override
@@ -205,7 +195,7 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         registerActionHandler("filter", this::handleFilter);
 
         StaffNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
         registerActionHandler("openTickets", click -> {});

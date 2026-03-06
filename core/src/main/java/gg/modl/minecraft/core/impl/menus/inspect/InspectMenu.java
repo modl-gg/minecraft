@@ -31,7 +31,7 @@ public class InspectMenu extends BaseInspectMenu {
                         .display(player);
 
         InspectNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, targetAccount, inspectBackAction);
     }
 }

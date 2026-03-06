@@ -246,14 +246,14 @@ public class PunishMenu extends BaseInspectMenu {
         super.registerActionHandlers();
 
         for (PunishmentTypesResponse.PunishmentTypeData type : punishmentTypes) {
-            registerActionHandler("punishType_" + type.getOrdinal(), (ActionHandler) click -> {
+            registerActionHandler("punishType_" + type.getOrdinal(), click -> {
                 handlePunishmentType(click, type);
                 return CallResult.DENY_GRABBING;
             });
         }
 
         InspectNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction);
         registerActionHandler("openPunish", click -> {});
     }

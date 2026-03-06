@@ -42,7 +42,6 @@ public abstract class BaseInspectMenu extends BaseMenu {
     }
 
     protected void buildHeader() {
-        fillBorders();
         set(PlayerHeadItemBuilder.create(platform, targetAccount, targetName, targetUuid)
                 .actionHandler("targetPlayer").slot(MenuSlots.INSPECT_PLAYER_HEAD));
         for (Map.Entry<Integer, CirrusItem> entry : InspectTabItems.createItems(targetAccount, targetName).entrySet()) {

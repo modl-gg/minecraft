@@ -70,7 +70,7 @@ public class StaffViewLinkedTicketsMenu extends BaseStaffListMenu<TicketsRespons
         super.registerActionHandlers();
 
         StaffNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 }

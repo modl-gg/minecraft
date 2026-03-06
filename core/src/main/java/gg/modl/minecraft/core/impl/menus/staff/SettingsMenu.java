@@ -149,7 +149,7 @@ public class SettingsMenu extends BaseStaffMenu {
         }
 
         StaffNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
         registerActionHandler("openSettings", click -> {});

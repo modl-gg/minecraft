@@ -234,7 +234,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         super.registerActionHandlers();
 
         InspectNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
         registerActionHandler("openHistory", click -> {});
     }

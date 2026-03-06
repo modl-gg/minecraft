@@ -36,9 +36,9 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     private final PunishmentTypesResponse.PunishmentTypeData punishmentType;
     private final Consumer<CirrusPlayerWrapper> menuBackAction;
     private final Consumer<CirrusPlayerWrapper> rootBackAction;
-    private boolean silentMode = false;
-    private boolean altBlocking = false;
-    private boolean statWipe = false;
+    private final boolean silentMode;
+    private final boolean altBlocking;
+    private final boolean statWipe;
     private final List<String> linkedReportIds;
     private PunishmentPreviewResponse previewData;
 
@@ -276,19 +276,19 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        registerActionHandler("issueSingle", (ActionHandler) click -> {
+        registerActionHandler("issueSingle", click -> {
             issuePunishment(click, 1); // Regular severity for single
             return CallResult.DENY_GRABBING;
         });
-        registerActionHandler("issueLenient", (ActionHandler) click -> {
+        registerActionHandler("issueLenient", click -> {
             issuePunishment(click, 0);
             return CallResult.DENY_GRABBING;
         });
-        registerActionHandler("issueRegular", (ActionHandler) click -> {
+        registerActionHandler("issueRegular", click -> {
             issuePunishment(click, 1);
             return CallResult.DENY_GRABBING;
         });
-        registerActionHandler("issueAggravated", (ActionHandler) click -> {
+        registerActionHandler("issueAggravated", click -> {
             issuePunishment(click, 2);
             return CallResult.DENY_GRABBING;
         });
@@ -299,14 +299,14 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         registerActionHandler("toggleStatWipe", this::handleToggleStatWipe);
 
         // Link Reports handler
-        registerActionHandler("linkReports", (ActionHandler) click -> {
+        registerActionHandler("linkReports", click -> {
             handleLinkReports(click);
             return CallResult.DENY_GRABBING;
         });
 
         // Override header navigation - pass rootBackAction to preserve the back button on primary tabs
         InspectNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction);
     }
 
@@ -353,9 +353,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
 
                             // Send action buttons
                             if (response.getPunishmentId() != null) {
-                                platform.runOnMainThread(() -> {
-                                    PunishmentActionMessages.sendPunishmentActions(platform, viewerUuid, response.getPunishmentId());
-                                });
+                                platform.runOnMainThread(() -> PunishmentActionMessages.sendPunishmentActions(platform, viewerUuid, response.getPunishmentId()));
                             }
 
                             // Resolve linked reports
@@ -417,11 +415,9 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                 .display(click.player());
         };
 
-        Consumer<CirrusPlayerWrapper> backToSeverity = player -> {
-            new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType,
-                    rootBackAction, menuBackAction, silentMode, altBlocking, statWipe, linkedReportIds)
-                    .display(player);
-        };
+        Consumer<CirrusPlayerWrapper> backToSeverity = player -> new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType,
+                rootBackAction, menuBackAction, silentMode, altBlocking, statWipe, linkedReportIds)
+                .display(player);
 
         ActionHandlers.openMenu(
                 new LinkReportsMenu(platform, httpClient, viewerUuid, viewerName,

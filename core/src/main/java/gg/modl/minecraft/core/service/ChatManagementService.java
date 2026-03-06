@@ -1,5 +1,7 @@
 package gg.modl.minecraft.core.service;
 
+import lombok.Getter;
+
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,13 +13,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ChatManagementService {
     private static final long MILLIS_PER_SECOND = 1000L;
 
-    private volatile boolean chatEnabled = true;
+    @Getter private volatile boolean chatEnabled = true;
     private volatile int slowModeSeconds = 0;
     private final Map<UUID, Long> lastMessageTime = new ConcurrentHashMap<>();
-
-    public boolean isChatEnabled() {
-        return chatEnabled;
-    }
 
     /** @return the new state (true = enabled) */
     public boolean toggleChat() {

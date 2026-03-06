@@ -1,10 +1,12 @@
 package gg.modl.minecraft.core.service;
 
 import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
+import lombok.Setter;
 
 /**
  * Lazy bridge to QueryStatWipeExecutor, set after plugin initialization.
  */
+@Setter
 public class BridgeService {
     private static final String CMD_STAFF_MODE_ENTER = "STAFF_MODE_ENTER";
     private static final String CMD_STAFF_MODE_EXIT = "STAFF_MODE_EXIT";
@@ -15,10 +17,6 @@ public class BridgeService {
     private static final String CMD_TARGET_REQUEST = "TARGET_REQUEST";
 
     private volatile QueryStatWipeExecutor executor;
-
-    public void setExecutor(QueryStatWipeExecutor executor) {
-        this.executor = executor;
-    }
 
     public boolean isAvailable() {
         return executor != null;

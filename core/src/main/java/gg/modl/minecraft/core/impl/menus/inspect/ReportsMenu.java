@@ -17,6 +17,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,6 +31,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
+    @Getter
     public static class Report {
         private final String id;
         private final String type;
@@ -47,12 +49,6 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
             this.status = status;
         }
 
-        public String getId() { return id; }
-        public String getType() { return type; }
-        public String getReporterName() { return reporterName; }
-        public String getContent() { return content; }
-        public Date getDate() { return date; }
-        public String getStatus() { return status; }
     }
 
     private final List<Report> reports = new ArrayList<>();
@@ -191,7 +187,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
 
         registerActionHandler("filter", this::handleFilter);
         InspectNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
         registerActionHandler("openReports", click -> {});
     }

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class StreamingJsonWriter implements AutoCloseable {
     private final JsonWriter jsonWriter;
@@ -65,8 +66,7 @@ public class StreamingJsonWriter implements AutoCloseable {
             if (ip.asn != null) jsonWriter.name("asn").value(ip.asn);
             if (ip.proxy != null) jsonWriter.name("proxy").value(ip.proxy);
             if (ip.hosting != null) jsonWriter.name("hosting").value(ip.hosting);
-            if (ip.firstLogin != null) jsonWriter.name("firstLogin").value(ip.firstLogin);
-            else jsonWriter.name("firstLogin").value("");
+            jsonWriter.name("firstLogin").value(Objects.requireNonNullElse(ip.firstLogin, ""));
             jsonWriter.name("logins");
             jsonWriter.beginArray();
             if (ip.logins != null) {

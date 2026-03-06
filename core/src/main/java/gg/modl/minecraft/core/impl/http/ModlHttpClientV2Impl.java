@@ -724,9 +724,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         if (debugMode) {
             logger.info(String.format("[V2-REQ-%s] %s %s", requestId, request.method(), request.uri()));
             logger.info(String.format("[V2-REQ-%s] Headers: %s", requestId, request.headers().map()));
-            request.bodyPublisher().ifPresent(body -> {
-                logger.info(String.format("[V2-REQ-%s] Body present: %s", requestId, body.getClass().getSimpleName()));
-            });
+            request.bodyPublisher().ifPresent(body -> logger.info(String.format("[V2-REQ-%s] Body present: %s", requestId, body.getClass().getSimpleName())));
         }
 
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())

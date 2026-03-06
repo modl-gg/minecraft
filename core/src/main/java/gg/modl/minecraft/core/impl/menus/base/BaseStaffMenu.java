@@ -34,7 +34,6 @@ public abstract class BaseStaffMenu extends BaseMenu {
     }
 
     protected void buildHeader() {
-        fillBorders();
         for (Map.Entry<Integer, CirrusItem> entry : StaffTabItems.createItems().entrySet()) {
             set(entry.getValue().slot(entry.getKey()));
         }

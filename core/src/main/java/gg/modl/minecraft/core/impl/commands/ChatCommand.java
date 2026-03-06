@@ -82,9 +82,7 @@ public class ChatCommand extends BaseCommand {
     public void clear(CommandIssuer sender, @Default() String countArg) {
         int lines = parseClearLineCount(countArg);
 
-        StringBuilder clearMessage = new StringBuilder();
-        for (int i = 0; i < lines; i++) clearMessage.append("\n");
-        platform.broadcast(clearMessage.toString());
+        platform.broadcast("\n".repeat(Math.max(0, lines)));
 
         String inGameName = getInGameName(sender);
         String panelName = getPanelName(sender, inGameName);

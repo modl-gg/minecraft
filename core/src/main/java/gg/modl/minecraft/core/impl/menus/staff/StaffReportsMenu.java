@@ -17,6 +17,7 @@ import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,6 +31,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report> {
+    @Getter
     public static class Report {
         private final String id;
         private final String type;
@@ -52,14 +54,6 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
             this.status = status;
         }
 
-        public String getId() { return id; }
-        public String getType() { return type; }
-        public String getReporterName() { return reporterName; }
-        public UUID getReportedPlayerUuid() { return reportedPlayerUuid; }
-        public String getReportedPlayerName() { return reportedPlayerName; }
-        public String getContent() { return content; }
-        public Date getDate() { return date; }
-        public String getStatus() { return status; }
     }
 
     private final List<Report> reports = new ArrayList<>();
@@ -234,7 +228,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         registerActionHandler("filter", this::handleFilter);
 
         StaffNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
         registerActionHandler("openReports", click -> {});

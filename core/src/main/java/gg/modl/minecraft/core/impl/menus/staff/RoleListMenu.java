@@ -15,6 +15,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.util.Permissions;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -24,6 +25,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
+    @Getter
     public static class Role {
         private final String id;
         private final String name;
@@ -37,10 +39,6 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
             this.permissions = permissions;
         }
 
-        public String getId() { return id; }
-        public String getName() { return name; }
-        public String getDescription() { return description; }
-        public List<String> getPermissions() { return permissions; }
     }
 
     private final List<Role> roles = new ArrayList<>();
@@ -151,7 +149,7 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
         super.registerActionHandlers();
 
         StaffNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 }

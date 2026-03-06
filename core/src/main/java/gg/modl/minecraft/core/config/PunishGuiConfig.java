@@ -7,10 +7,8 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 import gg.modl.minecraft.core.util.PluginLogger;
 
 @Data
@@ -154,7 +152,7 @@ public class PunishGuiConfig {
     public List<PunishSlotConfig> getEnabledSlots() {
         return slots.values().stream()
                 .filter(PunishSlotConfig::isEnabled)
-                .sorted((a, b) -> Integer.compare(a.getSlotNumber(), b.getSlotNumber()))
+                .sorted(Comparator.comparingInt(PunishSlotConfig::getSlotNumber))
                 .toList();
     }
 

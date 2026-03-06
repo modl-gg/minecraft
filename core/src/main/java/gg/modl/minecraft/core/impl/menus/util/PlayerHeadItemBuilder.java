@@ -9,12 +9,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.WebPlayer;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public final class PlayerHeadItemBuilder {
@@ -28,7 +23,7 @@ public final class PlayerHeadItemBuilder {
         if (!targetAccount.getUsernames().isEmpty()) {
             Date earliest = targetAccount.getUsernames().stream()
                     .map(Account.Username::getDate)
-                    .filter(d -> d != null)
+                    .filter(Objects::nonNull)
                     .min(Date::compareTo)
                     .orElse(null);
             if (earliest != null) firstLogin = MenuItems.formatDate(earliest);
@@ -49,7 +44,7 @@ public final class PlayerHeadItemBuilder {
         } else if (!targetAccount.getUsernames().isEmpty()) {
             Date latest = targetAccount.getUsernames().stream()
                     .map(Account.Username::getDate)
-                    .filter(d -> d != null)
+                    .filter(Objects::nonNull)
                     .max(Date::compareTo)
                     .orElse(null);
             if (latest != null) lastSeenOrSessionTime = MenuItems.formatDate(latest);

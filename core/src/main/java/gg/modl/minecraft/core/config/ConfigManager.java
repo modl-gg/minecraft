@@ -88,28 +88,22 @@ public class ConfigManager {
         try {
             Map<?, ?> itemsMap = null;
             Path configFile = dataFolder.resolve("config.yml");
-            if (Files.exists(configFile)) {
-                try (InputStream is = Files.newInputStream(configFile)) {
-                    Map<String, Object> root = yaml.load(is);
-                    if (root != null && root.containsKey("punishment_type_items_by_ordinal")) {
-                        itemsMap = (Map<?, ?>) root.get("punishment_type_items_by_ordinal");
-                    }
-                }
+            if (Files.exists(configFile)) try (InputStream is = Files.newInputStream(configFile)) {
+                Map<String, Object> root = yaml.load(is);
+                if (root != null && root.containsKey("punishment_type_items_by_ordinal"))
+                    itemsMap = (Map<?, ?>) root.get("punishment_type_items_by_ordinal");
             }
-            if (itemsMap != null) {
-                for (Map.Entry<?, ?> entry : itemsMap.entrySet()) {
-                    try {
-                        int ordinal = entry.getKey() instanceof Integer ? (Integer) entry.getKey() : Integer.parseInt(entry.getKey().toString());
-                        String itemId = entry.getValue().toString();
-                        String[] parts = itemId.split(":");
-                        if (parts.length > 2) itemId = parts[0] + ":" + parts[1];
-                        items.put(ordinal, itemId);
-                    } catch (NumberFormatException ignored) {}
-                }
-            }
-        } catch (Exception e) {
-            logger.warning("Failed to load punishment type items: " + e.getMessage());
-        }
+
+            if (itemsMap != null) for (Map.Entry<?, ?> entry : itemsMap.entrySet())
+                try {
+                    int ordinal = entry.getKey() instanceof Integer ? (Integer) entry.getKey() : Integer.parseInt(entry.getKey().toString());
+                    String itemId = entry.getValue().toString();
+                    String[] parts = itemId.split(":");
+                    if (parts.length > 2) itemId = parts[0] + ":" + parts[1];
+                    items.put(ordinal, itemId);
+                } catch (NumberFormatException ignored) {}
+
+        } catch (Exception e) { logger.warning("Failed to load punishment type items: " + e.getMessage()); }
         return items;
     }
 
@@ -136,9 +130,8 @@ public class ConfigManager {
         if (data.containsKey("clear_lines")) {
             Object val = data.get("clear_lines");
             if (val instanceof Number) config.clearLines = ((Number) val).intValue();
-            else if (val instanceof String) {
+            else if (val instanceof String)
                 try { config.clearLines = Integer.parseInt((String) val); } catch (NumberFormatException ignored) {}
-            }
         }
 
         return config;
@@ -280,7 +273,7 @@ public class ConfigManager {
             List<String> lines = Files.readAllLines(configFile, StandardCharsets.UTF_8);
 
             migratePunishGuiSection(lines);
-            migrateSection(lines, "report_gui", "report_gui.yml");
+            migrateSection(lines);
             List<String> sectionsToRemove = List.of(
                     "punish_gui", "report_gui",
                     "staff_members_menu"
@@ -306,15 +299,15 @@ public class ConfigManager {
         logger.info("Migrated punish GUI config from config.yml to punish_gui.yml");
     }
 
-    private void migrateSection(List<String> lines, String sectionKey, String fileName) throws IOException {
-        Path targetFile = dataFolder.resolve(fileName);
+    private void migrateSection(List<String> lines) throws IOException {
+        Path targetFile = dataFolder.resolve("report_gui.yml");
         if (Files.exists(targetFile)) return;
 
-        String content = extractAndUnindentSection(lines, sectionKey);
+        String content = extractAndUnindentSection(lines, "report_gui");
         if (content == null) return;
 
         Files.writeString(targetFile, content.stripTrailing() + "\n", StandardCharsets.UTF_8);
-        logger.info("Migrated " + sectionKey + " from config.yml to " + fileName);
+        logger.info("Migrated " + "report_gui" + " from config.yml to " + "report_gui.yml");
     }
 
     static String extractAndUnindentSection(List<String> lines, String key) {
@@ -330,7 +323,7 @@ public class ConfigManager {
         List<String> content = new ArrayList<>();
         for (int i = start; i < lines.size(); i++) {
             String line = lines.get(i);
-            if (!line.isEmpty() && !line.isBlank() && !Character.isWhitespace(line.charAt(0))) break;
+            if (!line.isBlank() && !Character.isWhitespace(line.charAt(0))) break;
             content.add(line);
         }
 
@@ -372,7 +365,7 @@ public class ConfigManager {
                 i++;
                 while (i < lines.size()) {
                     String line = lines.get(i);
-                    if (!line.isEmpty() && !line.isBlank() && !Character.isWhitespace(line.charAt(0))) {
+                    if (!line.isBlank() && !Character.isWhitespace(line.charAt(0))) {
                         break;
                     }
                     i++;

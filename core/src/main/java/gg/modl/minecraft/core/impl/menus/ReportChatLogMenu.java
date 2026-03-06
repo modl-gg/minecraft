@@ -95,7 +95,7 @@ public class ReportChatLogMenu extends SimpleMenu {
 
     @Override
     protected void registerActionHandlers() {
-        registerActionHandler("attachChat", (ActionHandler) click -> {
+        registerActionHandler("attachChat", click -> {
             String chatLog = chatMessageCache.getChatLogForReport(
                     target.uuid().toString(),
                     reporter.uuid().toString()
@@ -110,12 +110,12 @@ public class ReportChatLogMenu extends SimpleMenu {
             return CallResult.DENY_GRABBING;
         });
 
-        registerActionHandler("skipChat", (ActionHandler) click -> {
+        registerActionHandler("skipChat", click -> {
             openDetailsMenu(click);
             return CallResult.DENY_GRABBING;
         });
 
-        registerActionHandler("back", (ActionHandler) click -> {
+        registerActionHandler("back", click -> {
             ActionHandlers.openMenu(new ReportMenu(
                     reporter, target, httpClient, locale, platform, panelUrl,
                     guiConfig, chatMessageCache

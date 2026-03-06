@@ -90,9 +90,7 @@ public class AltsCommand extends BaseCommand {
                 String playerName = response.getData().getCurrentUsername();
                 UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
 
-                httpClientHolder.getClient().getLinkedAccounts(targetUuid).thenAccept(linkedResponse -> {
-                    displayAlts(sender, playerName, linkedResponse.getLinkedAccounts());
-                }).exceptionally(throwable -> {
+                httpClientHolder.getClient().getLinkedAccounts(targetUuid).thenAccept(linkedResponse -> displayAlts(sender, playerName, linkedResponse.getLinkedAccounts())).exceptionally(throwable -> {
                     if (throwable.getCause() instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
                     else displayAlts(sender, playerName, List.of()); // Show empty list on error
                     return null;

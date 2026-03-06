@@ -17,6 +17,7 @@ import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,6 +34,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu.Report> {
+    @Getter
     public static class Report {
         private final String id;
         private final String type;
@@ -48,11 +50,6 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
             this.date = date;
         }
 
-        public String getId() { return id; }
-        public String getType() { return type; }
-        public String getReporterName() { return reporterName; }
-        public String getContent() { return content; }
-        public Date getDate() { return date; }
     }
 
     private final Account targetAccount;
@@ -200,24 +197,24 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
         super.registerActionHandlers();
 
         StaffNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
         registerActionHandler("filter", this::handleFilter);
 
-        registerActionHandler("applySelection", (ActionHandler) click -> {
+        registerActionHandler("applySelection", click -> {
             handleApply(click);
             return CallResult.DENY_GRABBING;
         });
 
-        registerActionHandler("selectAll", (ActionHandler) click -> {
+        registerActionHandler("selectAll", click -> {
             handleSelectAll(click);
             return CallResult.DENY_GRABBING;
         });
 
         for (Report report : reports) {
             if (report.getId() != null) {
-                registerActionHandler("toggleReport_" + report.getId(), (ActionHandler) click -> {
+                registerActionHandler("toggleReport_" + report.getId(), click -> {
                     handleClick(click, report);
                     return CallResult.DENY_GRABBING;
                 });

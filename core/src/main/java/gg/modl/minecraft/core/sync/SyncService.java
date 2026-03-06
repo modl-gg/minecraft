@@ -19,6 +19,7 @@ import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.database.DatabaseConfig;
 import gg.modl.minecraft.core.service.database.JdbcDatabaseProvider;
 import gg.modl.minecraft.core.util.StaffPermissionLoader;
+import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -76,7 +77,7 @@ public class SyncService {
     private volatile Long lastKnownStaffPermissionsTimestamp = null;
     private volatile Long lastKnownPunishmentTypesTimestamp = null;
     private int syncCycleCount = 0;
-    private StatWipeExecutor statWipeExecutor;
+    @Setter private StatWipeExecutor statWipeExecutor;
     private final Staff2faService staff2faService;
     private final ChatCommandLogService chatCommandLogService;
 
@@ -107,10 +108,6 @@ public class SyncService {
 
     public void addPunishmentTypesListener(PunishmentTypesRefreshListener listener) {
         punishmentTypesListeners.add(listener);
-    }
-
-    public void setStatWipeExecutor(StatWipeExecutor executor) {
-        this.statWipeExecutor = executor;
     }
 
     public void start() {

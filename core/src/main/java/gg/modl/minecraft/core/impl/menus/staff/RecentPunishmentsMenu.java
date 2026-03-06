@@ -18,11 +18,13 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import lombok.Getter;
 
 import java.util.*;
 import java.util.function.Consumer;
 
 public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMenu.PunishmentWithPlayer> {
+    @Getter
     public static class PunishmentWithPlayer {
         private final Punishment punishment;
         private final UUID playerUuid;
@@ -36,10 +38,6 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
             this.account = account;
         }
 
-        public Punishment getPunishment() { return punishment; }
-        public UUID getPlayerUuid() { return playerUuid; }
-        public String getPlayerName() { return playerName; }
-        public Account getAccount() { return account; }
     }
 
     private final List<PunishmentWithPlayer> recentPunishments;
@@ -95,9 +93,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
                     recentPunishments.add(new PunishmentWithPlayer(punishment, playerUuid, p.getPlayerName(), null));
                 }
             }
-        }).exceptionally(e -> {
-            return null;
-        });
+        }).exceptionally(e -> null);
     }
 
     @Override
@@ -294,7 +290,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         super.registerActionHandlers();
 
         StaffNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
         registerActionHandler("openPunishments", click -> {});

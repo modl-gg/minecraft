@@ -90,7 +90,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
 
         List<Punishment> activePunishments = alt.getPunishments().stream()
                 .filter(Punishment::isActive)
-                .collect(Collectors.toList());
+                .toList();
         long activeCount = activePunishments.size();
         long inactiveCount = alt.getPunishments().size() - activeCount;
 
@@ -111,7 +111,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         if (!alt.getUsernames().isEmpty()) {
             Date earliest = alt.getUsernames().stream()
                     .map(Account.Username::getDate)
-                    .filter(d -> d != null)
+                    .filter(Objects::nonNull)
                     .min(Date::compareTo)
                     .orElse(null);
             if (earliest != null) firstLogin = MenuItems.formatDate(earliest);
@@ -121,7 +121,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         if (!alt.getUsernames().isEmpty()) {
             Date latest = alt.getUsernames().stream()
                     .map(Account.Username::getDate)
-                    .filter(d -> d != null)
+                    .filter(Objects::nonNull)
                     .max(Date::compareTo)
                     .orElse(null);
             if (latest != null) lastSeenOrSessionTime = MenuItems.formatDate(latest);
@@ -237,7 +237,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         super.registerActionHandlers();
 
         InspectNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
         registerActionHandler("openAlts", click -> {});
     }

@@ -34,6 +34,7 @@ public class QueryClient {
     private static final int CONNECT_TIMEOUT_MS = 5000;
     private static final int MAX_FRAME_LENGTH = 65536;
 
+    @Getter
     private final String serverName;
     private final String host;
     private final int port;
@@ -115,10 +116,6 @@ public class QueryClient {
 
     public boolean isConnected() {
         return connected && channel != null && channel.isActive();
-    }
-
-    public String getServerName() {
-        return serverName;
     }
 
     void sendTypedMessage(String action, String... args) {

@@ -77,7 +77,7 @@ public abstract class BaseListMenu<T> extends AbstractBrowser<T> {
 
     @Override
     protected void registerActionHandlers() {
-        registerActionHandler("back", (dev.simplix.cirrus.actionhandler.ActionHandler) click -> {
+        registerActionHandler("back", click -> {
             handleBack(click);
             return dev.simplix.cirrus.model.CallResult.DENY_GRABBING;
         });

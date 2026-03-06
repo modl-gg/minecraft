@@ -167,7 +167,7 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
         super.registerActionHandlers();
 
         StaffNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
         registerActionHandler("addNote", modActions::handleAddNote);
@@ -180,11 +180,9 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
     }
 
     private void handleLinkedTickets(Click click) {
-        Consumer<CirrusPlayerWrapper> backToModify = player -> {
-            new StaffModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
-                targetAccount, punishment, isAdmin, panelUrl, menuBackAction)
-                .display(player);
-        };
+        Consumer<CirrusPlayerWrapper> backToModify = player -> new StaffModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
+            targetAccount, punishment, isAdmin, panelUrl, menuBackAction)
+            .display(player);
 
         if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
             Set<String> currentIds = new LinkedHashSet<>(punishment.getAttachedTicketIds());

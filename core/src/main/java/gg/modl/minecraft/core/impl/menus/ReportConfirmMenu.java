@@ -96,18 +96,18 @@ public class ReportConfirmMenu extends SimpleMenu {
 
     @Override
     protected void registerActionHandlers() {
-        registerActionHandler("confirm", (ActionHandler) click -> {
+        registerActionHandler("confirm", click -> {
             click.clickedMenu().close();
             submitReport();
             return CallResult.DENY_GRABBING;
         });
 
-        registerActionHandler("cancel", (ActionHandler) click -> {
+        registerActionHandler("cancel", click -> {
             click.clickedMenu().close();
             return CallResult.DENY_GRABBING;
         });
 
-        registerActionHandler("back", (ActionHandler) click -> {
+        registerActionHandler("back", click -> {
             ActionHandlers.openMenu(new ReportDetailsMenu(
                     reporter, target, httpClient, locale, platform, panelUrl,
                     guiConfig, chatMessageCache, reportData, null
@@ -186,9 +186,7 @@ public class ReportConfirmMenu extends SimpleMenu {
         );
 
         UUID reporterUuid = reporter.uuid();
-        platform.runOnMainThread(() -> {
-            platform.sendJsonMessage(reporterUuid, clickableMessage);
-        });
+        platform.runOnMainThread(() -> platform.sendJsonMessage(reporterUuid, clickableMessage));
     }
 
     private void sendMessage(String message) {

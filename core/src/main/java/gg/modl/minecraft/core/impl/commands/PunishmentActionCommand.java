@@ -118,9 +118,7 @@ public class PunishmentActionCommand extends BaseCommand {
                             punishmentId, senderName, url
                     );
 
-                    httpClientHolder.getClient().addPunishmentEvidence(request).thenAccept(v -> {
-                        platform.sendMessage(senderUuid, localeManager.getMessage("punishment_action.evidence_linked", Map.of("id", punishmentId)));
-                    }).exceptionally(throwable -> {
+                    httpClientHolder.getClient().addPunishmentEvidence(request).thenAccept(v -> platform.sendMessage(senderUuid, localeManager.getMessage("punishment_action.evidence_linked", Map.of("id", punishmentId)))).exceptionally(throwable -> {
                         platform.sendMessage(senderUuid, localeManager.getMessage("punishment_action.evidence_link_failed", Map.of("error", throwable.getMessage())));
                         return null;
                     });

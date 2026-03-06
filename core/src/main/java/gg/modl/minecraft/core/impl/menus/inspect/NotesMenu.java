@@ -114,7 +114,7 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
 
         registerActionHandler("createNote", this::handleCreateNote);
         InspectNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
         registerActionHandler("openNotes", click -> {});
     }

@@ -17,6 +17,7 @@ import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.WebPlayer;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,6 +32,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMemberEntry> {
+    @Getter
     public static class StaffMemberEntry {
         private final String id;
         private final String panelName;
@@ -58,20 +60,10 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
             this.sessionDuration = sessionDuration;
         }
 
-        public String getId() { return id; }
-        public String getPanelName() { return panelName; }
-        public String getRole() { return role; }
-        public UUID getMinecraftUuid() { return minecraftUuid; }
-        public String getMinecraftUsername() { return minecraftUsername; }
-        public Date getLastSeen() { return lastSeen; }
-        public Long getTotalPlaytimeMs() { return totalPlaytimeMs; }
-        public int getPunishmentsIssuedCount() { return punishmentsIssuedCount; }
-        public boolean isOnline() { return online; }
-        public long getSessionDuration() { return sessionDuration; }
     }
 
     private List<StaffMemberEntry> staffMembers = new ArrayList<>();
-    private String currentFilter = "Online";
+    private String currentFilter;
     private final List<String> filterOptions = Arrays.asList("Online", "Offline", "All");
     private final String panelUrl;
 
@@ -179,18 +171,11 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
 
     @Override
     protected Collection<StaffMemberEntry> elements() {
-        List<StaffMemberEntry> filtered;
-        switch (currentFilter) {
-            case "Online":
-                filtered = staffMembers.stream().filter(StaffMemberEntry::isOnline).collect(Collectors.toList());
-                break;
-            case "Offline":
-                filtered = staffMembers.stream().filter(e -> !e.isOnline()).collect(Collectors.toList());
-                break;
-            default:
-                filtered = new ArrayList<>(staffMembers);
-                break;
-        }
+        List<StaffMemberEntry> filtered = switch (currentFilter) {
+            case "Online" -> staffMembers.stream().filter(StaffMemberEntry::isOnline).collect(Collectors.toList());
+            case "Offline" -> staffMembers.stream().filter(e -> !e.isOnline()).collect(Collectors.toList());
+            default -> new ArrayList<>(staffMembers);
+        };
 
         if (filtered.isEmpty())
             return Collections.singletonList(new StaffMemberEntry(null, null, null, null, null, null, null, 0, false, 0));
@@ -238,7 +223,7 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
         registerActionHandler("filter", this::handleFilter);
 
         StaffNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 

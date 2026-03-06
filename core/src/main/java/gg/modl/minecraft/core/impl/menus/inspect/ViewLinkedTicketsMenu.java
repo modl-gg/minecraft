@@ -67,7 +67,7 @@ public class ViewLinkedTicketsMenu extends BaseInspectListMenu<TicketsResponse.T
         super.registerActionHandlers();
 
         InspectNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction);
     }
 }

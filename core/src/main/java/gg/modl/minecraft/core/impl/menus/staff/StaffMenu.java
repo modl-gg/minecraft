@@ -12,8 +12,9 @@ import lombok.Getter;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+@Getter
 public class StaffMenu extends BaseStaffMenu {
-    @Getter private final String panelUrl;
+    private final String panelUrl;
 
     public StaffMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                      boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
@@ -30,7 +31,7 @@ public class StaffMenu extends BaseStaffMenu {
         super.registerActionHandlers();
 
         StaffNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 }

@@ -21,23 +21,18 @@ import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.util.Permissions;
 import gg.modl.minecraft.core.util.WebPlayer;
+import lombok.Getter;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.OnlinePlayer> {
     public static class OnlinePlayer {
-        private final UUID uuid;
-        private final String name;
+        @Getter private final UUID uuid;
+        @Getter private final String name;
         private final long sessionStartTime;
-        private final long totalPlaytime;
-        private final int punishmentCount;
+        @Getter private final long totalPlaytime;
+        @Getter private final int punishmentCount;
 
         public OnlinePlayer(UUID uuid, String name, long sessionStartTime, long totalPlaytime, int punishmentCount) {
             this.uuid = uuid;
@@ -47,15 +42,11 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
             this.punishmentCount = punishmentCount;
         }
 
-        public UUID getUuid() { return uuid; }
-        public String getName() { return name; }
-        public long getTotalPlaytime() { return totalPlaytime; }
-        public int getPunishmentCount() { return punishmentCount; }
         public long getSessionDuration() { return System.currentTimeMillis() - sessionStartTime; }
     }
 
     private List<OnlinePlayer> onlinePlayers = new ArrayList<>();
-    private String currentSort = "Recent Reports";
+    private String currentSort;
     private final List<String> sortOptions = Arrays.asList("Least Playtime", "Recent Reports", "Longest Session");
     private final String panelUrl;
 
@@ -122,7 +113,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
         switch (currentSort) {
             case "Least Playtime":
-                sorted.sort((p1, p2) -> Long.compare(p1.getTotalPlaytime(), p2.getTotalPlaytime()));
+                sorted.sort(Comparator.comparingLong(OnlinePlayer::getTotalPlaytime));
                 break;
             case "Longest Session":
                 sorted.sort((p1, p2) -> Long.compare(p2.getSessionDuration(), p1.getSessionDuration()));
@@ -249,7 +240,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
         registerActionHandler("sort", this::handleSort);
 
         StaffNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
         registerActionHandler("openOnlinePlayers", click -> {});

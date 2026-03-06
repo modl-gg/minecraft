@@ -103,7 +103,7 @@ public class ReportMenu extends SimpleMenu {
             if (slotConfig == null || !slotConfig.isEnabled()) continue;
 
             final ReportGuiConfig.ReportSlotConfig finalSlot = slotConfig;
-            registerActionHandler("category_" + configSlot, (ActionHandler) click -> {
+            registerActionHandler("category_" + configSlot, click -> {
                 ReportData reportData = new ReportData(finalSlot.getTitle(), finalSlot.isChatReport());
 
                 if (finalSlot.isChatReport()) {

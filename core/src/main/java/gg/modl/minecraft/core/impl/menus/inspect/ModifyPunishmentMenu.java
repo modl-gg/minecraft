@@ -244,7 +244,7 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         super.registerActionHandlers();
 
         InspectNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction);
 
         registerActionHandler("addNote", modActions::handleAddNote);
@@ -266,11 +266,9 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
             }
 
             Set<String> currentIds = new LinkedHashSet<>(punishment.getAttachedTicketIds());
-            Consumer<CirrusPlayerWrapper> backToModify = player -> {
-                new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
-                    targetAccount, punishment, rootBackAction, menuBackAction)
-                    .display(player);
-            };
+            Consumer<CirrusPlayerWrapper> backToModify = player -> new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
+                targetAccount, punishment, rootBackAction, menuBackAction)
+                .display(player);
 
             LinkReportsMenu linkMenu = new LinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
                     targetAccount, currentIds, backToModify, rootBackAction, selectedIds -> {
@@ -308,11 +306,9 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
             dev.simplix.cirrus.actionhandler.ActionHandlers.openMenu(linkMenu).handle(click);
         } else {
             List<String> ticketIds = punishment.getAttachedTicketIds();
-            Consumer<CirrusPlayerWrapper> backToModify = player -> {
-                new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
-                    targetAccount, punishment, rootBackAction, menuBackAction)
-                    .display(player);
-            };
+            Consumer<CirrusPlayerWrapper> backToModify = player -> new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
+                targetAccount, punishment, rootBackAction, menuBackAction)
+                .display(player);
 
             ViewLinkedTicketsMenu viewMenu = new ViewLinkedTicketsMenu(
                     platform, httpClient, viewerUuid, viewerName, targetAccount, ticketIds, backToModify, rootBackAction);

@@ -5,10 +5,7 @@ import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.StringUtil;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public final class ReportRenderUtil {
 
@@ -59,7 +56,7 @@ public final class ReportRenderUtil {
         account.getUsernames();
         if (!account.getUsernames().isEmpty()) {
             return account.getUsernames().stream()
-                    .max((u1, u2) -> u1.getDate().compareTo(u2.getDate()))
+                    .max(Comparator.comparing(Account.Username::getDate))
                     .map(Account.Username::getUsername)
                     .orElse("Unknown");
         }

@@ -34,10 +34,10 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEditMenu.Permission> {
-    @AllArgsConstructor
+    @Getter @AllArgsConstructor
     public static class Permission {
-        @Getter private final String node;
-        @Setter @Getter private boolean enabled;
+        private final String node;
+        @Setter private boolean enabled;
     }
 
     private final RoleListMenu.Role role;
@@ -254,13 +254,13 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        registerActionHandler("applyPermissions", (ActionHandler) click -> {
+        registerActionHandler("applyPermissions", click -> {
             handleApply(click);
             return CallResult.DENY_GRABBING;
         });
 
         StaffNavigationHandlers.registerAll(
-                (name, handler) -> registerActionHandler(name, handler),
+                this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 

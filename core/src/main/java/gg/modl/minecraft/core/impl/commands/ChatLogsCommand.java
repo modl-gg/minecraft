@@ -64,9 +64,7 @@ public class ChatLogsCommand extends BaseCommand {
                 String playerName = response.getData().getCurrentUsername();
                 String targetUuid = response.getData().getMinecraftUuid();
 
-                logService.getChatLogs(httpClientHolder, targetUuid, MAX_ENTRIES).thenAccept(entries -> {
-                    displayChatLogs(sender, playerName, entries, requestedPage);
-                }).exceptionally(throwable -> {
+                logService.getChatLogs(httpClientHolder, targetUuid, MAX_ENTRIES).thenAccept(entries -> displayChatLogs(sender, playerName, entries, requestedPage)).exceptionally(throwable -> {
                     handleException(sender, throwable);
                     return null;
                 });

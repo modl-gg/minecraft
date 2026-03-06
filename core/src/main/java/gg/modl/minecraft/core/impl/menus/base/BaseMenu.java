@@ -41,9 +41,6 @@ public abstract class BaseMenu extends SimpleMenu {
         type(inventoryType);
     }
 
-    @Deprecated
-    protected void fillBorders() {}
-
     protected void addBackButton() {
         if (backAction != null) set(MenuItems.backButton().slot(MenuSlots.BACK_BUTTON));
     }

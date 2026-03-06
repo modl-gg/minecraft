@@ -69,7 +69,7 @@ public class ChatMessageCache {
         List<ChatMessage> relevantMessages = allMessages.stream()
                 .filter(msg -> !msg.getTimestamp().isBefore(startTimestamp))
                 .sorted(Comparator.comparing(ChatMessage::getTimestamp))
-                .collect(Collectors.toList());
+                .toList();
 
         if (relevantMessages.isEmpty()) return "";
 
@@ -100,7 +100,7 @@ public class ChatMessageCache {
     private Instant determineReportStartTimestamp(List<ChatMessage> allMessages, String reportedPlayerUuid) {
         List<ChatMessage> reportedMessages = allMessages.stream()
                 .filter(msg -> msg.getPlayerUuid().equals(reportedPlayerUuid))
-                .collect(Collectors.toList());
+                .toList();
 
         if (reportedMessages.isEmpty()) {
             return Instant.now().minusSeconds(REPORT_FALLBACK_SECONDS);

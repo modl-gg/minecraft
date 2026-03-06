@@ -94,12 +94,10 @@ public class LocaleManager {
             value = getNestedValue(messages, path);
         }
 
-        if (value instanceof String) {
-            String message = (String) value;
-
-            for (Map.Entry<String, String> entry : placeholders.entrySet()) {
+        if (value instanceof String message) {
+            for (Map.Entry<String, String> entry : placeholders.entrySet())
                 message = message.replace("{" + entry.getKey() + "}", entry.getValue());
-            }
+
             return colorize(message);
         }
         return "&cMissing locale: " + path;
