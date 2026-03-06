@@ -184,11 +184,9 @@ public class Cache {
     }
 
     public boolean hasPermission(UUID playerUuid, String permission) {
-        // Check bulk-loaded permissions first (available for all staff, even offline)
         StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
         if (staffPerms != null) return checkRoleAndPermissions(staffPerms.getStaffRole(), staffPerms.getPermissions(), permission);
 
-        // Fall back to sync-sourced data (fresher, but only for online staff)
         SyncResponse.ActiveStaffMember staffMember = getStaffMember(playerUuid);
         if (staffMember != null) return checkRoleAndPermissions(staffMember.getStaffRole(), staffMember.getPermissions(), permission);
 

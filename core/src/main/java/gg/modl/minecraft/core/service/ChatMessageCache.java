@@ -133,8 +133,6 @@ public class ChatMessageCache {
         return queue != null ? queue.size() : 0;
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────
-
     private String resolveServerName(String primaryUuid, String fallbackUuid) {
         String server = playerToServer.get(primaryUuid);
         if (server == null) server = playerToServer.get(fallbackUuid);

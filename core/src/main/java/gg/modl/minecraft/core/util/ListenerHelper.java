@@ -136,7 +136,6 @@ public final class ListenerHelper {
             ChatMessageCache chatMessageCache,
             VanishService vanishService, StaffModeService staffModeService, BridgeService bridgeService) {
 
-        // Must compute before marking offline (which clears join time)
         long sessionDuration = cache.getSessionDuration(uuid);
         httpClient.playerDisconnect(new PlayerDisconnectRequest(uuid.toString(), sessionDuration));
 

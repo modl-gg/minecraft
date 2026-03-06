@@ -203,7 +203,7 @@ public class SpigotPlatform implements Platform {
         Player player = Bukkit.getPlayer(uuid);
         if (player == null) return null;
         try {
-            // Reflection required: getPlayerProfile() only available on Spigot 1.18.1+
+            // reflection required: getPlayerProfile() only available on Spigot 1.18.1+
             Object profile = player.getClass().getMethod("getPlayerProfile").invoke(player);
             java.util.Collection<?> properties = (java.util.Collection<?>) profile.getClass().getMethod("getProperties").invoke(profile);
             for (Object prop : properties) {

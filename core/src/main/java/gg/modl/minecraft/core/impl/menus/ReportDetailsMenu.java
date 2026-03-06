@@ -123,8 +123,7 @@ public class ReportDetailsMenu extends SimpleMenu {
             return CallResult.DENY_GRABBING;
         });
 
-        registerActionHandler("back", (ActionHandler) click -> {
-            // Chat reports go back to chat log menu; all others go to category selection
+        registerActionHandler("back", click -> {
             if (previousMenu != null && reportData.isChatReport()) {
                 ActionHandlers.openMenu(new ReportChatLogMenu(
                         reporter, target, httpClient, locale, platform, panelUrl,

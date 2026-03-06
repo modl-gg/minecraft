@@ -124,7 +124,7 @@ public class VelocityPlatform implements Platform {
 
         WebPlayer webPlayer;
         try {
-            webPlayer = WebPlayer.getSync(uuid); // Use sync wrapper for backward compatibility
+            webPlayer = WebPlayer.getSync(uuid);
         } catch (Exception ignored) {
             return null;
         }
@@ -142,7 +142,7 @@ public class VelocityPlatform implements Platform {
 
         WebPlayer webPlayer;
         try {
-            webPlayer = WebPlayer.getSync(username); // Use sync wrapper for backward compatibility
+            webPlayer = WebPlayer.getSync(username);
         } catch (Exception ignored) {
             return null;
         }
@@ -194,7 +194,7 @@ public class VelocityPlatform implements Platform {
 
     @Override
     public void runOnMainThread(Runnable task) {
-        // Velocity has no main thread; all APIs are thread-safe
+        // velo has no main thread, everything is thread-safe
         task.run();
     }
 

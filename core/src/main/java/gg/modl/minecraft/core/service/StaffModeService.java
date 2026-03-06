@@ -14,7 +14,6 @@ public class StaffModeService {
     }
 
     private final Map<UUID, StaffModeState> staffModes = new ConcurrentHashMap<>();
-    // staff UUID -> target UUID
     private final Map<UUID, UUID> targetMap = new ConcurrentHashMap<>();
 
     public void enable(UUID staff) {

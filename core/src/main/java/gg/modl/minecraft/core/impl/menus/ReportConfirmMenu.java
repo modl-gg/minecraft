@@ -61,8 +61,6 @@ public class ReportConfirmMenu extends SimpleMenu {
     }
 
     private void buildMenu() {
-        // Row 1 layout: * * C * P * Q * *
-        // C (slot 11): Confirm Report
         List<String> confirmLore = new ArrayList<>();
         confirmLore.add(MenuItems.COLOR_GRAY + "Reason: " + MenuItems.COLOR_WHITE + reportData.getReason());
         if (reportData.getDetails() != null) confirmLore.add(MenuItems.COLOR_GRAY + "Details: " + MenuItems.COLOR_WHITE + reportData.getDetails());
@@ -76,7 +74,6 @@ public class ReportConfirmMenu extends SimpleMenu {
                 MenuItems.lore(confirmLore)
         ).slot(11).actionHandler("confirm"));
 
-        // P (slot 13): Player skull
         List<String> skullLines = locale.getMessageList("messages.report_skull_confirm", Map.of("player", target.username()));
         CirrusItem confirmHead = MenuItems.playerHead(
                 target.username(),
@@ -89,15 +86,12 @@ public class ReportConfirmMenu extends SimpleMenu {
         }
         set(confirmHead.slot(13));
 
-        // Q (slot 15): Cancel Report
         set(CirrusItem.of(
                 CirrusItemType.of("minecraft:red_terracotta"),
                 CirrusChatElement.ofLegacyText(locale.getMessage("messages.report_cancel")),
                 MenuItems.lore(locale.getMessageList("messages.report_cancel_lore"))
         ).slot(15).actionHandler("cancel"));
 
-        // Row 2 layout: * * * * B * * * *
-        // B (slot 22): Back button
         set(MenuItems.backButton().slot(22));
     }
 
@@ -115,7 +109,6 @@ public class ReportConfirmMenu extends SimpleMenu {
         });
 
         registerActionHandler("back", (ActionHandler) click -> {
-            // Return to details menu
             ActionHandlers.openMenu(new ReportDetailsMenu(
                     reporter, target, httpClient, locale, platform, panelUrl,
                     guiConfig, chatMessageCache, reportData, null
@@ -126,7 +119,6 @@ public class ReportConfirmMenu extends SimpleMenu {
     }
 
     private void submitReport() {
-        // Build description body
         StringBuilder description = new StringBuilder();
         description.append("Reason: ").append(reportData.getReason());
 

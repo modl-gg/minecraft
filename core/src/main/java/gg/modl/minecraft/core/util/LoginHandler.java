@@ -77,7 +77,7 @@ public final class LoginHandler {
             return new LoginResult.Denied("Login verification timed out. Please try again.");
         }
 
-        // Allow login on other errors to prevent false kicks
+        // Allow login on other errors to prevent bad kicks
         return null;
     }
 

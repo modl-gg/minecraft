@@ -34,7 +34,6 @@ public final class MenuItems {
         FORMAT_CACHE.remove();
     }
 
-    // Colors
     public static final String COLOR_GOLD = "§6";
     public static final String COLOR_YELLOW = "§e";
     public static final String COLOR_GREEN = "§a";

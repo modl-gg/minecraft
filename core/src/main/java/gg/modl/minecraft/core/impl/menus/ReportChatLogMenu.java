@@ -101,13 +101,12 @@ public class ReportChatLogMenu extends SimpleMenu {
                     target.uuid().toString(),
                     reporter.uuid().toString()
             );
+
             if (chatLog.isEmpty()) {
                 platform.sendMessage(reporter.uuid(),
                         locale.getMessage("messages.no_chat_logs_available", Map.of("player", target.username())));
-            } else {
-                reportData.setChatLog(chatLog);
-            }
-            // Proceed to details even if no chat logs were found
+            } else reportData.setChatLog(chatLog);
+
             openDetailsMenu(click);
             return CallResult.DENY_GRABBING;
         });

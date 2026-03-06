@@ -49,6 +49,7 @@ import gg.modl.minecraft.core.service.database.DatabaseConfig;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.DateFormatter;
 import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.util.Permissions;
 import gg.modl.minecraft.core.util.PlayerLookupUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.PunishmentTypeCacheManager;
@@ -130,7 +131,6 @@ public class PluginLoader {
 
         DatabaseConfig databaseConfig = loadDatabaseConfig(configYml, dataDirectory, logger);
 
-        // Needed by sync service before it starts
         this.staff2faService = new Staff2faService(configManager.getStaff2faConfig());
         this.chatCommandLogService = new ChatCommandLogService();
 
@@ -534,7 +534,6 @@ public class PluginLoader {
             if (!context.getIssuer().isPlayer()) return;
             String permission = context.getConfigValue("value", "");
             if (permission.isEmpty()) return;
-            // Check permission first so non-staff get "no permission" instead of "verify 2FA"
             if (!PermissionUtil.hasPermission(context.getIssuer(), cache, permission)) {
                 String message;
                 if (permission.startsWith("punishment.apply.")) {
@@ -551,7 +550,7 @@ public class PluginLoader {
 
         commandManager.getCommandConditions().addCondition("admin", context -> {
             if (!context.getIssuer().isPlayer()) return;
-            if (!PermissionUtil.hasAnyPermission(context.getIssuer(), cache, "admin.settings.view", "admin.settings.modify", "admin.reload")) throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
+            if (!PermissionUtil.hasAnyPermission(context.getIssuer(), cache, Permissions.SETTINGS_VIEW, Permissions.SETTINGS_MODIFY, "admin.reload")) throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
         });
     }
 

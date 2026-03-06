@@ -136,7 +136,6 @@ public class QueryClient {
         shuttingDown = true;
         connected = false;
         if (channel != null) channel.close();
-        // EventLoopGroup is shared and owned by QueryStatWipeExecutor
     }
 
     private class QueryClientHandler extends ChannelInboundHandlerAdapter {

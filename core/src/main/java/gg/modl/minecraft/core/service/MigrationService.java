@@ -180,7 +180,6 @@ public class MigrationService {
             }
         }
 
-        // Ensure every IP has a firstLogin value
         for (IpData ipData : ipMap.values()) {
             if (ipData.firstLogin != null) continue;
             ipData.firstLogin = ipData.logins.isEmpty()
@@ -247,7 +246,6 @@ public class MigrationService {
         punishment.evidence = new ArrayList<>();
         punishment.attachedTicketIds = new ArrayList<>();
 
-        // Schema requires reason as the first note
         Map<String, Object> reasonNote = new HashMap<>();
         reasonNote.put("text", punishment.reason);
         reasonNote.put("issuerName", punishment.issuerName);
@@ -276,10 +274,10 @@ public class MigrationService {
         StreamingJsonWriter.PlayerData jsonData = new StreamingJsonWriter.PlayerData(
             playerData.minecraftUuid,
             convertUsernames(playerData.usernames),
-            Collections.emptyList(), // Notes
+            Collections.emptyList(),
             convertIpList(playerData.ipList),
             convertPunishments(playerData.punishments),
-            null // Additional data
+            null
         );
         
         writer.writePlayer(jsonData);

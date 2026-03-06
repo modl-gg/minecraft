@@ -34,7 +34,6 @@ public interface Platform {
     String getServerVersion();
     void runOnMainThread(Runnable task);
 
-    // Default: execute directly (safe on BungeeCord and Velocity)
     default void runOnGameThread(Runnable task) {
         task.run();
     }

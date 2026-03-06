@@ -52,14 +52,11 @@ public abstract class BaseListMenu<T> extends AbstractBrowser<T> {
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = new HashMap<>();
 
-        // Rows 0-2 (slots 0-26): header area
         for (int i = 0; i <= 26; i++) items.put(i, null);
 
-        // Row 3: only intercept edges (28-34 are content slots)
         items.put(27, null);
         items.put(35, null);
 
-        // Rows 4-5 (slots 36-53): navigation and back button area
         for (int i = 36; i <= 53; i++) items.put(i, null);
 
         if (backAction != null) items.put(MenuSlots.BACK_BUTTON, MenuItems.backButton());

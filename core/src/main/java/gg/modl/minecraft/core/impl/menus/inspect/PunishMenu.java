@@ -35,7 +35,6 @@ public class PunishMenu extends BaseInspectMenu {
     private PunishmentPreviewResponse previewData;
     private final Consumer<CirrusPlayerWrapper> parentBackAction;
 
-    // Slot mapping: config slots 1-14 map to GUI slots 28-34, 37-43
     private static final int[] GUI_SLOTS = {28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43};
 
     public PunishMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,

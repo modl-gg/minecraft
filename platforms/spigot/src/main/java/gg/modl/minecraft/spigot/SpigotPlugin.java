@@ -111,7 +111,7 @@ public class SpigotPlugin extends JavaPlugin {
     }
 
     private void configureStatWipeExecutor(SpigotPlatform platform, HttpManager httpManager) {
-        // Prefer direct Java invocation (same-server bridge), fall back to TCP
+        // prefer direct java invocation (same-server bridge), fall back to TCP
         if (getServer().getPluginManager().getPlugin(BRIDGE_PLUGIN_NAME) != null) {
             loader.getSyncService().setStatWipeExecutor(new SpigotStatWipeExecutor(pluginLogger, httpManager.isDebugHttp()));
             return;

@@ -16,6 +16,7 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.VanishService;
 import gg.modl.minecraft.core.util.Constants;
 import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
@@ -45,7 +46,7 @@ public class StaffListCommand extends BaseCommand {
         AbstractPlayer viewer = platform.getAbstractPlayer(viewerUuid, false);
         String viewerName = viewer != null ? viewer.getName() : viewerUuid.toString();
         boolean isAdmin = PermissionUtil.hasAnyPermission(sender, cache,
-                "admin.settings.view", "admin.settings.modify");
+                Permissions.SETTINGS_VIEW, Permissions.SETTINGS_MODIFY);
 
         StaffMembersMenu menu = new StaffMembersMenu(
                 platform, httpClientHolder.getClient(), viewerUuid, viewerName, isAdmin, panelUrl, null);

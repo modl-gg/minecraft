@@ -176,7 +176,7 @@ public class SpigotListener implements Listener {
     }
 
     private void cacheSkinTexture(java.util.UUID uuid) {
-        // Try native Spigot API first (1.18.1+), fall back to WebPlayer
+        // native Spigot API first (1.18.1+), fall back to WebPlayer
         String nativeTexture = platform.getPlayerSkinTexture(uuid);
         if (nativeTexture != null) {
             cache.cacheSkinTexture(uuid, nativeTexture);

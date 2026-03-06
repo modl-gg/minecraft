@@ -50,13 +50,11 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
 
     private List<StaffMember> staffMembers = new ArrayList<>();
     private List<String> availableRoles = new ArrayList<>();
-    // Role name → order (0 = highest/Super Admin)
     private Map<String, Integer> roleOrders = new HashMap<>();
     private final String panelUrl;
     private final boolean hasPermission;
     private String viewerRole;
 
-    // Track selected role for each staff member
     private final Map<String, String> selectedRoles = new HashMap<>();
 
     private static final String SUPER_ADMIN_ROLE = "Super Admin";
@@ -158,7 +156,6 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         if (viewerRole == null) return false;
         int viewerOrder = getRoleOrder(viewerRole);
         int targetOrder = getRoleOrder(staff.getCurrentRole());
-        // Lower order = higher rank. Can only modify staff with strictly lower rank (higher order number)
         return viewerOrder < targetOrder;
     }
 

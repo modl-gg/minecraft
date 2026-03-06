@@ -34,8 +34,8 @@ import java.util.function.Consumer;
 
 public class PunishSeverityMenu extends BaseInspectMenu {
     private final PunishmentTypesResponse.PunishmentTypeData punishmentType;
-    private final Consumer<CirrusPlayerWrapper> menuBackAction; // Goes back to PunishMenu
-    private final Consumer<CirrusPlayerWrapper> rootBackAction; // Passed to primary tabs (e.g., back to Staff Menu)
+    private final Consumer<CirrusPlayerWrapper> menuBackAction;
+    private final Consumer<CirrusPlayerWrapper> rootBackAction;
     private boolean silentMode = false;
     private boolean altBlocking = false;
     private boolean statWipe = false;
@@ -130,7 +130,6 @@ public class PunishSeverityMenu extends BaseInspectMenu {
             }
         }
 
-        // Special messages for permanent-until-change types
         if (punishmentType.getPermanentUntilUsernameChange() != null && punishmentType.getPermanentUntilUsernameChange()) {
             lore.add(MenuItems.COLOR_YELLOW + "Player will be restricted until");
             lore.add(MenuItems.COLOR_YELLOW + "they change their username");

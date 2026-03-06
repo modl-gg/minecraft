@@ -39,7 +39,5 @@ public abstract class BaseStaffListMenu<T> extends BaseListMenu<T> {
     @Override
     protected void registerActionHandlers() {
         super.registerActionHandlers();
-        // Tab navigation handlers MUST be registered by each subclass
     }
-
 }

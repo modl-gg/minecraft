@@ -20,7 +20,7 @@ public class SpigotStatWipeExecutor implements StatWipeExecutor {
     public void executeStatWipe(String username, String uuid, String punishmentId, StatWipeCallback callback) {
         Plugin bridgePlugin = Bukkit.getPluginManager().getPlugin(BRIDGE_PLUGIN_NAME);
         if (bridgePlugin == null || !bridgePlugin.isEnabled()) {
-            // Don't call callback - backend will retry on next sync
+            // don't call callback, backend will retry on next sync
             logger.warning("[bridge] modl-bridge plugin not found or not enabled - stat wipe for " +
                     username + " will retry on next sync");
             return;

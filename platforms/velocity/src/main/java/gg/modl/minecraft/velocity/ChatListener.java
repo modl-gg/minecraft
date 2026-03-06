@@ -49,7 +49,6 @@ public class ChatListener {
         if (result == ChatEventHandler.Result.CANCELLED) event.setResult(PlayerChatEvent.ChatResult.denied());
     }
 
-    // PostOrder.LATE (not LAST) is required for SignedVelocity compatibility
     @Subscribe(order = PostOrder.LATE)
     public void onCommandExecute(CommandExecuteEvent event) {
         if (!(event.getCommandSource() instanceof Player player)) return;

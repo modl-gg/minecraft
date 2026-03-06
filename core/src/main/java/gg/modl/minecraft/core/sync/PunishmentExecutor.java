@@ -69,8 +69,6 @@ class PunishmentExecutor {
         });
     }
 
-    // ── Punishment execution ─────────────────────────────────────────────
-
     private boolean executePunishment(String playerUuid, String username, SimplePunishment punishment) {
         try {
             UUID uuid = UUID.fromString(playerUuid);
@@ -131,8 +129,6 @@ class PunishmentExecutor {
         }
     }
 
-    // ── Modification handling ────────────────────────────────────────────
-
     private void applyModification(String playerUuid, String username, String punishmentId,
                                    SyncResponse.PunishmentModification modification) {
         try {
@@ -160,7 +156,6 @@ class PunishmentExecutor {
     private void handlePardon(UUID uuid, String username, String punishmentId) {
         boolean matched = removeCachedPunishmentById(uuid, punishmentId);
         if (!matched) {
-            // Unknown which punishment was pardoned — clear both caches as fallback
             cache.removeMute(uuid);
             cache.removeBan(uuid);
         }
@@ -202,8 +197,6 @@ class PunishmentExecutor {
             cached.setExpiration(newExpiration);
         }
     }
-
-    // ── Acknowledgment ──────────────────────────────────────────────────
 
     private void acknowledgePunishment(String punishmentId, String playerUuid, boolean success) {
         PunishmentAcknowledgeRequest request = new PunishmentAcknowledgeRequest(

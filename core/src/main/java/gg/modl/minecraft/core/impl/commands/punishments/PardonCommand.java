@@ -108,7 +108,6 @@ public class PardonCommand extends BaseCommand {
 
             String errorMessage = cause.getMessage();
 
-            // "not found" error triggers fallback to player name lookup
             if (errorMessage != null && (errorMessage.contains("not found") || errorMessage.contains("404")))
                 pardonByPlayerName(sender, target, issuerName, reason, expectedType);
             else if (errorMessage != null && errorMessage.toLowerCase().contains("type")) {

@@ -73,7 +73,6 @@ public class JoinListener {
                 .thenApply(wp -> wp != null && wp.valid() ? wp.skin() : null)
                 .exceptionally(t -> null);
 
-        // getNow() avoids blocking -- backend will request IP lookup via pendingIpLookups if null
         JsonObject ipInfo = null;
         String skinHash = null;
         try {

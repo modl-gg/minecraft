@@ -28,7 +28,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
-    // Placeholder Ticket class since no endpoint exists yet
     public static class Ticket {
         private final String id;
         private final String playerName;
@@ -88,7 +87,7 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
                 }
             }
         }).exceptionally(e -> {
-            // Failed to fetch - list remains empty
+            // fail to fetch, list remains empty
             return null;
         });
     }

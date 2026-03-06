@@ -131,8 +131,6 @@ public class SyncService {
             return t;
         });
         this.taskExecutor = Executors.newCachedThreadPool();
-
-        // Next sync waits until previous finishes; timeouts prevent thread stalls
         syncExecutor.scheduleWithFixedDelay(this::performSync, INITIAL_SYNC_DELAY_SECONDS, actualPollingRate, TimeUnit.SECONDS);
         isRunning = true;
         if (debugMode) logger.info("modl.gg Sync service started - syncing every " + actualPollingRate + " seconds");
@@ -415,7 +413,6 @@ public class SyncService {
         if (staff2faService.getAuthState(uuid) != Staff2faService.AuthState.PENDING) return;
 
         if (Boolean.TRUE.equals(staffMember.getTwoFactorSessionValid())) {
-            // Backend says session is valid — auto-authenticate
             staff2faService.handleVerification(uuid);
             platform.sendMessage(uuid, localeManager.getMessage("staff_2fa.auto_verified"));
             broadcastStaffJoin(uuid, player);

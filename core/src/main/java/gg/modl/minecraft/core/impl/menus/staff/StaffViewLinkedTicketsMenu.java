@@ -42,7 +42,7 @@ public class StaffViewLinkedTicketsMenu extends BaseStaffListMenu<TicketsRespons
                     }
                 }).join();
             } catch (Exception e) {
-                // Failed to fetch - list remains empty
+                // Do nothing. failed to fetch, list remains empty
             }
         }
     }
