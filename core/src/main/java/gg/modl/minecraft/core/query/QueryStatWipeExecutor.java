@@ -63,31 +63,20 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
             }
         }
 
-        if (firstServerName != null) {
-            callback.onComplete(true, firstServerName);
-        } else {
+        if (firstServerName != null) callback.onComplete(true, firstServerName);
+        else
             logger.warning("[bridge] No connected bridges available for stat wipe of " + username +
                     " — will retry on next sync");
-        }
     }
 
     private void handleMessage(String serverName, QueryClient.QueryMessage message) {
-        try {
-            if ("BRIDGE_HELLO".equals(message.getAction())) {
-                String bridgeServerName = message.getData().readUTF();
-                logger.info("modl-bridge detected on backend server '" + serverName + "' (TCP query)");
-            } else {
-                if (bridgeMessageDispatcher != null) bridgeMessageDispatcher.dispatch(message.getAction(), message.getData());
-            }
-        } catch (IOException e) {
-            logger.warning("Failed to read query message from " + serverName + ": " + e.getMessage());
-        }
+        if ("BRIDGE_HELLO".equals(message.getAction()))
+            logger.info("modl-bridge detected on backend server '" + serverName + "' (TCP query)");
+        else if (bridgeMessageDispatcher != null) bridgeMessageDispatcher.dispatch(message.getAction(), message.getData());
     }
 
     public void sendToAllBridges(String action, String... args) {
-        for (QueryClient client : clients) {
-            if (client.isConnected()) client.sendTypedMessage(action, args);
-        }
+        for (QueryClient client : clients) if (client.isConnected()) client.sendTypedMessage(action, args);
     }
 
     public void shutdown() {

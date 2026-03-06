@@ -29,7 +29,7 @@ public class MuteCommand extends AbstractManualPunishmentCommand {
     @CommandAlias("%cmd_mute")
     @Syntax("<target> [duration] [reason...] [-silent]")
     @Conditions("permission:value=punishment.apply.manual-mute")
-    public void mute(CommandIssuer sender, @Name("target") Account target, @Default("") String args) {
+    public void mute(CommandIssuer sender, @Name("target") Account target, @Default() String args) {
         executePunishment(sender, target, args);
     }
 }

@@ -57,7 +57,7 @@ public class TicketCommands extends BaseCommand {
     @Syntax("<player>")
     @Conditions("player")
     public void report(CommandIssuer sender, AbstractPlayer targetPlayer) {
-        if (!checkCooldown(sender, "player")) return;
+        if (checkCooldown(sender, "player")) return;
 
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
@@ -108,7 +108,7 @@ public class TicketCommands extends BaseCommand {
     @Syntax("<player>")
     @Conditions("player")
     public void chatReport(CommandIssuer sender, AbstractPlayer targetPlayer) {
-        if (!checkCooldown(sender, "chat")) return;
+        if (checkCooldown(sender, "chat")) return;
 
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
@@ -156,7 +156,7 @@ public class TicketCommands extends BaseCommand {
     @Syntax("<player> [details]")
     @Conditions("player")
     public void hackReport(CommandIssuer sender, String targetName, @Optional String details) {
-        if (!checkCooldown(sender, "player")) return;
+        if (checkCooldown(sender, "player")) return;
 
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
         AbstractPlayer targetPlayer = platform.getAbstractPlayer(targetName, false);
@@ -196,7 +196,7 @@ public class TicketCommands extends BaseCommand {
     @Description("Submit a staff application")
     @Conditions("player")
     public void staffApplication(CommandIssuer sender) {
-        if (!checkCooldown(sender, "staff")) return;
+        if (checkCooldown(sender, "staff")) return;
 
         AbstractPlayer applicant = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
@@ -223,7 +223,7 @@ public class TicketCommands extends BaseCommand {
     @Syntax("<title...>")
     @Conditions("player")
     public void bugReport(CommandIssuer sender, String title) {
-        if (!checkCooldown(sender, "bug")) return;
+        if (checkCooldown(sender, "bug")) return;
 
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
@@ -251,7 +251,7 @@ public class TicketCommands extends BaseCommand {
     @Syntax("<title...>")
     @Conditions("player")
     public void supportRequest(CommandIssuer sender, String title) {
-        if (!checkCooldown(sender, "support")) return;
+        if (checkCooldown(sender, "support")) return;
 
         AbstractPlayer requester = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
@@ -311,18 +311,18 @@ public class TicketCommands extends BaseCommand {
     private boolean checkCooldown(CommandIssuer sender, String ticketType) {
         UUID uuid = sender.getUniqueId();
         Map<String, Long> playerCooldowns = cooldowns.get(uuid);
-        if (playerCooldowns == null) return true;
+        if (playerCooldowns == null) return false;
 
         Long lastUsed = playerCooldowns.get(ticketType);
-        if (lastUsed == null) return true;
+        if (lastUsed == null) return false;
 
         long elapsed = System.currentTimeMillis() - lastUsed;
-        if (elapsed >= COOLDOWN_MS) return true;
+        if (elapsed >= COOLDOWN_MS) return false;
 
         long remainingSeconds = (COOLDOWN_MS - elapsed) / 1000;
         sender.sendMessage(localeManager.getMessage("messages.ticket_cooldown",
                 Map.of("seconds", String.valueOf(remainingSeconds))));
-        return false;
+        return true;
     }
 
     private void setCooldown(UUID uuid, String ticketType) {

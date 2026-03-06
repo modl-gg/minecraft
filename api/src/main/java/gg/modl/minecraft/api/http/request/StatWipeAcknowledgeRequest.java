@@ -9,8 +9,6 @@ import org.jetbrains.annotations.Nullable;
 @Data @NoArgsConstructor @AllArgsConstructor
 public class StatWipeAcknowledgeRequest {
     private @NotNull String punishmentId;
-
     private @Nullable String serverName;
-
     private boolean success;
 }

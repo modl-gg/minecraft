@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public class PunishmentMessages {
-    private static final String FALLBACK_MUTE_MESSAGE = "\u00A7cYou are muted!";
+    private static final String FALLBACK_MUTE_MESSAGE = "§cYou are muted!";
 
     @Setter @Getter private static String panelUrl;
 
@@ -37,7 +37,7 @@ public class PunishmentMessages {
     
     public static String formatBanMessage(SimplePunishment ban, LocaleManager localeManager, MessageContext context) {
         int ordinal = ban.getOrdinal();
-        Map<String, String> variables = buildBasicPunishmentVariables(ban, localeManager);
+        Map<String, String> variables = buildBasicPunishmentVariables(ban);
         return localeManager.getPlayerNotificationMessage(ordinal, ban.getType(), variables, ban, context);
     }
 
@@ -59,7 +59,7 @@ public class PunishmentMessages {
     
     public static String formatMuteMessage(SimplePunishment mute, LocaleManager localeManager, MessageContext context) {
         int ordinal = mute.getOrdinal();
-        Map<String, String> variables = buildBasicPunishmentVariables(mute, localeManager);
+        Map<String, String> variables = buildBasicPunishmentVariables(mute);
         return localeManager.getPlayerNotificationMessage(ordinal, mute.getType(), variables, mute, context);
     }
     
@@ -74,26 +74,26 @@ public class PunishmentMessages {
     
     public static String formatKickMessage(SimplePunishment kick, LocaleManager localeManager, MessageContext context) {
         int ordinal = kick.getOrdinal();
-        Map<String, String> variables = buildBasicPunishmentVariables(kick, localeManager);
+        Map<String, String> variables = buildBasicPunishmentVariables(kick);
         return localeManager.getPlayerNotificationMessage(ordinal, kick.getType(), variables, kick, context);
     }
 
     @Deprecated
-    public static String formatPunishmentBroadcast(String username, SimplePunishment punishment, String action) {
-        return formatPunishmentBroadcast(username, punishment, action, new LocaleManager());
+    public static String formatPunishmentBroadcast(String username, SimplePunishment punishment) {
+        return formatPunishmentBroadcast(username, punishment, new LocaleManager());
     }
 
-    public static String formatPunishmentBroadcast(String username, SimplePunishment punishment, String action, LocaleManager localeManager) {
+    public static String formatPunishmentBroadcast(String username, SimplePunishment punishment, LocaleManager localeManager) {
         int ordinal = punishment.getOrdinal();
         Map<String, String> variables = new HashMap<>();
         variables.put("target", username);
-        variables.put("reason", punishment.getDescription() != null ? punishment.getDescription() : Constants.UNKNOWN);
-        variables.put("description", punishment.getDescription() != null ? punishment.getDescription() : Constants.UNKNOWN);
+        variables.put("reason", punishment.getDescription());
+        variables.put("description", punishment.getDescription());
         variables.put("duration", punishment.isPermanent() ? "permanent" : formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
         variables.put("appeal_url", getAppealUrl());
-        variables.put("id", punishment.getId() != null ? punishment.getId() : Constants.UNKNOWN);
+        variables.put("id", punishment.getId());
 
-        return localeManager.getPublicNotificationMessage(ordinal, punishment.getCategory(), variables);
+        return localeManager.getPublicNotificationMessage(ordinal, variables);
     }
 
     private static String dateFormatPattern = "MM/dd/yyyy HH:mm";
@@ -123,13 +123,13 @@ public class PunishmentMessages {
         return TimeUtil.formatTimeMillis(millis);
     }
     
-    private static Map<String, String> buildBasicPunishmentVariables(SimplePunishment punishment, LocaleManager localeManager) {
+    private static Map<String, String> buildBasicPunishmentVariables(SimplePunishment punishment) {
         Map<String, String> variables = new HashMap<>();
         variables.put("target", "You");
-        variables.put("reason", punishment.getDescription() != null ? punishment.getDescription() : Constants.UNKNOWN);
-        variables.put("description", punishment.getDescription() != null ? punishment.getDescription() : Constants.UNKNOWN);
+        variables.put("reason", punishment.getDescription());
+        variables.put("description", punishment.getDescription());
         variables.put("duration", punishment.isPermanent() ? "permanent" : formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
-        variables.put("id", punishment.getId() != null ? punishment.getId() : Constants.UNKNOWN);
+        variables.put("id", punishment.getId());
         variables.put("appeal_url", getAppealUrl());
         variables.put("temp", punishment.isPermanent() ? "permanently" : "temporarily");
         variables.put("for_duration", computeForDuration(punishment));
@@ -160,7 +160,7 @@ public class PunishmentMessages {
         if (timeLeft <= 0) return "";
         String durationStr = formatDuration(timeLeft);
         String typeWord = punishment.isBan() ? "ban" : (punishment.isMute() ? "mute" : "punishment");
-        return "\n\u00A77This " + typeWord + " will expire in \u00A7f" + durationStr + "\u00A77.";
+        return "\n§7This " + typeWord + " will expire in §f" + durationStr + "§7.";
     }
 
 }

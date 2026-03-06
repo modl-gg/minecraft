@@ -12,26 +12,9 @@ import java.util.Date;
 @NoArgsConstructor @AllArgsConstructor @Getter
 public final class Modification {
     private @SerializedName("type") Type type;
-
     private @SerializedName("issuerName") String issuer;
-
     private @SerializedName("date") Date issued;
-
     private @SerializedName("effectiveDuration") Long effectiveDuration;
-
-    public @Nullable Type getType() {
-        return type;
-    }
-
-    private static final String UNKNOWN_ISSUER = "Unknown";
-
-    public @NotNull String getIssuer() {
-        return issuer != null ? issuer : UNKNOWN_ISSUER;
-    }
-
-    public @NotNull Date getIssued() {
-        return issued != null ? issued : new Date(0);
-    }
 
     /**
      * Returns null for permanent punishments.

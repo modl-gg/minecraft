@@ -79,7 +79,7 @@ public class ChatCommand extends BaseCommand {
     @Subcommand("clear")
     @Description("Clear the chat")
     @Conditions("permission:value=staff.chat.clear")
-    public void clear(CommandIssuer sender, @Default("") String countArg) {
+    public void clear(CommandIssuer sender, @Default() String countArg) {
         int lines = parseClearLineCount(countArg);
 
         StringBuilder clearMessage = new StringBuilder();
@@ -97,7 +97,7 @@ public class ChatCommand extends BaseCommand {
     @Subcommand("slow")
     @Description("Set or disable slow mode")
     @Conditions("permission:value=staff.chat.slow")
-    public void slow(CommandIssuer sender, @Default("") String secondsArg) {
+    public void slow(CommandIssuer sender, @Default() String secondsArg) {
         String inGameName = getInGameName(sender);
         String panelName = getPanelName(sender, inGameName);
 

@@ -1,5 +1,6 @@
 package gg.modl.minecraft.api;
 
+import lombok.Getter;
 import lombok.Value;
 
 import java.util.Map;
@@ -18,7 +19,7 @@ public class PunishmentTypeRegistry {
     public static final int ORDINAL_BLACKLIST = 5;
 
     private static final Map<Integer, PunishmentTypeInfo> registry = new ConcurrentHashMap<>();
-    private static volatile boolean initialized = false;
+    @Getter private static volatile boolean initialized = false;
 
     public static void register(int ordinal, boolean isBan, boolean isMute) {
         registry.put(ordinal, new PunishmentTypeInfo(isBan, isMute));
@@ -49,10 +50,6 @@ public class PunishmentTypeRegistry {
 
     public static boolean isKick(int ordinal) {
         return ordinal == ORDINAL_KICK;
-    }
-
-    public static boolean isInitialized() {
-        return initialized;
     }
 
     @Value

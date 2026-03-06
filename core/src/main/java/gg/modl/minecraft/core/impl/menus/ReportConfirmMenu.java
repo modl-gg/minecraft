@@ -76,7 +76,6 @@ public class ReportConfirmMenu extends SimpleMenu {
 
         List<String> skullLines = locale.getMessageList("messages.report_skull_confirm", Map.of("player", target.username()));
         CirrusItem confirmHead = MenuItems.playerHead(
-                target.username(),
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
         );

@@ -1,8 +1,6 @@
 package gg.modl.minecraft.core.service.database;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class DatabaseConfig {
@@ -14,6 +12,7 @@ public class DatabaseConfig {
     private DatabaseType type;
     private String tablePrefix;
 
+    @RequiredArgsConstructor
     public enum DatabaseType {
         MYSQL("mysql", "com.mysql.cj.jdbc.Driver", "jdbc:mysql://%s:%d/%s?useSSL=false&allowPublicKeyRetrieval=true"),
         MARIADB("mariadb", "org.mariadb.jdbc.Driver", "jdbc:mariadb://%s:%d/%s"),
@@ -21,18 +20,9 @@ public class DatabaseConfig {
         H2("h2", "org.h2.Driver", "jdbc:h2:file:./%s");
 
         private final String name;
-        private final String driverClass;
+        @Getter private final String driverClass;
         private final String urlFormat;
 
-        DatabaseType(String name, String driverClass, String urlFormat) {
-            this.name = name;
-            this.driverClass = driverClass;
-            this.urlFormat = urlFormat;
-        }
-
-        public String getDriverClass() {
-            return driverClass;
-        }
 
         public String buildJdbcUrl(String host, int port, String database) {
             if (this == H2) return String.format(urlFormat, database);

@@ -187,8 +187,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         ).slot(MenuSlots.MODIFY_LINKED_TICKETS).actionHandler("linkedTickets"));
 
         if (isBanType) {
-            boolean statWipe = punishment.getDataMap() != null &&
-                    Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
+            punishment.getDataMap();
+            boolean statWipe = Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
 
             if (canModifyOptions) {
                 set(CirrusItem.of(
@@ -212,8 +212,8 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                 ).slot(MenuSlots.MODIFY_STAT_WIPE));
             }
 
-            boolean altBlock = punishment.getDataMap() != null &&
-                    Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
+            punishment.getDataMap();
+            boolean altBlock = Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
 
             if (canModifyOptions) {
                 set(CirrusItem.of(

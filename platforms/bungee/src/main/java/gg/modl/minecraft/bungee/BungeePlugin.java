@@ -74,7 +74,7 @@ public class BungeePlugin extends Plugin {
         int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, configuration.getInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
         List<String> mutedCommands = configuration.getStringList("muted_commands");
 
-        this.loader = new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
+        this.loader = new PluginLoader(platform,getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
         configureBridgeExecutor(platform, httpManager);
 
         getProxy().getPluginManager().registerListener(this, new BungeeListener(

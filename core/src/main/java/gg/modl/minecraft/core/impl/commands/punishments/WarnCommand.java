@@ -6,7 +6,6 @@ import co.aikar.commands.annotation.CommandAlias;
 import co.aikar.commands.annotation.CommandCompletion;
 import co.aikar.commands.annotation.Conditions;
 import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Description;
 import co.aikar.commands.annotation.Name;
 import co.aikar.commands.annotation.Syntax;
 import gg.modl.minecraft.api.AbstractPlayer;
@@ -35,7 +34,7 @@ public class WarnCommand extends BaseCommand {
     @CommandAlias("%cmd_warn")
     @Syntax("<target> <reason...> [-silent]")
     @Conditions("staff")
-    public void warn(CommandIssuer sender, @Name("target") Account target, @Default("") String args) {
+    public void warn(CommandIssuer sender, @Name("target") Account target, @Default() String args) {
         if (target == null) {
             sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", Map.of()));
             return;
@@ -92,7 +91,7 @@ public class WarnCommand extends BaseCommand {
         for (String arg : arguments) {
             if (arg.equalsIgnoreCase("-silent") || arg.equalsIgnoreCase("-s")) result.silent = true;
             else {
-                if (reasonBuilder.length() > 0) reasonBuilder.append(" ");
+                if (!reasonBuilder.isEmpty()) reasonBuilder.append(" ");
                 reasonBuilder.append(arg);
             }
         }

@@ -57,7 +57,7 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
         public String getStatus() { return status; }
     }
 
-    private List<Report> reports = new ArrayList<>();
+    private final List<Report> reports = new ArrayList<>();
     private final Set<String> selectedReportIds;
     private String currentFilter = "all";
     private final List<String> filterOptions = Arrays.asList("all", "gameplay", "chat");

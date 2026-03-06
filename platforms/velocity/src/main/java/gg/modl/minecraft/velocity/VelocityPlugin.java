@@ -78,7 +78,7 @@ public final class VelocityPlugin {
     }
 
     @Subscribe
-    public synchronized void onProxyInitialize(ProxyInitializeEvent evt) {
+    public synchronized void onProxyInitialize(ProxyInitializeEvent event) {
         loadLibraries();
         initializePacketEvents();
         loadConfig();
@@ -106,7 +106,7 @@ public final class VelocityPlugin {
         ChatMessageCache chatMessageCache = new ChatMessageCache();
         int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfigInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
 
-        this.pluginLoader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder, chatMessageCache, httpManager, syncPollingRate);
+        this.pluginLoader = new PluginLoader(platform, folder, chatMessageCache, httpManager, syncPollingRate);
         configureBridgeExecutor(platform, httpManager);
 
         @SuppressWarnings("unchecked")
@@ -133,7 +133,7 @@ public final class VelocityPlugin {
     }
 
     @Subscribe
-    public synchronized void onProxyShutdown(ProxyShutdownEvent evt) {
+    public synchronized void onProxyShutdown(ProxyShutdownEvent event) {
         if (queryStatWipeExecutor != null) queryStatWipeExecutor.shutdown();
         if (pluginLoader != null) pluginLoader.shutdown();
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();

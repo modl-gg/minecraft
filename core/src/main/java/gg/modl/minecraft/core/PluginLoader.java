@@ -98,7 +98,7 @@ public class PluginLoader {
         return httpClientHolder.getClient();
     }
 
-    public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache, HttpManager httpManager, int syncPollingRateSeconds) {
+    public PluginLoader(Platform platform, Path dataDirectory, ChatMessageCache chatMessageCache, HttpManager httpManager, int syncPollingRateSeconds) {
         this.dataDirectory = dataDirectory;
         this.debugMode = httpManager.isDebugHttp();
         this.chatMessageCache = chatMessageCache;
@@ -515,7 +515,7 @@ public class PluginLoader {
     private static void registerCommandConditions(CommandManager commandManager, Cache cache, LocaleManager localeManager, Staff2faService staff2faService) {
         commandManager.getCommandConditions().addCondition("staff", context -> {
             if (!context.getIssuer().isPlayer()) return;
-            if (!PermissionUtil.isStaff(context.getIssuer(), cache)) throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
+            if (PermissionUtil.isStaff(context.getIssuer(), cache)) throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
             if (staff2faService != null && staff2faService.isEnabled() && !staff2faService.isAuthenticated(context.getIssuer().getUniqueId())) {
                 throw new ConditionFailedException(localeManager.getMessage("staff_2fa.not_verified"));
             }
@@ -523,7 +523,7 @@ public class PluginLoader {
 
         commandManager.getCommandConditions().addCondition("staff_no2fa", context -> {
             if (!context.getIssuer().isPlayer()) return;
-            if (!PermissionUtil.isStaff(context.getIssuer(), cache)) throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
+            if (PermissionUtil.isStaff(context.getIssuer(), cache)) throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
         });
 
         commandManager.getCommandConditions().addCondition("player", context -> {

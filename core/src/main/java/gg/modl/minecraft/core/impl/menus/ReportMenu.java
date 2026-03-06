@@ -51,7 +51,6 @@ public class ReportMenu extends SimpleMenu {
 
     private void buildMenu() {
         CirrusItem headItem = MenuItems.playerHead(
-                target.username(),
                 locale.getMessage("messages.report_gui_title", Map.of("player", target.username())),
                 List.of()
         );

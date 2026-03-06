@@ -11,7 +11,7 @@ public class PunishmentDetailResponse {
     private PunishmentDetail punishment;
 
     public boolean isSuccess() {
-        return status >= 200 && status < 300 && punishment != null;
+        return status < 200 || status >= 300 || punishment == null;
     }
 
     @Data

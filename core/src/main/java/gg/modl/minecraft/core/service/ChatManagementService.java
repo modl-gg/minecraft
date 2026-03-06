@@ -25,18 +25,6 @@ public class ChatManagementService {
         return chatEnabled;
     }
 
-    public void setChatEnabled(boolean enabled) {
-        this.chatEnabled = enabled;
-    }
-
-    public boolean isSlowModeActive() {
-        return slowModeSeconds > 0;
-    }
-
-    public int getSlowModeSeconds() {
-        return slowModeSeconds;
-    }
-
     public void setSlowMode(int seconds) {
         this.slowModeSeconds = Math.max(0, seconds);
         if (seconds <= 0) lastMessageTime.clear();

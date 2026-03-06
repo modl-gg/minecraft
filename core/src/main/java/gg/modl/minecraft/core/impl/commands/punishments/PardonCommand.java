@@ -37,7 +37,7 @@ public class PardonCommand extends BaseCommand {
     @Syntax("<player/punishment_id> [reason...]")
     @Description("Pardon all of a player's active and unstarted punishments")
     @Conditions("permission:value=punishment.modify")
-    public void pardon(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
+    public void pardon(CommandIssuer sender, @Name("target") String target, @Default() String reason) {
         final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
 
         if (isPunishmentId(target)) tryPunishmentIdWithFallback(sender, target, issuerName, reason, null);
@@ -48,7 +48,7 @@ public class PardonCommand extends BaseCommand {
     @Syntax("<player/punishment_id> [reason...]")
     @Description("Unban a player by name or punishment ID")
     @Conditions("permission:value=punishment.modify")
-    public void unban(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
+    public void unban(CommandIssuer sender, @Name("target") String target, @Default() String reason) {
         final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
 
         if (isPunishmentId(target)) tryPunishmentIdWithFallback(sender, target, issuerName, reason, "ban");
@@ -59,7 +59,7 @@ public class PardonCommand extends BaseCommand {
     @Syntax("<player/punishment_id> [reason...]")
     @Description("Unmute a player by name or punishment ID")
     @Conditions("permission:value=punishment.modify")
-    public void unmute(CommandIssuer sender, @Name("target") String target, @Default("") String reason) {
+    public void unmute(CommandIssuer sender, @Name("target") String target, @Default() String reason) {
         final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
 
         if (isPunishmentId(target)) tryPunishmentIdWithFallback(sender, target, issuerName, reason, "mute");

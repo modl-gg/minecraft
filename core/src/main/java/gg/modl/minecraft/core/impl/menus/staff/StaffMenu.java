@@ -7,12 +7,13 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffMenu;
 import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
+import lombok.Getter;
 
 import java.util.UUID;
 import java.util.function.Consumer;
 
 public class StaffMenu extends BaseStaffMenu {
-    private final String panelUrl;
+    @Getter private final String panelUrl;
 
     public StaffMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                      boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
@@ -31,9 +32,5 @@ public class StaffMenu extends BaseStaffMenu {
         StaffNavigationHandlers.registerAll(
                 (name, handler) -> registerActionHandler(name, handler),
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
-    }
-
-    public String getPanelUrl() {
-        return panelUrl;
     }
 }

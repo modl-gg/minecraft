@@ -29,7 +29,7 @@ public class BanCommand extends AbstractManualPunishmentCommand {
     @CommandAlias("%cmd_ban")
     @Syntax("<target> [duration] [reason...] [-silent] [-alt-blocking] [-stat-wipe]")
     @Conditions("permission:value=punishment.apply.manual-ban")
-    public void ban(CommandIssuer sender, @Name("target") Account target, @Default("") String args) {
+    public void ban(CommandIssuer sender, @Name("target") Account target, @Default() String args) {
         executePunishment(sender, target, args);
     }
 }

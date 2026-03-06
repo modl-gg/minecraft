@@ -57,7 +57,7 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
 
     private final Account targetAccount;
     private final UUID targetUuid;
-    private List<Report> reports = new ArrayList<>();
+    private final List<Report> reports = new ArrayList<>();
     private final Set<String> selectedReportIds;
     private String currentFilter = "all";
     private final List<String> filterOptions = Arrays.asList("all", "gameplay", "chat");

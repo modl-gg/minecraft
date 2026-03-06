@@ -65,7 +65,7 @@ public final class MenuItems {
         ).actionHandler("nextPage");
     }
 
-    public static CirrusItem playerHead(String playerName, String title, List<String> loreLines) {
+    public static CirrusItem playerHead(String title, List<String> loreLines) {
         return CirrusItem.of(
                 CirrusItemType.PLAYER_HEAD,
                 CirrusChatElement.ofLegacyText(title),
@@ -180,7 +180,7 @@ public final class MenuItems {
             wordCount++;
         }
 
-        if (currentLine.length() > 0) lines.add(COLOR_WHITE + currentLine.toString().trim());
+        if (!currentLine.isEmpty()) lines.add(COLOR_WHITE + currentLine.toString().trim());
 
         return lines;
     }

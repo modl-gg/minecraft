@@ -40,8 +40,7 @@ public class CircuitBreaker {
         return switch (currentState) {
             case CLOSED -> true;
             case OPEN -> {
-                if (currentTime >= nextRetryTime.get() && state.compareAndSet(State.OPEN, State.HALF_OPEN)) yield true;
-                yield false;
+                yield currentTime >= nextRetryTime.get() && state.compareAndSet(State.OPEN, State.HALF_OPEN);
             }
             case HALF_OPEN -> true;
         };

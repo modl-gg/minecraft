@@ -73,7 +73,7 @@ public class MigrationService {
                 for (String uuid : playerUuids) {
                     try {
                         PlayerMigrationData playerData = extractPlayerData(uuid);
-                        if (playerData != null) writePlayerToJson(jsonWriter, playerData);
+                        writePlayerToJson(jsonWriter, playerData);
                         processed++;
                         if (processed % PROGRESS_LOG_INTERVAL == 0 || processed == totalPlayers) {
                             updateMigrationProgress(taskId, "building_json",
@@ -239,7 +239,7 @@ public class MigrationService {
         if (punishment.issuerName == null || punishment.issuerName.isEmpty()) punishment.issuerName = Constants.DEFAULT_CONSOLE_NAME;
 
         long until = rs.getLong("UNTIL");
-        punishment.duration = (until > 0 && until != -1) ? until - timeIssued : 0L;
+        punishment.duration = until > 0 ? until - timeIssued : 0L;
         punishment.started = punishment.issued;
 
         punishment.notes = new ArrayList<>();

@@ -39,7 +39,7 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
         items.put(MenuSlots.INSPECT_PLAYER_HEAD,
                 PlayerHeadItemBuilder.create(platform, targetAccount, targetName, targetUuid)
                         .actionHandler("targetPlayer"));
-        items.putAll(InspectTabItems.createItems(activeTab, targetAccount, targetName));
+        items.putAll(InspectTabItems.createItems(targetAccount, targetName));
         return items;
     }
 

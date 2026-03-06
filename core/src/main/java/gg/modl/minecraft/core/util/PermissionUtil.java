@@ -27,18 +27,13 @@ public class PermissionUtil {
     }
 
     public static boolean isStaff(CommandIssuer issuer, Cache cache) {
-        if (!issuer.isPlayer()) return true;
-        return isStaff(issuer.getUniqueId(), cache);
+        if (!issuer.isPlayer()) return false;
+        return !isStaff(issuer.getUniqueId(), cache);
     }
 
     public static boolean isStaff(UUID playerUuid, Cache cache) {
         if (cache == null) return false;
         return cache.isStaffMemberByPermissions(playerUuid) || cache.isStaffMember(playerUuid);
-    }
-
-    public static List<String> getPermissions(CommandIssuer issuer, Cache cache) {
-        SyncResponse.ActiveStaffMember staffMember = getStaffMember(issuer, cache);
-        return staffMember != null ? staffMember.getPermissions() : List.of();
     }
 
     public static String formatPunishmentPermission(String punishmentTypeName) {

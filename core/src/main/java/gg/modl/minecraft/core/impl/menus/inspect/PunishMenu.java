@@ -30,8 +30,8 @@ import java.util.function.Consumer;
 
 public class PunishMenu extends BaseInspectMenu {
     private List<PunishmentTypesResponse.PunishmentTypeData> punishmentTypes = new ArrayList<>();
-    private Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
-    private PunishGuiConfig guiConfig;
+    private final Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
+    private final PunishGuiConfig guiConfig;
     private PunishmentPreviewResponse previewData;
     private final Consumer<CirrusPlayerWrapper> parentBackAction;
 
@@ -122,7 +122,7 @@ public class PunishMenu extends BaseInspectMenu {
                 if (hasPermission)
                     set(createPunishmentTypeItem(type, slotConfig).slot(guiSlot));
                 else
-                    set(createDisabledPunishmentTypeItem(type, slotConfig).slot(guiSlot));
+                    set(createDisabledPunishmentTypeItem(slotConfig).slot(guiSlot));
             } else {
                 set(createPlaceholderItem(slotConfig).slot(guiSlot));
             }
@@ -175,8 +175,7 @@ public class PunishMenu extends BaseInspectMenu {
         ).actionHandler("punishType_" + type.getOrdinal());
     }
 
-    private CirrusItem createDisabledPunishmentTypeItem(PunishmentTypesResponse.PunishmentTypeData type,
-                                                          PunishGuiConfig.PunishSlotConfig slotConfig) {
+    private CirrusItem createDisabledPunishmentTypeItem(PunishGuiConfig.PunishSlotConfig slotConfig) {
         CirrusItemType itemType = parseItemType(slotConfig.getItem());
 
         return CirrusItem.of(

@@ -47,7 +47,7 @@ public class StandingCommand extends BaseCommand {
 
         ModlHttpClient httpClient = httpClientHolder.getClient();
         httpClient.getPlayerProfile(uuid).thenAccept(profileResponse -> {
-            if (profileResponse == null || profileResponse.getProfile() == null) {
+            if (profileResponse == null) {
                 sender.sendMessage(localeManager.getMessage("standing.error"));
                 return;
             }

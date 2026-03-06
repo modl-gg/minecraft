@@ -13,7 +13,6 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
-import gg.modl.minecraft.core.impl.menus.util.InspectTabItems;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
@@ -64,10 +63,11 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
     protected CirrusItem map(Note note) {
         LocaleManager locale = platform.getLocaleManager();
 
-        if (note.getText() == null) return createEmptyPlaceholder(locale.getMessage("menus.empty.notes"));
+        note.getText();
 
         String formattedDate = MenuItems.formatDate(note.getDate());
-        String author = note.getIssuerName() != null ? note.getIssuerName() : "Unknown";
+        note.getIssuerName();
+        String author = note.getIssuerName();
         String content = note.getText();
 
         Map<String, String> vars = Map.of(
@@ -96,7 +96,7 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
 
     @Override
     protected void handleClick(Click click, Note note) {
-        if (note.getText() == null) return;
+        note.getText();
 
         String noteText = note.getText();
         String escapedText = noteText.replace("\\", "\\\\").replace("\"", "\\\"");

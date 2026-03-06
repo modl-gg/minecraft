@@ -56,7 +56,7 @@ public class PunishmentActionCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", "#" + punishmentId)));
 
         httpClientHolder.getClient().getPunishmentDetail(punishmentId).thenAccept(response -> {
-            if (!response.isSuccess() || response.getPunishment() == null) {
+            if (response.isSuccess() || response.getPunishment() == null) {
                 sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", Map.of("id", punishmentId)));
                 return;
             }
@@ -65,19 +65,19 @@ public class PunishmentActionCommand extends BaseCommand {
             UUID playerUuid = UUID.fromString(detail.getPlayerUuid());
 
             httpClientHolder.getClient().getPlayerProfile(playerUuid).thenAccept(profileResponse -> {
-                if (profileResponse.getStatus() != 200 || profileResponse.getProfile() == null) {
+                if (profileResponse.getStatus() != 200) {
                     sender.sendMessage(localeManager.getMessage("general.player_not_found"));
                     return;
                 }
 
                 Account account = profileResponse.getProfile();
                 Punishment punishment = null;
-                if (account.getPunishments() != null)
-                    for (Punishment p : account.getPunishments())
-                        if (p.getId().equals(punishmentId)) {
-                            punishment = p;
-                            break;
-                        }
+                account.getPunishments();
+                for (Punishment p : account.getPunishments())
+                    if (p.getId().equals(punishmentId)) {
+                        punishment = p;
+                        break;
+                    }
 
                 if (punishment == null) {
                     sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", Map.of("id", punishmentId)));

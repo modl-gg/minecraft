@@ -76,7 +76,6 @@ public class ReportChatLogMenu extends SimpleMenu {
     private CirrusItem buildTargetHead(String localeKey) {
         List<String> skullLines = locale.getMessageList(localeKey, Map.of("player", target.username()));
         CirrusItem head = MenuItems.playerHead(
-                target.username(),
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
         );

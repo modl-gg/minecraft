@@ -12,7 +12,6 @@ public class BridgeService {
     private static final String CMD_VANISH_EXIT = "VANISH_EXIT";
     private static final String CMD_FREEZE_PLAYER = "FREEZE_PLAYER";
     private static final String CMD_UNFREEZE_PLAYER = "UNFREEZE_PLAYER";
-    private static final String CMD_FREEZE_LOGOUT = "FREEZE_LOGOUT";
     private static final String CMD_TARGET_REQUEST = "TARGET_REQUEST";
 
     private volatile QueryStatWipeExecutor executor;
@@ -47,10 +46,6 @@ public class BridgeService {
 
     public void sendUnfreezePlayer(String targetUuid) {
         broadcast(CMD_UNFREEZE_PLAYER, targetUuid);
-    }
-
-    public void sendFreezeLogout(String playerUuid, String playerName) {
-        broadcast(CMD_FREEZE_LOGOUT, playerUuid, playerName);
     }
 
     public void sendTargetRequest(String staffUuid, String targetUuid) {

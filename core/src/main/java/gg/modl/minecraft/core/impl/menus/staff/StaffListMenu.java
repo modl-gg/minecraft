@@ -203,9 +203,9 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
             lore.add(MenuItems.COLOR_GRAY + "Roles:");
             for (String role : availableRoles) {
                 if (role.equals(staff.getCurrentRole())) {
-                    lore.add(MenuItems.COLOR_GREEN + "  \u00a7l" + role + " \u00a7r\u00a77(current)");
+                    lore.add(MenuItems.COLOR_GREEN + "  §l" + role + " §r§7(current)");
                 } else if (role.equals(selectedRole) && !role.equals(staff.getCurrentRole())) {
-                    lore.add(MenuItems.COLOR_GREEN + "  " + role + " \u00a77(selected)");
+                    lore.add(MenuItems.COLOR_GREEN + "  " + role + " §7(selected)");
                 } else {
                     lore.add(MenuItems.COLOR_GRAY + "  " + role);
                 }

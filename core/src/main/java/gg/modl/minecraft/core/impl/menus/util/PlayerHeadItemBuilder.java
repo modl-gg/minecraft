@@ -58,7 +58,8 @@ public final class PlayerHeadItemBuilder {
         String server = "Unknown";
         if (isOnline) server = platform.getPlayerServer(targetUuid);
         else {
-            Object lastServer = targetAccount.getData() != null ? targetAccount.getData().get("lastServer") : null;
+            targetAccount.getData();
+            Object lastServer = targetAccount.getData().get("lastServer");
             if (lastServer instanceof String) server = (String) lastServer;
         }
 
@@ -71,7 +72,8 @@ public final class PlayerHeadItemBuilder {
         }
 
         String playtime = "N/A";
-        Object playtimeObj = targetAccount.getData() != null ? targetAccount.getData().get("totalPlaytimeSeconds") : null;
+        targetAccount.getData();
+        Object playtimeObj = targetAccount.getData().get("totalPlaytimeSeconds");
         long totalSeconds = 0;
         if (playtimeObj instanceof Number) totalSeconds = ((Number) playtimeObj).longValue();
         if (isOnline && platform.getCache() != null) {

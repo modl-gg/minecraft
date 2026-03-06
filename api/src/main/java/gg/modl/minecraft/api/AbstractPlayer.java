@@ -1,5 +1,7 @@
 package gg.modl.minecraft.api;
 
+import lombok.Getter;
+
 import java.util.UUID;
 
 public record AbstractPlayer(UUID uuid, String username, boolean online, String ipAddress) {

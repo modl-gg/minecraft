@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core.service;
 
 import gg.modl.minecraft.core.config.ConfigManager.Staff2faConfig;
+import lombok.Setter;
 
 import java.util.Map;
 import java.util.Set;
@@ -20,13 +21,9 @@ public class Staff2faService {
     private final Map<UUID, AuthState> authStates = new ConcurrentHashMap<>();
     /** Tracks players already notified about pending verification to avoid repeat messages. */
     private final Set<UUID> notifiedPending = ConcurrentHashMap.newKeySet();
-    private volatile Staff2faConfig config;
+    @Setter private volatile Staff2faConfig config;
 
     public Staff2faService(Staff2faConfig config) {
-        this.config = config;
-    }
-
-    public void setConfig(Staff2faConfig config) {
         this.config = config;
     }
 

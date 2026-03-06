@@ -15,7 +15,7 @@ public final class InspectTabItems {
         NONE, NOTES, ALTS, HISTORY, REPORTS, PUNISH
     }
 
-    public static Map<Integer, CirrusItem> createItems(InspectTab activeTab, Account targetAccount, String targetName) {
+    public static Map<Integer, CirrusItem> createItems(Account targetAccount, String targetName) {
         Map<Integer, CirrusItem> items = new HashMap<>();
 
         items.put(MenuSlots.INSPECT_NOTES, CirrusItem.of(
@@ -63,7 +63,7 @@ public final class InspectTabItems {
         return items;
     }
 
-    public static Map<Integer, CirrusItem> createCompactItems(InspectTab activeTab, Account targetAccount, String targetName) {
+    public static Map<Integer, CirrusItem> createCompactItems(Account targetAccount, String targetName) {
         Map<Integer, CirrusItem> items = new HashMap<>();
 
         items.put(MenuSlots.COMPACT_INSPECT_NOTES, CirrusItem.of(

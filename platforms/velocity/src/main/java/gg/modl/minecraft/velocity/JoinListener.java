@@ -110,7 +110,7 @@ public class JoinListener {
                 event.setResult(ResultedEvent.ComponentResult.denied(
                         Component.text(denied.message()).color(NamedTextColor.RED)));
             } else {
-                logger.error("Failed to check punishments for " + event.getPlayer().getUsername() + " - allowing login as fallback", e);
+                logger.error("Failed to check punishments for {} - allowing login as fallback", event.getPlayer().getUsername(), e);
                 event.setResult(ResultedEvent.ComponentResult.allowed());
             }
         }

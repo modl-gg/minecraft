@@ -10,11 +10,7 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.StringUtil;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public final class LinkedTicketItems {
     private LinkedTicketItems() {}
@@ -72,8 +68,7 @@ public final class LinkedTicketItems {
                 processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
             }
             if (processed.contains("\n"))
-                for (String subLine : processed.split("\n"))
-                    lore.add(subLine);
+                lore.addAll(Arrays.asList(processed.split("\n")));
             else
                 lore.add(processed);
         }

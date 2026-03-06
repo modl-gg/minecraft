@@ -32,7 +32,7 @@ public abstract class BaseStaffListMenu<T> extends BaseListMenu<T> {
     @Override
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
-        items.putAll(StaffTabItems.createItems(activeTab));
+        items.putAll(StaffTabItems.createItems());
         return items;
     }
 

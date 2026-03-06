@@ -43,7 +43,7 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
         public List<String> getPermissions() { return permissions; }
     }
 
-    private List<Role> roles = new ArrayList<>();
+    private final List<Role> roles = new ArrayList<>();
     private final String panelUrl;
     private final boolean hasPermission;
 

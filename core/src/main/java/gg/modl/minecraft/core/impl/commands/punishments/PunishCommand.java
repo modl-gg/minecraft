@@ -232,7 +232,7 @@ public class PunishCommand extends BaseCommand {
             else if (arg.equalsIgnoreCase("-silent") || arg.equalsIgnoreCase("-s")) result.silent = true;
             else if (arg.equalsIgnoreCase("-stat-wipe") || arg.equalsIgnoreCase("-sw")) result.statWipe = true;
             else {
-                if (reasonBuilder.length() > 0) reasonBuilder.append(" ");
+                if (!reasonBuilder.isEmpty()) reasonBuilder.append(" ");
                 reasonBuilder.append(arg);
             }
         }
@@ -260,7 +260,8 @@ public class PunishCommand extends BaseCommand {
 
     private String resolveBlockedName(PunishmentTypesResponse.PunishmentTypeData punishmentType, Account target) {
         if (!Boolean.TRUE.equals(punishmentType.getPermanentUntilUsernameChange())) return null;
-        return (target.getUsernames() != null && !target.getUsernames().isEmpty())
+        target.getUsernames();
+        return !target.getUsernames().isEmpty()
             ? target.getUsernames().get(target.getUsernames().size() - 1).getUsername()
             : Constants.UNKNOWN;
     }
@@ -314,8 +315,8 @@ public class PunishCommand extends BaseCommand {
     }
 
     private static class ParsedCommand {
-        PunishmentTypesResponse.PunishmentTypeData punishmentType;
-        String remainingArgs;
+        final PunishmentTypesResponse.PunishmentTypeData punishmentType;
+        final String remainingArgs;
 
         ParsedCommand(PunishmentTypesResponse.PunishmentTypeData punishmentType, String remainingArgs) {
             this.punishmentType = punishmentType;
@@ -326,7 +327,7 @@ public class PunishCommand extends BaseCommand {
     private static class PunishmentArgs {
         String severity = null;
         String reason = "";
-        long duration = 0;
+        final long duration = 0;
         boolean altBlocking = false;
         boolean silent = false;
         boolean statWipe = false;

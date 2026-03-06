@@ -46,10 +46,6 @@ public class Account {
         return punishments != null ? punishments : Collections.emptyList();
     }
 
-    public @NotNull List<Map<String, Object>> getPendingNotifications() {
-        return pendingNotifications != null ? pendingNotifications : Collections.emptyList();
-    }
-
     public @NotNull Map<String, Object> getData() {
         return data != null ? data : Collections.emptyMap();
     }

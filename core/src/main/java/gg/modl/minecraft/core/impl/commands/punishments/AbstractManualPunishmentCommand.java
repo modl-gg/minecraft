@@ -111,7 +111,7 @@ public abstract class AbstractManualPunishmentCommand extends BaseCommand {
     }
 
     private static void appendToReason(StringBuilder builder, String arg) {
-        if (builder.length() > 0) builder.append(" ");
+        if (!builder.isEmpty()) builder.append(" ");
         builder.append(arg);
     }
 

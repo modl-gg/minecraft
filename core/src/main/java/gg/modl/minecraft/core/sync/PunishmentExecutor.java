@@ -88,7 +88,7 @@ class PunishmentExecutor {
     private boolean executeMute(UUID uuid, String username, SimplePunishment punishment) {
         try {
             cache.cacheMute(uuid, punishment);
-            platform.broadcast(PunishmentMessages.formatPunishmentBroadcast(username, punishment, "muted", localeManager));
+            platform.broadcast(PunishmentMessages.formatPunishmentBroadcast(username, punishment, localeManager));
             if (debugMode) logger.info("Executed mute for " + username + ": " + punishment.getDescription());
             return true;
         } catch (Exception e) {
@@ -103,7 +103,7 @@ class PunishmentExecutor {
             if (player != null && player.isOnline()) {
                 platform.kickPlayer(player, PunishmentMessages.formatBanMessage(punishment, localeManager, PunishmentMessages.MessageContext.SYNC));
             }
-            platform.broadcast(PunishmentMessages.formatPunishmentBroadcast(username, punishment, "banned", localeManager));
+            platform.broadcast(PunishmentMessages.formatPunishmentBroadcast(username, punishment, localeManager));
             if (debugMode) logger.info("Executed ban for " + username + ": " + punishment.getDescription());
             return true;
         } catch (Exception e) {
@@ -120,7 +120,7 @@ class PunishmentExecutor {
                 return true;
             }
             platform.kickPlayer(player, PunishmentMessages.formatKickMessage(punishment, localeManager, PunishmentMessages.MessageContext.SYNC));
-            platform.broadcast(PunishmentMessages.formatPunishmentBroadcast(username, punishment, "kicked", localeManager));
+            platform.broadcast(PunishmentMessages.formatPunishmentBroadcast(username, punishment, localeManager));
             if (debugMode) logger.info("Executed kick for " + username + ": " + punishment.getDescription());
             return true;
         } catch (Exception e) {

@@ -187,7 +187,7 @@ public class LocaleManager {
         return new PunishmentMessageBuilder(this);
     }
     
-    public String getPublicNotificationMessage(int ordinal, String punishmentType, Map<String, String> variables) {
+    public String getPublicNotificationMessage(int ordinal, Map<String, String> variables) {
         String path = "punishment_types.ordinal_" + ordinal + ".public_notification";
         Object value = getNestedValue(messages, path);
 
@@ -212,7 +212,7 @@ public class LocaleManager {
 
         variables.put("will_expire", getWillExpireMessage(punishment));
         String category = punishment.getCategory();
-        return getPlayerNotificationMessageWithCategory(ordinal, punishmentType, category, variables);
+        return getPlayerNotificationMessageWithCategory(ordinal, punishmentType, variables);
     }
 
     private String formatIssuedDate(SimplePunishment punishment) {
@@ -235,7 +235,7 @@ public class LocaleManager {
         return "\n&7This " + punishmentTypeWord + " will expire in &f" + duration + "&7.";
     }
 
-    private String getPlayerNotificationMessageWithCategory(int ordinal, String punishmentType, String category, Map<String, String> variables) {
+    private String getPlayerNotificationMessageWithCategory(int ordinal, String category, Map<String, String> variables) {
         String path = "punishment_types.ordinal_" + ordinal + ".player_notification";
         String result = resolveAsJoinedLines(path, variables);
         return result != null ? result : getDefaultPlayerNotificationByCategory(category, variables);
@@ -326,14 +326,14 @@ public class LocaleManager {
         
         if (days > 0) duration.append(getMessage("config.duration_format.days", Map.of("days", String.valueOf(days))));
         if (hours > 0) {
-            if (duration.length() > 0) duration.append(" ");
+            if (!duration.isEmpty()) duration.append(" ");
             duration.append(getMessage("config.duration_format.hours", Map.of("hours", String.valueOf(hours))));
         }
         if (minutes > 0) {
-            if (duration.length() > 0) duration.append(" ");
+            if (!duration.isEmpty()) duration.append(" ");
             duration.append(getMessage("config.duration_format.minutes", Map.of("minutes", String.valueOf(minutes))));
         }
-        if (seconds > 0 && duration.length() == 0) {
+        if (seconds > 0 && duration.isEmpty()) {
             duration.append(getMessage("config.duration_format.seconds", Map.of("seconds", String.valueOf(seconds))));
         }
         

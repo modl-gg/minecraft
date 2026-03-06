@@ -17,10 +17,6 @@ public class NetworkChatInterceptService {
         return true;
     }
 
-    public boolean isIntercepting(UUID uuid) {
-        return intercepting.contains(uuid);
-    }
-
     public Set<UUID> getInterceptors() {
         return Collections.unmodifiableSet(intercepting);
     }

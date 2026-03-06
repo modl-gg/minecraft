@@ -19,14 +19,7 @@ import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMenu.PunishmentWithPlayer> {
@@ -191,7 +184,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
         StringBuilder notesBuilder = new StringBuilder();
         List<Note> notes = punishment.getNotes();
-        if (notes != null && !notes.isEmpty()) {
+        if (!notes.isEmpty()) {
             String noteFormat = locale.getMessage("menus.history_item.note_format");
             for (int i = 0; i < notes.size(); i++) {
                 Note note = notes.get(i);
@@ -209,14 +202,16 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         }
 
         Map<String, String> vars = new HashMap<>();
-        vars.put("punishment_id", punishment.getId() != null ? punishment.getId() : "Unknown");
+        punishment.getId();
+        vars.put("punishment_id", punishment.getId());
         vars.put("punishment_type", typeName);
         vars.put("initial_duration_if_not_kick", initialDuration);
         vars.put("space_ban_mute_or_kick", spaceBanMuteOrKick);
         vars.put("status_line", statusLine);
         vars.put("notes", notesBuilder.toString());
         vars.put("reason", punishment.getReason() != null ? punishment.getReason() : "No reason");
-        vars.put("issuer", punishment.getIssuerName() != null ? punishment.getIssuerName() : "Unknown");
+        punishment.getIssuerName();
+        vars.put("issuer", punishment.getIssuerName());
         vars.put("issued_date", MenuItems.formatDate(punishment.getIssued()));
         Object issuedServerObj = punishment.getDataMap().get("issuedServer");
         vars.put("issued_server", issuedServerObj instanceof String ? (String) issuedServerObj : "");
@@ -229,8 +224,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
                 processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
             }
             if (processed.contains("\n"))
-                for (String subLine : processed.split("\n"))
-                    lore.add(subLine);
+                lore.addAll(Arrays.asList(processed.split("\n")));
             else if (!processed.isEmpty())
                 lore.add(processed);
         }
@@ -308,7 +302,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
     private Date findPardonDate(Punishment punishment) {
         List<Modification> modifications = punishment.getModifications();
-        if (modifications == null || modifications.isEmpty())
+        if (modifications.isEmpty())
             return null;
 
         for (Modification mod : modifications) {
@@ -322,7 +316,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
     private Long getEffectiveDuration(Punishment punishment) {
         List<Modification> modifications = punishment.getModifications();
-        if (modifications == null || modifications.isEmpty())
+        if (modifications.isEmpty())
             return punishment.getDuration();
 
         Long effectiveDuration = punishment.getDuration();

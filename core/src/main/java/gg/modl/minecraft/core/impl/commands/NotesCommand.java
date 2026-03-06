@@ -38,7 +38,7 @@ public class NotesCommand extends BaseCommand {
     @Syntax("<player> [-p]")
     @Description("Open the notes menu for a player, or use -p to print to chat")
     @Conditions("player|staff")
-    public void notes(CommandIssuer sender, @Name("player") String playerQuery, @Default("") String flags) {
+    public void notes(CommandIssuer sender, @Name("player") String playerQuery, @Default() String flags) {
         boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
 
         if (!sender.isPlayer() || printMode) {
@@ -55,7 +55,7 @@ public class NotesCommand extends BaseCommand {
                 UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
 
                 httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
-                    if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
+                    if (profileResponse.getStatus() == 200) {
                         String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
                         NotesMenu menu = new NotesMenu(
                             platform, httpClientHolder.getClient(), senderUuid, senderName,
@@ -65,12 +65,12 @@ public class NotesCommand extends BaseCommand {
                         menu.display(player);
                     } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
                 }).exceptionally(throwable -> {
-                    handleException(sender, throwable, playerQuery);
+                    handleException(sender, throwable);
                     return null;
                 });
             } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
-            handleException(sender, throwable, playerQuery);
+            handleException(sender, throwable);
             return null;
         });
     }
@@ -86,17 +86,17 @@ public class NotesCommand extends BaseCommand {
                 UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
 
                 httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
-                    if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
+                    if (profileResponse.getStatus() == 200) {
                         Account profile = profileResponse.getProfile();
                         displayNotes(sender, playerName, profile);
                     } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
                 }).exceptionally(throwable -> {
-                    handleException(sender, throwable, playerQuery);
+                    handleException(sender, throwable);
                     return null;
                 });
             } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
-            handleException(sender, throwable, playerQuery);
+            handleException(sender, throwable);
             return null;
         });
     }
@@ -128,7 +128,7 @@ public class NotesCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("print.notes.footer"));
     }
 
-    private void handleException(CommandIssuer sender, Throwable throwable, String playerQuery) {
+    private void handleException(CommandIssuer sender, Throwable throwable) {
         if (throwable.getCause() instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
         else sender.sendMessage(localeManager.getMessage("player_lookup.error", Map.of("error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
     }

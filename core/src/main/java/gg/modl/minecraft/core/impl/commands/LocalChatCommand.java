@@ -17,7 +17,7 @@ import java.util.UUID;
 
 @RequiredArgsConstructor @CommandAlias("%cmd_localchat") @Conditions("player|staff")
 public class LocalChatCommand extends BaseCommand {
-    private static final String LOCAL_CHAT_FORMAT = "\u00A7f<%s\u00A7f> %s";
+    private static final String LOCAL_CHAT_FORMAT = "§f<%s§f> %s";
 
     private final Platform platform;
     private final Cache cache;
@@ -26,7 +26,7 @@ public class LocalChatCommand extends BaseCommand {
 
     @Default
     @Description("Switch back to normal chat mode or send a local message")
-    public void localChat(CommandIssuer sender, @Default("") String message) {
+    public void localChat(CommandIssuer sender, @Default() String message) {
         UUID senderUuid = sender.getUniqueId();
 
         if (!message.isEmpty()) {

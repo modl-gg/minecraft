@@ -45,7 +45,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
         fillBorders();
         set(PlayerHeadItemBuilder.create(platform, targetAccount, targetName, targetUuid)
                 .actionHandler("targetPlayer").slot(MenuSlots.INSPECT_PLAYER_HEAD));
-        for (Map.Entry<Integer, CirrusItem> entry : InspectTabItems.createItems(activeTab, targetAccount, targetName).entrySet()) {
+        for (Map.Entry<Integer, CirrusItem> entry : InspectTabItems.createItems(targetAccount, targetName).entrySet()) {
             set(entry.getValue().slot(entry.getKey()));
         }
         addBackButton();
@@ -54,7 +54,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
     protected void buildCompactHeader() {
         set(PlayerHeadItemBuilder.create(platform, targetAccount, targetName, targetUuid)
                 .actionHandler("targetPlayer").slot(MenuSlots.COMPACT_INSPECT_HEAD));
-        for (Map.Entry<Integer, CirrusItem> entry : InspectTabItems.createCompactItems(activeTab, targetAccount, targetName).entrySet()) {
+        for (Map.Entry<Integer, CirrusItem> entry : InspectTabItems.createCompactItems(targetAccount, targetName).entrySet()) {
             set(entry.getValue().slot(entry.getKey()));
         }
         addCompactBackButton();

@@ -21,14 +21,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class HistoryMenu extends BaseInspectListMenu<Punishment> {
@@ -67,7 +60,8 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     protected CirrusItem map(Punishment punishment) {
         LocaleManager locale = platform.getLocaleManager();
 
-        if (punishment.getId() == null || punishment.getId().isEmpty())
+        punishment.getId();
+        if (punishment.getId().isEmpty())
             return createEmptyPlaceholder(locale.getMessage("menus.empty.history"));
 
         String typeName = getTypeName(punishment);
@@ -135,7 +129,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
         StringBuilder notesBuilder = new StringBuilder();
         List<Note> notes = punishment.getNotes();
-        if (notes != null && !notes.isEmpty()) {
+        if (!notes.isEmpty()) {
             String noteFormat = locale.getMessage("menus.history_item.note_format");
             for (int i = 0; i < notes.size(); i++) {
                 Note note = notes.get(i);
@@ -153,14 +147,16 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         }
 
         Map<String, String> vars = new HashMap<>();
-        vars.put("punishment_id", punishment.getId() != null ? punishment.getId() : "Unknown");
+        punishment.getId();
+        vars.put("punishment_id", punishment.getId());
         vars.put("punishment_type", typeName);
         vars.put("initial_duration_if_not_kick", initialDuration);
         vars.put("space_ban_mute_or_kick", spaceBanMuteOrKick);
         vars.put("status_line", statusLine);
         vars.put("notes", notesBuilder.toString());
         vars.put("reason", punishment.getReason() != null ? punishment.getReason() : "No reason");
-        vars.put("issuer", punishment.getIssuerName() != null ? punishment.getIssuerName() : "Unknown");
+        punishment.getIssuerName();
+        vars.put("issuer", punishment.getIssuerName());
         vars.put("issued_date", MenuItems.formatDate(punishment.getIssued()));
         Object issuedServerObj = punishment.getDataMap().get("issuedServer");
         vars.put("issued_server", issuedServerObj instanceof String ? (String) issuedServerObj : "");
@@ -172,8 +168,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
                 processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
             }
             if (processed.contains("\n"))
-                for (String subLine : processed.split("\n"))
-                    lore.add(subLine);
+                lore.addAll(Arrays.asList(processed.split("\n")));
             else if (!processed.isEmpty())
                 lore.add(processed);
         }
@@ -224,7 +219,8 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
     @Override
     protected void handleClick(Click click, Punishment punishment) {
-        if (punishment.getId() == null || punishment.getId().isEmpty())
+        punishment.getId();
+        if (punishment.getId().isEmpty())
             return;
 
         ActionHandlers.openMenu(
@@ -245,7 +241,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
     private Date findPardonDate(Punishment punishment) {
         List<Modification> modifications = punishment.getModifications();
-        if (modifications == null || modifications.isEmpty())
+        if (modifications.isEmpty())
             return null;
 
         for (Modification mod : modifications) {
@@ -259,7 +255,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
     private Long getEffectiveDuration(Punishment punishment) {
         List<Modification> modifications = punishment.getModifications();
-        if (modifications == null || modifications.isEmpty())
+        if (modifications.isEmpty())
             return punishment.getDuration();
 
         Long effectiveDuration = punishment.getDuration();

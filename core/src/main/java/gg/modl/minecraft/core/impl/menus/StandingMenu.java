@@ -85,7 +85,8 @@ public class StandingMenu extends BaseListMenu<Punishment> {
 
     @Override
     protected CirrusItem map(Punishment punishment) {
-        if (punishment.getId() == null || punishment.getId().isEmpty()) {
+        punishment.getId();
+        if (punishment.getId().isEmpty()) {
             return createEmptyPlaceholder("No punishments");
         }
 

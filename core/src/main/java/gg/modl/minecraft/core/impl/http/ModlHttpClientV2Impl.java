@@ -431,7 +431,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
 
     @NotNull @Override
     public CompletableFuture<ReportsResponse> getPlayerReports(@NotNull java.util.UUID playerUuid, String status) {
-        String endpoint = "/minecraft/reports/player/" + playerUuid.toString();
+        String endpoint = "/minecraft/reports/player/" + playerUuid;
         if (status != null && !status.isEmpty()) endpoint += "?status=" + status;
         return sendAsync(requestBuilder(endpoint)
                 .GET()
@@ -488,7 +488,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
 
     @NotNull @Override
     public CompletableFuture<PunishmentPreviewResponse> getPunishmentPreview(@NotNull UUID playerUuid, int typeOrdinal) {
-        String endpoint = "/minecraft/punishments/preview?playerUuid=" + playerUuid.toString() + "&typeOrdinal=" + typeOrdinal;
+        String endpoint = "/minecraft/punishments/preview?playerUuid=" + playerUuid + "&typeOrdinal=" + typeOrdinal;
         return sendAsync(requestBuilder(endpoint)
                 .GET()
                 .build(), PunishmentPreviewResponse.class);

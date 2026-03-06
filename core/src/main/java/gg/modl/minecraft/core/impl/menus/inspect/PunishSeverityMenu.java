@@ -39,7 +39,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     private boolean silentMode = false;
     private boolean altBlocking = false;
     private boolean statWipe = false;
-    private List<String> linkedReportIds;
+    private final List<String> linkedReportIds;
     private PunishmentPreviewResponse previewData;
 
     public PunishSeverityMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -332,7 +332,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                             punishmentType.getOrdinal(),
                             reason,
                             null, // duration - let API determine from severity
-                            data.isEmpty() ? null : data,
+                            data,
                             null, // notes
                             linkedReportIds.isEmpty() ? null : linkedReportIds,
                             severityStr,

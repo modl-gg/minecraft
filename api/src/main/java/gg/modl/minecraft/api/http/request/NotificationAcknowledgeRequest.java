@@ -10,8 +10,6 @@ import java.util.List;
 @Data @NoArgsConstructor @AllArgsConstructor
 public class NotificationAcknowledgeRequest {
     private @NotNull String playerUuid;
-    
     private @NotNull List<String> notificationIds;
-    
     private @NotNull String acknowledgedAt;
 }

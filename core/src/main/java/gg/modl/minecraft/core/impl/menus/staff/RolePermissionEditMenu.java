@@ -17,6 +17,9 @@ import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.util.Permissions;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,23 +34,15 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEditMenu.Permission> {
+    @AllArgsConstructor
     public static class Permission {
-        private final String node;
-        private boolean enabled;
-
-        public Permission(String node, boolean enabled) {
-            this.node = node;
-            this.enabled = enabled;
-        }
-
-        public String getNode() { return node; }
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+        @Getter private final String node;
+        @Setter @Getter private boolean enabled;
     }
 
     private final RoleListMenu.Role role;
-    private List<Permission> allPermissions = new ArrayList<>();
-    private Set<String> enabledPermissions;
+    private final List<Permission> allPermissions = new ArrayList<>();
+    private final Set<String> enabledPermissions;
     private final Set<String> originalPermissions;
     private final String panelUrl;
     private final boolean hasPermission;
@@ -189,7 +184,7 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         boolean changed = permission.isEnabled() != originalPermissions.contains(permission.getNode());
         String suffix = changed ? MenuItems.COLOR_YELLOW + " *" : "";
         boolean isChild = isChildPermission(permission.getNode());
-        String displayPrefix = isChild ? "  \u21b3 " : "";
+        String displayPrefix = isChild ? "  ↳ " : "";
 
         if (isChild && isParentEnabled(permission.getNode())) {
             CirrusItem item = CirrusItem.of(

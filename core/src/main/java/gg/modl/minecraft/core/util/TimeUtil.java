@@ -70,39 +70,4 @@ public class TimeUtil {
 
         return duration == 0 ? -1L : duration;
     }
-
-    public static Date getTime(String arg) {
-        Matcher m = DURATION_TOKEN_PATTERN.matcher(arg.toLowerCase());
-
-        int time = -1;
-        String type = null;
-        boolean isTemp = false;
-        Calendar calendar = Calendar.getInstance();
-        while (m.find()) {
-            String token = m.group();
-            try {
-                time = Integer.parseInt(token);
-                if (time < 1) time = -1;
-            } catch (NumberFormatException ignored) {
-                type = token;
-            }
-
-            if (time > 0 && type != null) {
-                switch (type) {
-                    case "seconds", "second", "sec", "s" -> calendar.add(Calendar.SECOND, time);
-                    case "minutes", "minute", "m" -> calendar.add(Calendar.MINUTE, time);
-                    case "hours", "hrs", "hr", "h" -> calendar.add(Calendar.HOUR, time);
-                    case "days", "day", "d" -> calendar.add(Calendar.HOUR, time * 24);
-                    case "weeks", "week", "w" -> calendar.add(Calendar.HOUR, time * 24 * 7);
-                    case "months", "month", "mo" -> calendar.add(Calendar.MONTH, time);
-                }
-
-                isTemp = true;
-                time = -1;
-                type = null;
-            }
-        }
-
-        return isTemp ? calendar.getTime() : null;
-    }
 }

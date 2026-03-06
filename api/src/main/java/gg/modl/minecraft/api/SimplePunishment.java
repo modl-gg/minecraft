@@ -16,23 +16,14 @@ public class SimplePunishment {
     private static final String CATEGORY_KICK = "KICK";
 
     private @NotNull String type;
-
     private @Nullable String category;
-
     private boolean started;
-
     private @Nullable Long expiration;
-
     private @NotNull String description;
-
     private @NotNull String id;
-
     private int ordinal;
-
     private @Nullable String issuerName;
-
     private @Nullable Long issuedAt;
-
     private @Nullable String playerDescription;
 
     /**

@@ -136,8 +136,8 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
         ).slot(MenuSlots.MODIFY_LINKED_TICKETS).actionHandler("linkedTickets"));
 
         if (isBanType) {
-            boolean statWipe = punishment.getDataMap() != null &&
-                    Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
+            punishment.getDataMap();
+            boolean statWipe = Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
             set(CirrusItem.of(
                     statWipe ? CirrusItemType.EXPERIENCE_BOTTLE : CirrusItemType.GLASS_BOTTLE,
                     CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Stat-Wipe"),
@@ -148,8 +148,8 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
                     )
             ).slot(MenuSlots.MODIFY_STAT_WIPE).actionHandler("toggleStatWipe"));
 
-            boolean altBlock = punishment.getDataMap() != null &&
-                    Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
+            punishment.getDataMap();
+            boolean altBlock = Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
             set(CirrusItem.of(
                     altBlock ? CirrusItemType.TORCH : CirrusItemType.REDSTONE_TORCH,
                     CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Toggle Alt-Blocking"),

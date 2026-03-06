@@ -29,7 +29,7 @@ public class BlacklistCommand extends AbstractManualPunishmentCommand {
     @CommandAlias("%cmd_blacklist")
     @Syntax("<target> [reason...] [-silent] [-alt-blocking] [-stat-wipe]")
     @Conditions("permission:value=punishment.apply.blacklist")
-    public void blacklist(CommandIssuer sender, @Name("target") Account target, @Default("") String args) {
+    public void blacklist(CommandIssuer sender, @Name("target") Account target, @Default() String args) {
         executePunishment(sender, target, args);
     }
 }

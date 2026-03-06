@@ -6,6 +6,7 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.StringUtil;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -47,8 +48,7 @@ public final class ReportRenderUtil {
                 processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
             }
             if (processed.contains("\n"))
-                for (String subLine : processed.split("\n"))
-                    lore.add(subLine);
+                lore.addAll(Arrays.asList(processed.split("\n")));
             else if (!processed.isEmpty())
                 lore.add(processed);
         }
@@ -56,7 +56,8 @@ public final class ReportRenderUtil {
     }
 
     public static String getPlayerName(Account account) {
-        if (account.getUsernames() != null && !account.getUsernames().isEmpty()) {
+        account.getUsernames();
+        if (!account.getUsernames().isEmpty()) {
             return account.getUsernames().stream()
                     .max((u1, u2) -> u1.getDate().compareTo(u2.getDate()))
                     .map(Account.Username::getUsername)

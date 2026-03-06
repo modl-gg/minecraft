@@ -14,7 +14,7 @@ public final class StaffTabItems {
         NONE, ONLINE_PLAYERS, REPORTS, PUNISHMENTS, TICKETS, SETTINGS
     }
 
-    public static Map<Integer, CirrusItem> createItems(StaffTab activeTab) {
+    public static Map<Integer, CirrusItem> createItems() {
         Map<Integer, CirrusItem> items = new HashMap<>();
 
         items.put(MenuSlots.STAFF_ONLINE_PLAYERS, CirrusItem.of(
@@ -71,7 +71,7 @@ public final class StaffTabItems {
         return items;
     }
 
-    public static Map<Integer, CirrusItem> createCompactItems(StaffTab activeTab) {
+    public static Map<Integer, CirrusItem> createCompactItems() {
         Map<Integer, CirrusItem> items = new HashMap<>();
 
         items.put(MenuSlots.COMPACT_STAFF_ONLINE, CirrusItem.of(

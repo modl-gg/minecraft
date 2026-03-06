@@ -77,8 +77,8 @@ public class SyncService {
     private volatile Long lastKnownPunishmentTypesTimestamp = null;
     private int syncCycleCount = 0;
     private StatWipeExecutor statWipeExecutor;
-    private Staff2faService staff2faService;
-    private ChatCommandLogService chatCommandLogService;
+    private final Staff2faService staff2faService;
+    private final ChatCommandLogService chatCommandLogService;
 
     public SyncService(@NotNull Platform platform, @NotNull HttpClientHolder httpClientHolder, @NotNull Cache cache,
                        @NotNull PluginLogger logger, @NotNull LocaleManager localeManager, @NotNull String apiUrl,
@@ -235,9 +235,8 @@ public class SyncService {
         for (SyncResponse.ModifiedPunishment modified : data.getRecentlyModifiedPunishments()) punishmentExecutor.processModifiedPunishment(modified);
         for (SyncResponse.PendingPunishment pending : data.getPendingPunishments()) punishmentExecutor.processPendingPunishment(pending);
 
-        if (data.getActiveStaffMembers() != null) {
-            for (SyncResponse.ActiveStaffMember staffMember : data.getActiveStaffMembers()) processActiveStaffMember(staffMember);
-        }
+        for (SyncResponse.ActiveStaffMember staffMember : data.getActiveStaffMembers())
+            processActiveStaffMember(staffMember);
 
         for (SyncResponse.PlayerNotification notification : data.getPlayerNotifications()) processPlayerNotification(notification);
 
@@ -501,7 +500,7 @@ public class SyncService {
         StringBuilder hover = new StringBuilder();
         if (!subject.isEmpty()) hover.append(subject);
         if (!firstReply.isEmpty()) {
-            if (hover.length() > 0) hover.append("\n\n");
+            if (!hover.isEmpty()) hover.append("\n\n");
             hover.append(firstReply.length() > MAX_HOVER_TEXT_LENGTH
                     ? firstReply.substring(0, MAX_HOVER_TEXT_LENGTH) + "..."
                     : firstReply);
@@ -571,11 +570,6 @@ public class SyncService {
         String json = buildClickableTicketJson(notification.getMessage(), extractString(data, "ticketUrl"), extractString(data, "ticketId"));
         if (debugMode) logger.info("Sending clickable notification JSON: " + json);
         platform.runOnMainThread(() -> platform.sendJsonMessage(playerUuid, json));
-    }
-
-    public void deliverLoginNotification(UUID playerUuid, SyncResponse.PlayerNotification notification) {
-        if (debugMode) logger.info("Delivering login notification " + notification.getId() + " to " + playerUuid);
-        deliverNotificationToPlayerAndCheck(playerUuid, notification);
     }
 
     /** Temporary: broadcasts untargeted notifications to all online players. */

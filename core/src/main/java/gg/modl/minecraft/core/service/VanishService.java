@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.service;
 
-import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;

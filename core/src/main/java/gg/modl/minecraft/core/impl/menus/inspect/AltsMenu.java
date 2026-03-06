@@ -18,14 +18,7 @@ import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.WebPlayer;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -48,7 +41,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
     private void loadLinkedAccounts() {
         try {
             var response = httpClient.getLinkedAccounts(targetUuid).join();
-            if (response.getStatus() == 200 && response.getLinkedAccounts() != null) {
+            if (response.getStatus() == 200) {
                 linkedAccounts = new ArrayList<>(response.getLinkedAccounts());
 
                 if (platform.getCache() != null) {
@@ -141,8 +134,10 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
             StringBuilder activePunishmentList = new StringBuilder();
             for (int i = 0; i < activePunishments.size(); i++) {
                 Punishment p = activePunishments.get(i);
-                String pId = p.getId() != null ? p.getId() : "?";
-                String pDate = p.getIssued() != null ? MenuItems.formatDate(p.getIssued()) : "?";
+                p.getId();
+                String pId = p.getId();
+                p.getIssued();
+                String pDate = MenuItems.formatDate(p.getIssued());
                 String pType = p.getTypeCategory();
                 String pRemaining = "Permanent";
                 Long duration = p.getDuration();
@@ -187,7 +182,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         vars.put("is_online", isOnline ? "&aYes" : "&cNo");
         vars.put("last_seen_or_session_time", lastSeenOrSessionTime);
         String server = "Unknown";
-        if (isOnline && alt.getMinecraftUuid() != null) {
+        if (isOnline) {
             String playerServer = platform.getPlayerServer(alt.getMinecraftUuid());
             if (playerServer != null) server = playerServer;
         }
@@ -203,8 +198,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
                 processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
             }
             if (processed.contains("\n"))
-                for (String subLine : processed.split("\n"))
-                    lore.add(subLine);
+                lore.addAll(Arrays.asList(processed.split("\n")));
             else
                 lore.add(processed);
         }

@@ -20,8 +20,8 @@ import java.util.Map;
 @RequiredArgsConstructor @CommandAlias("%cmd_modl")
 public class ModlReloadCommand extends BaseCommand {
     private static final int ENTRIES_PER_PAGE = 8;
-    private static final String VERSION_HEADER = "\u00A7a\u00A7lmodl.gg\u00A7a v%s\u00A7f - \u00A7eModeration and Support Management System";
-    private static final String VERSION_FOOTER = "\u00A77GNU AGPLv3 Free Software. Use /modl help for command information.";
+    private static final String VERSION_HEADER = "§a§lmodl.gg§a v%s§f - §eModeration and Support Management System";
+    private static final String VERSION_FOOTER = "§7GNU AGPLv3 Free Software. Use /modl help for command information.";
 
     private final Cache cache;
     private final LocaleManager localeManager;
@@ -126,7 +126,7 @@ public class ModlReloadCommand extends BaseCommand {
 
     private void addEntry(List<HelpEntry> entries, String localeKey) {
         String usage = localeManager.getMessage("help." + localeKey + ".usage");
-        if (usage == null || usage.isEmpty() || usage.startsWith("\u00A7cMissing")) return;
+        if (usage == null || usage.isEmpty() || usage.startsWith("§cMissing")) return;
         String description = localeManager.getMessage("help." + localeKey + ".description");
         entries.add(new HelpEntry(usage, description));
     }

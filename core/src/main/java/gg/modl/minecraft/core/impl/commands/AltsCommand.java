@@ -42,7 +42,7 @@ public class AltsCommand extends BaseCommand {
     @Syntax("<player> [-p]")
     @Description("Open the alts menu for a player, or use -p to print to chat")
     @Conditions("player|staff")
-    public void alts(CommandIssuer sender, @Name("player") String playerQuery, @Default("") String flags) {
+    public void alts(CommandIssuer sender, @Name("player") String playerQuery, @Default() String flags) {
         boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
 
         if (!sender.isPlayer() || printMode) {
@@ -60,7 +60,7 @@ public class AltsCommand extends BaseCommand {
                 UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
 
                 httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
-                    if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
+                    if (profileResponse.getStatus() == 200) {
                         String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
                         AltsMenu menu = new AltsMenu(
                             platform, httpClientHolder.getClient(), senderUuid, senderName,
@@ -112,7 +112,8 @@ public class AltsCommand extends BaseCommand {
             int ordinal = 1;
             for (Account account : linkedAccounts) {
                 String username = Constants.UNKNOWN;
-                if (account.getUsernames() != null && !account.getUsernames().isEmpty())
+                account.getUsernames();
+                if (!account.getUsernames().isEmpty())
                     username = account.getUsernames().get(account.getUsernames().size() - 1).getUsername();
 
                 String uuid = account.getMinecraftUuid() != null ? account.getMinecraftUuid().toString() : Constants.UNKNOWN;

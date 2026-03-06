@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit;
  * Manages async command execution for Spigot and BungeeCord platforms.
  * Commands registered as async will be dispatched off the main/network thread
  * to avoid blocking on I/O operations (HTTP calls for player lookups, etc.).
- *
+ * <p>
  * Uses a bounded cached thread pool: threads are created on demand, idle threads
  * are reclaimed after 60 seconds, and the pool is capped at 4 threads.
  * This is sufficient for Minecraft command throughput (rarely more than a few

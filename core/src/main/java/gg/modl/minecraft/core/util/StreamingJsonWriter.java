@@ -164,12 +164,12 @@ public class StreamingJsonWriter implements AutoCloseable {
     }
 
     public static class PlayerData {
-        public String minecraftUuid;
-        public List<UsernameEntry> usernames;
-        public List<NoteEntry> notes;
-        public List<IpEntry> ipList;
-        public List<PunishmentEntry> punishments;
-        public Map<String, Object> data;
+        public final String minecraftUuid;
+        public final List<UsernameEntry> usernames;
+        public final List<NoteEntry> notes;
+        public final List<IpEntry> ipList;
+        public final List<PunishmentEntry> punishments;
+        public final Map<String, Object> data;
 
         public PlayerData(String minecraftUuid, List<UsernameEntry> usernames, List<NoteEntry> notes,
                          List<IpEntry> ipList, List<PunishmentEntry> punishments, Map<String, Object> data) {
@@ -183,8 +183,8 @@ public class StreamingJsonWriter implements AutoCloseable {
     }
 
     public static class UsernameEntry {
-        public String username;
-        public String date;
+        public final String username;
+        public final String date;
 
         public UsernameEntry(String username, String date) {
             this.username = username;
@@ -193,9 +193,9 @@ public class StreamingJsonWriter implements AutoCloseable {
     }
 
     public static class NoteEntry {
-        public String text;
-        public String date;
-        public String issuerName;
+        public final String text;
+        public final String date;
+        public final String issuerName;
 
         public NoteEntry(String text, String date, String issuerName) {
             this.text = text;
@@ -205,14 +205,14 @@ public class StreamingJsonWriter implements AutoCloseable {
     }
 
     public static class IpEntry {
-        public String ipAddress;
-        public String country;
-        public String region;
-        public String asn;
-        public Boolean proxy;
-        public Boolean hosting;
-        public String firstLogin;
-        public List<String> logins;
+        public final String ipAddress;
+        public final String country;
+        public final String region;
+        public final String asn;
+        public final Boolean proxy;
+        public final Boolean hosting;
+        public final String firstLogin;
+        public final List<String> logins;
 
         public IpEntry(String ipAddress, String country, String region, String asn, 
                       Boolean proxy, Boolean hosting, String firstLogin, List<String> logins) {
@@ -228,19 +228,19 @@ public class StreamingJsonWriter implements AutoCloseable {
     }
 
     public static class PunishmentEntry {
-        public String id;
-        public String type;
-        public int typeOrdinal;
-        public String reason;
-        public String issued;
-        public String issuerName;
-        public Long duration;
-        public String started;
-        public Map<String, Object> data;
-        public List<Map<String, Object>> notes;
-        public List<Object> evidence;
-        public List<String> attachedTicketIds;
-        public List<Object> modifications;
+        public final String id;
+        public final String type;
+        public final int typeOrdinal;
+        public final String reason;
+        public final String issued;
+        public final String issuerName;
+        public final Long duration;
+        public final String started;
+        public final Map<String, Object> data;
+        public final List<Map<String, Object>> notes;
+        public final List<Object> evidence;
+        public final List<String> attachedTicketIds;
+        public final List<Object> modifications;
 
         public PunishmentEntry(String id, String type, int typeOrdinal, String reason, String issued,
                               String issuerName, Long duration, String started, Map<String, Object> data,

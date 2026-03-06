@@ -69,7 +69,7 @@ public class SpigotPlugin extends JavaPlugin {
         int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfig().getInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
         List<String> mutedCommands = getConfig().getStringList("muted_commands");
 
-        this.loader = new PluginLoader(platform, new SpigotCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
+        this.loader = new PluginLoader(platform, getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
         configureStatWipeExecutor(platform, httpManager);
 
         getServer().getPluginManager().registerEvents(new SpigotListener(

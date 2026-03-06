@@ -55,7 +55,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         public String getStatus() { return status; }
     }
 
-    private List<Report> reports = new ArrayList<>();
+    private final List<Report> reports = new ArrayList<>();
     private String currentFilter = "all";
     private String currentStatusFilter = "open";
     private final List<String> filterOptions = Arrays.asList("all", "gameplay", "chat", "cheating", "behavior", "other");
@@ -117,9 +117,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         List<Report> filtered = new ArrayList<>();
         for (Report report : reports) {
             boolean typeMatch = currentFilter.equals("all") || (report.getType() != null && report.getType().equalsIgnoreCase(currentFilter));
-            boolean statusMatch = "open".equalsIgnoreCase(currentStatusFilter)
-                    ? !"closed".equalsIgnoreCase(report.getStatus())
-                    : "closed".equalsIgnoreCase(report.getStatus());
+            boolean statusMatch = "open".equalsIgnoreCase(currentStatusFilter) != "closed".equalsIgnoreCase(report.getStatus());
             if (typeMatch && statusMatch)
                 filtered.add(report);
         }

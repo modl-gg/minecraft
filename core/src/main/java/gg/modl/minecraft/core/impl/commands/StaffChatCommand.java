@@ -26,7 +26,7 @@ public class StaffChatCommand extends BaseCommand {
 
     @Default
     @Description("Toggle staff chat mode or send a message to staff chat")
-    public void staffChat(CommandIssuer sender, @Default("") String message) {
+    public void staffChat(CommandIssuer sender, @Default() String message) {
         if (!staffChatConfig.isEnabled()) {
             sender.sendMessage(localeManager.getMessage("staff_chat.feature_disabled"));
             return;

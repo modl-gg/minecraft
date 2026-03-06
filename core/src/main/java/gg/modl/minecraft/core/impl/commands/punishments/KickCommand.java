@@ -29,7 +29,7 @@ public class KickCommand extends AbstractManualPunishmentCommand {
     @CommandAlias("%cmd_kick")
     @Syntax("<target> [reason...] [-silent]")
     @Conditions("permission:value=punishment.apply.kick")
-    public void kick(CommandIssuer sender, @Name("target") Account target, @Default("") String args) {
+    public void kick(CommandIssuer sender, @Name("target") Account target, @Default() String args) {
         executePunishment(sender, target, args);
     }
 }

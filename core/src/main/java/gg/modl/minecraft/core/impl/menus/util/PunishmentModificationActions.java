@@ -169,8 +169,8 @@ public final class PunishmentModificationActions {
     }
 
     public void handleToggleStatWipe(Click click) {
-        boolean currentStatus = punishment.getDataMap() != null &&
-                Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
+        punishment.getDataMap();
+        boolean currentStatus = Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
 
         TogglePunishmentOptionRequest request = new TogglePunishmentOptionRequest(
                 punishment.getId(), viewerName, "STAT_WIPE", !currentStatus);
@@ -185,8 +185,8 @@ public final class PunishmentModificationActions {
     }
 
     public void handleToggleAltBlock(Click click) {
-        boolean currentStatus = punishment.getDataMap() != null &&
-                Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
+        punishment.getDataMap();
+        boolean currentStatus = Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
 
         TogglePunishmentOptionRequest request = new TogglePunishmentOptionRequest(
                 punishment.getId(), viewerName, "ALT_BLOCKING", !currentStatus);
@@ -218,7 +218,7 @@ public final class PunishmentModificationActions {
             if (Character.isDigit(c)) {
                 number.append(c);
             } else if (c == 'd' || c == 'h' || c == 'm' || c == 's') {
-                if (number.length() == 0) continue;
+                if (number.isEmpty()) continue;
                 long value = Long.parseLong(number.toString());
                 number.setLength(0);
 

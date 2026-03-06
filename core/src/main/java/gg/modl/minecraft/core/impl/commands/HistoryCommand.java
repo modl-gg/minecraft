@@ -44,7 +44,7 @@ public class HistoryCommand extends BaseCommand {
     @Syntax("<player> [-p]")
     @Description("Open the punishment history menu for a player, or use -p to print to chat")
     @Conditions("player|staff")
-    public void history(CommandIssuer sender, @Name("player") String playerQuery, @Default("") String flags) {
+    public void history(CommandIssuer sender, @Name("player") String playerQuery, @Default() String flags) {
         boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
 
         if (!sender.isPlayer() || printMode) {
@@ -61,7 +61,7 @@ public class HistoryCommand extends BaseCommand {
                 UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
 
                 httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
-                    if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
+                    if (profileResponse.getStatus() == 200) {
                         String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
                         HistoryMenu menu = new HistoryMenu(
                             platform, httpClientHolder.getClient(), senderUuid, senderName,
@@ -92,7 +92,7 @@ public class HistoryCommand extends BaseCommand {
                 UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
 
                 httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
-                    if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
+                    if (profileResponse.getStatus() == 200) {
                         Account profile = profileResponse.getProfile();
                         displayHistory(sender, playerName, profile);
                     } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
@@ -115,8 +115,10 @@ public class HistoryCommand extends BaseCommand {
             int ordinal = 1;
             for (Punishment punishment : profile.getPunishments()) {
                 String type = punishmentTypeCache.getNameByOrdinal(punishment.getTypeOrdinal());
-                String id = punishment.getId() != null ? punishment.getId() : "?";
-                String issuer = punishment.getIssuerName() != null ? punishment.getIssuerName() : Constants.UNKNOWN;
+                punishment.getId();
+                String id = punishment.getId();
+                punishment.getIssuerName();
+                String issuer = punishment.getIssuerName();
                 String date = localeManager.formatDate(punishment.getIssued());
                 String ordinalStr = String.valueOf(ordinal);
                 String reason = punishment.getReason() != null ? punishment.getReason() : "";

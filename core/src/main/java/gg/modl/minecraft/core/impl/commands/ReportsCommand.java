@@ -49,7 +49,7 @@ public class ReportsCommand extends BaseCommand {
     @Syntax("[player] [-p]")
     @Description("Open the reports menu (for a player or all reports), or use -p to print to chat")
     @Conditions("player|staff")
-    public void reports(CommandIssuer sender, @Optional @Name("player") String playerQuery, @Default("") String flags) {
+    public void reports(CommandIssuer sender, @Optional @Name("player") String playerQuery, @Default() String flags) {
         boolean printMode;
         String actualPlayerQuery;
 
@@ -80,7 +80,7 @@ public class ReportsCommand extends BaseCommand {
                 sender.sendMessage(localeManager.getMessage("general.invalid_syntax"));
                 return;
             }
-            openStaffReportsMenu(sender, senderUuid);
+            openStaffReportsMenu(senderUuid);
             return;
         }
 
@@ -92,7 +92,7 @@ public class ReportsCommand extends BaseCommand {
                 UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
 
                 httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
-                    if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
+                    if (profileResponse.getStatus() == 200) {
                         String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
                         ReportsMenu menu = new ReportsMenu(
                             platform, httpClientHolder.getClient(), senderUuid, senderName,
@@ -102,12 +102,12 @@ public class ReportsCommand extends BaseCommand {
                         menu.display(player);
                     } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
                 }).exceptionally(throwable -> {
-                    handleException(sender, throwable, actualPlayerQuery);
+                    handleException(sender, throwable);
                     return null;
                 });
             } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
-            handleException(sender, throwable, actualPlayerQuery);
+            handleException(sender, throwable);
             return null;
         });
     }
@@ -132,7 +132,7 @@ public class ReportsCommand extends BaseCommand {
                 });
             } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
-            handleException(sender, throwable, playerQuery);
+            handleException(sender, throwable);
             return null;
         });
     }
@@ -183,7 +183,7 @@ public class ReportsCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("print.reports.footer"));
     }
 
-    private void openStaffReportsMenu(CommandIssuer sender, UUID senderUuid) {
+    private void openStaffReportsMenu(UUID senderUuid) {
         boolean isAdmin = cache.hasPermission(senderUuid, Permissions.ADMIN);
         String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
 
@@ -195,7 +195,7 @@ public class ReportsCommand extends BaseCommand {
         menu.display(player);
     }
 
-    private void handleException(CommandIssuer sender, Throwable throwable, String playerQuery) {
+    private void handleException(CommandIssuer sender, Throwable throwable) {
         if (throwable.getCause() instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
         else sender.sendMessage(localeManager.getMessage("player_lookup.error", Map.of("error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
     }

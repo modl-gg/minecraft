@@ -108,7 +108,7 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
                     }
 
                     boolean online = uuid != null && cache != null && cache.isOnline(uuid);
-                    long sessionDuration = online && cache != null ? cache.getSessionDuration(uuid) : 0;
+                    long sessionDuration = online ? cache.getSessionDuration(uuid) : 0;
 
                     staffMembers.add(new StaffMemberEntry(
                             entry.getId(),

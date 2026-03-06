@@ -53,7 +53,7 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         public boolean hasStaffResponse() { return hasStaffResponse; }
     }
 
-    private List<Ticket> tickets = new ArrayList<>();
+    private final List<Ticket> tickets = new ArrayList<>();
     private String currentFilter = "all";
     private String currentStatusFilter = "open";
     private final List<String> filterOptions = Arrays.asList("all", "open", "unfinished", "closed");
@@ -120,9 +120,7 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
 
         for (Ticket ticket : tickets) {
             boolean typeMatch = currentFilter.equals("all") || (ticket.getStatus() != null && ticket.getStatus().equalsIgnoreCase(currentFilter));
-            boolean statusMatch = "open".equalsIgnoreCase(currentStatusFilter)
-                    ? !"closed".equalsIgnoreCase(ticket.getStatus())
-                    : "closed".equalsIgnoreCase(ticket.getStatus());
+            boolean statusMatch = "open".equalsIgnoreCase(currentStatusFilter) != "closed".equalsIgnoreCase(ticket.getStatus());
             if (typeMatch && statusMatch)
                 filtered.add(ticket);
         }

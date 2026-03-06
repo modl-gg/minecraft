@@ -1,6 +1,8 @@
 package gg.modl.minecraft.core.impl.menus.util;
 
 import gg.modl.minecraft.core.Platform;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
 import java.util.UUID;
@@ -9,46 +11,20 @@ import java.util.function.Consumer;
 
 public class ChatInputManager {
     private static final long INPUT_EXPIRY_MS = 60_000;
-    private static final String PROMPT_PREFIX = "\u00a76\u00a7l\u00bb \u00a7e";
+    private static final String PROMPT_PREFIX = "§6§l» §e";
 
     private static final Map<UUID, PendingInput> pendingInputs = new ConcurrentHashMap<>();
 
+    @Getter @RequiredArgsConstructor
     public static class PendingInput {
         private final String prompt;
         private final Consumer<String> callback;
         private final Runnable cancelCallback;
-        private final long timestamp;
-
-        public PendingInput(String prompt, Consumer<String> callback, Runnable cancelCallback) {
-            this.prompt = prompt;
-            this.callback = callback;
-            this.cancelCallback = cancelCallback;
-            this.timestamp = System.currentTimeMillis();
-        }
-
-        public String getPrompt() {
-            return prompt;
-        }
-
-        public Consumer<String> getCallback() {
-            return callback;
-        }
-
-        public Runnable getCancelCallback() {
-            return cancelCallback;
-        }
-
-        public long getTimestamp() {
-            return timestamp;
-        }
+        private final long timestamp = System.currentTimeMillis();
 
         public boolean isExpired() {
             return System.currentTimeMillis() - timestamp > INPUT_EXPIRY_MS;
         }
-    }
-
-    public static void requestInput(Platform platform, UUID playerUuid, String prompt, Consumer<String> callback) {
-        requestInput(platform, playerUuid, prompt, callback, null);
     }
 
     public static void requestInput(Platform platform, UUID playerUuid, String prompt, Consumer<String> callback, Runnable cancelCallback) {
@@ -87,15 +63,6 @@ public class ChatInputManager {
     /** Unlike cancelInput, does NOT fire the cancel callback (player is offline). */
     public static void clearOnDisconnect(UUID playerUuid) {
         pendingInputs.remove(playerUuid);
-    }
-
-    public static boolean hasPendingInput(UUID playerUuid) {
-        PendingInput pending = pendingInputs.get(playerUuid);
-        if (pending != null && pending.isExpired()) {
-            pendingInputs.remove(playerUuid);
-            return false;
-        }
-        return pending != null;
     }
 
     public static void cleanupExpired() {

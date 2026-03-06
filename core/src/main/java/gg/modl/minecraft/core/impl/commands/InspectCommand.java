@@ -63,7 +63,7 @@ public class InspectCommand extends BaseCommand {
     @Syntax("<player> [-p]")
     @Description("Open the inspect menu for a player, or use -p to print info to chat")
     @Conditions("player|staff")
-    public void inspect(CommandIssuer sender, @Name("player") String playerQuery, @Default("") String flags) {
+    public void inspect(CommandIssuer sender, @Name("player") String playerQuery, @Default() String flags) {
         if (playerQuery.startsWith("#")) {
             String punishmentId = playerQuery.substring(1);
             printPunishmentDetail(sender, punishmentId);
@@ -86,7 +86,7 @@ public class InspectCommand extends BaseCommand {
                 UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
 
                 httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
-                    if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
+                    if (profileResponse.getStatus() == 200) {
                         String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
                         InspectMenu menu = new InspectMenu(
                             platform, httpClientHolder.getClient(), senderUuid, senderName,
@@ -110,7 +110,7 @@ public class InspectCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", "#" + punishmentId)));
 
         httpClientHolder.getClient().getPunishmentDetail(punishmentId).thenAccept(response -> {
-            if (!response.isSuccess() || response.getPunishment() == null) {
+            if (response.isSuccess() || response.getPunishment() == null) {
                 sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", Map.of("id", punishmentId)));
                 return;
             }
@@ -230,9 +230,10 @@ public class InspectCommand extends BaseCommand {
 
         sender.sendMessage(localeManager.getMessage("print.inspect.notes_label"));
         boolean hasNotes = false;
-        if (linkedResponse != null && linkedResponse.getLinkedAccounts() != null)
+        if (linkedResponse != null)
             for (Account account : linkedResponse.getLinkedAccounts()) {
-                if (account.getNotes() != null && !account.getNotes().isEmpty()) {
+                account.getNotes();
+                if (!account.getNotes().isEmpty()) {
                     hasNotes = true;
                     int noteOrdinal = 1;
                     for (Note note : account.getNotes()) {
@@ -254,11 +255,12 @@ public class InspectCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("print.inspect.total_punishments", Map.of("count", String.valueOf(totalPunishments))));
 
         sender.sendMessage(localeManager.getMessage("print.inspect.linked_accounts_label"));
-        if (linkedResponse != null && linkedResponse.getLinkedAccounts() != null && !linkedResponse.getLinkedAccounts().isEmpty()) {
+        if (linkedResponse != null && !linkedResponse.getLinkedAccounts().isEmpty()) {
             int accountOrdinal = 1;
             for (Account account : linkedResponse.getLinkedAccounts()) {
                 if (accountOrdinal > MAX_LINKED_ACCOUNTS_DISPLAYED) break;
-                String currentName = account.getUsernames() != null && !account.getUsernames().isEmpty()
+                account.getUsernames();
+                String currentName = !account.getUsernames().isEmpty()
                     ? account.getUsernames().get(account.getUsernames().size() - 1).getUsername()
                     : Constants.UNKNOWN;
 

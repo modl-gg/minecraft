@@ -232,7 +232,7 @@ public class VelocityPlatform implements Platform {
         } catch (ClassNotFoundException e) {
             logger.info("LiteBans API not found in classpath");
         } catch (Exception e) {
-            logger.warn("Error checking for LiteBans: " + e.getMessage());
+            logger.warn("Error checking for LiteBans: {}", e.getMessage());
         }
         return null;
     }
