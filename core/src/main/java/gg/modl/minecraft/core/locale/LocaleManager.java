@@ -16,10 +16,26 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class LocaleManager {
     private static final Yaml yaml = new Yaml();
+    private static final Pattern LEGACY_CODE_PATTERN = Pattern.compile("&([0-9a-fk-orA-FK-OR])");
+    private static final Map<Character, String> LEGACY_TO_MINIMESSAGE = Map.ofEntries(
+            Map.entry('0', "<black>"), Map.entry('1', "<dark_blue>"),
+            Map.entry('2', "<dark_green>"), Map.entry('3', "<dark_aqua>"),
+            Map.entry('4', "<dark_red>"), Map.entry('5', "<dark_purple>"),
+            Map.entry('6', "<gold>"), Map.entry('7', "<gray>"),
+            Map.entry('8', "<dark_gray>"), Map.entry('9', "<blue>"),
+            Map.entry('a', "<green>"), Map.entry('b', "<aqua>"),
+            Map.entry('c', "<red>"), Map.entry('d', "<light_purple>"),
+            Map.entry('e', "<yellow>"), Map.entry('f', "<white>"),
+            Map.entry('k', "<obfuscated>"), Map.entry('l', "<bold>"),
+            Map.entry('m', "<strikethrough>"), Map.entry('n', "<underlined>"),
+            Map.entry('o', "<italic>"), Map.entry('r', "<reset>")
+    );
 
     @Getter private Map<String, Object> messages;
     private Map<String, Object> configValues;
@@ -142,8 +158,22 @@ public class LocaleManager {
     }
 
     private String colorize(String message) {
-        if (renderer != null && MessageRenderer.isMiniMessage(message)) return renderer.componentToLegacy(renderer.render(message));
+        if (renderer != null && MessageRenderer.isMiniMessage(message)) {
+            message = legacyToMiniMessage(message);
+            return renderer.componentToLegacy(renderer.render(message));
+        }
         return message.replace("&", "§");
+    }
+
+    private String legacyToMiniMessage(String message) {
+        Matcher matcher = LEGACY_CODE_PATTERN.matcher(message);
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find()) {
+            String replacement = LEGACY_TO_MINIMESSAGE.get(Character.toLowerCase(matcher.group(1).charAt(0)));
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
     }
     
     public String getPunishmentMessage(String path, Map<String, String> variables) {
