@@ -37,10 +37,10 @@ public class ConfigManager {
 
         public String formatMessage(String inGameName, String panelName, String message) {
             return format
-                    .replace("{player}", inGameName)
-                    .replace("{panel-name}", panelName != null ? panelName : inGameName)
-                    .replace("{message}", message)
-                    .replace("&", "§");
+                .replace("{player}", inGameName)
+                .replace("{panel-name}", panelName != null ? panelName : inGameName)
+                .replace("{message}", message)
+                .replace("&", "§");
         }
     }
 
@@ -144,23 +144,20 @@ public class ConfigManager {
             Map<String, Object> gui = null;
 
             Path configFile = dataFolder.resolve("config.yml");
-            if (Files.exists(configFile)) {
-                try (InputStream is = Files.newInputStream(configFile)) {
-                    Map<String, Object> root = yaml.load(is);
-                    if (root != null && root.containsKey("standing_gui"))
-                        gui = (Map<String, Object>) root.get("standing_gui");
-                }
+            if (Files.exists(configFile)) try (InputStream is = Files.newInputStream(configFile)) {
+                Map<String, Object> root = yaml.load(is);
+                if (root != null && root.containsKey("standing_gui"))
+                    gui = (Map<String, Object>) root.get("standing_gui");
             }
+
 
             if (gui == null) {
                 Path dedicatedFile = dataFolder.resolve("standing_gui.yml");
-                if (Files.exists(dedicatedFile)) {
-                    try (InputStream is = Files.newInputStream(dedicatedFile)) {
-                        Map<String, Object> data = yaml.load(is);
-                        if (data != null && data.containsKey("standing_gui"))
-                            gui = (Map<String, Object>) data.get("standing_gui");
-                        else if (data != null) gui = data;
-                    }
+                if (Files.exists(dedicatedFile)) try (InputStream is = Files.newInputStream(dedicatedFile)) {
+                    Map<String, Object> data = yaml.load(is);
+                    if (data != null && data.containsKey("standing_gui"))
+                        gui = (Map<String, Object>) data.get("standing_gui");
+                    else if (data != null) gui = data;
                 }
             }
 
@@ -175,9 +172,7 @@ public class ConfigManager {
                 Map<String, Object> gameplay = (Map<String, Object>) gui.get("gameplay_status");
                 if (gameplay != null && gameplay.containsKey("item")) config.gameplayItem = String.valueOf(gameplay.get("item"));
             }
-        } catch (Exception e) {
-            logger.warning("Failed to load standing GUI config: " + e.getMessage());
-        }
+        } catch (Exception e) { logger.warning("Failed to load standing GUI config: " + e.getMessage()); }
         return config;
     }
 
@@ -217,27 +212,19 @@ public class ConfigManager {
     @SuppressWarnings("unchecked")
     public static Map<String, Object> loadSection(Path dataFolder, String fileName, String sectionName, PluginLogger logger) {
         Path dedicatedFile = dataFolder.resolve(fileName);
-        if (Files.exists(dedicatedFile)) {
-            try (InputStream is = Files.newInputStream(dedicatedFile)) {
-                Map<String, Object> data = yaml.load(is);
-                if (data != null) return data;
-            } catch (Exception e) {
-                logger.warning("Failed to load " + fileName + ": " + e.getMessage());
-            }
-        }
+        if (Files.exists(dedicatedFile)) try (InputStream is = Files.newInputStream(dedicatedFile)) {
+            Map<String, Object> data = yaml.load(is);
+            if (data != null) return data;
+        } catch (Exception e) { logger.warning("Failed to load " + fileName + ": " + e.getMessage()); }
 
         Path configFile = dataFolder.resolve("config.yml");
-        if (Files.exists(configFile)) {
-            try (InputStream is = Files.newInputStream(configFile)) {
-                Map<String, Object> root = yaml.load(is);
-                if (root != null && root.containsKey(sectionName)) {
-                    Object section = root.get(sectionName);
-                    if (section instanceof Map) return (Map<String, Object>) section;
-                }
-            } catch (Exception e) {
-                logger.warning("Failed to load " + sectionName + " from config.yml: " + e.getMessage());
+        if (Files.exists(configFile)) try (InputStream is = Files.newInputStream(configFile)) {
+            Map<String, Object> root = yaml.load(is);
+            if (root != null && root.containsKey(sectionName)) {
+                Object section = root.get(sectionName);
+                if (section instanceof Map) return (Map<String, Object>) section;
             }
-        }
+        } catch (Exception e) { logger.warning("Failed to load " + sectionName + " from config.yml: " + e.getMessage()); }
 
         return null;
     }
@@ -245,24 +232,18 @@ public class ConfigManager {
     private void createDefaultGuiConfigFiles() {
         for (String fileName : GUI_CONFIG_FILES) {
             Path target = dataFolder.resolve(fileName);
-            if (!Files.exists(target)) {
-                try (InputStream is = getClass().getResourceAsStream("/" + fileName)) {
-                    if (is != null) {
-                        Files.copy(is, target);
-                        logger.info("Created default config file: " + fileName);
-                    }
-                } catch (Exception e) {
-                    logger.warning("Failed to create " + fileName + ": " + e.getMessage());
+            if (!Files.exists(target)) try (InputStream is = getClass().getResourceAsStream("/" + fileName)) {
+                if (is != null) {
+                    Files.copy(is, target);
+                    logger.info("Created default config file: " + fileName);
                 }
-            }
+            } catch (Exception e) { logger.warning("Failed to create " + fileName + ": " + e.getMessage()); }
         }
     }
 
     private void mergeGuiConfigDefaults() {
-        for (String fileName : GUI_CONFIG_FILES) {
-            YamlMergeUtil.mergeWithDefaults("/" + fileName,
-                    dataFolder.resolve(fileName), logger);
-        }
+        for (String fileName : GUI_CONFIG_FILES)
+            YamlMergeUtil.mergeWithDefaults("/" + fileName, dataFolder.resolve(fileName), logger);
     }
 
     private void migrateGuiConfigsFromConfigYml() {
@@ -283,9 +264,7 @@ public class ConfigManager {
                 Files.writeString(configFile, String.join("\n", cleaned) + "\n", StandardCharsets.UTF_8);
                 logger.info("Removed migrated GUI sections from config.yml");
             }
-        } catch (Exception e) {
-            logger.warning("Failed to migrate GUI configs from config.yml: " + e.getMessage());
-        }
+        } catch (Exception e) { logger.warning("Failed to migrate GUI configs from config.yml: " + e.getMessage()); }
     }
 
     private void migratePunishGuiSection(List<String> lines) throws IOException {
@@ -312,12 +291,12 @@ public class ConfigManager {
 
     static String extractAndUnindentSection(List<String> lines, String key) {
         int start = -1;
-        for (int i = 0; i < lines.size(); i++) {
+        for (int i = 0; i < lines.size(); i++)
             if (isTopLevelKey(lines.get(i), key)) {
                 start = i + 1;
                 break;
             }
-        }
+
         if (start == -1) return null;
 
         List<String> content = new ArrayList<>();
@@ -327,9 +306,9 @@ public class ConfigManager {
             content.add(line);
         }
 
-        while (!content.isEmpty() && content.get(content.size() - 1).isBlank()) {
+        while (!content.isEmpty() && content.get(content.size() - 1).isBlank())
             content.remove(content.size() - 1);
-        }
+
         if (content.isEmpty()) return null;
 
         int minIndent = Integer.MAX_VALUE;
@@ -354,34 +333,32 @@ public class ConfigManager {
         int i = 0;
         while (i < lines.size()) {
             boolean matched = false;
-            for (String key : sectionKeys) {
+            for (String key : sectionKeys)
                 if (isTopLevelKey(lines.get(i), key)) {
                     matched = true;
                     break;
                 }
-            }
 
             if (matched) {
                 i++;
                 while (i < lines.size()) {
                     String line = lines.get(i);
-                    if (!line.isBlank() && !Character.isWhitespace(line.charAt(0))) {
-                        break;
-                    }
+                    if (!line.isBlank() && !Character.isWhitespace(line.charAt(0))) break;
+
                     i++;
                 }
-                while (!result.isEmpty() && result.get(result.size() - 1).isBlank()) {
+                while (!result.isEmpty() && result.get(result.size() - 1).isBlank())
                     result.remove(result.size() - 1);
-                }
+
             } else {
                 result.add(lines.get(i));
                 i++;
             }
         }
 
-        while (!result.isEmpty() && result.get(result.size() - 1).isBlank()) {
+        while (!result.isEmpty() && result.get(result.size() - 1).isBlank())
             result.remove(result.size() - 1);
-        }
+
         return result;
     }
 
