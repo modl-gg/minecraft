@@ -3,7 +3,6 @@ package gg.modl.minecraft.core.util;
 import java.util.List;
 
 public class MutedCommandUtil {
-
     public static boolean isBlockedCommand(String commandLine, List<String> mutedCommands) {
         if (commandLine == null || mutedCommands == null || mutedCommands.isEmpty()) return false;
 

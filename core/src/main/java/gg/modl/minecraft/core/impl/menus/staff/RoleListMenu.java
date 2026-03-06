@@ -24,7 +24,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
-
     public static class Role {
         private final String id;
         private final String name;

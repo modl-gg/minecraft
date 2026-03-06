@@ -44,10 +44,10 @@ public class BridgeMessageDispatcher {
                 case "OPEN_STAFF_MENU" -> handleOpenStaffMenu(data);
                 case "OPEN_INSPECT_MENU" -> handleOpenInspectMenu(data);
                 case "PROXY_CMD" -> handleProxyCmd(data);
-                default -> logger.fine("[bridge] Unknown action: " + action);
+                default -> logger.fine("[Bridge] Unknown action: " + action);
             }
         } catch (Exception e) {
-            logger.warning("[bridge] Error handling " + action + ": " + e.getMessage());
+            logger.warning("[Bridge] Error handling " + action + ": " + e.getMessage());
         }
     }
 
@@ -56,14 +56,14 @@ public class BridgeMessageDispatcher {
         UUID staffUuid = UUID.fromString(data.readUTF());
         freezeService.freeze(targetUuid, staffUuid);
         platform.sendMessage(targetUuid, localeManager.getMessage("freeze.frozen_message"));
-        logger.info("[bridge] Freeze applied to " + targetUuid + " by " + staffUuid);
+        logger.info("[Bridge] Freeze applied to " + targetUuid + " by " + staffUuid);
     }
 
     private void handleUnfreezePlayer(DataInputStream data) throws Exception {
         UUID targetUuid = UUID.fromString(data.readUTF());
         freezeService.unfreeze(targetUuid);
         platform.sendMessage(targetUuid, localeManager.getMessage("freeze.unfrozen"));
-        logger.info("[bridge] Unfreeze applied to " + targetUuid);
+        logger.info("[Bridge] Unfreeze applied to " + targetUuid);
     }
 
     private void handleFreezeLogout(DataInputStream data) throws Exception {
@@ -72,7 +72,7 @@ public class BridgeMessageDispatcher {
         platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification", Map.of(
                 "player", playerName
         )));
-        logger.info("[bridge] Frozen player " + playerName + " logged out");
+        logger.info("[Bridge] Frozen player " + playerName + " logged out");
     }
 
     private void handleStaffModeEnter(DataInputStream data) throws Exception {
@@ -134,12 +134,12 @@ public class BridgeMessageDispatcher {
         String targetServer = data.readUTF();
         staffModeService.setTarget(staffUuid, targetUuid);
         platform.connectToServer(staffUuid, targetServer);
-        logger.info("[bridge] Target response: staff " + staffUuid + " -> target " + targetUuid + " on " + targetServer);
+        logger.info("[Bridge] Target response: staff " + staffUuid + " -> target " + targetUuid + " on " + targetServer);
     }
 
     private void handleProxyCmd(DataInputStream data) throws Exception {
         String command = data.readUTF();
-        logger.info("[bridge] Executing proxy command: " + command);
+        logger.info("[Bridge] Executing proxy command: " + command);
         platform.dispatchConsoleCommand(command);
     }
 }

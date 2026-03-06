@@ -13,7 +13,7 @@ import java.util.logging.Logger;
  * Replaces LiteBans table tokens ({bans}, {mutes}, etc.) with prefixed table names.
  */
 public class JdbcDatabaseProvider implements DatabaseProvider {
-    private static final String LOG_PREFIX = "[Migration] ";
+    private static final String LOG_PREFIX = "";
     private static final String[][] TABLE_TOKENS = {
         {"{bans}", "bans"}, {"{mutes}", "mutes"}, {"{warnings}", "warnings"},
         {"{kicks}", "kicks"}, {"{history}", "history"}, {"{servers}", "servers"}

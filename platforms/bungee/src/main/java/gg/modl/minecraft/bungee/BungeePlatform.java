@@ -36,16 +36,11 @@ public class BungeePlatform implements Platform {
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
-    @Setter
-    private Cache cache;
-    @Setter
-    private LocaleManager localeManager;
-    @Setter
-    private StaffModeService staffModeService;
-    @Setter
-    private BridgeService bridgeService;
-    @Setter
-    private Staff2faService staff2faService;
+    @Setter private Cache cache;
+    @Setter private LocaleManager localeManager;
+    @Setter private StaffModeService staffModeService;
+    @Setter private BridgeService bridgeService;
+    @Setter private Staff2faService staff2faService;
 
     @Override
     public void broadcast(String string) {
@@ -113,8 +108,7 @@ public class BungeePlatform implements Platform {
         return player != null && player.isConnected();
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CommandManager<?, ?, ?, ?, ?, ?> getCommandManager() {
         return commandManager;
     }
@@ -193,12 +187,12 @@ public class BungeePlatform implements Platform {
         try {
             if (ProxyServer.getInstance().getPluginManager().getPlugin("LiteBans") == null) return null;
             Class.forName("litebans.api.Database");
-            logger.info("[Migration] LiteBans plugin detected, using LiteBans API");
+            logger.info("LiteBans plugin detected, using LiteBans API");
             return new LiteBansDatabaseProvider();
         } catch (ClassNotFoundException e) {
-            logger.info("[Migration] LiteBans API not found in classpath");
+            logger.info("LiteBans API not found in classpath");
         } catch (Exception e) {
-            logger.warning("[Migration] Error checking for LiteBans: " + e.getMessage());
+            logger.warning("Error checking for LiteBans: " + e.getMessage());
         }
         return null;
     }

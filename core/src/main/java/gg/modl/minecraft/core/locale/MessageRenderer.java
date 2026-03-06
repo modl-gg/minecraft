@@ -7,7 +7,6 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import java.util.regex.Pattern;
 
 public class MessageRenderer {
-
     private static final Pattern MINIMESSAGE_TAG_PATTERN = Pattern.compile("<[a-zA-Z_/!#][a-zA-Z0-9_:/.#-]*>");
 
     private final MiniMessage miniMessage;

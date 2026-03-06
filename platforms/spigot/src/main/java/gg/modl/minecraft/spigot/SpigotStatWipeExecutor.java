@@ -10,7 +10,6 @@ import java.util.logging.Logger;
 
 @RequiredArgsConstructor
 public class SpigotStatWipeExecutor implements StatWipeExecutor {
-
     private static final String BRIDGE_PLUGIN_NAME = "modl-bridge";
     private static final String EXECUTE_METHOD = "executeStatWipeCommands";
 
@@ -22,7 +21,7 @@ public class SpigotStatWipeExecutor implements StatWipeExecutor {
         Plugin bridgePlugin = Bukkit.getPluginManager().getPlugin(BRIDGE_PLUGIN_NAME);
         if (bridgePlugin == null || !bridgePlugin.isEnabled()) {
             // Don't call callback - backend will retry on next sync
-            logger.warning("[StatWipe] modl-bridge plugin not found or not enabled - stat wipe for " +
+            logger.warning("[bridge] modl-bridge plugin not found or not enabled - stat wipe for " +
                     username + " will retry on next sync");
             return;
         }
@@ -32,9 +31,9 @@ public class SpigotStatWipeExecutor implements StatWipeExecutor {
             boolean success = (boolean) method.invoke(bridgePlugin, username, punishmentId);
             callback.onComplete(success, Bukkit.getServer().getName());
         } catch (NoSuchMethodException e) {
-            logger.warning("[StatWipe] modl-bridge plugin does not support stat wipe commands (outdated version?)");
+            logger.warning("[bridge] modl-bridge plugin does not support stat wipe commands (outdated version?)");
         } catch (Exception e) {
-            logger.severe("[StatWipe] Failed to execute stat wipe via bridge plugin: " + e.getMessage());
+            logger.severe("[bridge] Failed to execute stat wipe via bridge plugin: " + e.getMessage());
             if (debugMode) e.printStackTrace();
         }
     }

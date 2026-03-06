@@ -30,7 +30,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class NotesMenu extends BaseInspectListMenu<Note> {
-
     public NotesMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                      Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
         super("Notes: " + ReportRenderUtil.getPlayerName(targetAccount), platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);

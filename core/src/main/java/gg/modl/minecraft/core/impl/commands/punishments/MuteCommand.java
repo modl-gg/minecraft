@@ -16,7 +16,6 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import java.util.Set;
 
 public class MuteCommand extends AbstractManualPunishmentCommand {
-
     public MuteCommand(HttpClientHolder httpClientHolder, Platform platform, Cache cache, LocaleManager localeManager) {
         super(httpClientHolder, platform, cache, localeManager);
     }

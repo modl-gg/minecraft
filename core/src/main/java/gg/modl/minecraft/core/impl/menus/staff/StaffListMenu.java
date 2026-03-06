@@ -29,7 +29,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> {
-
     public static class StaffMember {
         private final String id;
         private final UUID uuid;

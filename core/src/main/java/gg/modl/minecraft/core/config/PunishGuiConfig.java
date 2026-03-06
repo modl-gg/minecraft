@@ -53,13 +53,13 @@ public class PunishGuiConfig {
                     if (data != null && data.containsKey("punish_gui")) punishGui = (Map<?, ?>) data.get("punish_gui");
                     else if (data != null) punishGui = data;
                 }
-                if (punishGui != null) logger.info("[PunishGuiConfig] Loaded from punish_gui.yml");
+                if (punishGui != null) logger.info("Loaded from punish_gui.yml");
             }
 
             if (punishGui == null) {
                 Path configFile = dataDirectory.resolve("config.yml");
                 if (!Files.exists(configFile)) {
-                    logger.info("[PunishGuiConfig] Config file not found, using defaults");
+                    logger.info("Punish GUI config file not found, using defaults");
                     return createDefault();
                 }
                 try (InputStream is = Files.newInputStream(configFile)) {
@@ -69,7 +69,7 @@ public class PunishGuiConfig {
             }
 
             if (punishGui == null) {
-                logger.info("[PunishGuiConfig] No punish_gui section found, using defaults");
+                logger.info("No punish_gui section found, using defaults");
                 return createDefault();
             }
 
@@ -89,9 +89,9 @@ public class PunishGuiConfig {
                 } catch (NumberFormatException ignored) {}
             }
 
-            logger.info("[PunishGuiConfig] Loaded " + config.slots.size() + " punishment slots from config");
+            logger.info("Loaded " + config.slots.size() + " punishment slots from config");
         } catch (Exception e) {
-            logger.warning("[PunishGuiConfig] Failed to load config: " + e.getMessage());
+            logger.warning("Failed to load config: " + e.getMessage());
             return createDefault();
         }
 
@@ -139,7 +139,7 @@ public class PunishGuiConfig {
                 }
             }
         } catch (Exception e) {
-            logger.warning("[PunishGuiConfig] Failed to load items by ordinal: " + e.getMessage());
+            logger.warning("Failed to load items by ordinal: " + e.getMessage());
         }
     }
 

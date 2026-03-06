@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 
 public class ReportMenu extends SimpleMenu {
-
     private final AbstractPlayer reporter;
     private final AbstractPlayer target;
     private final ModlHttpClient httpClient;

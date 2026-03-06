@@ -40,7 +40,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class YamlConfig {
-
     private final Yaml yaml = new Yaml();
     private YamlConfig original;
     private String prefix = null;

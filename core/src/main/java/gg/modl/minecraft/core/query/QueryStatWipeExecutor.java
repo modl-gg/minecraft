@@ -35,7 +35,7 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
         );
         clients.add(client);
         client.connect();
-        logger.info("[modl] Connecting to bridge on " + serverName + " (" + host + ":" + port + ")");
+        logger.info("Connecting to bridge on " + serverName + " (" + host + ":" + port + ")");
     }
 
     @Override
@@ -44,7 +44,7 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
 
         for (QueryClient client : clients) {
             if (!client.isConnected()) {
-                if (debugMode) logger.info("[StatWipe] Skipping bridge on " + client.getServerName() + " (not connected)");
+                if (debugMode) logger.info("[bridge] Skipping bridge on " + client.getServerName() + " (not connected)");
                 continue;
             }
 
@@ -58,10 +58,10 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
 
                 client.sendMessage(bytes.toByteArray());
                 if (firstServerName == null) firstServerName = client.getServerName();
-                logger.info("[StatWipe] Sent stat wipe request to bridge on " + client.getServerName() +
+                logger.info("[bridge] Sent stat wipe request to bridge on " + client.getServerName() +
                         " for " + username + " (punishment: " + punishmentId + ")");
             } catch (IOException e) {
-                logger.warning("[StatWipe] Failed to send stat wipe to bridge on " + client.getServerName() +
+                logger.warning("[bridge] Failed to send stat wipe to bridge on " + client.getServerName() +
                         ": " + e.getMessage());
             }
         }
@@ -69,7 +69,7 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
         if (firstServerName != null) {
             callback.onComplete(true, firstServerName);
         } else {
-            logger.warning("[StatWipe] No connected bridges available for stat wipe of " + username +
+            logger.warning("[bridge] No connected bridges available for stat wipe of " + username +
                     " — will retry on next sync");
         }
     }
@@ -78,12 +78,12 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
         try {
             if ("BRIDGE_HELLO".equals(message.getAction())) {
                 String bridgeServerName = message.getData().readUTF();
-                logger.info("[modl] modl-bridge detected on backend server '" + serverName + "' (TCP query)");
+                logger.info("modl-bridge detected on backend server '" + serverName + "' (TCP query)");
             } else {
                 if (bridgeMessageDispatcher != null) bridgeMessageDispatcher.dispatch(message.getAction(), message.getData());
             }
         } catch (IOException e) {
-            logger.warning("[modl] Failed to read query message from " + serverName + ": " + e.getMessage());
+            logger.warning("Failed to read query message from " + serverName + ": " + e.getMessage());
         }
     }
 

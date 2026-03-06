@@ -5,10 +5,7 @@ import org.jetbrains.annotations.NotNull;
 
 @Data
 public class CreatePlayerNoteRequest {
-    @NotNull
-    private final String targetUuid;
-    @NotNull
-    private final String issuerName;
-    @NotNull
-    private final String text;
+    @NotNull private final String targetUuid;
+    @NotNull private final String issuerName;
+    @NotNull private final String text;
 }

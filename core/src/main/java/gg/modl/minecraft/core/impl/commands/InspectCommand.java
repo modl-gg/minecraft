@@ -21,7 +21,7 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
-import gg.modl.minecraft.core.impl.util.PunishmentActionMessages;
+import gg.modl.minecraft.core.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.Constants;

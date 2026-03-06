@@ -35,7 +35,7 @@ public class MigrationService {
     private static final String HEADER_API_KEY = "X-API-Key";
     private static final int HTTP_PAYLOAD_TOO_LARGE = 413;
     private static final int PROGRESS_LOG_INTERVAL = 100;
-    private static final String LOG_PREFIX = "[Migration] ";
+    private static final String LOG_PREFIX = "";
     private static final String IMPORT_SOURCE = "litebans";
     private static final int BAN_TYPE_ORDINAL = 2;
     private static final int MUTE_TYPE_ORDINAL = 1;

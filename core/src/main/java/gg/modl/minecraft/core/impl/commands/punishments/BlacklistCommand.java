@@ -16,7 +16,6 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import java.util.Set;
 
 public class BlacklistCommand extends AbstractManualPunishmentCommand {
-
     public BlacklistCommand(HttpClientHolder httpClientHolder, Platform platform, Cache cache, LocaleManager localeManager) {
         super(httpClientHolder, platform, cache, localeManager);
     }

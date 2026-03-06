@@ -31,7 +31,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEditMenu.Permission> {
-
     public static class Permission {
         private final String node;
         private boolean enabled;

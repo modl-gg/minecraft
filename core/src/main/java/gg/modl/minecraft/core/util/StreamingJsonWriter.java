@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 
 public class StreamingJsonWriter implements AutoCloseable {
-
     private final JsonWriter jsonWriter;
     private final FileWriter fileWriter;
     private final Gson gson;

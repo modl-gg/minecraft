@@ -20,7 +20,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class ViewLinkedTicketsMenu extends BaseInspectListMenu<TicketsResponse.Ticket> {
-
     private final List<TicketsResponse.Ticket> tickets = new ArrayList<>();
     private final Consumer<CirrusPlayerWrapper> rootBackAction;
 

@@ -30,7 +30,6 @@ import java.util.List;
 
 @Getter
 public class BungeePlugin extends Plugin {
-
     private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg";
     private static final String DEFAULT_BRIDGE_NAME = "bridge";
     private static final int DEFAULT_BRIDGE_PORT = 25590;

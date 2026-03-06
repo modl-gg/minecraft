@@ -10,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * Populated from the server's punishment types configuration.
  */
 public class PunishmentTypeRegistry {
-
     public static final int ORDINAL_KICK = 0;
     public static final int ORDINAL_MUTE = 1;
     public static final int ORDINAL_BAN = 2;

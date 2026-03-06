@@ -26,23 +26,19 @@ public class Note {
     @SerializedName("issuerId")
     private String issuerId;
 
-    @NotNull
-    public String getText() {
+    @NotNull public String getText() {
         return text != null ? text : "";
     }
 
-    @NotNull
-    public Date getDate() {
+    @NotNull public Date getDate() {
         return date != null ? date : new Date(0);
     }
 
-    @NotNull
-    public String getIssuerName() {
+    @NotNull public String getIssuerName() {
         return issuerName != null ? issuerName : UNKNOWN_ISSUER;
     }
 
-    @NotNull
-    public String getIssuerId() {
+    @NotNull public String getIssuerId() {
         return issuerId != null ? issuerId : "";
     }
 }

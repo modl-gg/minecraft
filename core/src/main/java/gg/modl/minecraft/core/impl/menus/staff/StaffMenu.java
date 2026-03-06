@@ -12,7 +12,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class StaffMenu extends BaseStaffMenu {
-
     private final String panelUrl;
 
     public StaffMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,

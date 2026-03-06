@@ -32,7 +32,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.OnlinePlayer> {
-
     public static class OnlinePlayer {
         private final UUID uuid;
         private final String name;

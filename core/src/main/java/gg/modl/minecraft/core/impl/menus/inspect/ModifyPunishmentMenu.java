@@ -29,7 +29,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class ModifyPunishmentMenu extends BaseInspectMenu {
-
     private final Punishment punishment;
     private final Consumer<CirrusPlayerWrapper> menuBackAction; // Goes back to HistoryMenu
     private final Consumer<CirrusPlayerWrapper> rootBackAction; // Passed to primary tabs (e.g., back to Staff Menu)

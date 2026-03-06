@@ -40,33 +40,27 @@ public class IPAddress {
     @SerializedName("logins")
     private List<Date> logins;
 
-    @NotNull
-    public String getIpAddress() {
+    @NotNull public String getIpAddress() {
         return ipAddress != null ? ipAddress : "";
     }
 
-    @NotNull
-    public String getCountry() {
+    @NotNull public String getCountry() {
         return country != null ? country : UNKNOWN;
     }
 
-    @NotNull
-    public String getRegion() {
+    @NotNull public String getRegion() {
         return region != null ? region : UNKNOWN;
     }
 
-    @NotNull
-    public String getAsn() {
+    @NotNull public String getAsn() {
         return asn != null ? asn : "";
     }
 
-    @NotNull
-    public Date getFirstLogin() {
+    @NotNull public Date getFirstLogin() {
         return firstLogin != null ? firstLogin : new Date(0);
     }
 
-    @NotNull
-    public List<Date> getLogins() {
+    @NotNull public List<Date> getLogins() {
         return logins != null ? logins : Collections.emptyList();
     }
 }

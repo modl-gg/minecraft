@@ -9,6 +9,5 @@ import java.util.List;
 @Data
 public class LinkedAccountsResponse {
     private int status;
-    @NotNull
-    private List<Account> linkedAccounts;
+    @NotNull private List<Account> linkedAccounts;
 }

@@ -41,43 +41,35 @@ public final class Evidence {
     @SerializedName("fileSize")
     private Long fileSize;
 
-    @Nullable
-    public String getText() {
+    @Nullable public String getText() {
         return text;
     }
 
-    @Nullable
-    public String getUrl() {
+    @Nullable public String getUrl() {
         return url;
     }
 
-    @NotNull
-    public String getType() {
+    @NotNull public String getType() {
         return type != null ? type : DEFAULT_TYPE;
     }
 
-    @NotNull
-    public String getUploadedBy() {
+    @NotNull public String getUploadedBy() {
         return uploadedBy != null ? uploadedBy : DEFAULT_UPLOADER;
     }
 
-    @NotNull
-    public Date getUploadedAt() {
+    @NotNull public Date getUploadedAt() {
         return uploadedAt != null ? uploadedAt : new Date(0);
     }
 
-    @Nullable
-    public String getFileName() {
+    @Nullable public String getFileName() {
         return fileName;
     }
 
-    @Nullable
-    public String getFileType() {
+    @Nullable public String getFileType() {
         return fileType;
     }
 
-    @Nullable
-    public Long getFileSize() {
+    @Nullable public Long getFileSize() {
         return fileSize;
     }
 

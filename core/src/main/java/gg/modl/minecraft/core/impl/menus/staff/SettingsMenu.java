@@ -23,7 +23,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class SettingsMenu extends BaseStaffMenu {
-
     private final String panelUrl;
 
     private final boolean canModifySettings;

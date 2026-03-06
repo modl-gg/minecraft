@@ -16,7 +16,6 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import java.util.Set;
 
 public class BanCommand extends AbstractManualPunishmentCommand {
-
     public BanCommand(HttpClientHolder httpClientHolder, Platform platform, Cache cache, LocaleManager localeManager) {
         super(httpClientHolder, platform, cache, localeManager);
     }

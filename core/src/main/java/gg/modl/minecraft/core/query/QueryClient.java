@@ -88,7 +88,7 @@ public class QueryClient {
             buf.writeBytes(bytes.toByteArray());
             channel.writeAndFlush(buf);
         } catch (IOException e) {
-            logger.warning("[modl] Failed to send handshake to bridge on " + serverName + ": " + e.getMessage());
+            logger.warning("Failed to send handshake to bridge on " + serverName + ": " + e.getMessage());
             channel.close();
         }
     }
@@ -128,7 +128,7 @@ public class QueryClient {
             dos.flush();
             sendMessage(baos.toByteArray());
         } catch (IOException e) {
-            logger.warning("[QueryClient] Failed to send " + action + ": " + e.getMessage());
+            logger.warning("[bridge] Failed to send " + action + ": " + e.getMessage());
         }
     }
 
@@ -149,9 +149,9 @@ public class QueryClient {
                         byte status = buf.readByte();
                         if (status == 0x01) {
                             connected = true;
-                            logger.info("[modl] Connected to bridge on " + serverName + " (TCP query)");
+                            logger.info("Connected to bridge on " + serverName + " (TCP query)");
                         } else {
-                            logger.warning("[modl] Bridge on " + serverName + " rejected authentication");
+                            logger.warning("Bridge on " + serverName + " rejected authentication");
                             ctx.close();
                         }
                     }
@@ -164,7 +164,7 @@ public class QueryClient {
                         String action = in.readUTF();
                         messageHandler.accept(serverName, new QueryMessage(action, in));
                     } catch (IOException e) {
-                        logger.warning("[modl] Failed to read query message from bridge on " +
+                        logger.warning("Failed to read query message from bridge on " +
                                 serverName + ": " + e.getMessage());
                     }
                 }
@@ -177,13 +177,13 @@ public class QueryClient {
         public void channelInactive(ChannelHandlerContext ctx) {
             boolean wasConnected = connected;
             connected = false;
-            if (wasConnected) logger.info("[modl] Disconnected from bridge on " + serverName);
+            if (wasConnected) logger.info("Disconnected from bridge on " + serverName);
             scheduleReconnect();
         }
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            logger.warning("[modl] Query connection error with bridge on " + serverName + ": " + cause.getMessage());
+            logger.warning("Query connection error with bridge on " + serverName + ": " + cause.getMessage());
             ctx.close();
         }
     }

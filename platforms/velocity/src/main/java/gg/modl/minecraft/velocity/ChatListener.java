@@ -24,7 +24,6 @@ import java.util.List;
 
 @RequiredArgsConstructor
 public class ChatListener {
-
     private final VelocityPlatform platform;
     private final Cache cache;
     private final ChatMessageCache chatMessageCache;

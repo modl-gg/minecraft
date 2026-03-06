@@ -40,33 +40,27 @@ public class Account {
     @SerializedName("data")
     private Map<String, Object> data;
 
-    @NotNull
-    public List<Username> getUsernames() {
+    @NotNull public List<Username> getUsernames() {
         return usernames != null ? usernames : Collections.emptyList();
     }
 
-    @NotNull
-    public List<Note> getNotes() {
+    @NotNull public List<Note> getNotes() {
         return notes != null ? notes : Collections.emptyList();
     }
 
-    @NotNull
-    public List<IPAddress> getIpList() {
+    @NotNull public List<IPAddress> getIpList() {
         return ipList != null ? ipList : Collections.emptyList();
     }
 
-    @NotNull
-    public List<Punishment> getPunishments() {
+    @NotNull public List<Punishment> getPunishments() {
         return punishments != null ? punishments : Collections.emptyList();
     }
 
-    @NotNull
-    public List<Map<String, Object>> getPendingNotifications() {
+    @NotNull public List<Map<String, Object>> getPendingNotifications() {
         return pendingNotifications != null ? pendingNotifications : Collections.emptyList();
     }
 
-    @NotNull
-    public Map<String, Object> getData() {
+    @NotNull public Map<String, Object> getData() {
         return data != null ? data : Collections.emptyMap();
     }
 

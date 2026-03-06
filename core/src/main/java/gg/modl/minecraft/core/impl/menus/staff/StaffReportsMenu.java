@@ -30,7 +30,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report> {
-
     public static class Report {
         private final String id;
         private final String type;

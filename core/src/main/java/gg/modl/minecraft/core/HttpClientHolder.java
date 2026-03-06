@@ -8,6 +8,5 @@ import org.jetbrains.annotations.NotNull;
 @RequiredArgsConstructor
 @Getter
 public class HttpClientHolder {
-    @NotNull
-    private final ModlHttpClient client;
+    @NotNull private final ModlHttpClient client;
 }

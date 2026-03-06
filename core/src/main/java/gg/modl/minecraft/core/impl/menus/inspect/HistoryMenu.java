@@ -33,7 +33,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class HistoryMenu extends BaseInspectListMenu<Punishment> {
-
     private final Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
 
     public HistoryMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,

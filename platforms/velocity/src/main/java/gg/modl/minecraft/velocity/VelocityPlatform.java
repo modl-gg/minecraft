@@ -36,16 +36,11 @@ public class VelocityPlatform implements Platform {
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
-    @Setter
-    private Cache cache;
-    @Setter
-    private LocaleManager localeManager;
-    @Setter
-    private StaffModeService staffModeService;
-    @Setter
-    private BridgeService bridgeService;
-    @Setter
-    private Staff2faService staff2faService;
+    @Setter private Cache cache;
+    @Setter private LocaleManager localeManager;
+    @Setter private StaffModeService staffModeService;
+    @Setter private BridgeService bridgeService;
+    @Setter private Staff2faService staff2faService;
 
     private static Component colorize(String string) {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(string);
@@ -246,12 +241,12 @@ public class VelocityPlatform implements Platform {
         try {
             if (server.getPluginManager().getPlugin("litebans").isEmpty()) return null;
             Class.forName("litebans.api.Database");
-            logger.info("[Migration] LiteBans plugin detected, using LiteBans API");
+            logger.info("LiteBans plugin detected, using LiteBans API");
             return new LiteBansDatabaseProvider();
         } catch (ClassNotFoundException e) {
-            logger.info("[Migration] LiteBans API not found in classpath");
+            logger.info("LiteBans API not found in classpath");
         } catch (Exception e) {
-            logger.warn("[Migration] Error checking for LiteBans: " + e.getMessage());
+            logger.warn("Error checking for LiteBans: " + e.getMessage());
         }
         return null;
     }

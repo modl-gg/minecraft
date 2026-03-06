@@ -31,7 +31,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMenu.PunishmentWithPlayer> {
-
     // Wrapper class to hold punishment with player info
     public static class PunishmentWithPlayer {
         private final Punishment punishment;

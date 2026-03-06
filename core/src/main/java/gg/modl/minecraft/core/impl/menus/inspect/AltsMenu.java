@@ -34,7 +34,6 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class AltsMenu extends BaseInspectListMenu<Account> {
-
     private static final Logger logger = Logger.getLogger(AltsMenu.class.getName());
     private List<Account> linkedAccounts = new ArrayList<>();
 

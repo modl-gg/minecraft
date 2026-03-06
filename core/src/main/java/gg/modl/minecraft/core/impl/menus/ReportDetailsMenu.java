@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 
 public class ReportDetailsMenu extends SimpleMenu {
-
     private static final int SLOT_ADD_DETAILS = 11;
     private static final int SLOT_PLAYER_HEAD = 13;
     private static final int SLOT_SKIP_DETAILS = 15;

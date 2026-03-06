@@ -10,11 +10,9 @@ import org.jetbrains.annotations.Nullable;
 @AllArgsConstructor
 @NoArgsConstructor
 public class StatWipeAcknowledgeRequest {
-    @NotNull
-    private String punishmentId;
+    @NotNull private String punishmentId;
 
-    @Nullable
-    private String serverName;
+    @Nullable private String serverName;
 
     private boolean success;
 }

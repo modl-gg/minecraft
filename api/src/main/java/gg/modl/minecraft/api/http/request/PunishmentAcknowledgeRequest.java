@@ -10,17 +10,13 @@ import org.jetbrains.annotations.Nullable;
 @AllArgsConstructor
 @NoArgsConstructor
 public class PunishmentAcknowledgeRequest {
-    @NotNull
-    private String punishmentId;
+    @NotNull private String punishmentId;
     
-    @NotNull
-    private String playerUuid;
+    @NotNull private String playerUuid;
     
-    @NotNull
-    private String executedAt;
+    @NotNull private String executedAt;
     
     private boolean success;
     
-    @Nullable
-    private String errorMessage;
+    @Nullable private String errorMessage;
 }

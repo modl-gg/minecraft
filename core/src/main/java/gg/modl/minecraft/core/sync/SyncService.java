@@ -331,25 +331,25 @@ public class SyncService {
             String type = migrationTask.getType();
 
             if (!"litebans".equalsIgnoreCase(type)) {
-                logger.warning("[Migration] Unknown migration type: " + type);
+                logger.warning("Unknown migration type: " + type);
                 return;
             }
 
             migrationService.exportLiteBansData(taskId).thenAccept(jsonFile -> {
                 if (jsonFile == null || !jsonFile.exists()) {
-                    logger.warning("[Migration] Task " + taskId + " export failed - no file generated");
+                    logger.warning("Task " + taskId + " export failed - no file generated");
                     return;
                 }
                 migrationService.uploadMigrationFile(jsonFile, taskId).thenAccept(success -> {
-                    if (success && debugMode) logger.info("[Migration] Task " + taskId + " completed successfully");
-                    else if (!success) logger.warning("[Migration] Task " + taskId + " upload failed");
+                    if (success && debugMode) logger.info("Task " + taskId + " completed successfully");
+                    else if (!success) logger.warning("Task " + taskId + " upload failed");
                 });
             }).exceptionally(throwable -> {
-                logger.log(Level.SEVERE, "[Migration] Task " + taskId + " failed: " + throwable.getMessage(), throwable);
+                logger.log(Level.SEVERE, "Task " + taskId + " failed: " + throwable.getMessage(), throwable);
                 return null;
             });
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "[Migration] Error processing migration task: " + e.getMessage(), e);
+            logger.log(Level.SEVERE, "Error processing migration task: " + e.getMessage(), e);
         }
     }
 
@@ -358,13 +358,13 @@ public class SyncService {
         try {
             DatabaseProvider databaseProvider = platform.createLiteBansDatabaseProvider();
             if (databaseProvider == null) {
-                if (debugMode) logger.info("[Migration] LiteBans not available, using JDBC connection");
+                if (debugMode) logger.info("LiteBans not available, using JDBC connection");
                 databaseProvider = new JdbcDatabaseProvider(databaseConfig, logger);
             }
             migrationService = new MigrationService(logger, httpClientHolder.getClient(), apiUrl, apiKey, dataFolder, databaseProvider);
             return true;
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "[Migration] Failed to initialize migration service: " + e.getMessage(), e);
+            logger.log(Level.SEVERE, "Failed to initialize migration service: " + e.getMessage(), e);
             return false;
         }
     }
@@ -375,7 +375,7 @@ public class SyncService {
 
     public void executeStatWipeFromLogin(SyncResponse.PendingStatWipe statWipe) {
         if (statWipeExecutor == null) return;
-        logger.info("[StatWipe] Executing for " + statWipe.getUsername() + " (punishment: " + statWipe.getPunishmentId() + ")");
+        logger.info("[bridge] Executing for " + statWipe.getUsername() + " (punishment: " + statWipe.getPunishmentId() + ")");
 
         statWipeExecutor.executeStatWipe(
                 statWipe.getUsername(), statWipe.getMinecraftUuid(), statWipe.getPunishmentId(),
@@ -385,14 +385,14 @@ public class SyncService {
 
     private void handleStatWipeResult(SyncResponse.PendingStatWipe statWipe, boolean success, String serverName) {
         if (!success) {
-            logger.warning("[StatWipe] Failed for " + statWipe.getUsername() + " — will retry on next sync");
+            logger.warning("[bridge] Failed for " + statWipe.getUsername() + " — will retry on next sync");
             return;
         }
-        logger.info("[StatWipe] Completed for " + statWipe.getUsername() + " on " + serverName + " — acknowledging");
+        logger.info("[bridge] Completed for " + statWipe.getUsername() + " on " + serverName + " — acknowledging");
         httpClientHolder.getClient().acknowledgeStatWipe(
                 new StatWipeAcknowledgeRequest(statWipe.getPunishmentId(), serverName, true))
                 .exceptionally(throwable -> {
-                    logger.warning("[StatWipe] Failed to acknowledge for " + statWipe.getPunishmentId() + ": " + throwable.getMessage());
+                    logger.warning("[bridge] Failed to acknowledge for " + statWipe.getPunishmentId() + ": " + throwable.getMessage());
                     return null;
                 });
     }

@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.UUID;
 
 public class StandingMenu extends BaseListMenu<Punishment> {
-
     private static final int SOCIAL_SLOT = 11;
     private static final int GAMEPLAY_SLOT = 15;
 

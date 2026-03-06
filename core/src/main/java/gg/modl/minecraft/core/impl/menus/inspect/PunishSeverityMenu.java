@@ -20,7 +20,7 @@ import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
-import gg.modl.minecraft.core.impl.util.PunishmentActionMessages;
+import gg.modl.minecraft.core.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
@@ -33,7 +33,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class PunishSeverityMenu extends BaseInspectMenu {
-
     private final PunishmentTypesResponse.PunishmentTypeData punishmentType;
     private final Consumer<CirrusPlayerWrapper> menuBackAction; // Goes back to PunishMenu
     private final Consumer<CirrusPlayerWrapper> rootBackAction; // Passed to primary tabs (e.g., back to Staff Menu)

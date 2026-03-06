@@ -12,36 +12,27 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class SyncRequest {
-    @NotNull
-    private String lastSyncTimestamp;
+    @NotNull private String lastSyncTimestamp;
 
-    @NotNull
-    private List<OnlinePlayer> onlinePlayers;
+    @NotNull private List<OnlinePlayer> onlinePlayers;
 
-    @NotNull
-    private ServerStatus serverStatus;
+    @NotNull private ServerStatus serverStatus;
 
-    @Nullable
-    private String serverName;
+    @Nullable private String serverName;
 
-    @Nullable
-    private List<ChatLogEntry> chatLogs;
+    @Nullable private List<ChatLogEntry> chatLogs;
 
-    @Nullable
-    private List<CommandLogEntry> commandLogs;
+    @Nullable private List<CommandLogEntry> commandLogs;
 
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
     public static class OnlinePlayer {
-        @NotNull
-        private String uuid;
+        @NotNull private String uuid;
 
-        @NotNull
-        private String username;
+        @NotNull private String username;
 
-        @NotNull
-        private String ipAddress;
+        @NotNull private String ipAddress;
 
         private long sessionDurationMs;
     }
@@ -53,11 +44,9 @@ public class SyncRequest {
         private int onlinePlayerCount;
         private int maxPlayers;
 
-        @NotNull
-        private String serverVersion;
+        @NotNull private String serverVersion;
 
-        @NotNull
-        private String timestamp;
+        @NotNull private String timestamp;
     }
 
     @Data

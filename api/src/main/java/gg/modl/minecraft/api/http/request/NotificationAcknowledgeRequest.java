@@ -11,12 +11,9 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class NotificationAcknowledgeRequest {
-    @NotNull
-    private String playerUuid;
+    @NotNull private String playerUuid;
     
-    @NotNull
-    private List<String> notificationIds;
+    @NotNull private List<String> notificationIds;
     
-    @NotNull
-    private String acknowledgedAt;
+    @NotNull private String acknowledgedAt;
 }

@@ -45,7 +45,6 @@ import java.util.concurrent.TimeUnit;
 
 @RequiredArgsConstructor
 public class JoinListener {
-
     private final HttpClientHolder httpClientHolder;
     private final Cache cache;
     private final Logger logger;

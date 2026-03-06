@@ -25,28 +25,24 @@ public final class Modification {
     @SerializedName("effectiveDuration")
     private Long effectiveDuration;
 
-    @Nullable
-    public Type getType() {
+    @Nullable public Type getType() {
         return type;
     }
 
     private static final String UNKNOWN_ISSUER = "Unknown";
 
-    @NotNull
-    public String getIssuer() {
+    @NotNull public String getIssuer() {
         return issuer != null ? issuer : UNKNOWN_ISSUER;
     }
 
-    @NotNull
-    public Date getIssued() {
+    @NotNull public Date getIssued() {
         return issued != null ? issued : new Date(0);
     }
 
     /**
      * Returns null for permanent punishments.
      */
-    @Nullable
-    public Long getEffectiveDuration() {
+    @Nullable public Long getEffectiveDuration() {
         return effectiveDuration;
     }
 

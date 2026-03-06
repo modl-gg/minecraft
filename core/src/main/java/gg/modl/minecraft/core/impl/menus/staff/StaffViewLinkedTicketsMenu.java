@@ -23,7 +23,6 @@ import java.util.function.Consumer;
  * Uses the staff menu header instead of the inspect menu header.
  */
 public class StaffViewLinkedTicketsMenu extends BaseStaffListMenu<TicketsResponse.Ticket> {
-
     private final List<TicketsResponse.Ticket> tickets = new ArrayList<>();
     private final String panelUrl;
 

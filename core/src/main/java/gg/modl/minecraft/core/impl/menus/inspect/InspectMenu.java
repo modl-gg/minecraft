@@ -13,7 +13,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class InspectMenu extends BaseInspectMenu {
-
     public InspectMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                        Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
         super(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, CirrusInventoryType.GENERIC_9X3);

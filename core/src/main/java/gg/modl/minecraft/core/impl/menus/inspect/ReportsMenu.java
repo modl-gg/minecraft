@@ -30,7 +30,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
-
     // Placeholder Report class since no endpoint exists yet
     public static class Report {
         private final String id;

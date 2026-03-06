@@ -17,33 +17,25 @@ public class SimplePunishment {
     private static final String CATEGORY_MUTE = "MUTE";
     private static final String CATEGORY_KICK = "KICK";
 
-    @NotNull
-    private String type;
+    @NotNull private String type;
 
-    @Nullable
-    private String category;
+    @Nullable private String category;
 
     private boolean started;
 
-    @Nullable
-    private Long expiration;
+    @Nullable private Long expiration;
 
-    @NotNull
-    private String description;
+    @NotNull private String description;
 
-    @NotNull
-    private String id;
+    @NotNull private String id;
 
     private int ordinal;
 
-    @Nullable
-    private String issuerName;
+    @Nullable private String issuerName;
 
-    @Nullable
-    private Long issuedAt;
+    @Nullable private Long issuedAt;
 
-    @Nullable
-    private String playerDescription;
+    @Nullable private String playerDescription;
 
     /**
      * Backend-provided category is most authoritative (per-punishment, not per-type),

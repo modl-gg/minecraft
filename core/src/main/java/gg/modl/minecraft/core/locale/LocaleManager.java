@@ -21,12 +21,10 @@ import java.util.stream.Collectors;
 public class LocaleManager {
     private static final Yaml yaml = new Yaml();
 
-    @Getter
-    private Map<String, Object> messages;
+    @Getter private Map<String, Object> messages;
     private Map<String, Object> configValues;
     private final String currentLocale;
-    @Setter
-    private MessageRenderer renderer;
+    @Setter private MessageRenderer renderer;
 
     public LocaleManager(String locale) {
         this.currentLocale = locale;

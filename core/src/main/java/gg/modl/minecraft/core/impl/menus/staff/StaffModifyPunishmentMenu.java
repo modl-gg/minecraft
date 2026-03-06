@@ -29,7 +29,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class StaffModifyPunishmentMenu extends BaseStaffMenu {
-
     private final Account targetAccount;
     private final Punishment punishment;
     private final Consumer<CirrusPlayerWrapper> menuBackAction;

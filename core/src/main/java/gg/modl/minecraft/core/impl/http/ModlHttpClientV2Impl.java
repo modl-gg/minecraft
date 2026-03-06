@@ -97,21 +97,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     private static final int MAX_LOG_BODY_LENGTH = 1000;
     private static final int HTTP_BAD_GATEWAY = 502;
 
-    @NotNull
-    private final String baseUrl;
-    @NotNull
-    private final String apiKey;
-    @NotNull
-    private final String serverDomain;
-    @NotNull
-    private final HttpClient httpClient;
-    @NotNull
-    private final Gson gson;
-    @NotNull
-    private final Logger logger;
+    @NotNull private final String baseUrl;
+    @NotNull private final String apiKey;
+    @NotNull private final String serverDomain;
+    @NotNull private final HttpClient httpClient;
+    @NotNull private final Gson gson;
+    @NotNull private final Logger logger;
     private final boolean debugMode;
-    @NotNull
-    private final CircuitBreaker circuitBreaker;
+    @NotNull private final CircuitBreaker circuitBreaker;
 
     public ModlHttpClientV2Impl(@NotNull String baseUrl, @NotNull String apiKey, @NotNull String serverDomain, boolean debugMode) {
         this.baseUrl = baseUrl;
@@ -143,24 +136,21 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .header(HEADER_SERVER_DOMAIN, serverDomain);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<PlayerProfileResponse> getPlayerProfile(@NotNull UUID uuid) {
         return sendAsync(requestBuilder("/minecraft/players/" + uuid)
                 .GET()
                 .build(), PlayerProfileResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<LinkedAccountsResponse> getLinkedAccounts(@NotNull UUID uuid) {
         return sendAsync(requestBuilder("/minecraft/players/" + uuid + "/linked-accounts")
                 .GET()
                 .build(), LinkedAccountsResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<PlayerLoginResponse> playerLogin(@NotNull PlayerLoginRequest request) {
         Map<String, Object> ipInfoMap = null;
         if (request.getIpInfo() != null) {
@@ -190,8 +180,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), PlayerLoginResponse.class, "LOGIN");
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> playerDisconnect(@NotNull PlayerDisconnectRequest request) {
 
         V2DisconnectRequest v2Request = new V2DisconnectRequest(request.getMinecraftUuid(), request.getSessionDurationMs());
@@ -201,8 +190,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<CreateTicketResponse> createTicket(@NotNull CreateTicketRequest request) {
         return sendAsync(requestBuilder("/minecraft/tickets")
                 .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
@@ -210,8 +198,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), CreateTicketResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<CreateTicketResponse> createUnfinishedTicket(@NotNull CreateTicketRequest request) {
         String requestBody = gson.toJson(request);
         if (debugMode) logger.info(String.format("[V2] Create unfinished ticket request body: %s", requestBody));
@@ -222,8 +209,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), CreateTicketResponse.class, "CREATE_UNFINISHED_TICKET");
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> createPunishment(@NotNull CreatePunishmentRequest request) {
 
         return sendAsync(requestBuilder("/minecraft/punishments/create")
@@ -232,8 +218,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> createPlayerNote(@NotNull CreatePlayerNoteRequest request) {
 
         Map<String, String> body = new HashMap<>();
@@ -246,8 +231,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<PunishmentCreateResponse> createPunishmentWithResponse(@NotNull PunishmentCreateRequest request) {
 
         V2CreatePunishmentRequest v2Request = new V2CreatePunishmentRequest(
@@ -268,24 +252,21 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), PunishmentCreateResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<PlayerGetResponse> getPlayer(@NotNull PlayerGetRequest request) {
         return sendAsync(requestBuilder("/minecraft/players?minecraftUuid=" + request.getMinecraftUuid())
                 .GET()
                 .build(), PlayerGetResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<PlayerNameResponse> getPlayer(@NotNull PlayerNameRequest request) {
         return sendAsync(requestBuilder("/minecraft/players/by-name?username=" + request.getMinecraftUsername())
                 .GET()
                 .build(), PlayerNameResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<PlayerNoteCreateResponse> createPlayerNoteWithResponse(@NotNull PlayerNoteCreateRequest request) {
 
         V2CreateNoteRequest v2Request = new V2CreateNoteRequest(
@@ -298,8 +279,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), PlayerNoteCreateResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<SyncResponse> sync(@NotNull SyncRequest request) {
 
         V2SyncRequest v2Request = new V2SyncRequest(
@@ -325,8 +305,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), SyncResponse.class, "SYNC");
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> acknowledgePunishment(@NotNull PunishmentAcknowledgeRequest request) {
 
         V2PunishmentAcknowledgeRequest v2Request = new V2PunishmentAcknowledgeRequest(
@@ -342,8 +321,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> acknowledgeNotifications(@NotNull NotificationAcknowledgeRequest request) {
 
         V2NotificationAcknowledgeRequest v2Request = new V2NotificationAcknowledgeRequest(
@@ -357,24 +335,21 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<PunishmentTypesResponse> getPunishmentTypes() {
         return sendAsync(requestBuilder("/minecraft/punishments/types")
                 .GET()
                 .build(), PunishmentTypesResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<StaffPermissionsResponse> getStaffPermissions() {
         return sendAsync(requestBuilder("/minecraft/staff/permissions")
                 .GET()
                 .build(), StaffPermissionsResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<PlayerLookupResponse> lookupPlayer(@NotNull PlayerLookupRequest request) {
 
         V2LookupRequest v2Request = new V2LookupRequest(request.getQuery(), false);
@@ -384,8 +359,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), PlayerLookupResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<PardonResponse> pardonPunishment(@NotNull PardonPunishmentRequest request) {
 
         V2PardonPunishmentRequest v2Request = new V2PardonPunishmentRequest(
@@ -399,8 +373,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), PardonResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<PardonResponse> pardonPlayer(@NotNull PardonPlayerRequest request) {
 
         V2PardonPlayerRequest v2Request = new V2PardonPlayerRequest(
@@ -415,8 +388,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), PardonResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> updateMigrationStatus(@NotNull MigrationStatusUpdateRequest request) {
         return sendAsync(requestBuilder("/minecraft/migration/progress")
                 .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
@@ -424,8 +396,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> submitIpInfo(@NotNull String minecraftUUID, @NotNull String ip,
                                                  String country, String region, String asn, boolean proxy, boolean hosting) {
         V2SubmitIpInfoRequest v2Request = new V2SubmitIpInfoRequest(minecraftUUID, ip, country, region, asn, proxy, hosting);
@@ -435,24 +406,21 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<OnlinePlayersResponse> getOnlinePlayers() {
         return sendAsync(requestBuilder("/minecraft/players/online")
                 .GET()
                 .build(), OnlinePlayersResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<RecentPunishmentsResponse> getRecentPunishments(int hours) {
         return sendAsync(requestBuilder("/minecraft/punishments/recent?hours=" + hours)
                 .GET()
                 .build(), RecentPunishmentsResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<ReportsResponse> getReports(String status) {
         String endpoint = "/minecraft/reports";
         if (status != null && !status.isEmpty()) endpoint += "?status=" + status;
@@ -461,8 +429,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), ReportsResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<ReportsResponse> getPlayerReports(@NotNull java.util.UUID playerUuid, String status) {
         String endpoint = "/minecraft/reports/player/" + playerUuid.toString();
         if (status != null && !status.isEmpty()) endpoint += "?status=" + status;
@@ -471,8 +438,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), ReportsResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> dismissReport(@NotNull String reportId, String dismissedBy, String reason) {
         java.util.Map<String, String> body = new java.util.HashMap<>();
         if (dismissedBy != null) body.put("dismissedBy", dismissedBy);
@@ -484,8 +450,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> resolveReport(@NotNull String reportId, String resolvedBy, String resolution, String punishmentId) {
         java.util.Map<String, String> body = new java.util.HashMap<>();
         if (resolvedBy != null) body.put("resolvedBy", resolvedBy);
@@ -498,8 +463,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<TicketsResponse> getTickets(String status, String type) {
         StringBuilder endpoint = new StringBuilder("/minecraft/tickets");
         boolean hasParam = false;
@@ -515,16 +479,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), TicketsResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<DashboardStatsResponse> getDashboardStats() {
         return sendAsync(requestBuilder("/minecraft/dashboard/stats")
                 .GET()
                 .build(), DashboardStatsResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<PunishmentPreviewResponse> getPunishmentPreview(@NotNull UUID playerUuid, int typeOrdinal) {
         String endpoint = "/minecraft/punishments/preview?playerUuid=" + playerUuid.toString() + "&typeOrdinal=" + typeOrdinal;
         return sendAsync(requestBuilder(endpoint)
@@ -532,8 +494,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), PunishmentPreviewResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> addPunishmentNote(@NotNull AddPunishmentNoteRequest request) {
         Map<String, String> body = new HashMap<>();
         body.put("issuerName", request.getIssuerName());
@@ -545,8 +506,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> addPunishmentEvidence(@NotNull AddPunishmentEvidenceRequest request) {
         Map<String, String> body = new HashMap<>();
         body.put("issuerName", request.getIssuerName());
@@ -558,8 +518,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> changePunishmentDuration(@NotNull ChangePunishmentDurationRequest request) {
         Map<String, Object> body = new HashMap<>();
         body.put("issuerName", request.getIssuerName());
@@ -571,8 +530,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> togglePunishmentOption(@NotNull TogglePunishmentOptionRequest request) {
         Map<String, Object> body = new HashMap<>();
         body.put("issuerName", request.getIssuerName());
@@ -585,8 +543,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<ClaimTicketResponse> claimTicket(@NotNull ClaimTicketRequest request) {
         Map<String, String> body = new HashMap<>();
         body.put("playerUuid", request.getPlayerUuid());
@@ -598,16 +555,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), ClaimTicketResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<StaffListResponse> getStaffList() {
         return sendAsync(requestBuilder("/minecraft/staff")
                 .GET()
                 .build(), StaffListResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> reportStaffDisconnect(@NotNull String minecraftUuid, long sessionDurationMs) {
         Map<String, Object> body = new HashMap<>();
         body.put("minecraftUuid", minecraftUuid);
@@ -619,8 +574,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> updateStaffRole(@NotNull String staffId, @NotNull String roleName) {
         Map<String, String> body = new HashMap<>();
         body.put("role", roleName);
@@ -631,16 +585,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<RolesListResponse> getRoles() {
         return sendAsync(requestBuilder("/minecraft/roles")
                 .GET()
                 .build(), RolesListResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> updateRolePermissions(@NotNull String roleId, @NotNull List<String> permissions) {
         Map<String, Object> body = new HashMap<>();
         body.put("permissions", permissions);
@@ -651,16 +603,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<PunishmentDetailResponse> getPunishmentDetail(@NotNull String punishmentId) {
         return sendAsync(requestBuilder("/minecraft/punishments/" + punishmentId)
                 .GET()
                 .build(), PunishmentDetailResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<EvidenceUploadTokenResponse> createEvidenceUploadToken(@NotNull String punishmentId, @NotNull String issuerName) {
         Map<String, String> body = new HashMap<>();
         body.put("issuerName", issuerName);
@@ -671,8 +621,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), EvidenceUploadTokenResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> updatePlayerServer(@NotNull String minecraftUuid, @NotNull String serverName) {
         Map<String, String> body = Map.of("minecraftUuid", minecraftUuid, "serverName", serverName);
         return sendAsync(requestBuilder("/minecraft/players/update-server")
@@ -681,8 +630,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> modifyPunishmentTickets(@NotNull ModifyPunishmentTicketsRequest request) {
         Map<String, Object> body = new HashMap<>();
         body.put("issuerName", request.getIssuerName());
@@ -696,8 +644,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> acknowledgeStatWipe(@NotNull StatWipeAcknowledgeRequest request) {
         Map<String, Object> body = new HashMap<>();
         body.put("punishmentId", request.getPunishmentId());
@@ -710,8 +657,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<TicketsResponse> getTicketsByIds(@NotNull List<String> ticketIds) {
         Map<String, Object> body = new HashMap<>();
         body.put("ids", ticketIds);
@@ -722,8 +668,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), TicketsResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Staff2faTokenResponse> generateStaff2faToken(@NotNull String minecraftUuid, @NotNull String ip) {
         Map<String, String> body = Map.of("minecraftUuid", minecraftUuid, "ip", ip);
         return sendAsync(requestBuilder("/minecraft/staff/2fa/generate")
@@ -732,8 +677,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Staff2faTokenResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> submitChatLogs(@NotNull ChatLogBatchRequest chatLogBatch) {
         return sendAsync(requestBuilder("/minecraft/players/chat-log")
                 .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
@@ -741,8 +685,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<Void> submitCommandLogs(@NotNull CommandLogBatchRequest commandLogBatch) {
         return sendAsync(requestBuilder("/minecraft/players/command-log")
                 .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
@@ -750,16 +693,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<ChatLogsResponse> getChatLogs(@NotNull String playerUuid, int limit) {
         return sendAsync(requestBuilder("/minecraft/players/" + playerUuid + "/chat-logs?limit=" + limit)
                 .GET()
                 .build(), ChatLogsResponse.class);
     }
 
-    @NotNull
-    @Override
+    @NotNull @Override
     public CompletableFuture<CommandLogsResponse> getCommandLogs(@NotNull String playerUuid, int limit) {
         return sendAsync(requestBuilder("/minecraft/players/" + playerUuid + "/command-logs?limit=" + limit)
                 .GET()

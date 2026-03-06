@@ -25,7 +25,6 @@ import java.util.UUID;
 
 @RequiredArgsConstructor
 public class StaffListCommand extends BaseCommand {
-
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;

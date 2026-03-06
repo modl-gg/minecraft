@@ -16,7 +16,6 @@ import net.md_5.bungee.event.EventPriority;
  */
 @RequiredArgsConstructor
 public class AsyncCommandInterceptor implements Listener {
-
     private static final String NAMESPACE_PREFIX = "modl:";
 
     private final AsyncCommandExecutor asyncExecutor;

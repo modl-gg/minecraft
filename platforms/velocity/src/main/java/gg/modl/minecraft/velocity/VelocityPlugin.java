@@ -42,7 +42,6 @@ import java.util.Map;
         description = PluginInfo.DESCRIPTION,
         url = PluginInfo.URL)
 public final class VelocityPlugin {
-
     private static final Yaml yaml = new Yaml();
     private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg";
     private static final String DEFAULT_BRIDGE_NAME = "bridge";
@@ -189,6 +188,7 @@ public final class VelocityPlugin {
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_VELOCITY);
+
         // Velocity bundles adventure-api but not these serializers
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_JSON);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_GSON);

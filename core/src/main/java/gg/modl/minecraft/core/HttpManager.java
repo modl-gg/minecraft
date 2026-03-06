@@ -17,20 +17,14 @@ public class HttpManager {
 
     private static final String V2_BASE_PATH = "/v1";
 
-    @NotNull
-    private final ModlHttpClient httpClient;
-    @NotNull
-    private final HttpClientHolder httpClientHolder;
-    @NotNull
-    private final String apiKey;
-    @NotNull
-    private final String apiUrl;
+    @NotNull private final ModlHttpClient httpClient;
+    @NotNull private final HttpClientHolder httpClientHolder;
+    @NotNull private final String apiKey;
+    @NotNull private final String apiUrl;
     private final boolean debugHttp;
-    @NotNull
-    private final String serverDomain;
+    @NotNull private final String serverDomain;
     private final boolean useTestingApi;
-    @NotNull
-    private final String panelUrl;
+    @NotNull private final String panelUrl;
     private final boolean queryMojang;
 
     public HttpManager(@NotNull String key, @NotNull String url, boolean debugHttp, boolean useTestingApi, boolean queryMojang) {

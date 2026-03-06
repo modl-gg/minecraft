@@ -53,7 +53,6 @@ import java.util.concurrent.TimeUnit;
 
 @RequiredArgsConstructor
 public class BungeeListener implements Listener {
-
     private final BungeePlatform platform;
     private final Cache cache;
     private final HttpClientHolder httpClientHolder;

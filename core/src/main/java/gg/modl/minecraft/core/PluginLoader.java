@@ -394,16 +394,16 @@ public class PluginLoader {
                 String detectedPrefix = detectLiteBansTablePrefix(dataDirectory, logger);
                 if (detectedPrefix != null) {
                     tablePrefix = detectedPrefix;
-                    logger.info("[Migration] Detected LiteBans table prefix from config: " + tablePrefix);
+                    logger.info("Detected LiteBans table prefix from config: " + tablePrefix);
                 }
 
-                logger.info("[Migration] Loaded database config: " + type + " @ " + host + ":" + port + "/" + dbName);
-                logger.info("[Migration] Using table prefix: " + tablePrefix);
+                logger.info("Loaded database config: " + type + " @ " + host + ":" + port + "/" + dbName);
+                logger.info("Using table prefix: " + tablePrefix);
 
                 return new DatabaseConfig(host, port, dbName, username, password, dbType, tablePrefix);
             }
         } catch (Exception e) {
-            logger.log(Level.WARNING, "[Migration] Failed to load database config", e);
+            logger.log(Level.WARNING, "Failed to load database config", e);
         }
 
         return createDefaultDatabaseConfig();
@@ -419,7 +419,7 @@ public class PluginLoader {
             Path litebansConfig = dataDirectory.getParent().resolve("LiteBans").resolve("config.yml");
             
             if (!Files.exists(litebansConfig)) {
-                logger.info("[Migration] LiteBans config not found, using prefix from modl.gg config");
+                logger.info("LiteBans config not found, using prefix from modl.gg config");
                 return null;
             }
             
@@ -437,7 +437,7 @@ public class PluginLoader {
                 }
             }
         } catch (Exception e) {
-            logger.warning("[Migration] Failed to read LiteBans config: " + e.getMessage());
+            logger.warning("Failed to read LiteBans config: " + e.getMessage());
         }
         
         return null;

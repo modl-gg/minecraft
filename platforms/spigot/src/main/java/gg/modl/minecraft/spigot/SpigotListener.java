@@ -48,7 +48,6 @@ import java.util.concurrent.TimeUnit;
 
 @RequiredArgsConstructor
 public class SpigotListener implements Listener {
-
     private static final long PRE_LOGIN_TIMEOUT_SECONDS = 10;
 
     private final SpigotPlatform platform;

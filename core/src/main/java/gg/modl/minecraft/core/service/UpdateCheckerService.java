@@ -83,10 +83,10 @@ public class UpdateCheckerService {
             if (latest == null || latest.tagName == null || latest.tagName.isEmpty()) return;
 
             if (!currentVersion.equalsIgnoreCase(latest.tagName)) {
-                logger.warning("[modl.gg] Update available: current=" + currentVersion + ", latest=" + latest.tagName);
-                logger.warning("[modl.gg] Download: " + latest.downloadUrl);
+                logger.warning("Update available: current=" + currentVersion + ", latest=" + latest.tagName);
+                logger.warning("Download: " + latest.downloadUrl);
             } else if (isFirstRun) {
-                logger.info("[modl.gg] You are up to date! (" + latest.tagName + ")");
+                logger.info("You are up to date! (" + latest.tagName + ")");
             }
             isFirstRun = false;
         } catch (Exception e) {

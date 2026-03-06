@@ -63,28 +63,23 @@ public class Punishment {
 
     private transient PunishmentData data;
 
-    @NotNull
-    public String getId() {
+    @NotNull public String getId() {
         return id != null ? id : "";
     }
 
-    @NotNull
-    public String getIssuerName() {
+    @NotNull public String getIssuerName() {
         return issuerName != null ? issuerName : UNKNOWN;
     }
 
-    @NotNull
-    public Date getIssued() {
+    @NotNull public Date getIssued() {
         return issued != null ? issued : new Date(0);
     }
 
-    @Nullable
-    public Date getStarted() {
+    @Nullable public Date getStarted() {
         return started;
     }
 
-    @Nullable
-    public Type getType() {
+    @Nullable public Type getType() {
         return type;
     }
 
@@ -122,28 +117,23 @@ public class Punishment {
         return UNKNOWN;
     }
 
-    @NotNull
-    public List<Modification> getModifications() {
+    @NotNull public List<Modification> getModifications() {
         return modifications != null ? modifications : Collections.emptyList();
     }
 
-    @NotNull
-    public List<Note> getNotes() {
+    @NotNull public List<Note> getNotes() {
         return notes != null ? notes : Collections.emptyList();
     }
 
-    @NotNull
-    public List<Evidence> getEvidence() {
+    @NotNull public List<Evidence> getEvidence() {
         return evidence != null ? evidence : Collections.emptyList();
     }
 
-    @NotNull
-    public List<String> getAttachedTicketIds() {
+    @NotNull public List<String> getAttachedTicketIds() {
         return attachedTicketIds != null ? attachedTicketIds : Collections.emptyList();
     }
 
-    @NotNull
-    public Map<String, Object> getDataMap() {
+    @NotNull public Map<String, Object> getDataMap() {
         return dataMap != null ? dataMap : Collections.emptyMap();
     }
 
@@ -223,8 +213,7 @@ public class Punishment {
     /**
      * Mirrors the backend's getEffectiveExpiry logic, accounting for duration modifications.
      */
-    @Nullable
-    public Date getEffectiveExpiry() {
+    @Nullable public Date getEffectiveExpiry() {
         Long duration = null;
         Date durationBase = null;
         for (Modification mod : getModifications()) {

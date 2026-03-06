@@ -31,7 +31,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMemberEntry> {
-
     public static class StaffMemberEntry {
         private final String id;
         private final String panelName;

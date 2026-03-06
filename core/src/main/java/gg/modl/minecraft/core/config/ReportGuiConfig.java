@@ -60,13 +60,13 @@ public class ReportGuiConfig {
                     if (data != null && data.containsKey("report_gui")) reportGui = (Map<?, ?>) data.get("report_gui");
                     else if (data != null) reportGui = data;
                 }
-                if (reportGui != null) logger.info("[ReportGuiConfig] Loaded from report_gui.yml");
+                if (reportGui != null) logger.info("Loaded from report_gui.yml");
             }
 
             if (reportGui == null) {
                 Path configFile = dataDirectory.resolve("config.yml");
                 if (!Files.exists(configFile)) {
-                    logger.info("[ReportGuiConfig] Config file not found, using defaults");
+                    logger.info("Report GUI config file not found, using defaults");
                     return createDefault();
                 }
                 try (InputStream inputStream = Files.newInputStream(configFile)) {
@@ -101,13 +101,13 @@ public class ReportGuiConfig {
 
                 if (config.infoConfig == null) config.infoConfig = new InfoConfig();
 
-                logger.info("[ReportGuiConfig] Loaded " + config.slots.size() + " report slots from config");
+                logger.info("Loaded " + config.slots.size() + " report slots from config");
             } else {
-                logger.info("[ReportGuiConfig] No report_gui section found, using defaults");
+                logger.info("No report_gui section found, using defaults");
                 return createDefault();
             }
         } catch (Exception e) {
-            logger.warning("[ReportGuiConfig] Failed to load config: " + e.getMessage());
+            logger.warning("Failed to load config: " + e.getMessage());
             return createDefault();
         }
 

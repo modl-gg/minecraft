@@ -24,7 +24,6 @@ import java.nio.file.Files;
 import java.util.List;
 
 public class SpigotPlugin extends JavaPlugin {
-
     private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg";
     private static final String BRIDGE_PLUGIN_NAME = "modl-bridge";
     private static final String DEFAULT_BRIDGE_NAME = "bridge";
@@ -117,7 +116,7 @@ public class SpigotPlugin extends JavaPlugin {
 
         String bridgeHost = getConfig().getString("bridge.host", "");
         if (bridgeHost.isEmpty()) {
-            getLogger().warning("[modl] modl-bridge plugin not found and bridge.host not configured — stat wipe commands will not execute");
+            getLogger().warning("modl-bridge plugin not found and bridge.host not configured — stat wipe commands will not execute");
             return;
         }
 

@@ -29,7 +29,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class PunishMenu extends BaseInspectMenu {
-
     private List<PunishmentTypesResponse.PunishmentTypeData> punishmentTypes = new ArrayList<>();
     private Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
     private PunishGuiConfig guiConfig;

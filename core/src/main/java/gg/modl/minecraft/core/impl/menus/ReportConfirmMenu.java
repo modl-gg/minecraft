@@ -30,7 +30,6 @@ import java.util.concurrent.CompletableFuture;
  * Reviews the report and allows the player to confirm or cancel.
  */
 public class ReportConfirmMenu extends SimpleMenu {
-
     private final AbstractPlayer reporter;
     private final AbstractPlayer target;
     private final ModlHttpClient httpClient;

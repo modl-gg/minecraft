@@ -185,14 +185,14 @@ public class PunishCommand extends BaseCommand {
                         .collect(Collectors.toList());
                 cacheInitialized = true;
                 platform.runOnMainThread(() ->
-                    platform.log("Loaded " + cachedPunishmentTypes.size() + " punishment types from API"));
+                    platform.log("[modl.gg] Loaded " + cachedPunishmentTypes.size() + " punishment types from API"));
             } else {
                 platform.runOnMainThread(() ->
-                    platform.log("Failed to load punishment types from API: " + response.getStatus()));
+                    platform.log("[modl.gg] Failed to load punishment types from API: " + response.getStatus()));
             }
         }).exceptionally(throwable -> {
             platform.runOnMainThread(() ->
-                platform.log("Error loading punishment types: " + throwable.getMessage()));
+                platform.log("[modl.gg] Error loading punishment types: " + throwable.getMessage()));
             return null;
         });
 

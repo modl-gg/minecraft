@@ -32,7 +32,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report> {
-
     public static class Report {
         private final String id;
         private final String type;
