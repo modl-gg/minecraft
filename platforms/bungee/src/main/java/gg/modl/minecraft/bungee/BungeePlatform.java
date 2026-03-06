@@ -58,16 +58,6 @@ public class BungeePlatform implements Platform {
     }
 
     @Override
-    public void staffChatBroadcast(String message) {
-        String msg = ChatColor.translateAlternateColorCodes('&', message);
-        ProxyServer.getInstance().getPlayers().stream()
-            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
-            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
-            .filter(player -> cache.isStaffNotificationsEnabled(player.getUniqueId()))
-            .forEach(player -> player.sendMessage(new TextComponent(msg)));
-    }
-
-    @Override
     public void connectToServer(java.util.UUID player, String serverName) {
         ProxiedPlayer pp = ProxyServer.getInstance().getPlayer(player);
         if (pp != null) {
@@ -82,12 +72,6 @@ public class BungeePlatform implements Platform {
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
             .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
             .forEach(player -> player.sendMessage(net.md_5.bungee.chat.ComponentSerializer.parse(jsonMessage)));
-    }
-
-    @Override
-    public void disconnect(UUID uuid, String message) {
-        ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
-        if (player != null && player.isConnected()) player.disconnect(new TextComponent(ChatColor.translateAlternateColorCodes('&', message)));
     }
 
     @Override

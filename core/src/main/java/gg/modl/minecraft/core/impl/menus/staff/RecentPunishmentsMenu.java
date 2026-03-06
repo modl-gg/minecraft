@@ -12,7 +12,6 @@ import gg.modl.minecraft.api.Note;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.config.PunishGuiConfig;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -253,35 +252,19 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
     private CirrusItemType getPunishmentItemType(Punishment punishment) {
         int ordinal = punishment.getTypeOrdinal();
 
-        PunishGuiConfig guiConfig = getOrLoadGuiConfig();
-        if (guiConfig != null) {
-            String itemId = guiConfig.getItemForOrdinal(ordinal);
-            if (itemId != null) {
-                return CirrusItemType.of(itemId);
+        Cache cache = platform.getCache();
+        if (cache != null) {
+            Map<Integer, String> items = cache.getPunishmentTypeItems();
+            if (items != null) {
+                String itemId = items.get(ordinal);
+                if (itemId != null) return CirrusItemType.of(itemId);
             }
         }
 
-        if (punishment.isBanType()) {
-            return CirrusItemType.BARRIER;
-        } else if (punishment.isMuteType()) {
-            return CirrusItemType.PAPER;
-        } else if (punishment.isKickType()) {
-            return CirrusItemType.LEATHER_BOOTS;
-        }
+        if (punishment.isBanType()) return CirrusItemType.BARRIER;
+        if (punishment.isMuteType()) return CirrusItemType.PAPER;
+        if (punishment.isKickType()) return CirrusItemType.LEATHER_BOOTS;
         return CirrusItemType.PAPER;
-    }
-
-    private PunishGuiConfig getOrLoadGuiConfig() {
-        Cache cache = platform.getCache();
-        if (cache == null) return null;
-        PunishGuiConfig config = cache.getCachedPunishGuiConfig();
-        if (config == null) {
-            config = PunishGuiConfig.load(
-                    platform.getDataFolder().toPath(),
-                    platform.getLogger());
-            cache.cachePunishGuiConfig(config);
-        }
-        return config;
     }
 
     @Override

@@ -11,7 +11,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.PunishmentPreviewResponse;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.config.StandingGuiConfig;
+import gg.modl.minecraft.core.config.ConfigManager.StandingGuiConfig;
 import gg.modl.minecraft.core.impl.menus.base.BaseListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.locale.LocaleManager;

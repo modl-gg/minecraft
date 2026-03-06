@@ -18,7 +18,6 @@ public class PunishGuiConfig {
     private static final Yaml yaml = new Yaml();
     public static final int MAX_PUNISHMENT_SLOTS = 14;
     private final Map<Integer, PunishSlotConfig> slots = new HashMap<>();
-    private final Map<Integer, String> itemsByOrdinal = new HashMap<>();
 
     @Data @NoArgsConstructor
     public static class PunishSlotConfig {
@@ -43,7 +42,6 @@ public class PunishGuiConfig {
     public static PunishGuiConfig load(Path dataDirectory, PluginLogger logger) {
         PunishGuiConfig config = new PunishGuiConfig();
         try {
-            loadItemsByOrdinal(config, dataDirectory, logger);
             Map<?, ?> punishGui = null;
             Path dedicatedFile = dataDirectory.resolve("punish_gui.yml");
             if (Files.exists(dedicatedFile)) {
@@ -98,51 +96,6 @@ public class PunishGuiConfig {
     }
 
     @SuppressWarnings("unchecked")
-    private static void loadItemsByOrdinal(PunishGuiConfig config, Path dataDirectory, PluginLogger logger) {
-        try {
-            Map<?, ?> itemsMap = null;
-
-            // Primary: config.yml punishment_type_items_by_ordinal section
-            Path configFile = dataDirectory.resolve("config.yml");
-            if (Files.exists(configFile)) {
-                try (InputStream is = Files.newInputStream(configFile)) {
-                    Map<String, Object> rootConfig = yaml.load(is);
-                    if (rootConfig != null && rootConfig.containsKey("punishment_type_items_by_ordinal")) {
-                        itemsMap = (Map<?, ?>) rootConfig.get("punishment_type_items_by_ordinal");
-                    }
-                }
-            }
-
-            // Fallback: legacy punish_gui.yml
-            if (itemsMap == null) {
-                Path dedicatedFile = dataDirectory.resolve("punish_gui.yml");
-                if (Files.exists(dedicatedFile)) {
-                    try (InputStream is = Files.newInputStream(dedicatedFile)) {
-                        Map<String, Object> data = yaml.load(is);
-                        if (data != null && data.containsKey("punishment_type_items_by_ordinal")) {
-                            itemsMap = (Map<?, ?>) data.get("punishment_type_items_by_ordinal");
-                        }
-                    }
-                }
-            }
-
-            if (itemsMap != null) {
-                for (Map.Entry<?, ?> entry : itemsMap.entrySet()) {
-                    try {
-                        int ordinal = entry.getKey() instanceof Integer ? (Integer) entry.getKey() : Integer.parseInt(entry.getKey().toString());
-                        String itemId = entry.getValue().toString();
-                        String[] parts = itemId.split(":");
-                        if (parts.length > 2) itemId = parts[0] + ":" + parts[1];
-                        config.itemsByOrdinal.put(ordinal, itemId);
-                    } catch (NumberFormatException ignored) {}
-                }
-            }
-        } catch (Exception e) {
-            logger.warning("Failed to load items by ordinal: " + e.getMessage());
-        }
-    }
-
-    @SuppressWarnings("unchecked")
     private static PunishSlotConfig parseSlotConfig(int slotNumber, Map<String, Object> data) {
         PunishSlotConfig config = new PunishSlotConfig();
         config.setSlotNumber(slotNumber);
@@ -167,24 +120,6 @@ public class PunishGuiConfig {
 
     public static PunishGuiConfig createDefault() {
         PunishGuiConfig config = new PunishGuiConfig();
-        config.itemsByOrdinal.put(0, "minecraft:leather_boots");
-        config.itemsByOrdinal.put(1, "minecraft:paper");
-        config.itemsByOrdinal.put(2, "minecraft:barrier");
-        config.itemsByOrdinal.put(3, "minecraft:barrier");
-        config.itemsByOrdinal.put(4, "minecraft:player_head");
-        config.itemsByOrdinal.put(5, "minecraft:bedrock");
-        config.itemsByOrdinal.put(6, "minecraft:feather");
-        config.itemsByOrdinal.put(7, "minecraft:pufferfish");
-        config.itemsByOrdinal.put(8, "minecraft:creeper_head");
-        config.itemsByOrdinal.put(9, "minecraft:ink_sac");
-        config.itemsByOrdinal.put(10, "minecraft:name_tag");
-        config.itemsByOrdinal.put(11, "minecraft:armor_stand");
-        config.itemsByOrdinal.put(12, "minecraft:lava_bucket");
-        config.itemsByOrdinal.put(13, "minecraft:spider_eye");
-        config.itemsByOrdinal.put(14, "minecraft:diamond_sword");
-        config.itemsByOrdinal.put(15, "minecraft:gold_ingot");
-        config.itemsByOrdinal.put(16, "minecraft:experience_bottle");
-        config.itemsByOrdinal.put(17, "minecraft:barrier");
 
         config.slots.put(1, new PunishSlotConfig(1, true, "minecraft:feather", "Chat Abuse", 6,
             List.of("&7{staff-description}", "", "&fSocial Offender Level: {social-status}", "", "Click to issue new punishment.")));
@@ -225,9 +160,5 @@ public class PunishGuiConfig {
 
     public PunishSlotConfig getSlot(int slotNumber) {
         return slots.get(slotNumber);
-    }
-
-    public String getItemForOrdinal(int ordinal) {
-        return itemsByOrdinal.get(ordinal);
     }
 }

@@ -13,9 +13,6 @@ import java.util.UUID;
  * Handles frozen players, command logging, and muted command blocking.
  */
 public final class CommandInterceptHandler {
-
-    private CommandInterceptHandler() {}
-
     public enum CommandResult { ALLOWED, BLOCKED_FROZEN, BLOCKED_MUTED }
 
     /**

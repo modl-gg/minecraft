@@ -11,7 +11,6 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
-import gg.modl.minecraft.core.util.Constants;
 import gg.modl.minecraft.core.util.TimeUtil;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +44,7 @@ public abstract class AbstractManualPunishmentCommand extends BaseCommand {
 
         ParsedArgs parsed = parseArguments(args, getSupportedFlags());
         String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
-        String reason = parsed.reason.isEmpty() ? Constants.DEFAULT_REASON_SPECIFIED : parsed.reason;
+        String reason = parsed.reason.isEmpty() ? localeManager.getMessage("config.default_reason") : parsed.reason;
 
         Map<String, Object> dataMap = new HashMap<>();
         dataMap.put("reason", reason);

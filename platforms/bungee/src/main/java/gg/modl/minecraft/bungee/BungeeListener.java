@@ -5,7 +5,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
-import gg.modl.minecraft.core.config.StaffChatConfig;
+import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.cache.LoginCache;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -104,7 +104,7 @@ public class BungeeListener implements Listener {
                 .thenApply(wp -> wp != null && wp.valid() ? wp.skin() : null)
                 .exceptionally(t -> null);
 
-        // getNow() avoids blocking -- backend will request IP lookup via pendingIpLookups if null
+        // getNow() avoids blocking - backend will request IP lookup via pendingIpLookups if null
         JsonObject ipInfo = null;
         String skinHash = null;
         try {
@@ -224,7 +224,6 @@ public class BungeeListener implements Listener {
 
     private String extractIpAddress(java.net.SocketAddress socketAddress) {
         if (socketAddress instanceof InetSocketAddress) return ((InetSocketAddress) socketAddress).getAddress().getHostAddress();
-        // Fallback: parse from string representation
         String addr = socketAddress.toString();
         if (addr.startsWith("/")) addr = addr.substring(1);
         if (addr.contains(":")) addr = addr.substring(0, addr.indexOf(":"));

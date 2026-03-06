@@ -134,7 +134,7 @@ public class PunishCommand extends BaseCommand {
             target.getMinecraftUuid().toString(),
             issuerName,
             punishmentType.getOrdinal(),
-            punishmentArgs.reason.isEmpty() ? Constants.DEFAULT_REASON_SPECIFIED : punishmentArgs.reason,
+            punishmentArgs.reason.isEmpty() ? localeManager.getMessage("config.default_reason") : punishmentArgs.reason,
             punishmentArgs.duration > 0 ? punishmentArgs.duration : null,
             data,
             notes,

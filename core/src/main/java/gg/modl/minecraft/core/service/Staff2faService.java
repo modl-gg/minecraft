@@ -1,6 +1,6 @@
 package gg.modl.minecraft.core.service;
 
-import gg.modl.minecraft.core.config.Staff2faConfig;
+import gg.modl.minecraft.core.config.ConfigManager.Staff2faConfig;
 
 import java.util.Map;
 import java.util.Set;

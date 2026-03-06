@@ -11,9 +11,6 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class CommandUtil {
-
-    private CommandUtil() {}
-
     public static String resolveIssuerName(CommandIssuer sender, Cache cache, Platform platform) {
         if (!sender.isPlayer()) return "Console";
         String panelName = cache.getStaffDisplayName(sender.getUniqueId());

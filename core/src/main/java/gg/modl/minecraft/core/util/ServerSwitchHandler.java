@@ -13,9 +13,6 @@ import java.util.UUID;
  * Updates the backend and broadcasts a staff switch notification.
  */
 public final class ServerSwitchHandler {
-
-    private ServerSwitchHandler() {}
-
     public static void handleServerSwitch(
             UUID uuid, String username, String serverName,
             ModlHttpClient httpClient, Cache cache,

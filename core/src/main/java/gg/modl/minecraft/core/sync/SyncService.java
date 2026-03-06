@@ -360,7 +360,7 @@ public class SyncService {
                 if (debugMode) logger.info("LiteBans not available, using JDBC connection");
                 databaseProvider = new JdbcDatabaseProvider(databaseConfig, logger);
             }
-            migrationService = new MigrationService(logger, httpClientHolder.getClient(), apiUrl, apiKey, dataFolder, databaseProvider);
+            migrationService = new MigrationService(logger, httpClientHolder.getClient(), apiUrl, apiKey, dataFolder, databaseProvider, localeManager.getMessage("config.default_reason"));
             return true;
         } catch (Exception e) {
             logger.severe("Failed to initialize migration service: " + e.getMessage());

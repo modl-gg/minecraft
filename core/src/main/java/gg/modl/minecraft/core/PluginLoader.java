@@ -109,6 +109,7 @@ public class PluginLoader {
         platform.setCache(cache);
 
         this.configManager = new ConfigManager(dataDirectory, platform.getLogger());
+        cache.setPunishmentTypeItems(configManager.getPunishmentTypeItems());
         this.httpClientHolder = httpManager.getHttpClientHolder();
         this.logger = platform.getLogger();
 
@@ -190,7 +191,7 @@ public class PluginLoader {
         commandManager.registerCommand(new PardonCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new WarnCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new IAmMutedCommand(platform, cache, this.localeManager));
-        commandManager.registerCommand(new StandingCommand(httpClientHolder, platform, this.localeManager));
+        commandManager.registerCommand(new StandingCommand(httpClientHolder, platform, this.localeManager, configManager));
         commandManager.registerCommand(new TicketCommands(asyncCommandExecutor, platform, httpManager.getHttpClient(), httpManager.getPanelUrl(),
             this.localeManager, chatMessageCache));
 
@@ -451,6 +452,7 @@ public class PluginLoader {
 
     private void reloadRuntimeConfiguration() {
         configManager.reloadAll();
+        cache.setPunishmentTypeItems(configManager.getPunishmentTypeItems());
         Map<String, Object> freshConfig = readConfigYml(this.dataDirectory, this.logger);
         UpdateCheckerConfig updateCheckerConfig = loadUpdateCheckerConfig(freshConfig, this.logger);
         updateCheckerService.reload(updateCheckerConfig.enabled, updateCheckerConfig.intervalMinutes);

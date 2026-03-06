@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class PunishmentTypeCacheManager {
-
     private final Map<Integer, String> namesByOrdinal = new ConcurrentHashMap<>();
     private final Map<String, String> namesById = new ConcurrentHashMap<>();
 

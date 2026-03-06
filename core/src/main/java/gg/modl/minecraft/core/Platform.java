@@ -21,7 +21,6 @@ public interface Platform {
     void broadcast(String string);
     void staffBroadcast(String string);
     void staffJsonBroadcast(String jsonMessage);
-    void disconnect(UUID uuid, String message);
     void sendMessage(UUID uuid, String message);
     void sendJsonMessage(UUID uuid, String jsonMessage);
     boolean isOnline(UUID uuid);
@@ -46,10 +45,6 @@ public interface Platform {
     File getDataFolder();
     DatabaseProvider createLiteBansDatabaseProvider();
     void log(String msg);
-
-    default void staffChatBroadcast(String message) {
-        staffBroadcast(message);
-    }
 
     default void connectToServer(UUID player, String serverName) {}
     default void dispatchPlayerCommand(UUID uuid, String command) {}

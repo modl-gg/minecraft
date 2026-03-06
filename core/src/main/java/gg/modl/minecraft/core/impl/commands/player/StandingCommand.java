@@ -12,7 +12,7 @@ import gg.modl.minecraft.api.http.response.PunishmentPreviewResponse;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.config.StandingGuiConfig;
+import gg.modl.minecraft.core.config.ConfigManager;
 import gg.modl.minecraft.core.impl.menus.StandingMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
 
 @RequiredArgsConstructor
 public class StandingCommand extends BaseCommand {
@@ -30,6 +29,7 @@ public class StandingCommand extends BaseCommand {
     private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final LocaleManager localeManager;
+    private final ConfigManager configManager;
     private final Map<UUID, Long> cooldowns = new ConcurrentHashMap<>();
 
     private static final int PREVIEW_TYPE_ORDINAL = 6;
@@ -56,13 +56,10 @@ public class StandingCommand extends BaseCommand {
             PunishmentPreviewResponse previewData = loadPreviewData(httpClient, uuid);
             Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = loadPunishmentTypes(httpClient);
 
-            StandingGuiConfig guiConfig = StandingGuiConfig.load(
-                    platform.getDataFolder().toPath(), platform.getLogger());
-
             StandingMenu menu = new StandingMenu(
                 platform, httpClient, uuid,
                 platform.getAbstractPlayer(uuid, false).username(),
-                account, previewData, guiConfig, localeManager, typesByOrdinal);
+                account, previewData, configManager.getStandingGuiConfig(), localeManager, typesByOrdinal);
             CirrusPlayerWrapper player = platform.getPlayerWrapper(uuid);
             menu.display(player);
         }).exceptionally(throwable -> {

@@ -1,7 +1,7 @@
 package gg.modl.minecraft.core.util;
 
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.config.StaffChatConfig;
+import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -20,9 +20,6 @@ import java.util.function.Consumer;
  * Shared chat event processing pipeline used by all platforms.
  */
 public final class ChatEventHandler {
-
-    private ChatEventHandler() {}
-
     public enum Result {
         CANCELLED,
         ALLOWED

@@ -8,9 +8,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public final class StaffPermissionLoader {
-
-    private StaffPermissionLoader() {}
-
     public static CompletableFuture<Void> load(ModlHttpClient httpClient, Cache cache, PluginLogger logger, boolean debugMode, boolean clearFirst) {
         if (debugMode) logger.info("Loading staff permissions...");
         return httpClient.getStaffPermissions().thenAccept(response -> {

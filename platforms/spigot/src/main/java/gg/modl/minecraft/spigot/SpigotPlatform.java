@@ -58,27 +58,11 @@ public class SpigotPlatform implements Platform {
     }
 
     @Override
-    public void staffChatBroadcast(String message) {
-        String msg = ChatColor.translateAlternateColorCodes('&', message);
-        Bukkit.getOnlinePlayers().stream()
-            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
-            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
-            .filter(player -> cache.isStaffNotificationsEnabled(player.getUniqueId()))
-            .forEach(player -> player.sendMessage(msg));
-    }
-
-    @Override
     public void staffJsonBroadcast(String jsonMessage) {
         Bukkit.getOnlinePlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
             .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
             .forEach(player -> player.spigot().sendMessage(ComponentSerializer.parse(jsonMessage)));
-    }
-
-    @Override
-    public void disconnect(UUID uuid, String message) {
-        Player player = Bukkit.getPlayer(uuid);
-        if (player != null && player.isOnline()) player.kickPlayer(ChatColor.translateAlternateColorCodes('&', message));
     }
 
     @Override

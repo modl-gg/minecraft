@@ -45,6 +45,7 @@ public class MigrationService {
     private final String apiKey;
     private final File dataFolder;
     private final DatabaseProvider databaseProvider;
+    private final String defaultReason;
 
     private final ExecutorService migrationExecutor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "modl-migration");
@@ -61,7 +62,7 @@ public class MigrationService {
                 updateMigrationProgress(taskId, "building_json", "Starting LiteBans export...", 0, null);
 
                 File migrationFile = new File(dataFolder, "litebans-migration-" + taskId + ".json");
-                jsonWriter = new StreamingJsonWriter(migrationFile);
+                jsonWriter = new StreamingJsonWriter(migrationFile, defaultReason);
 
                 Set<String> playerUuids = getAllPlayerUuids();
                 int totalPlayers = playerUuids.size();
@@ -229,7 +230,7 @@ public class MigrationService {
         punishment.typeOrdinal = typeOrdinal;
 
         String reason = rs.getString("REASON");
-        punishment.reason = (reason != null && !reason.isEmpty()) ? reason : Constants.DEFAULT_REASON;
+        punishment.reason = (reason != null && !reason.isEmpty()) ? reason : defaultReason;
 
         long timeIssued = rs.getLong("TIME");
         if (timeIssued <= 0) timeIssued = System.currentTimeMillis();

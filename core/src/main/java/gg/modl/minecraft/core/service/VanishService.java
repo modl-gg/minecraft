@@ -28,8 +28,4 @@ public class VanishService {
         }
         return true;
     }
-
-    public Set<UUID> getVanishedPlayers() {
-        return Collections.unmodifiableSet(vanished);
-    }
 }

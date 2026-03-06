@@ -64,15 +64,6 @@ public class VelocityPlatform implements Platform {
     }
 
     @Override
-    public void staffChatBroadcast(String message) {
-        Component component = Colors.get(message);
-        server.getAllPlayers().stream()
-            .filter(this::isAuthenticatedStaff)
-            .filter(player -> cache.isStaffNotificationsEnabled(player.getUniqueId()))
-            .forEach(player -> player.sendMessage(component));
-    }
-
-    @Override
     public void connectToServer(java.util.UUID playerUuid, String serverName) {
         server.getPlayer(playerUuid).ifPresent(player ->
             server.getServer(serverName).ifPresent(srv ->
@@ -84,11 +75,6 @@ public class VelocityPlatform implements Platform {
         server.getAllPlayers().stream()
             .filter(this::isAuthenticatedStaff)
             .forEach(player -> sendJsonToPlayer(player, jsonMessage));
-    }
-
-    @Override
-    public void disconnect(UUID uuid, String message) {
-        server.getPlayer(uuid).ifPresent(player -> player.disconnect(colorize(message)));
     }
 
     @Override

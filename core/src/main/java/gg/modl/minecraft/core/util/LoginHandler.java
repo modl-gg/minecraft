@@ -18,9 +18,6 @@ import java.util.UUID;
  * the allow/deny decision to this handler.
  */
 public final class LoginHandler {
-
-    private LoginHandler() {}
-
     public sealed interface LoginResult {
         record Allowed(PlayerLoginResponse response) implements LoginResult {}
         record Denied(String message) implements LoginResult {}

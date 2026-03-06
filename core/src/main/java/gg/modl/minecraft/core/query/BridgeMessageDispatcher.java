@@ -67,7 +67,6 @@ public class BridgeMessageDispatcher {
     }
 
     private void handleFreezeLogout(DataInputStream data) throws Exception {
-        String playerUuid = data.readUTF();
         String playerName = data.readUTF();
         platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification", Map.of(
                 "player", playerName
@@ -76,7 +75,6 @@ public class BridgeMessageDispatcher {
     }
 
     private void handleStaffModeEnter(DataInputStream data) throws Exception {
-        String staffUuid = data.readUTF();
         String inGameName = data.readUTF();
         String panelName = data.readUTF();
         platform.staffBroadcast(localeManager.getMessage("staff_mode.enabled_broadcast", Map.of(
@@ -86,7 +84,6 @@ public class BridgeMessageDispatcher {
     }
 
     private void handleStaffModeExit(DataInputStream data) throws Exception {
-        String staffUuid = data.readUTF();
         String inGameName = data.readUTF();
         String panelName = data.readUTF();
         platform.staffBroadcast(localeManager.getMessage("staff_mode.disabled_broadcast", Map.of(

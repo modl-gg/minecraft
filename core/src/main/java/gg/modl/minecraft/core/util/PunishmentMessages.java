@@ -1,9 +1,10 @@
 package gg.modl.minecraft.core.util;
 
-import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,19 +13,10 @@ import java.util.UUID;
 public class PunishmentMessages {
     private static final String FALLBACK_MUTE_MESSAGE = "\u00A7cYou are muted!";
 
-    private static String panelUrl;
-
-    public static void setPanelUrl(String url) {
-        panelUrl = url;
-    }
-
-    public static String getPanelUrl() {
-        return panelUrl;
-    }
+    @Setter @Getter private static String panelUrl;
 
     public static String getAppealUrl() {
-        if (panelUrl != null && !panelUrl.isEmpty()) return panelUrl + "/appeal";
-        return Constants.DEFAULT_APPEAL_URL;
+        return panelUrl + "/appeal";
     }
 
     public enum MessageContext {
@@ -53,7 +45,6 @@ public class PunishmentMessages {
         Cache.CachedPlayerData data = cache.getCachedPlayerData(playerUuid);
         if (data == null) return FALLBACK_MUTE_MESSAGE;
         if (data.getSimpleMute() != null) return formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
-        if (data.getMute() != null) return formatLegacyMuteMessage(data.getMute());
         return FALLBACK_MUTE_MESSAGE;
     }
 
@@ -170,22 +161,6 @@ public class PunishmentMessages {
         String durationStr = formatDuration(timeLeft);
         String typeWord = punishment.isBan() ? "ban" : (punishment.isMute() ? "mute" : "punishment");
         return "\n\u00A77This " + typeWord + " will expire in \u00A7f" + durationStr + "\u00A77.";
-    }
-
-    public static String formatLegacyMuteMessage(Punishment mute) {
-        String reason = mute.getReason() != null ? mute.getReason() : Constants.UNKNOWN;
-        StringBuilder message = new StringBuilder();
-        message.append("\u00A7cYou are muted!\n");
-        message.append("\u00A77Reason: \u00A7f").append(reason);
-        if (mute.getExpires() != null) {
-            long timeLeft = mute.getExpires().getTime() - System.currentTimeMillis();
-            if (timeLeft > 0) {
-                message.append("\n\u00A77Time remaining: \u00A7f").append(formatDuration(timeLeft));
-            }
-        } else {
-            message.append("\n\u00A74This mute is permanent.");
-        }
-        return message.toString();
     }
 
 }

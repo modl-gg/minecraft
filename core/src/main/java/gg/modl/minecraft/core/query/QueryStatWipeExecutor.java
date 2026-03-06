@@ -10,22 +10,19 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import gg.modl.minecraft.core.util.PluginLogger;
+import lombok.Setter;
 
 public class QueryStatWipeExecutor implements StatWipeExecutor {
     private final List<QueryClient> clients = new ArrayList<>();
     private final EventLoopGroup eventLoopGroup;
     private final PluginLogger logger;
     private final boolean debugMode;
-    private BridgeMessageDispatcher bridgeMessageDispatcher;
+    @Setter private BridgeMessageDispatcher bridgeMessageDispatcher;
 
     public QueryStatWipeExecutor(PluginLogger logger, boolean debugMode) {
         this.logger = logger;
         this.debugMode = debugMode;
         this.eventLoopGroup = new NioEventLoopGroup(1);
-    }
-
-    public void setBridgeMessageDispatcher(BridgeMessageDispatcher dispatcher) {
-        this.bridgeMessageDispatcher = dispatcher;
     }
 
     public void addBridge(String serverName, String host, int port, String secret) {

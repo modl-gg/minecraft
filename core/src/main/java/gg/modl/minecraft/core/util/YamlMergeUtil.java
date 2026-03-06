@@ -17,8 +17,6 @@ import java.util.Map;
 public final class YamlMergeUtil {
     private static final Yaml yaml = new Yaml();
 
-    private YamlMergeUtil() {}
-
     @SuppressWarnings("unchecked")
     public static void mergeWithDefaults(String jarResourcePath, Path externalFile, PluginLogger logger) {
         try {

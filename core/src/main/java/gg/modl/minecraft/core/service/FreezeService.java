@@ -21,14 +21,6 @@ public class FreezeService {
         return frozenPlayers.containsKey(target);
     }
 
-    public UUID getFreezer(UUID target) {
-        return frozenPlayers.get(target);
-    }
-
-    public Set<UUID> getFrozenPlayers() {
-        return Collections.unmodifiableSet(frozenPlayers.keySet());
-    }
-
     /** Alias for {@link #unfreeze} — used on player disconnect. */
     public void removePlayer(UUID uuid) {
         unfreeze(uuid);

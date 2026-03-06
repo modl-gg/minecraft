@@ -33,7 +33,7 @@ public class AsyncCommandInterceptor implements Listener {
         if (asyncExecutor.isAsyncCommand(baseCommand) || asyncExecutor.isAsyncCommand(baseCommand.replace(NAMESPACE_PREFIX, ""))) {
             event.setCancelled(true);
             asyncExecutor.execute(() ->
-                    proxy.getPluginManager().dispatchCommand((CommandSender) player, stripped));
+                    proxy.getPluginManager().dispatchCommand(player, stripped));
         }
     }
 }

@@ -14,13 +14,15 @@ public class StreamingJsonWriter implements AutoCloseable {
     private final JsonWriter jsonWriter;
     private final FileWriter fileWriter;
     private final Gson gson;
+    private final String defaultReason;
     private boolean closed = false;
 
-    public StreamingJsonWriter(File outputFile) throws IOException {
+    public StreamingJsonWriter(File outputFile, String defaultReason) throws IOException {
         this.fileWriter = new FileWriter(outputFile);
         this.jsonWriter = new JsonWriter(fileWriter);
         this.jsonWriter.setIndent("  ");
         this.gson = new Gson();
+        this.defaultReason = defaultReason;
         jsonWriter.beginObject();
         jsonWriter.name("players");
         jsonWriter.beginArray();
@@ -84,7 +86,7 @@ public class StreamingJsonWriter implements AutoCloseable {
             jsonWriter.name("_id").value(punishment.id);
             jsonWriter.name("type").value(punishment.type);
             jsonWriter.name("typeOrdinal").value(punishment.typeOrdinal);
-            jsonWriter.name("reason").value(punishment.reason != null ? punishment.reason : Constants.DEFAULT_REASON);
+            jsonWriter.name("reason").value(punishment.reason != null ? punishment.reason : defaultReason);
             jsonWriter.name("issued").value(punishment.issued != null ? punishment.issued : "");
             jsonWriter.name("issuerName").value(punishment.issuerName != null ? punishment.issuerName : Constants.DEFAULT_CONSOLE_NAME);
             
