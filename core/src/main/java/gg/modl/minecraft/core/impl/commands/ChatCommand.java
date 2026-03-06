@@ -20,9 +20,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.Map;
 import java.util.UUID;
 
-@RequiredArgsConstructor
-@CommandAlias("%cmd_chat")
-@Conditions("staff")
+@RequiredArgsConstructor @CommandAlias("%cmd_chat") @Conditions("staff")
 public class ChatCommand extends BaseCommand {
     private final Platform platform;
     private final Cache cache;

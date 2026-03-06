@@ -36,11 +36,11 @@ public class BungeePlatform implements Platform {
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
-    @Setter private Cache cache;
-    @Setter private LocaleManager localeManager;
-    @Setter private StaffModeService staffModeService;
-    @Setter private BridgeService bridgeService;
-    @Setter private Staff2faService staff2faService;
+    private @Setter Cache cache;
+    private @Setter LocaleManager localeManager;
+    private @Setter StaffModeService staffModeService;
+    private @Setter BridgeService bridgeService;
+    private @Setter Staff2faService staff2faService;
 
     @Override
     public void broadcast(String string) {
@@ -197,8 +197,9 @@ public class BungeePlatform implements Platform {
         return null;
     }
 
-    public Logger getLogger() {
-        return logger;
+    @Override
+    public gg.modl.minecraft.core.util.PluginLogger getLogger() {
+        return gg.modl.minecraft.core.util.PluginLogger.fromJul(logger);
     }
 
     private AbstractPlayer toAbstractPlayer(ProxiedPlayer player) {

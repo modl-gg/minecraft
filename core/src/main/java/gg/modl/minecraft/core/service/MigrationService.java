@@ -27,8 +27,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import gg.modl.minecraft.core.util.PluginLogger;
 
 @RequiredArgsConstructor
 public class MigrationService {
@@ -40,7 +39,7 @@ public class MigrationService {
     private static final int BAN_TYPE_ORDINAL = 2;
     private static final int MUTE_TYPE_ORDINAL = 1;
 
-    private final Logger logger;
+    private final PluginLogger logger;
     private final ModlHttpClient httpClient;
     private final String apiUrl;
     private final String apiKey;
@@ -443,7 +442,7 @@ public class MigrationService {
             httpClient.updateMigrationStatus(new MigrationStatusUpdateRequest(taskId, status, message, recordsProcessed, totalRecords));
             logger.info(String.format(LOG_PREFIX + "Progress: %s - %s (%s/%s)", status, message, recordsProcessed, totalRecords));
         } catch (Exception e) {
-            logger.log(Level.WARNING, LOG_PREFIX + "Failed to update progress", e);
+            logger.warning(LOG_PREFIX + "Failed to update progress: " + e.getMessage());
         }
     }
 

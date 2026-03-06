@@ -389,8 +389,7 @@ public class Cache {
         return cache.get(playerUuid);
     }
     
-    @Getter
-    @Setter
+    @Getter @Setter
     public static class CachedPlayerData {
         private volatile Punishment mute;
         private volatile SimplePunishment simpleMute;
@@ -442,8 +441,7 @@ public class Cache {
         getStaffPreferences(playerUuid).setStaffNotificationsEnabled(enabled);
     }
 
-    @Getter
-    @Setter
+    @Getter @Setter
     public static class StaffPreferences {
         private boolean staffNotificationsEnabled = true; // Default enabled
 

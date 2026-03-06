@@ -10,57 +10,47 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter @NoArgsConstructor @AllArgsConstructor
 public class IPAddress {
     private static final String UNKNOWN = "Unknown";
 
-    @SerializedName("proxy")
-    private boolean proxy;
+    private @SerializedName("proxy") boolean proxy;
 
-    @SerializedName("hosting")
-    private boolean hosting;
+    private @SerializedName("hosting") boolean hosting;
 
-    @SerializedName("ipAddress")
-    private String ipAddress;
+    private @SerializedName("ipAddress") String ipAddress;
 
-    @SerializedName("country")
-    private String country;
+    private @SerializedName("country") String country;
 
-    @SerializedName("region")
-    private String region;
+    private @SerializedName("region") String region;
 
-    @SerializedName("asn")
-    private String asn;
+    private @SerializedName("asn") String asn;
 
-    @SerializedName("firstLogin")
-    private Date firstLogin;
+    private @SerializedName("firstLogin") Date firstLogin;
 
-    @SerializedName("logins")
-    private List<Date> logins;
+    private @SerializedName("logins") List<Date> logins;
 
-    @NotNull public String getIpAddress() {
+    public @NotNull String getIpAddress() {
         return ipAddress != null ? ipAddress : "";
     }
 
-    @NotNull public String getCountry() {
+    public @NotNull String getCountry() {
         return country != null ? country : UNKNOWN;
     }
 
-    @NotNull public String getRegion() {
+    public @NotNull String getRegion() {
         return region != null ? region : UNKNOWN;
     }
 
-    @NotNull public String getAsn() {
+    public @NotNull String getAsn() {
         return asn != null ? asn : "";
     }
 
-    @NotNull public Date getFirstLogin() {
+    public @NotNull Date getFirstLogin() {
         return firstLogin != null ? firstLogin : new Date(0);
     }
 
-    @NotNull public List<Date> getLogins() {
+    public @NotNull List<Date> getLogins() {
         return logins != null ? logins : Collections.emptyList();
     }
 }

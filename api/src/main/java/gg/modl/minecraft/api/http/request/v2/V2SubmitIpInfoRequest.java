@@ -4,9 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class V2SubmitIpInfoRequest {
     private String minecraftUUID;
     private String ip;

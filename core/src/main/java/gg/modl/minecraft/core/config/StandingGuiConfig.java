@@ -7,7 +7,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.logging.Logger;
+import gg.modl.minecraft.core.util.PluginLogger;
 
 @Data
 public class StandingGuiConfig {
@@ -16,7 +16,7 @@ public class StandingGuiConfig {
     private String gameplayItem = "minecraft:tnt";
 
     @SuppressWarnings("unchecked")
-    public static StandingGuiConfig load(Path dataDirectory, Logger logger) {
+    public static StandingGuiConfig load(Path dataDirectory, PluginLogger logger) {
         StandingGuiConfig config = new StandingGuiConfig();
         try {
             Map<String, Object> gui = null;

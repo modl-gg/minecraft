@@ -6,7 +6,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.logging.Logger;
+import gg.modl.minecraft.core.util.PluginLogger;
 
 /**
  * Direct JDBC database provider, used when LiteBans API is not available.
@@ -20,10 +20,10 @@ public class JdbcDatabaseProvider implements DatabaseProvider {
     };
 
     private final DatabaseConfig config;
-    private final Logger logger;
+    private final PluginLogger logger;
     private Connection connection;
 
-    public JdbcDatabaseProvider(DatabaseConfig config, Logger logger) throws SQLException {
+    public JdbcDatabaseProvider(DatabaseConfig config, PluginLogger logger) throws SQLException {
         this.config = config;
         this.logger = logger;
         this.connection = establishConnection();

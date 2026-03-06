@@ -14,15 +14,13 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
-
 public final class YamlMergeUtil {
     private static final Yaml yaml = new Yaml();
 
     private YamlMergeUtil() {}
 
     @SuppressWarnings("unchecked")
-    public static void mergeWithDefaults(String jarResourcePath, Path externalFile, Logger logger) {
+    public static void mergeWithDefaults(String jarResourcePath, Path externalFile, PluginLogger logger) {
         try {
             if (!Files.exists(externalFile)) {
                 try (InputStream jarStream = YamlMergeUtil.class.getResourceAsStream(jarResourcePath)) {

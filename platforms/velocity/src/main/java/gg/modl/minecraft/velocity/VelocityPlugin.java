@@ -19,6 +19,7 @@ import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
 import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.velocity.factory.VelocityPacketEventsBuilder;
 import net.byteflux.libby.Library;
@@ -49,13 +50,13 @@ public final class VelocityPlugin {
     private static final int MIN_SYNC_POLLING_RATE = 1;
     private static final int DEFAULT_SYNC_POLLING_RATE = 2;
     private static final int BSTATS_PLUGIN_ID = 29830;
-    private static final String JUL_LOGGER_NAME = "modl";
 
     private final PluginContainer plugin;
     private final ProxyServer server;
     private final Path folder;
     private final Logger logger;
     private final Metrics.Factory metrics;
+    private final PluginLogger pluginLogger;
 
     private Map<String, Object> configuration;
     private PluginLoader pluginLoader;
@@ -68,6 +69,12 @@ public final class VelocityPlugin {
         this.folder = folder;
         this.logger = logger;
         this.metrics = metrics;
+        this.pluginLogger = new PluginLogger() {
+            @Override public void info(String message) { logger.info(message); }
+            @Override public void warning(String message) { logger.warn(message); }
+            @Override public void severe(String message) { logger.error(message); }
+            @Override public void debug(String message) { logger.debug(message); }
+        };
     }
 
     @Subscribe
@@ -133,9 +140,8 @@ public final class VelocityPlugin {
     }
 
     private void mergeDefaultConfigs() {
-        java.util.logging.Logger julLogger = java.util.logging.Logger.getLogger(JUL_LOGGER_NAME);
-        YamlMergeUtil.mergeWithDefaults("/config.yml", folder.resolve("config.yml"), julLogger);
-        YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml", folder.resolve("locale/en_US.yml"), julLogger);
+        YamlMergeUtil.mergeWithDefaults("/config.yml", folder.resolve("config.yml"), pluginLogger);
+        YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml", folder.resolve("locale/en_US.yml"), pluginLogger);
     }
 
     private void logConfigurationError() {
@@ -155,14 +161,13 @@ public final class VelocityPlugin {
 
         int bridgePort = getConfigInt("bridge.port", DEFAULT_BRIDGE_PORT);
         String apiKey = getConfigString("api.key", "your-api-key-here");
-        java.util.logging.Logger julLogger = java.util.logging.Logger.getLogger(JUL_LOGGER_NAME);
-        queryStatWipeExecutor = new QueryStatWipeExecutor(julLogger, httpManager.isDebugHttp());
+        queryStatWipeExecutor = new QueryStatWipeExecutor(pluginLogger, httpManager.isDebugHttp());
         queryStatWipeExecutor.addBridge(DEFAULT_BRIDGE_NAME, bridgeHost, bridgePort, apiKey);
         pluginLoader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
 
         BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
                 platform, pluginLoader.getLocaleManager(), pluginLoader.getFreezeService(),
-                pluginLoader.getStaffModeService(), pluginLoader.getVanishService(), julLogger);
+                pluginLoader.getStaffModeService(), pluginLoader.getVanishService(), pluginLogger);
         queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
         pluginLoader.getBridgeService().setExecutor(queryStatWipeExecutor);
     }

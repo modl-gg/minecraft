@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.config;
 
+import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import lombok.Getter;
 import org.yaml.snakeyaml.Yaml;
@@ -12,25 +13,24 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 public class ConfigManager {
     private static final Yaml yaml = new Yaml();
 
     private final Path dataFolder;
-    private final Logger logger;
+    private final PluginLogger logger;
 
-    @Getter private PunishGuiConfig punishGuiConfig;
-    @Getter private ReportGuiConfig reportGuiConfig;
-    @Getter private StandingGuiConfig standingGuiConfig;
-    @Getter private StaffChatConfig staffChatConfig;
-    @Getter private ChatManagementConfig chatManagementConfig;
-    @Getter private Staff2faConfig staff2faConfig;
+    private @Getter PunishGuiConfig punishGuiConfig;
+    private @Getter ReportGuiConfig reportGuiConfig;
+    private @Getter StandingGuiConfig standingGuiConfig;
+    private @Getter StaffChatConfig staffChatConfig;
+    private @Getter ChatManagementConfig chatManagementConfig;
+    private @Getter Staff2faConfig staff2faConfig;
     private static final String[] GUI_CONFIG_FILES = {
             "punish_gui.yml", "report_gui.yml"
     };
 
-    public ConfigManager(Path dataFolder, Logger logger) {
+    public ConfigManager(Path dataFolder, PluginLogger logger) {
         this.dataFolder = dataFolder;
         this.logger = logger;
         migrateGuiConfigsFromConfigYml();
@@ -49,7 +49,7 @@ public class ConfigManager {
     }
 
     @SuppressWarnings("unchecked")
-    public static Map<String, Object> loadSection(Path dataFolder, String fileName, String sectionName, Logger logger) {
+    public static Map<String, Object> loadSection(Path dataFolder, String fileName, String sectionName, PluginLogger logger) {
         Path dedicatedFile = dataFolder.resolve(fileName);
         if (Files.exists(dedicatedFile)) {
             try (InputStream is = Files.newInputStream(dedicatedFile)) {

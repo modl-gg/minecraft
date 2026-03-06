@@ -1,19 +1,19 @@
 package gg.modl.minecraft.spigot;
 
 import gg.modl.minecraft.core.sync.StatWipeExecutor;
+import gg.modl.minecraft.core.util.PluginLogger;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
 import java.lang.reflect.Method;
-import java.util.logging.Logger;
 
 @RequiredArgsConstructor
 public class SpigotStatWipeExecutor implements StatWipeExecutor {
     private static final String BRIDGE_PLUGIN_NAME = "modl-bridge";
     private static final String EXECUTE_METHOD = "executeStatWipeCommands";
 
-    private final Logger logger;
+    private final PluginLogger logger;
     private final boolean debugMode;
 
     @Override

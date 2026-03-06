@@ -7,12 +7,9 @@ import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.player.ServerConnectedEvent;
-import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
-import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
-import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
@@ -30,16 +27,14 @@ import gg.modl.minecraft.core.service.VanishService;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.ListenerHelper;
-import gg.modl.minecraft.core.util.PermissionUtil;
-import gg.modl.minecraft.core.util.PunishmentMessages;
-import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
+import gg.modl.minecraft.core.util.LoginHandler;
+import gg.modl.minecraft.core.util.ServerSwitchHandler;
 import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.slf4j.Logger;
 
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -94,70 +89,32 @@ public class JoinListener {
 
         try {
             PlayerLoginResponse response = getHttpClient().playerLogin(request).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            logLoginResponse(event, response);
-            ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getPlayer().getUniqueId().toString(), ipAddress, ipInfoFuture, java.util.logging.Logger.getLogger(JoinListener.class.getName()));
-            processLoginResponse(event, response);
-        } catch (PanelUnavailableException e) {
-            logger.warn("Panel 502 during login check for {} - blocking login for safety", event.getPlayer().getUsername());
-            denyLogin(event, Component.text("Unable to verify ban status. Login temporarily restricted for safety.").color(NamedTextColor.RED));
-        } catch (java.util.concurrent.TimeoutException e) {
-            logger.warn("Login check timed out for {} - blocking login for safety", event.getPlayer().getUsername());
-            denyLogin(event, Component.text("Login verification timed out. Please try again.").color(NamedTextColor.RED));
+            ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getPlayer().getUniqueId().toString(), ipAddress, ipInfoFuture, platform.getLogger());
+
+            LoginHandler.LoginResult result = LoginHandler.processLoginResponse(
+                    response, event.getPlayer().getUniqueId(),
+                    getHttpClient(), localeManager, syncService, maintenanceService,
+                    cache, debugMode, platform.getLogger());
+
+            if (result instanceof LoginHandler.LoginResult.Denied denied) {
+                event.setResult(ResultedEvent.ComponentResult.denied(Colors.get(denied.message())));
+            } else {
+                LoginHandler.cacheLoginData(event.getPlayer().getUniqueId(), response,
+                        cache, platform.getLogger());
+                event.setResult(ResultedEvent.ComponentResult.allowed());
+                if (debugMode) logger.info("Allowed login for {}", event.getPlayer().getUsername());
+            }
         } catch (Exception e) {
-            // Allow login on other errors to prevent false kicks
-            logger.error("Failed to check punishments for " + event.getPlayer().getUsername() + " - allowing login as fallback", e);
-            event.setResult(ResultedEvent.ComponentResult.allowed());
-        }
-    }
-
-    private void processLoginResponse(LoginEvent event, PlayerLoginResponse response) {
-        if (response.hasActiveBan()) {
-            SimplePunishment ban = response.getActiveBan();
-            denyLogin(event, Colors.get(PunishmentMessages.formatBanMessage(ban, localeManager, MessageContext.LOGIN)));
-            if (debugMode) logger.info("Denied login for {} due to active ban: {}", event.getPlayer().getUsername(), ban.getDescription());
-            if (!ban.isStarted()) {
-                ListenerHelper.acknowledgeBanEnforcement(getHttpClient(), ban, event.getPlayer().getUniqueId().toString(), debugMode, java.util.logging.Logger.getLogger(JoinListener.class.getName()));
-            }
-        } else if (syncService.isStatWipeAvailable() && response.hasPendingStatWipes()) {
-            denyLogin(event, Colors.get(localeManager.getMessage("stat_wipe.kick_message")));
-            for (SyncResponse.PendingStatWipe statWipe : response.getPendingStatWipes()) syncService.executeStatWipeFromLogin(statWipe);
-        } else if (maintenanceService.isEnabled() && !maintenanceService.canJoin(event.getPlayer().getUniqueId(), cache)) {
-            denyLogin(event, Colors.get(localeManager.getMessage("maintenance.login_denied")));
-        } else {
-            cacheLoginData(event, response);
-            event.setResult(ResultedEvent.ComponentResult.allowed());
-            if (debugMode) logger.info("Allowed login for {}", event.getPlayer().getUsername());
-        }
-    }
-
-    private void cacheLoginData(LoginEvent event, PlayerLoginResponse response) {
-        if (response.hasActiveMute()) {
-            SimplePunishment mute = response.getActiveMute();
-            cache.cacheMute(event.getPlayer().getUniqueId(), mute);
-            if (debugMode) logger.info("Cached active mute for {}: {}", event.getPlayer().getUsername(), mute.getDescription());
-        }
-
-        if (response.hasNotifications()) {
-            for (Map<String, Object> notificationData : response.getPendingNotifications()) {
-                SyncResponse.PlayerNotification notification = ListenerHelper.mapToPlayerNotification(notificationData, java.util.logging.Logger.getLogger(JoinListener.class.getName()));
-                if (notification != null) cache.cacheNotification(event.getPlayer().getUniqueId(), notification);
+            LoginHandler.LoginResult errorResult = LoginHandler.handleLoginError(e);
+            if (errorResult instanceof LoginHandler.LoginResult.Denied denied) {
+                logger.warn("Login blocked for {}: {}", event.getPlayer().getUsername(), denied.message());
+                event.setResult(ResultedEvent.ComponentResult.denied(
+                        Component.text(denied.message()).color(NamedTextColor.RED)));
+            } else {
+                logger.error("Failed to check punishments for " + event.getPlayer().getUsername() + " - allowing login as fallback", e);
+                event.setResult(ResultedEvent.ComponentResult.allowed());
             }
         }
-    }
-
-    private void logLoginResponse(LoginEvent event, PlayerLoginResponse response) {
-        if (!debugMode) return;
-        logger.info("Login response for {}: status={}, punishments={}", event.getPlayer().getUsername(), response.getStatus(), response.getActivePunishments());
-        if (response.getActivePunishments() != null) {
-            for (SimplePunishment p : response.getActivePunishments()) {
-                logger.info("Punishment: type='{}', isBan={}, isMute={}, started={}, id={}", p.getType(), p.isBan(), p.isMute(), p.isStarted(), p.getId());
-            }
-        }
-        logger.info("Login response for {}: hasBan={}, hasMute={}", event.getPlayer().getUsername(), response.hasActiveBan(), response.hasActiveMute());
-    }
-
-    private void denyLogin(LoginEvent event, Component message) {
-        event.setResult(ResultedEvent.ComponentResult.denied(message));
     }
 
     @Subscribe
@@ -182,20 +139,10 @@ public class JoinListener {
 
     @Subscribe
     public void onServerConnected(ServerConnectedEvent event) {
-        java.util.UUID uuid = event.getPlayer().getUniqueId();
-        String serverName = event.getServer().getServerInfo().getName();
-        getHttpClient().updatePlayerServer(uuid.toString(), serverName)
-                .exceptionally(throwable -> {
-                    logger.warn("Failed to update server for {}: {}", event.getPlayer().getUsername(), throwable.getMessage());
-                    return null;
-                });
-
-        if (!PermissionUtil.isStaff(uuid, cache)) return;
-        String inGameName = event.getPlayer().getUsername();
-        String panelName = cache.getStaffDisplayName(uuid);
-        if (panelName == null) panelName = inGameName;
-        platform.staffBroadcast(localeManager.getMessage("staff_notifications.switch",
-                java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", serverName)));
+        ServerSwitchHandler.handleServerSwitch(
+                event.getPlayer().getUniqueId(), event.getPlayer().getUsername(),
+                event.getServer().getServerInfo().getName(),
+                getHttpClient(), cache, localeManager, platform);
     }
 
 }

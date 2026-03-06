@@ -8,15 +8,15 @@ import java.util.List;
 
 @Data
 public class CreateTicketRequest {
-    @NotNull private final String creatorUuid;
-    @Nullable private final String creatorName;
-    @NotNull private final String type;
-    @Nullable private final String subject;
-    @Nullable private final String description;
-    @Nullable private final String reportedPlayerUuid;
-    @Nullable private final String reportedPlayerName;
-    @Nullable private final List<String> chatMessages;
-    @Nullable private final List<String> tags;
-    @Nullable private final String priority;
-    @Nullable private final String createdServer;
+    private @NotNull final String creatorUuid;
+    private @Nullable final String creatorName;
+    private @NotNull final String type;
+    private @Nullable final String subject;
+    private @Nullable final String description;
+    private @Nullable final String reportedPlayerUuid;
+    private @Nullable final String reportedPlayerName;
+    private @Nullable final List<String> chatMessages;
+    private @Nullable final List<String> tags;
+    private @Nullable final String priority;
+    private @Nullable final String createdServer;
 }

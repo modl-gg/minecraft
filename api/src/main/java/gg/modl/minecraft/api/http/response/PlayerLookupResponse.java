@@ -6,9 +6,7 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class PlayerLookupResponse {
     private int status;
     private String message;
@@ -18,9 +16,7 @@ public class PlayerLookupResponse {
         return status >= 200 && status < 300;
     }
     
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class PlayerData {
         private String minecraftUuid;
         private String currentUsername;
@@ -40,9 +36,7 @@ public class PlayerLookupResponse {
         private String ticketsUrl;
     }
     
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class PunishmentStats {
         private int totalPunishments;
         private int activePunishments;
@@ -54,9 +48,7 @@ public class PlayerLookupResponse {
         private String status;
     }
     
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class RecentPunishment {
         private String id;
         private String type;
@@ -66,9 +58,7 @@ public class PlayerLookupResponse {
         private boolean isActive;
     }
     
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class RecentTicket {
         private String id;
         private String title;

@@ -8,9 +8,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 import java.util.Map;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class PlayerLoginResponse {
     private int status;
     private List<SimplePunishment> activePunishments;

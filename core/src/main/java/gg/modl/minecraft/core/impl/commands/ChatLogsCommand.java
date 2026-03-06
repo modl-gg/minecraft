@@ -25,9 +25,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-@RequiredArgsConstructor
-@CommandAlias("%cmd_chatlogs")
-@Conditions("staff")
+@RequiredArgsConstructor @CommandAlias("%cmd_chatlogs") @Conditions("staff")
 public class ChatLogsCommand extends BaseCommand {
     private static final int ENTRIES_PER_PAGE = 10;
     private static final int MAX_ENTRIES = 200;

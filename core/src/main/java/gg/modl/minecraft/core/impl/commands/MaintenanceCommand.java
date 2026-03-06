@@ -15,9 +15,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
 
-@RequiredArgsConstructor
-@CommandAlias("%cmd_maintenance")
-@Conditions("staff")
+@RequiredArgsConstructor @CommandAlias("%cmd_maintenance") @Conditions("staff")
 public class MaintenanceCommand extends BaseCommand {
     private final Platform platform;
     private final Cache cache;

@@ -6,15 +6,11 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class CommandLogBatchRequest {
     private List<CommandLogEntry> entries;
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class CommandLogEntry {
         private String uuid;
         private String username;

@@ -7,9 +7,7 @@ import lombok.NoArgsConstructor;
 import java.util.Date;
 import java.util.List;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class OnlinePlayersResponse {
     private int status;
     private List<OnlinePlayer> players;
@@ -18,9 +16,7 @@ public class OnlinePlayersResponse {
         return status >= 200 && status < 300;
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class OnlinePlayer {
         private String uuid;
         private String username;

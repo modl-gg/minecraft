@@ -9,33 +9,31 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Simplified punishment for API responses with only essential fields.
  */
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class SimplePunishment {
     private static final String CATEGORY_BAN = "BAN";
     private static final String CATEGORY_MUTE = "MUTE";
     private static final String CATEGORY_KICK = "KICK";
 
-    @NotNull private String type;
+    private @NotNull String type;
 
-    @Nullable private String category;
+    private @Nullable String category;
 
     private boolean started;
 
-    @Nullable private Long expiration;
+    private @Nullable Long expiration;
 
-    @NotNull private String description;
+    private @NotNull String description;
 
-    @NotNull private String id;
+    private @NotNull String id;
 
     private int ordinal;
 
-    @Nullable private String issuerName;
+    private @Nullable String issuerName;
 
-    @Nullable private Long issuedAt;
+    private @Nullable Long issuedAt;
 
-    @Nullable private String playerDescription;
+    private @Nullable String playerDescription;
 
     /**
      * Backend-provided category is most authoritative (per-punishment, not per-type),

@@ -197,7 +197,7 @@ public class PunishCommand extends BaseCommand {
         });
 
         StaffPermissionLoader.load(
-            httpClientHolder.getClient(), cache, java.util.logging.Logger.getLogger("modl"), false, true);
+            httpClientHolder.getClient(), cache, platform.getLogger(), false, true);
     }
 
     public List<String> getPunishmentTypeNames() {

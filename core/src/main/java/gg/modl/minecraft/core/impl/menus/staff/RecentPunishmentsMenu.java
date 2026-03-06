@@ -278,7 +278,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         if (config == null) {
             config = PunishGuiConfig.load(
                     platform.getDataFolder().toPath(),
-                    java.util.logging.Logger.getLogger("modl"));
+                    platform.getLogger());
             cache.cachePunishGuiConfig(config);
         }
         return config;

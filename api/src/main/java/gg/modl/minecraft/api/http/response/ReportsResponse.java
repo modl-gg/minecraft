@@ -7,9 +7,7 @@ import lombok.NoArgsConstructor;
 import java.util.Date;
 import java.util.List;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class ReportsResponse {
     private int status;
     private List<Report> reports;
@@ -18,9 +16,7 @@ public class ReportsResponse {
         return status >= 200 && status < 300;
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class Report {
         private String id;
         private String type;

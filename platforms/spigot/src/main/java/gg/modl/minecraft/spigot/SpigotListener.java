@@ -1,12 +1,9 @@
 package gg.modl.minecraft.spigot;
 
 import com.google.gson.JsonObject;
-import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
-import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
-import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.config.StaffChatConfig;
 import gg.modl.minecraft.core.impl.cache.Cache;
@@ -25,11 +22,10 @@ import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.service.VanishService;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.ChatEventHandler;
+import gg.modl.minecraft.core.util.CommandInterceptHandler;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.ListenerHelper;
-import gg.modl.minecraft.core.util.MutedCommandUtil;
-import gg.modl.minecraft.core.util.PunishmentMessages;
-import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
+import gg.modl.minecraft.core.util.LoginHandler;
 import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.event.EventHandler;
@@ -81,7 +77,7 @@ public class SpigotListener implements Listener {
 
         LoginCache.CachedLoginResult cached = loginCache.getCachedLoginResult(event.getUniqueId());
         if (cached != null) {
-            platform.getLogger().fine("Using cached login result for " + event.getName());
+            platform.getLogger().debug("Using cached login result for " + event.getName());
             loginCache.storePreLoginResult(event.getUniqueId(),
                 new LoginCache.PreLoginResult(cached.getResponse(), cached.getIpInfo(), cached.getSkinHash()));
             return;
@@ -107,7 +103,7 @@ public class SpigotListener implements Listener {
                         loginCache.cacheLoginResult(event.getUniqueId(), response, ipInfo, skinHash);
                         loginCache.storePreLoginResult(event.getUniqueId(),
                             new LoginCache.PreLoginResult(response, ipInfo, skinHash));
-                        ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getUniqueId().toString(), ipAddress, CompletableFuture.completedFuture(ipInfo), java.util.logging.Logger.getLogger(SpigotListener.class.getName()));
+                        ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getUniqueId().toString(), ipAddress, CompletableFuture.completedFuture(ipInfo), platform.getLogger());
                     });
             })
             .exceptionally(throwable -> {
@@ -135,7 +131,16 @@ public class SpigotListener implements Listener {
         }
 
         if (preLoginResult.hasError()) {
-            handlePreLoginError(event, preLoginResult.getError());
+            LoginHandler.LoginResult errorResult = LoginHandler.handleLoginError(preLoginResult.getError());
+            if (errorResult instanceof LoginHandler.LoginResult.Denied denied) {
+                if (preLoginResult.getError() instanceof PanelUnavailableException) {
+                    platform.getLogger().warning("Panel 502 during login check for " + event.getPlayer().getName() + " - blocking login for safety");
+                }
+                event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
+                event.setKickMessage(denied.message());
+            } else {
+                platform.getLogger().severe("Failed to check punishments for " + event.getPlayer().getName() + ": " + preLoginResult.getError().getMessage());
+            }
             return;
         }
 
@@ -144,34 +149,14 @@ public class SpigotListener implements Listener {
             return;
         }
 
-        PlayerLoginResponse response = preLoginResult.getResponse();
-        if (response.hasActiveBan()) {
-            SimplePunishment ban = response.getActiveBan();
+        LoginHandler.LoginResult result = LoginHandler.processLoginResponse(
+                preLoginResult.getResponse(), event.getPlayer().getUniqueId(),
+                getHttpClient(), localeManager, syncService, maintenanceService,
+                cache, debugMode, platform.getLogger());
+
+        if (result instanceof LoginHandler.LoginResult.Denied denied) {
             event.setResult(PlayerLoginEvent.Result.KICK_BANNED);
-            event.setKickMessage(PunishmentMessages.formatBanMessage(ban, localeManager, MessageContext.LOGIN));
-            if (!ban.isStarted()) {
-                ListenerHelper.acknowledgeBanEnforcement(getHttpClient(), ban, event.getPlayer().getUniqueId().toString(), debugMode, java.util.logging.Logger.getLogger(SpigotListener.class.getName()));
-            }
-        } else if (syncService.isStatWipeAvailable() && response.hasPendingStatWipes()) {
-            event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
-            event.setKickMessage(localeManager.getMessage("stat_wipe.kick_message"));
-            for (SyncResponse.PendingStatWipe statWipe : response.getPendingStatWipes()) syncService.executeStatWipeFromLogin(statWipe);
-        }
-
-        if (maintenanceService.isEnabled() && !maintenanceService.canJoin(event.getPlayer().getUniqueId(), cache)) {
-            event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
-            event.setKickMessage(localeManager.getMessage("maintenance.login_denied"));
-        }
-    }
-
-    private void handlePreLoginError(PlayerLoginEvent event, Exception error) {
-        if (error instanceof PanelUnavailableException) {
-            platform.getLogger().warning("Panel 502 during login check for " + event.getPlayer().getName() + " - blocking login for safety");
-            event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
-            event.setKickMessage("Unable to verify ban status. Login temporarily restricted for safety.");
-        } else {
-            // Allow login on non-502 errors to prevent false kicks
-            platform.getLogger().severe("Failed to check punishments for " + event.getPlayer().getName() + ": " + error.getMessage());
+            event.setKickMessage(denied.message());
         }
     }
     
@@ -185,9 +170,9 @@ public class SpigotListener implements Listener {
         chatMessageCache.updatePlayerServer(platform.getServerName(), uuid.toString());
 
         LoginCache.CachedLoginResult cachedResult = loginCache.getCachedLoginResult(uuid);
-        ListenerHelper.processLoginResponse(uuid,
+        LoginHandler.cacheLoginData(uuid,
                 cachedResult != null ? cachedResult.getResponse() : null,
-                cache, syncService, java.util.logging.Logger.getLogger(SpigotListener.class.getName()));
+                cache, platform.getLogger());
     }
 
     private void cacheSkinTexture(java.util.UUID uuid) {
@@ -229,24 +214,16 @@ public class SpigotListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onCommandPreprocess(PlayerCommandPreprocessEvent event) {
-        if (freezeService.isFrozen(event.getPlayer().getUniqueId())) {
+        var result = CommandInterceptHandler.handleCommand(
+                event.getPlayer().getUniqueId(), event.getPlayer().getName(),
+                event.getMessage(), platform.getServerName(),
+                mutedCommands, cache, freezeService, chatCommandLogService);
+
+        if (result != CommandInterceptHandler.CommandResult.ALLOWED) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(localeManager.getMessage("freeze.command_blocked"));
-            return;
+            event.getPlayer().sendMessage(CommandInterceptHandler.getBlockMessage(
+                    result, event.getPlayer().getUniqueId(), cache, localeManager));
         }
-
-        chatCommandLogService.addCommand(
-                event.getPlayer().getUniqueId().toString(),
-                event.getPlayer().getName(),
-                event.getMessage(),
-                platform.getServerName()
-        );
-
-        if (!cache.isMuted(event.getPlayer().getUniqueId())) return;
-        if (!MutedCommandUtil.isBlockedCommand(event.getMessage(), mutedCommands)) return;
-
-        event.setCancelled(true);
-        event.getPlayer().sendMessage(PunishmentMessages.getMuteMessage(event.getPlayer().getUniqueId(), cache, localeManager));
     }
 
 }

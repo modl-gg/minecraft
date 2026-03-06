@@ -7,10 +7,10 @@ import org.jetbrains.annotations.Nullable;
 
 @Data
 public class PlayerLoginRequest {
-    @NotNull private final String minecraftUuid;
-    @NotNull private final String username;
-    @Nullable private final String ipAddress;
-    @Nullable private final String skinHash;
-    @Nullable private final JsonObject ipInfo;
-    @Nullable private final String serverName;
+    private @NotNull final String minecraftUuid;
+    private @NotNull final String username;
+    private @Nullable final String ipAddress;
+    private @Nullable final String skinHash;
+    private @Nullable final JsonObject ipInfo;
+    private @Nullable final String serverName;
 }

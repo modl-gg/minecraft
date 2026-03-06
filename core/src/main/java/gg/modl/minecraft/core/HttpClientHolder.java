@@ -5,8 +5,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
-@RequiredArgsConstructor
-@Getter
+@RequiredArgsConstructor @Getter
 public class HttpClientHolder {
-    @NotNull private final ModlHttpClient client;
+    private @NotNull final ModlHttpClient client;
 }

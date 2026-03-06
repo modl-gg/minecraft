@@ -2,15 +2,16 @@ package gg.modl.minecraft.core.config;
 
 import lombok.Getter;
 
+import gg.modl.minecraft.core.util.PluginLogger;
+
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.logging.Logger;
 
 @Getter
 public class ChatManagementConfig {
     private int clearLines = 100;
 
-    public static ChatManagementConfig load(Path dataFolder, Logger logger) {
+    public static ChatManagementConfig load(Path dataFolder, PluginLogger logger) {
         ChatManagementConfig config = new ChatManagementConfig();
         Map<String, Object> data = ConfigManager.loadSection(dataFolder, "chat_management.yml", "chat_management", logger);
         if (data == null) return config;

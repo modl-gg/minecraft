@@ -9,16 +9,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
+import gg.modl.minecraft.core.util.PluginLogger;
 
 public class QueryStatWipeExecutor implements StatWipeExecutor {
     private final List<QueryClient> clients = new ArrayList<>();
     private final EventLoopGroup eventLoopGroup;
-    private final Logger logger;
+    private final PluginLogger logger;
     private final boolean debugMode;
     private BridgeMessageDispatcher bridgeMessageDispatcher;
 
-    public QueryStatWipeExecutor(Logger logger, boolean debugMode) {
+    public QueryStatWipeExecutor(PluginLogger logger, boolean debugMode) {
         this.logger = logger;
         this.debugMode = debugMode;
         this.eventLoopGroup = new NioEventLoopGroup(1);

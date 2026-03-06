@@ -6,13 +6,12 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.logging.Logger;
 
 public final class StaffPermissionLoader {
 
     private StaffPermissionLoader() {}
 
-    public static CompletableFuture<Void> load(ModlHttpClient httpClient, Cache cache, Logger logger, boolean debugMode, boolean clearFirst) {
+    public static CompletableFuture<Void> load(ModlHttpClient httpClient, Cache cache, PluginLogger logger, boolean debugMode, boolean clearFirst) {
         if (debugMode) logger.info("Loading staff permissions...");
         return httpClient.getStaffPermissions().thenAccept(response -> {
             if (clearFirst) cache.clearStaffPermissions();

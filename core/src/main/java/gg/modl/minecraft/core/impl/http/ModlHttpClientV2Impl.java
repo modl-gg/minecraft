@@ -97,14 +97,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     private static final int MAX_LOG_BODY_LENGTH = 1000;
     private static final int HTTP_BAD_GATEWAY = 502;
 
-    @NotNull private final String baseUrl;
-    @NotNull private final String apiKey;
-    @NotNull private final String serverDomain;
-    @NotNull private final HttpClient httpClient;
-    @NotNull private final Gson gson;
-    @NotNull private final Logger logger;
+    private @NotNull final String baseUrl;
+    private @NotNull final String apiKey;
+    private @NotNull final String serverDomain;
+    private @NotNull final HttpClient httpClient;
+    private @NotNull final Gson gson;
+    private @NotNull final Logger logger;
     private final boolean debugMode;
-    @NotNull private final CircuitBreaker circuitBreaker;
+    private @NotNull final CircuitBreaker circuitBreaker;
 
     public ModlHttpClientV2Impl(@NotNull String baseUrl, @NotNull String apiKey, @NotNull String serverDomain, boolean debugMode) {
         this.baseUrl = baseUrl;

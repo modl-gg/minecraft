@@ -9,67 +9,57 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Date;
 
-@NoArgsConstructor
-@AllArgsConstructor
-@Getter
+@NoArgsConstructor @AllArgsConstructor @Getter
 public final class Evidence {
     private static final String DEFAULT_TYPE = "link";
     private static final String DEFAULT_UPLOADER = "Unknown";
     private static final String DEFAULT_DISPLAY_TEXT = "Evidence";
 
-    @SerializedName("text")
-    private String text;
+    private @SerializedName("text") String text;
 
-    @SerializedName("url")
-    private String url;
+    private @SerializedName("url") String url;
 
-    @SerializedName("type")
-    private String type;
+    private @SerializedName("type") String type;
 
-    @SerializedName("uploadedBy")
-    private String uploadedBy;
+    private @SerializedName("uploadedBy") String uploadedBy;
 
-    @SerializedName("uploadedAt")
-    private Date uploadedAt;
+    private @SerializedName("uploadedAt") Date uploadedAt;
 
-    @SerializedName("fileName")
-    private String fileName;
+    private @SerializedName("fileName") String fileName;
 
-    @SerializedName("fileType")
-    private String fileType;
+    private @SerializedName("fileType") String fileType;
 
-    @SerializedName("fileSize")
-    private Long fileSize;
+    private @SerializedName("fileSize") Long fileSize;
 
-    @Nullable public String getText() {
+    public @Nullable String getText() {
         return text;
     }
 
-    @Nullable public String getUrl() {
+    public @Nullable String getUrl() {
         return url;
     }
 
-    @NotNull public String getType() {
+    public @NotNull String getType() {
         return type != null ? type : DEFAULT_TYPE;
     }
 
-    @NotNull public String getUploadedBy() {
+    public @NotNull String getUploadedBy() {
         return uploadedBy != null ? uploadedBy : DEFAULT_UPLOADER;
     }
 
-    @NotNull public Date getUploadedAt() {
+    public @NotNull Date getUploadedAt() {
         return uploadedAt != null ? uploadedAt : new Date(0);
     }
 
-    @Nullable public String getFileName() {
+    public @Nullable String getFileName() {
         return fileName;
     }
 
-    @Nullable public String getFileType() {
+    public @Nullable String getFileType() {
         return fileType;
     }
 
-    @Nullable public Long getFileSize() {
+    public @Nullable Long getFileSize() {
         return fileSize;
     }
 

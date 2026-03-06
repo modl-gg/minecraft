@@ -8,37 +8,31 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Date;
 
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter @NoArgsConstructor @AllArgsConstructor
 public class Note {
     private static final String UNKNOWN_ISSUER = "Unknown";
 
-    @SerializedName("text")
-    private String text;
+    private @SerializedName("text") String text;
 
-    @SerializedName("date")
-    private Date date;
+    private @SerializedName("date") Date date;
 
-    @SerializedName("issuerName")
-    private String issuerName;
+    private @SerializedName("issuerName") String issuerName;
 
-    @SerializedName("issuerId")
-    private String issuerId;
+    private @SerializedName("issuerId") String issuerId;
 
-    @NotNull public String getText() {
+    public @NotNull String getText() {
         return text != null ? text : "";
     }
 
-    @NotNull public Date getDate() {
+    public @NotNull Date getDate() {
         return date != null ? date : new Date(0);
     }
 
-    @NotNull public String getIssuerName() {
+    public @NotNull String getIssuerName() {
         return issuerName != null ? issuerName : UNKNOWN_ISSUER;
     }
 
-    @NotNull public String getIssuerId() {
+    public @NotNull String getIssuerId() {
         return issuerId != null ? issuerId : "";
     }
 }

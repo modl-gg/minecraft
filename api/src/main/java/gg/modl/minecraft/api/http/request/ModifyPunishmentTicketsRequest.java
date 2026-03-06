@@ -6,9 +6,7 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class ModifyPunishmentTicketsRequest {
     private String punishmentId;
     private List<String> addTicketIds;

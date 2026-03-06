@@ -36,11 +36,11 @@ public class VelocityPlatform implements Platform {
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
-    @Setter private Cache cache;
-    @Setter private LocaleManager localeManager;
-    @Setter private StaffModeService staffModeService;
-    @Setter private BridgeService bridgeService;
-    @Setter private Staff2faService staff2faService;
+    private @Setter Cache cache;
+    private @Setter LocaleManager localeManager;
+    private @Setter StaffModeService staffModeService;
+    private @Setter BridgeService bridgeService;
+    private @Setter Staff2faService staff2faService;
 
     private static Component colorize(String string) {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(string);
@@ -270,6 +270,16 @@ public class VelocityPlatform implements Platform {
             if ("textures".equals(prop.getName())) return prop.getValue();
         }
         return null;
+    }
+
+    @Override
+    public gg.modl.minecraft.core.util.PluginLogger getLogger() {
+        return new gg.modl.minecraft.core.util.PluginLogger() {
+            @Override public void info(String message) { logger.info(message); }
+            @Override public void warning(String message) { logger.warn(message); }
+            @Override public void severe(String message) { logger.error(message); }
+            @Override public void debug(String message) { logger.debug(message); }
+        };
     }
 
     @Override

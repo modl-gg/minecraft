@@ -10,8 +10,7 @@ import java.util.Map;
 public class PunishmentCreateRequest {
     private final String targetUuid;
     private final String issuerName;
-    @SerializedName("type_ordinal")
-    private final Integer typeOrdinal;
+    private @SerializedName("type_ordinal") final Integer typeOrdinal;
     private final String reason;
     private final Long duration;
     private final Map<String, Object> data;

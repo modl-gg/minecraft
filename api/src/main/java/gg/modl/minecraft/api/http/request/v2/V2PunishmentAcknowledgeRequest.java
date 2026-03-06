@@ -7,9 +7,7 @@ import lombok.NoArgsConstructor;
 /**
  * V2 API punishment acknowledge request matching backend's AcknowledgeRequest record.
  */
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class V2PunishmentAcknowledgeRequest {
     private String punishmentId;
     private String playerUuid;

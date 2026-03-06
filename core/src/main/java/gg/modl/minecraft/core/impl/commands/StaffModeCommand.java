@@ -20,9 +20,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.Map;
 import java.util.UUID;
 
-@CommandAlias("%cmd_staffmode")
-@Conditions("staff|player")
-@RequiredArgsConstructor
+@CommandAlias("%cmd_staffmode") @Conditions("staff|player") @RequiredArgsConstructor
 public class StaffModeCommand extends BaseCommand {
     private final Platform platform;
     private final Cache cache;

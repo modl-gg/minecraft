@@ -21,9 +21,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.Map;
 import java.util.UUID;
 
-@CommandAlias("%cmd_target")
-@Conditions("staff|player")
-@RequiredArgsConstructor
+@CommandAlias("%cmd_target") @Conditions("staff|player") @RequiredArgsConstructor
 public class TargetCommand extends BaseCommand {
     private final Platform platform;
     private final Cache cache;

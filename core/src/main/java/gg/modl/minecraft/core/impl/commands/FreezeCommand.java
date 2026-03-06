@@ -20,9 +20,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.Map;
 import java.util.UUID;
 
-@CommandAlias("%cmd_freeze")
-@Conditions("staff")
-@RequiredArgsConstructor
+@CommandAlias("%cmd_freeze") @Conditions("staff") @RequiredArgsConstructor
 public class FreezeCommand extends BaseCommand {
     private final Platform platform;
     private final Cache cache;

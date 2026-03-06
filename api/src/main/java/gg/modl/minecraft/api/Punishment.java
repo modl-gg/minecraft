@@ -13,10 +13,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class Punishment {
     private static final String UNKNOWN = "Unknown";
     private static final String DEFAULT_REASON = "No reason provided";
@@ -28,58 +25,47 @@ public class Punishment {
     private static final String DATA_KEY_REASON = "reason";
     private static final String DATA_KEY_TYPE_NAME = "typeName";
 
-    @SerializedName("id")
-    private String id;
+    private @SerializedName("id") String id;
 
-    @SerializedName("issuerName")
-    private String issuerName;
+    private @SerializedName("issuerName") String issuerName;
 
-    @SerializedName("issued")
-    private Date issued;
+    private @SerializedName("issued") Date issued;
 
-    @SerializedName("started")
-    private Date started;
+    private @SerializedName("started") Date started;
 
-    @SerializedName("type")
-    private Type type;
+    private @SerializedName("type") Type type;
 
-    @SerializedName("typeOrdinal")
-    private Integer typeOrdinal;
+    private @SerializedName("typeOrdinal") Integer typeOrdinal;
 
-    @SerializedName("modifications")
-    private List<Modification> modifications;
+    private @SerializedName("modifications") List<Modification> modifications;
 
-    @SerializedName("notes")
-    private List<Note> notes;
+    private @SerializedName("notes") List<Note> notes;
 
-    @SerializedName("evidence")
-    private List<Evidence> evidence;
+    private @SerializedName("evidence") List<Evidence> evidence;
 
-    @SerializedName("attachedTicketIds")
-    private List<String> attachedTicketIds;
+    private @SerializedName("attachedTicketIds") List<String> attachedTicketIds;
 
-    @SerializedName("data")
-    private Map<String, Object> dataMap;
+    private @SerializedName("data") Map<String, Object> dataMap;
 
     private transient PunishmentData data;
 
-    @NotNull public String getId() {
+    public @NotNull String getId() {
         return id != null ? id : "";
     }
 
-    @NotNull public String getIssuerName() {
+    public @NotNull String getIssuerName() {
         return issuerName != null ? issuerName : UNKNOWN;
     }
 
-    @NotNull public Date getIssued() {
+    public @NotNull Date getIssued() {
         return issued != null ? issued : new Date(0);
     }
 
-    @Nullable public Date getStarted() {
+    public @Nullable Date getStarted() {
         return started;
     }
 
-    @Nullable public Type getType() {
+    public @Nullable Type getType() {
         return type;
     }
 
@@ -117,23 +103,23 @@ public class Punishment {
         return UNKNOWN;
     }
 
-    @NotNull public List<Modification> getModifications() {
+    public @NotNull List<Modification> getModifications() {
         return modifications != null ? modifications : Collections.emptyList();
     }
 
-    @NotNull public List<Note> getNotes() {
+    public @NotNull List<Note> getNotes() {
         return notes != null ? notes : Collections.emptyList();
     }
 
-    @NotNull public List<Evidence> getEvidence() {
+    public @NotNull List<Evidence> getEvidence() {
         return evidence != null ? evidence : Collections.emptyList();
     }
 
-    @NotNull public List<String> getAttachedTicketIds() {
+    public @NotNull List<String> getAttachedTicketIds() {
         return attachedTicketIds != null ? attachedTicketIds : Collections.emptyList();
     }
 
-    @NotNull public Map<String, Object> getDataMap() {
+    public @NotNull Map<String, Object> getDataMap() {
         return dataMap != null ? dataMap : Collections.emptyMap();
     }
 
@@ -213,7 +199,7 @@ public class Punishment {
     /**
      * Mirrors the backend's getEffectiveExpiry logic, accounting for duration modifications.
      */
-    @Nullable public Date getEffectiveExpiry() {
+    public @Nullable Date getEffectiveExpiry() {
         Long duration = null;
         Date durationBase = null;
         for (Modification mod : getModifications()) {

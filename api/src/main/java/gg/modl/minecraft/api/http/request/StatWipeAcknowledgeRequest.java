@@ -6,13 +6,11 @@ import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class StatWipeAcknowledgeRequest {
-    @NotNull private String punishmentId;
+    private @NotNull String punishmentId;
 
-    @Nullable private String serverName;
+    private @Nullable String serverName;
 
     private boolean success;
 }

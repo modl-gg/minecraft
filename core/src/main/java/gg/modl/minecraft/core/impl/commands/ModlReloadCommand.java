@@ -17,8 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-@RequiredArgsConstructor
-@CommandAlias("%cmd_modl")
+@RequiredArgsConstructor @CommandAlias("%cmd_modl")
 public class ModlReloadCommand extends BaseCommand {
     private static final int ENTRIES_PER_PAGE = 8;
     private static final String VERSION_HEADER = "\u00A7a\u00A7lmodl.gg\u00A7a v%s\u00A7f - \u00A7eModeration and Support Management System";

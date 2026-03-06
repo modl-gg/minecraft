@@ -7,9 +7,7 @@ import lombok.NoArgsConstructor;
 /**
  * V2 API disconnect request matching backend's DisconnectRequest record.
  */
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class V2DisconnectRequest {
     private String minecraftUuid;
     private long sessionDurationMs;

@@ -57,7 +57,7 @@ public class StandingCommand extends BaseCommand {
             Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = loadPunishmentTypes(httpClient);
 
             StandingGuiConfig guiConfig = StandingGuiConfig.load(
-                    platform.getDataFolder().toPath(), Logger.getLogger("modl"));
+                    platform.getDataFolder().toPath(), platform.getLogger());
 
             StandingMenu menu = new StandingMenu(
                 platform, httpClient, uuid,

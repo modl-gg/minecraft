@@ -38,8 +38,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import gg.modl.minecraft.core.util.PluginLogger;
 import java.util.stream.Collectors;
 
 public class SyncService {
@@ -58,7 +57,7 @@ public class SyncService {
     private final Platform platform;
     private final HttpClientHolder httpClientHolder;
     private final Cache cache;
-    private final Logger logger;
+    private final PluginLogger logger;
     private final LocaleManager localeManager;
     private final String apiUrl;
     private final String apiKey;
@@ -82,7 +81,7 @@ public class SyncService {
     private ChatCommandLogService chatCommandLogService;
 
     public SyncService(@NotNull Platform platform, @NotNull HttpClientHolder httpClientHolder, @NotNull Cache cache,
-                       @NotNull Logger logger, @NotNull LocaleManager localeManager, @NotNull String apiUrl,
+                       @NotNull PluginLogger logger, @NotNull LocaleManager localeManager, @NotNull String apiUrl,
                        @NotNull String apiKey, int pollingRateSeconds, @NotNull File dataFolder,
                        DatabaseConfig databaseConfig, boolean debugMode, Staff2faService staff2faService,
                        ChatCommandLogService chatCommandLogService) {
@@ -171,9 +170,9 @@ public class SyncService {
             } catch (CompletionException e) {
                 handleSyncException(e);
             } catch (Exception e) {
-                logger.log(Level.WARNING, "Sync request failed", e);
+                logger.warning("Sync request failed: " + e.getMessage());
             } catch (Throwable t) {
-                logger.log(Level.SEVERE, "Error during sync: " + t.getMessage(), t);
+                logger.severe("Error during sync: " + t.getMessage());
             }
             return null;
         };
@@ -185,7 +184,7 @@ public class SyncService {
             logger.warning("Sync task timed out, cancelling...");
             future.cancel(true);
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Sync task failed", e);
+            logger.severe("Sync task failed: " + e.getMessage());
         }
     }
 
@@ -281,7 +280,7 @@ public class SyncService {
                 logger.info("[Sync] Staff 2FA verified for " + verification.getMinecraftUuid());
                 notifyStaff2faVerified(uuid);
             } catch (Exception e) {
-                logger.log(Level.WARNING, "[Sync] Failed to process staff 2FA verification", e);
+                logger.warning("[Sync] Failed to process staff 2FA verification: " + e.getMessage());
             }
         }
     }
@@ -309,7 +308,7 @@ public class SyncService {
                 try {
                     listener.onPunishmentTypesRefreshed(response.getData());
                 } catch (Exception e) {
-                    logger.log(Level.WARNING, "Error notifying punishment types listener", e);
+                    logger.warning("Error notifying punishment types listener: " + e.getMessage());
                 }
             }
             if (debugMode) logger.info("Punishment types refreshed: " + response.getData().size() + " types");
@@ -345,11 +344,11 @@ public class SyncService {
                     else if (!success) logger.warning("Task " + taskId + " upload failed");
                 });
             }).exceptionally(throwable -> {
-                logger.log(Level.SEVERE, "Task " + taskId + " failed: " + throwable.getMessage(), throwable);
+                logger.severe("Task " + taskId + " failed: " + throwable.getMessage());
                 return null;
             });
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error processing migration task: " + e.getMessage(), e);
+            logger.severe("Error processing migration task: " + e.getMessage());
         }
     }
 
@@ -364,7 +363,7 @@ public class SyncService {
             migrationService = new MigrationService(logger, httpClientHolder.getClient(), apiUrl, apiKey, dataFolder, databaseProvider);
             return true;
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Failed to initialize migration service: " + e.getMessage(), e);
+            logger.severe("Failed to initialize migration service: " + e.getMessage());
             return false;
         }
     }
@@ -407,7 +406,7 @@ public class SyncService {
                 updateStaffMemberCache(uuid, staffMember);
             }
         } catch (Exception e) {
-            logger.log(Level.WARNING, "Error processing staff member data", e);
+            logger.warning("Error processing staff member data: " + e.getMessage());
         }
     }
 
@@ -459,7 +458,7 @@ public class SyncService {
             }
             if (debugMode) logger.info("Processed staff notification: " + notification.getMessage());
         } catch (Exception e) {
-            logger.log(Level.WARNING, "Error processing staff notification", e);
+            logger.warning("Error processing staff notification: " + e.getMessage());
         }
     }
 
@@ -547,7 +546,7 @@ public class SyncService {
                 acknowledgeNotification(playerUuid, notification.getId());
             }
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error processing player notification: " + e.getMessage(), e);
+            logger.severe("Error processing player notification: " + e.getMessage());
         }
     }
 
@@ -590,7 +589,7 @@ public class SyncService {
                 cache.cacheNotification(playerUuid, notification);
                 deliverNotificationToPlayerAndCheck(playerUuid, notification);
             } catch (Exception e) {
-                logger.log(Level.WARNING, "Error handling notification for player " + player.getName(), e);
+                logger.warning("Error handling notification for player " + player.getName() + ": " + e.getMessage());
             }
         }
     }
@@ -611,7 +610,7 @@ public class SyncService {
             for (String id : deliveredIds) cache.removeNotification(playerUuid, id);
             if (!deliveredIds.isEmpty()) acknowledgeNotifications(playerUuid, deliveredIds);
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error delivering pending notifications: " + e.getMessage(), e);
+            logger.severe("Error delivering pending notifications: " + e.getMessage());
         }
     }
 
@@ -675,7 +674,7 @@ public class SyncService {
                 if (debugMode) logger.info("Delivered pending notification " + pending.getId() + " to " + playerUuid);
             }
         } catch (Exception e) {
-            logger.log(Level.WARNING, "Error delivering pending notification " + pending.getId(), e);
+            logger.warning("Error delivering pending notification " + pending.getId() + ": " + e.getMessage());
         }
 
         syncExecutor.schedule(() ->
@@ -691,7 +690,7 @@ public class SyncService {
             if (!deliveredIds.isEmpty()) acknowledgeNotifications(playerUuid, deliveredIds);
             if (debugMode) logger.info("Notification delivery complete for " + playerUuid + ". Delivered: " + deliveredIds.size() + ", Expired: " + expiredIds.size());
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error finalizing pending notification delivery: " + e.getMessage(), e);
+            logger.severe("Error finalizing pending notification delivery: " + e.getMessage());
         }
     }
 
@@ -719,7 +718,7 @@ public class SyncService {
                     })
                     .orTimeout(SYNC_HTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error acknowledging notifications: " + e.getMessage(), e);
+            logger.severe("Error acknowledging notifications: " + e.getMessage());
         }
     }
 }

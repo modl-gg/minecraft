@@ -25,9 +25,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-@RequiredArgsConstructor
-@CommandAlias("%cmd_commandlogs")
-@Conditions("staff")
+@RequiredArgsConstructor @CommandAlias("%cmd_commandlogs") @Conditions("staff")
 public class CommandLogsCommand extends BaseCommand {
     private static final int ENTRIES_PER_PAGE = 10;
     private static final int MAX_ENTRIES = 200;

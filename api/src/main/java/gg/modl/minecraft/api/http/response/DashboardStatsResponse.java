@@ -4,9 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class DashboardStatsResponse {
     private int status;
     private Stats stats;
@@ -15,9 +13,7 @@ public class DashboardStatsResponse {
         return status >= 200 && status < 300;
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class Stats {
         private long unresolvedReports;
         private long unresolvedTickets;

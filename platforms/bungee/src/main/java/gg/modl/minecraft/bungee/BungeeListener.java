@@ -1,12 +1,9 @@
 package gg.modl.minecraft.bungee;
 
 import com.google.gson.JsonObject;
-import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
-import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
-import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.config.StaffChatConfig;
 import gg.modl.minecraft.core.impl.cache.Cache;
@@ -25,12 +22,11 @@ import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.service.VanishService;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.ChatEventHandler;
+import gg.modl.minecraft.core.util.CommandInterceptHandler;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.ListenerHelper;
-import gg.modl.minecraft.core.util.MutedCommandUtil;
-import gg.modl.minecraft.core.util.PermissionUtil;
-import gg.modl.minecraft.core.util.PunishmentMessages;
-import gg.modl.minecraft.core.util.PunishmentMessages.MessageContext;
+import gg.modl.minecraft.core.util.LoginHandler;
+import gg.modl.minecraft.core.util.ServerSwitchHandler;
 import gg.modl.minecraft.core.util.StringUtil;
 import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.RequiredArgsConstructor;
@@ -124,29 +120,23 @@ public class BungeeListener implements Listener {
 
         PlayerLoginResponse response = getHttpClient().playerLogin(request).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         loginCache.cacheLoginResult(event.getConnection().getUniqueId(), response, ipInfo, skinHash);
-        ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getConnection().getUniqueId().toString(), ipAddress, ipInfoFuture, java.util.logging.Logger.getLogger(BungeeListener.class.getName()));
+        ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getConnection().getUniqueId().toString(), ipAddress, ipInfoFuture, platform.getLogger());
 
-        if (response.hasActiveBan()) {
-            SimplePunishment ban = response.getActiveBan();
-            denyLogin(event, PunishmentMessages.formatBanMessage(ban, localeManager, MessageContext.LOGIN));
-            if (!ban.isStarted()) {
-                ListenerHelper.acknowledgeBanEnforcement(getHttpClient(), ban, event.getConnection().getUniqueId().toString(), debugMode, java.util.logging.Logger.getLogger(BungeeListener.class.getName()));
-            }
-        } else if (syncService.isStatWipeAvailable() && response.hasPendingStatWipes()) {
-            denyLogin(event, localeManager.getMessage("stat_wipe.kick_message"));
-            for (SyncResponse.PendingStatWipe statWipe : response.getPendingStatWipes()) syncService.executeStatWipeFromLogin(statWipe);
-        }
+        LoginHandler.LoginResult result = LoginHandler.processLoginResponse(
+                response, event.getConnection().getUniqueId(),
+                getHttpClient(), localeManager, syncService, maintenanceService,
+                cache, debugMode, platform.getLogger());
 
-        if (!event.isCancelled() && maintenanceService.isEnabled() && !maintenanceService.canJoin(event.getConnection().getUniqueId(), cache)) {
-            denyLogin(event, localeManager.getMessage("maintenance.login_denied"));
+        if (result instanceof LoginHandler.LoginResult.Denied denied) {
+            denyLogin(event, denied.message());
         }
     }
 
     private void handleLoginException(LoginEvent event, Exception e) {
-        Throwable cause = e instanceof java.util.concurrent.ExecutionException && e.getCause() != null ? e.getCause() : e;
-        if (cause instanceof PanelUnavailableException) {
-            platform.getLogger().warning("Panel 502 during login check for " + event.getConnection().getName() + " - blocking login for safety");
-            denyLogin(event, "Unable to verify ban status. Login temporarily restricted for safety.");
+        LoginHandler.LoginResult result = LoginHandler.handleLoginError(e);
+        if (result instanceof LoginHandler.LoginResult.Denied denied) {
+            platform.getLogger().warning("Login blocked for " + event.getConnection().getName() + ": " + denied.message());
+            denyLogin(event, denied.message());
         } else {
             platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + e.getMessage());
         }
@@ -168,9 +158,9 @@ public class BungeeListener implements Listener {
         if (texture != null) cache.cacheSkinTexture(uuid, texture);
 
         LoginCache.CachedLoginResult cachedResult = loginCache.getCachedLoginResult(uuid);
-        ListenerHelper.processLoginResponse(uuid,
+        LoginHandler.cacheLoginData(uuid,
                 cachedResult != null ? cachedResult.getResponse() : null,
-                cache, syncService, java.util.logging.Logger.getLogger(BungeeListener.class.getName()));
+                cache, platform.getLogger());
     }
 
     @EventHandler
@@ -185,20 +175,10 @@ public class BungeeListener implements Listener {
 
     @EventHandler
     public void onServerSwitch(ServerSwitchEvent event) {
-        java.util.UUID uuid = event.getPlayer().getUniqueId();
-        String serverName = platform.getPlayerServer(uuid);
-        getHttpClient().updatePlayerServer(uuid.toString(), serverName)
-                .exceptionally(throwable -> {
-                    platform.getLogger().warning("Failed to update server for " + event.getPlayer().getName() + ": " + throwable.getMessage());
-                    return null;
-                });
-
-        if (!PermissionUtil.isStaff(uuid, cache)) return;
-        String inGameName = event.getPlayer().getName();
-        String panelName = cache.getStaffDisplayName(uuid);
-        if (panelName == null) panelName = inGameName;
-        platform.staffBroadcast(localeManager.getMessage("staff_notifications.switch",
-                java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", serverName)));
+        ServerSwitchHandler.handleServerSwitch(
+                event.getPlayer().getUniqueId(), event.getPlayer().getName(),
+                platform.getPlayerServer(event.getPlayer().getUniqueId()),
+                getHttpClient(), cache, localeManager, platform);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -225,20 +205,16 @@ public class BungeeListener implements Listener {
     private void handleCommand(ChatEvent event) {
         if (!(event.getSender() instanceof ProxiedPlayer sender)) return;
 
-        if (freezeService.isFrozen(sender.getUniqueId())) {
-            event.setCancelled(true);
-            sender.sendMessage(new TextComponent(localeManager.getMessage("freeze.command_blocked")));
-            return;
-        }
+        var result = CommandInterceptHandler.handleCommand(
+                sender.getUniqueId(), sender.getName(),
+                event.getMessage(), getPlayerServerName(sender),
+                mutedCommands, cache, freezeService, chatCommandLogService);
 
-        chatCommandLogService.addCommand(
-                sender.getUniqueId().toString(), sender.getName(),
-                event.getMessage(), getPlayerServerName(sender));
-
-        if (cache.isMuted(sender.getUniqueId()) && MutedCommandUtil.isBlockedCommand(event.getMessage(), mutedCommands)) {
+        if (result != CommandInterceptHandler.CommandResult.ALLOWED) {
             event.setCancelled(true);
-            sender.sendMessage(new TextComponent(StringUtil.unescapeNewlines(
-                    PunishmentMessages.getMuteMessage(sender.getUniqueId(), cache, localeManager))));
+            String message = CommandInterceptHandler.getBlockMessage(
+                    result, sender.getUniqueId(), cache, localeManager);
+            sender.sendMessage(new TextComponent(StringUtil.unescapeNewlines(message)));
         }
     }
 

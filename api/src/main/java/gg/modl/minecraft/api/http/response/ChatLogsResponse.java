@@ -6,15 +6,11 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class ChatLogsResponse {
     private List<ChatLogEntry> entries;
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class ChatLogEntry {
         private String uuid;
         private String username;

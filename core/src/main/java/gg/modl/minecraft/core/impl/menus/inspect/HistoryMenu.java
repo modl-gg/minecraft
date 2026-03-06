@@ -233,7 +233,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         if (config == null) {
             config = PunishGuiConfig.load(
                     platform.getDataFolder().toPath(),
-                    java.util.logging.Logger.getLogger("modl"));
+                    platform.getLogger());
             cache.cachePunishGuiConfig(config);
         }
         return config;

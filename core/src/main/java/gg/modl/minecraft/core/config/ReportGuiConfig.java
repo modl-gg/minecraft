@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
+import gg.modl.minecraft.core.util.PluginLogger;
 
 @Data
 public class ReportGuiConfig {
@@ -20,8 +20,7 @@ public class ReportGuiConfig {
     private final Map<Integer, ReportSlotConfig> slots = new HashMap<>();
     private InfoConfig infoConfig;
 
-    @Data
-    @NoArgsConstructor
+    @Data @NoArgsConstructor
     public static class ReportSlotConfig {
         private int slotNumber;
         private boolean enabled = false;
@@ -40,8 +39,7 @@ public class ReportGuiConfig {
         }
     }
 
-    @Data
-    @NoArgsConstructor
+    @Data @NoArgsConstructor
     public static class InfoConfig {
         private String item = "minecraft:oak_sign";
         private String title = "&eInformation";
@@ -49,7 +47,7 @@ public class ReportGuiConfig {
     }
 
     @SuppressWarnings("unchecked")
-    public static ReportGuiConfig load(Path dataDirectory, Logger logger) {
+    public static ReportGuiConfig load(Path dataDirectory, PluginLogger logger) {
         ReportGuiConfig config = new ReportGuiConfig();
         try {
             Map<?, ?> reportGui = null;

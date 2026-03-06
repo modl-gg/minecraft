@@ -6,9 +6,7 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class RolesListResponse {
     private int status;
     private List<RoleEntry> roles;
@@ -17,9 +15,7 @@ public class RolesListResponse {
         return status >= 200 && status < 300;
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class RoleEntry {
         private String id;
         private String name;

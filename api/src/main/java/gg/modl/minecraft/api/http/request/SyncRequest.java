@@ -8,50 +8,42 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class SyncRequest {
-    @NotNull private String lastSyncTimestamp;
+    private @NotNull String lastSyncTimestamp;
 
-    @NotNull private List<OnlinePlayer> onlinePlayers;
+    private @NotNull List<OnlinePlayer> onlinePlayers;
 
-    @NotNull private ServerStatus serverStatus;
+    private @NotNull ServerStatus serverStatus;
 
-    @Nullable private String serverName;
+    private @Nullable String serverName;
 
-    @Nullable private List<ChatLogEntry> chatLogs;
+    private @Nullable List<ChatLogEntry> chatLogs;
 
-    @Nullable private List<CommandLogEntry> commandLogs;
+    private @Nullable List<CommandLogEntry> commandLogs;
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class OnlinePlayer {
-        @NotNull private String uuid;
+        private @NotNull String uuid;
 
-        @NotNull private String username;
+        private @NotNull String username;
 
-        @NotNull private String ipAddress;
+        private @NotNull String ipAddress;
 
         private long sessionDurationMs;
     }
     
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class ServerStatus {
         private int onlinePlayerCount;
         private int maxPlayers;
 
-        @NotNull private String serverVersion;
+        private @NotNull String serverVersion;
 
-        @NotNull private String timestamp;
+        private @NotNull String timestamp;
     }
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class ChatLogEntry {
         private String uuid;
         private String username;
@@ -60,9 +52,7 @@ public class SyncRequest {
         private String server;
     }
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class CommandLogEntry {
         private String uuid;
         private String username;

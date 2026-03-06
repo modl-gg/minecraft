@@ -7,9 +7,7 @@ import lombok.NoArgsConstructor;
 /**
  * V2 API lookup request matching backend's LookupRequest record.
  */
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class V2LookupRequest {
     private String query;
     private boolean queryMojang;

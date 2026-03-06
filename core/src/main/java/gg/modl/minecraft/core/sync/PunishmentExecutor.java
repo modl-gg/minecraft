@@ -15,8 +15,7 @@ import gg.modl.minecraft.core.util.PunishmentMessages;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import gg.modl.minecraft.core.util.PluginLogger;
 
 /**
  * Executes punishments (ban, mute, kick) and applies modifications (pardon, duration change).
@@ -27,12 +26,12 @@ class PunishmentExecutor {
     private final Platform platform;
     private final HttpClientHolder httpClientHolder;
     private final Cache cache;
-    private final Logger logger;
+    private final PluginLogger logger;
     private final LocaleManager localeManager;
     private final boolean debugMode;
 
     PunishmentExecutor(Platform platform, HttpClientHolder httpClientHolder, Cache cache,
-                       Logger logger, LocaleManager localeManager, boolean debugMode) {
+                       PluginLogger logger, LocaleManager localeManager, boolean debugMode) {
         this.platform = platform;
         this.httpClientHolder = httpClientHolder;
         this.cache = cache;
@@ -83,7 +82,7 @@ class PunishmentExecutor {
                     username, punishment.getType(), punishment.getOrdinal()));
             return false;
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error executing punishment: " + e.getMessage(), e);
+            logger.severe("Error executing punishment: " + e.getMessage());
             return false;
         }
     }
@@ -154,7 +153,7 @@ class PunishmentExecutor {
                 default -> {}
             }
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error handling punishment modification: " + e.getMessage(), e);
+            logger.severe("Error handling punishment modification: " + e.getMessage());
         }
     }
 

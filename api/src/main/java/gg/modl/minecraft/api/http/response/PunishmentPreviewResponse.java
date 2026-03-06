@@ -6,8 +6,7 @@ import lombok.NoArgsConstructor;
 /**
  * Response containing punishment preview calculations.
  */
-@Data
-@NoArgsConstructor
+@Data @NoArgsConstructor
 public class PunishmentPreviewResponse {
     private int status;
     private boolean success;
@@ -33,8 +32,7 @@ public class PunishmentPreviewResponse {
         return success || (status >= 200 && status < 300);
     }
 
-    @Data
-    @NoArgsConstructor
+    @Data @NoArgsConstructor
     public static class SeverityPreview {
         private String severity;
         private int points;

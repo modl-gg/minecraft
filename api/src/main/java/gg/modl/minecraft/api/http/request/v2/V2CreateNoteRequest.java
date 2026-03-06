@@ -7,9 +7,7 @@ import lombok.NoArgsConstructor;
 /**
  * V2 API create note request matching backend's CreateNoteRequest record.
  */
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class V2CreateNoteRequest {
     private String text;
     private String issuerName;

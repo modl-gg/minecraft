@@ -13,9 +13,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class RecentPunishmentsResponse {
     private int status;
     private List<RecentPunishment> punishments;
@@ -24,9 +22,7 @@ public class RecentPunishmentsResponse {
         return status >= 200 && status < 300;
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class RecentPunishment {
         private String playerName;
         private String playerUuid;
@@ -35,26 +31,19 @@ public class RecentPunishmentsResponse {
         private Date issued;
         private Date started;
 
-        @SerializedName("type")
-        private String type;
+        private @SerializedName("type") String type;
 
-        @SerializedName("typeOrdinal")
-        private Integer typeOrdinal;
+        private @SerializedName("typeOrdinal") Integer typeOrdinal;
 
-        @SerializedName("modifications")
-        private List<Modification> modifications;
+        private @SerializedName("modifications") List<Modification> modifications;
 
-        @SerializedName("notes")
-        private List<Note> notes;
+        private @SerializedName("notes") List<Note> notes;
 
-        @SerializedName("evidence")
-        private List<Evidence> evidence;
+        private @SerializedName("evidence") List<Evidence> evidence;
 
-        @SerializedName("attachedTicketIds")
-        private List<String> attachedTicketIds;
+        private @SerializedName("attachedTicketIds") List<String> attachedTicketIds;
 
-        @SerializedName("data")
-        private Map<String, Object> data;
+        private @SerializedName("data") Map<String, Object> data;
 
         public List<Modification> getModifications() {
             return modifications != null ? modifications : Collections.emptyList();

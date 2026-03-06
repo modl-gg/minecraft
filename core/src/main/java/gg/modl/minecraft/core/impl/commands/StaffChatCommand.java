@@ -16,9 +16,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.UUID;
 
-@RequiredArgsConstructor
-@CommandAlias("%cmd_staffchat")
-@Conditions("staff")
+@RequiredArgsConstructor @CommandAlias("%cmd_staffchat") @Conditions("staff")
 public class StaffChatCommand extends BaseCommand {
     private final Platform platform;
     private final Cache cache;

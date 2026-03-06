@@ -9,9 +9,7 @@ import java.util.List;
 /**
  * V2 API notification acknowledge request matching backend's AcknowledgeRequest record.
  */
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class V2NotificationAcknowledgeRequest {
     private String playerUuid;
     private List<String> notificationIds;

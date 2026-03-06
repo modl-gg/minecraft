@@ -9,7 +9,7 @@ import gg.modl.minecraft.core.service.VanishService;
 import java.io.DataInputStream;
 import java.util.Map;
 import java.util.UUID;
-import java.util.logging.Logger;
+import gg.modl.minecraft.core.util.PluginLogger;
 
 public class BridgeMessageDispatcher {
     private final Platform platform;
@@ -17,11 +17,11 @@ public class BridgeMessageDispatcher {
     private final FreezeService freezeService;
     private final StaffModeService staffModeService;
     private final VanishService vanishService;
-    private final Logger logger;
+    private final PluginLogger logger;
 
     public BridgeMessageDispatcher(Platform platform, LocaleManager localeManager,
                                     FreezeService freezeService, StaffModeService staffModeService,
-                                    VanishService vanishService, Logger logger) {
+                                    VanishService vanishService, PluginLogger logger) {
         this.platform = platform;
         this.localeManager = localeManager;
         this.freezeService = freezeService;
@@ -44,7 +44,7 @@ public class BridgeMessageDispatcher {
                 case "OPEN_STAFF_MENU" -> handleOpenStaffMenu(data);
                 case "OPEN_INSPECT_MENU" -> handleOpenInspectMenu(data);
                 case "PROXY_CMD" -> handleProxyCmd(data);
-                default -> logger.fine("[bridge] Unknown action: " + action);
+                default -> logger.debug("[bridge] Unknown action: " + action);
             }
         } catch (Exception e) {
             logger.warning("[bridge] Error handling " + action + ": " + e.getMessage());

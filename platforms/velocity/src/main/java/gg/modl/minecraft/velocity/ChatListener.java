@@ -15,12 +15,12 @@ import gg.modl.minecraft.core.service.FreezeService;
 import gg.modl.minecraft.core.service.NetworkChatInterceptService;
 import gg.modl.minecraft.core.service.StaffChatService;
 import gg.modl.minecraft.core.util.ChatEventHandler;
-import gg.modl.minecraft.core.util.MutedCommandUtil;
-import gg.modl.minecraft.core.util.PunishmentMessages;
+import gg.modl.minecraft.core.util.CommandInterceptHandler;
 import gg.modl.minecraft.core.util.StringUtil;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
+import java.util.Objects;
 
 @RequiredArgsConstructor
 public class ChatListener {
@@ -54,22 +54,19 @@ public class ChatListener {
     public void onCommandExecute(CommandExecuteEvent event) {
         if (!(event.getCommandSource() instanceof Player player)) return;
 
-        if (freezeService.isFrozen(player.getUniqueId())) {
+        var result = CommandInterceptHandler.handleCommand(
+                player.getUniqueId(), player.getUsername(),
+                "/" + event.getCommand(), getPlayerServerName(player),
+                mutedCommands, cache, freezeService, chatCommandLogService);
+
+        if (result != CommandInterceptHandler.CommandResult.ALLOWED) {
             event.setResult(CommandExecuteEvent.CommandResult.denied());
-            player.sendMessage(Colors.get(localeManager.getMessage("freeze.command_blocked")));
-            return;
+            player.sendMessage(
+                    Colors.get(
+                    Objects.requireNonNull(
+                    StringUtil.unescapeNewlines(
+                    CommandInterceptHandler.getBlockMessage(result, player.getUniqueId(), cache, localeManager)))));
         }
-
-        chatCommandLogService.addCommand(
-                player.getUniqueId().toString(), player.getUsername(),
-                "/" + event.getCommand(), getPlayerServerName(player));
-
-        if (!cache.isMuted(player.getUniqueId())) return;
-        if (!MutedCommandUtil.isBlockedCommand(event.getCommand(), mutedCommands)) return;
-
-        event.setResult(CommandExecuteEvent.CommandResult.denied());
-        player.sendMessage(Colors.get(StringUtil.unescapeNewlines(
-                PunishmentMessages.getMuteMessage(player.getUniqueId(), cache, localeManager))));
     }
 
     private String getPlayerServerName(Player player) {

@@ -7,9 +7,7 @@ import lombok.NoArgsConstructor;
 /**
  * V2 API pardon player request matching backend's PardonPlayerRequest record.
  */
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class V2PardonPlayerRequest {
     private String playerName;
     private String issuerName;

@@ -26,14 +26,12 @@ import gg.modl.minecraft.core.sync.SyncService;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public final class ListenerHelper {
 
     private ListenerHelper() {}
 
-    public static SyncResponse.PlayerNotification mapToPlayerNotification(Map<String, Object> data, Logger logger) {
+    public static SyncResponse.PlayerNotification mapToPlayerNotification(Map<String, Object> data, PluginLogger logger) {
         try {
             SyncResponse.PlayerNotification notification = new SyncResponse.PlayerNotification();
             notification.setId((String) data.get("id"));
@@ -56,7 +54,7 @@ public final class ListenerHelper {
         }
     }
 
-    public static void acknowledgeBanEnforcement(ModlHttpClient httpClient, SimplePunishment ban, String playerUuid, boolean debugMode, Logger logger) {
+    public static void acknowledgeBanEnforcement(ModlHttpClient httpClient, SimplePunishment ban, String playerUuid, boolean debugMode, PluginLogger logger) {
         try {
             PunishmentAcknowledgeRequest request = new PunishmentAcknowledgeRequest(
                     ban.getId(),
@@ -69,15 +67,15 @@ public final class ListenerHelper {
             httpClient.acknowledgePunishment(request).thenAccept(response -> {
                 if (debugMode) logger.info("Successfully acknowledged ban enforcement for punishment " + ban.getId());
             }).exceptionally(throwable -> {
-                logger.log(Level.SEVERE, "Failed to acknowledge ban enforcement for punishment " + ban.getId() + ": " + throwable.getMessage());
+                logger.severe("Failed to acknowledge ban enforcement for punishment " + ban.getId() + ": " + throwable.getMessage());
                 return null;
             });
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error acknowledging ban enforcement for punishment " + ban.getId() + ": " + e.getMessage());
+            logger.severe("Error acknowledging ban enforcement for punishment " + ban.getId() + ": " + e.getMessage());
         }
     }
 
-    public static void handlePendingIpLookups(ModlHttpClient httpClient, PlayerLoginResponse response, String minecraftUUID, String originalIp, CompletableFuture<JsonObject> originalIpInfoFuture, Logger logger) {
+    public static void handlePendingIpLookups(ModlHttpClient httpClient, PlayerLoginResponse response, String minecraftUUID, String originalIp, CompletableFuture<JsonObject> originalIpInfoFuture, PluginLogger logger) {
         if (response.getPendingIpLookups() == null || response.getPendingIpLookups().isEmpty()) return;
 
         for (String ip : response.getPendingIpLookups()) {
@@ -92,7 +90,7 @@ public final class ListenerHelper {
         }
     }
 
-    private static void submitIpInfoIfSuccess(ModlHttpClient httpClient, String minecraftUUID, String ip, JsonObject ipInfo, Logger logger) {
+    private static void submitIpInfoIfSuccess(ModlHttpClient httpClient, String minecraftUUID, String ip, JsonObject ipInfo, PluginLogger logger) {
         if (ipInfo == null || !ipInfo.has("status") || !"success".equals(ipInfo.get("status").getAsString())) return;
 
         httpClient.submitIpInfo(
@@ -127,21 +125,6 @@ public final class ListenerHelper {
         }
 
         syncService.deliverPendingNotifications(uuid);
-    }
-
-    public static void processLoginResponse(
-            UUID uuid, PlayerLoginResponse response,
-            Cache cache, SyncService syncService, Logger logger) {
-        if (response == null) return;
-
-        if (response.hasActiveMute()) cache.cacheMute(uuid, response.getActiveMute());
-
-        if (response.hasNotifications()) {
-            for (Map<String, Object> notificationData : response.getPendingNotifications()) {
-                SyncResponse.PlayerNotification notification = mapToPlayerNotification(notificationData, logger);
-                if (notification != null) syncService.deliverLoginNotification(uuid, notification);
-            }
-        }
     }
 
     public static void handlePlayerDisconnect(

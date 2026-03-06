@@ -15,9 +15,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.UUID;
 
-@RequiredArgsConstructor
-@CommandAlias("%cmd_interceptnetworkchat")
-@Conditions("staff")
+@RequiredArgsConstructor @CommandAlias("%cmd_interceptnetworkchat") @Conditions("staff")
 public class InterceptNetworkChatCommand extends BaseCommand {
     private final NetworkChatInterceptService interceptService;
     private final Cache cache;

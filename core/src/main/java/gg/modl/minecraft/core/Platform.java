@@ -10,11 +10,14 @@ import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffModeService;
 
+import gg.modl.minecraft.core.util.PluginLogger;
+
 import java.io.File;
 import java.util.Collection;
 import java.util.UUID;
 
 public interface Platform {
+    PluginLogger getLogger();
     void broadcast(String string);
     void staffBroadcast(String string);
     void staffJsonBroadcast(String jsonMessage);

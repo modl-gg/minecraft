@@ -8,27 +8,23 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class SyncResponse {
-    @NotNull private String timestamp;
+    private @NotNull String timestamp;
     
-    @NotNull private SyncData data;
+    private @NotNull SyncData data;
     
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class SyncData {
-        @NotNull private List<PendingPunishment> pendingPunishments;
+        private @NotNull List<PendingPunishment> pendingPunishments;
 
-        @NotNull private List<PendingPunishment> recentlyStartedPunishments;
+        private @NotNull List<PendingPunishment> recentlyStartedPunishments;
 
-        @NotNull private List<ModifiedPunishment> recentlyModifiedPunishments;
+        private @NotNull List<ModifiedPunishment> recentlyModifiedPunishments;
 
-        @NotNull private List<PlayerNotification> playerNotifications;
+        private @NotNull List<PlayerNotification> playerNotifications;
 
-        @NotNull private List<ActiveStaffMember> activeStaffMembers;
+        private @NotNull List<ActiveStaffMember> activeStaffMembers;
 
         private MigrationTask migrationTask;
 
@@ -43,57 +39,47 @@ public class SyncResponse {
         private List<Staff2faVerification> staff2faVerifications;
     }
     
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class PendingPunishment {
-        @NotNull private String minecraftUuid;
+        private @NotNull String minecraftUuid;
         
-        @NotNull private String username;
+        private @NotNull String username;
         
-        @NotNull private SimplePunishment punishment;
+        private @NotNull SimplePunishment punishment;
     }
     
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class ModifiedPunishment {
-        @NotNull private String minecraftUuid;
+        private @NotNull String minecraftUuid;
         
-        @NotNull private String username;
+        private @NotNull String username;
         
-        @NotNull private PunishmentWithModifications punishment;
+        private @NotNull PunishmentWithModifications punishment;
     }
     
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class PunishmentWithModifications {
-        @NotNull private String id;
+        private @NotNull String id;
         
-        @NotNull private List<PunishmentModification> modifications;
+        private @NotNull List<PunishmentModification> modifications;
     }
     
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class PunishmentModification {
-        @NotNull private String type;
+        private @NotNull String type;
 
         private Long timestamp;
 
         private Long effectiveDuration;
     }
     
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class PlayerNotification {
-        @NotNull private String id;
+        private @NotNull String id;
         
-        @NotNull private String message;
+        private @NotNull String message;
         
-        @NotNull private String type;
+        private @NotNull String type;
         
         private Long timestamp;
         
@@ -102,28 +88,24 @@ public class SyncResponse {
         private java.util.Map<String, Object> data;
     }
     
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class ActiveStaffMember {
-        @NotNull private String minecraftUuid;
+        private @NotNull String minecraftUuid;
 
-        @NotNull private String minecraftUsername;
+        private @NotNull String minecraftUsername;
 
-        @NotNull private String staffUsername;
+        private @NotNull String staffUsername;
 
-        @NotNull private String staffRole;
+        private @NotNull String staffRole;
 
-        @NotNull private List<String> permissions;
+        private @NotNull List<String> permissions;
 
-        @NotNull private String email;
+        private @NotNull String email;
 
         private Boolean twoFactorSessionValid;
     }
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class StaffNotification {
         private String id;
         private String type;
@@ -132,28 +114,23 @@ public class SyncResponse {
         private java.util.Map<String, Object> data;
     }
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class PendingStatWipe {
-        @NotNull private String minecraftUuid;
+        private @NotNull String minecraftUuid;
 
-        @NotNull private String username;
+        private @NotNull String username;
 
-        @NotNull private String punishmentId;
+        private @NotNull String punishmentId;
     }
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class MigrationTask {
-        @NotNull private String taskId;
+        private @NotNull String taskId;
 
-        @NotNull private String type;
+        private @NotNull String type;
     }
 
-    @Data
-    @NoArgsConstructor
+    @Data @NoArgsConstructor
     public static class Staff2faVerification {
         private String minecraftUuid;
     }

@@ -10,6 +10,7 @@ import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
 import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import net.byteflux.libby.BukkitLibraryManager;
@@ -34,9 +35,11 @@ public class SpigotPlugin extends JavaPlugin {
 
     private PluginLoader loader;
     private QueryStatWipeExecutor queryStatWipeExecutor;
+    private PluginLogger pluginLogger;
 
     @Override
     public synchronized void onEnable() {
+        this.pluginLogger = PluginLogger.fromJul(getLogger());
         loadLibraries();
         initializePacketEvents();
         saveDefaultConfig();
@@ -91,9 +94,9 @@ public class SpigotPlugin extends JavaPlugin {
 
     private void mergeDefaultConfigs() {
         YamlMergeUtil.mergeWithDefaults("/config.yml",
-                getDataFolder().toPath().resolve("config.yml"), getLogger());
+                getDataFolder().toPath().resolve("config.yml"), pluginLogger);
         YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",
-                getDataFolder().toPath().resolve("locale/en_US.yml"), getLogger());
+                getDataFolder().toPath().resolve("locale/en_US.yml"), pluginLogger);
     }
 
     private void logConfigurationError() {
@@ -110,7 +113,7 @@ public class SpigotPlugin extends JavaPlugin {
     private void configureStatWipeExecutor(SpigotPlatform platform, HttpManager httpManager) {
         // Prefer direct Java invocation (same-server bridge), fall back to TCP
         if (getServer().getPluginManager().getPlugin(BRIDGE_PLUGIN_NAME) != null) {
-            loader.getSyncService().setStatWipeExecutor(new SpigotStatWipeExecutor(getLogger(), httpManager.isDebugHttp()));
+            loader.getSyncService().setStatWipeExecutor(new SpigotStatWipeExecutor(pluginLogger, httpManager.isDebugHttp()));
             return;
         }
 
@@ -122,13 +125,13 @@ public class SpigotPlugin extends JavaPlugin {
 
         int bridgePort = getConfig().getInt("bridge.port", DEFAULT_BRIDGE_PORT);
         String apiKey = getConfig().getString("api.key");
-        queryStatWipeExecutor = new QueryStatWipeExecutor(getLogger(), httpManager.isDebugHttp());
+        queryStatWipeExecutor = new QueryStatWipeExecutor(pluginLogger, httpManager.isDebugHttp());
         queryStatWipeExecutor.addBridge(DEFAULT_BRIDGE_NAME, bridgeHost, bridgePort, apiKey);
         loader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
 
         BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
                 platform, loader.getLocaleManager(), loader.getFreezeService(),
-                loader.getStaffModeService(), loader.getVanishService(), getLogger());
+                loader.getStaffModeService(), loader.getVanishService(), pluginLogger);
         queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
         loader.getBridgeService().setExecutor(queryStatWipeExecutor);
     }

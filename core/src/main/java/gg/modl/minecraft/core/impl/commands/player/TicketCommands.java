@@ -97,7 +97,7 @@ public class TicketCommands extends BaseCommand {
         }
         ReportGuiConfig config = ReportGuiConfig.load(
                 platform.getDataFolder().toPath(),
-                java.util.logging.Logger.getLogger("modl"));
+                platform.getLogger());
         if (cache != null) cache.cacheReportGuiConfig(config);
         return config;
     }

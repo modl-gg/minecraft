@@ -13,7 +13,7 @@ import java.time.Duration;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
+import gg.modl.minecraft.core.util.PluginLogger;
 
 public class UpdateCheckerService {
     private static final String RELEASES_API_URL = "https://api.github.com/repos/modl-gg/minecraft/releases/latest";
@@ -23,7 +23,7 @@ public class UpdateCheckerService {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(8);
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
 
-    private final Logger logger;
+    private final PluginLogger logger;
     private final boolean debugMode;
     private final String currentVersion;
     private final HttpClient httpClient;
@@ -32,7 +32,7 @@ public class UpdateCheckerService {
     private volatile ScheduledExecutorService scheduler;
     private volatile boolean isFirstRun = true;
 
-    public UpdateCheckerService(Logger logger, boolean debugMode, String currentVersion) {
+    public UpdateCheckerService(PluginLogger logger, boolean debugMode, String currentVersion) {
         this.logger = logger;
         this.debugMode = debugMode;
         this.currentVersion = currentVersion;

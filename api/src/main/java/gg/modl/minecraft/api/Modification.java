@@ -9,40 +9,34 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Date;
 
-@NoArgsConstructor
-@AllArgsConstructor
-@Getter
+@NoArgsConstructor @AllArgsConstructor @Getter
 public final class Modification {
-    @SerializedName("type")
-    private Type type;
+    private @SerializedName("type") Type type;
 
-    @SerializedName("issuerName")
-    private String issuer;
+    private @SerializedName("issuerName") String issuer;
 
-    @SerializedName("date")
-    private Date issued;
+    private @SerializedName("date") Date issued;
 
-    @SerializedName("effectiveDuration")
-    private Long effectiveDuration;
+    private @SerializedName("effectiveDuration") Long effectiveDuration;
 
-    @Nullable public Type getType() {
+    public @Nullable Type getType() {
         return type;
     }
 
     private static final String UNKNOWN_ISSUER = "Unknown";
 
-    @NotNull public String getIssuer() {
+    public @NotNull String getIssuer() {
         return issuer != null ? issuer : UNKNOWN_ISSUER;
     }
 
-    @NotNull public Date getIssued() {
+    public @NotNull Date getIssued() {
         return issued != null ? issued : new Date(0);
     }
 
     /**
      * Returns null for permanent punishments.
      */
-    @Nullable public Long getEffectiveDuration() {
+    public @Nullable Long getEffectiveDuration() {
         return effectiveDuration;
     }
 

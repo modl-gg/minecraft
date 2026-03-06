@@ -11,14 +11,11 @@ import java.util.Map;
 /**
  * V2 API create punishment request matching backend's CreatePunishmentRequest record.
  */
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class V2CreatePunishmentRequest {
     private String targetUuid;
     private String issuerName;
-    @SerializedName("type_ordinal")
-    private int typeOrdinal;
+    private @SerializedName("type_ordinal") int typeOrdinal;
     private String reason;
     private Long duration;
     private Map<String, Object> data;

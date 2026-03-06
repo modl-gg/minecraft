@@ -9,18 +9,14 @@ import java.util.List;
 /**
  * V2 API sync request matching backend's SyncRequest record.
  */
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class V2SyncRequest {
     private String lastSyncTimestamp;
     private List<OnlinePlayer> onlinePlayers;
     private ServerStatus serverStatus;
     private String serverName;
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class OnlinePlayer {
         private String uuid;
         private String username;
@@ -28,9 +24,7 @@ public class V2SyncRequest {
         private long sessionDurationMs;
     }
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class ServerStatus {
         private int onlinePlayerCount;
         private int maxPlayers;

@@ -7,13 +7,11 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class NotificationAcknowledgeRequest {
-    @NotNull private String playerUuid;
+    private @NotNull String playerUuid;
     
-    @NotNull private List<String> notificationIds;
+    private @NotNull List<String> notificationIds;
     
-    @NotNull private String acknowledgedAt;
+    private @NotNull String acknowledgedAt;
 }

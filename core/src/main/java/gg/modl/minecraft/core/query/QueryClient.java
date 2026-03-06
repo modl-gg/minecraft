@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
-import java.util.logging.Logger;
+import gg.modl.minecraft.core.util.PluginLogger;
 
 @RequiredArgsConstructor
 public class QueryClient {
@@ -36,7 +36,7 @@ public class QueryClient {
     private final String host;
     private final int port;
     private final String secret;
-    private final Logger logger;
+    private final PluginLogger logger;
     private final BiConsumer<String, QueryMessage> messageHandler;
     private final EventLoopGroup group;
 

@@ -71,8 +71,7 @@ public class ChatCommandLogService {
         });
     }
 
-    @Data
-    @AllArgsConstructor
+    @Data @AllArgsConstructor
     public static class ChatLogEntry {
         private final String uuid;
         private final String username;
@@ -81,8 +80,7 @@ public class ChatCommandLogService {
         private final String server;
     }
 
-    @Data
-    @AllArgsConstructor
+    @Data @AllArgsConstructor
     public static class CommandLogEntry {
         private final String uuid;
         private final String username;

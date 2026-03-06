@@ -15,9 +15,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.UUID;
 
-@RequiredArgsConstructor
-@CommandAlias("%cmd_localchat")
-@Conditions("player|staff")
+@RequiredArgsConstructor @CommandAlias("%cmd_localchat") @Conditions("player|staff")
 public class LocalChatCommand extends BaseCommand {
     private static final String LOCAL_CHAT_FORMAT = "\u00A7f<%s\u00A7f> %s";
 

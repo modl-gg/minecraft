@@ -12,66 +12,52 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter @NoArgsConstructor @AllArgsConstructor
 public class Account {
-    @SerializedName("_id")
-    private String id;
+    private @SerializedName("_id") String id;
 
-    @SerializedName("minecraftUuid")
-    private UUID minecraftUuid;
+    private @SerializedName("minecraftUuid") UUID minecraftUuid;
 
-    @SerializedName("usernames")
-    private List<Username> usernames;
+    private @SerializedName("usernames") List<Username> usernames;
 
-    @SerializedName("notes")
-    private List<Note> notes;
+    private @SerializedName("notes") List<Note> notes;
 
-    @SerializedName("ipAddresses")
-    private List<IPAddress> ipList;
+    private @SerializedName("ipAddresses") List<IPAddress> ipList;
 
-    @SerializedName("punishments")
-    private List<Punishment> punishments;
+    private @SerializedName("punishments") List<Punishment> punishments;
 
-    @SerializedName("pendingNotifications")
-    private List<Map<String, Object>> pendingNotifications;
+    private @SerializedName("pendingNotifications") List<Map<String, Object>> pendingNotifications;
 
-    @SerializedName("data")
-    private Map<String, Object> data;
+    private @SerializedName("data") Map<String, Object> data;
 
-    @NotNull public List<Username> getUsernames() {
+    public @NotNull List<Username> getUsernames() {
         return usernames != null ? usernames : Collections.emptyList();
     }
 
-    @NotNull public List<Note> getNotes() {
+    public @NotNull List<Note> getNotes() {
         return notes != null ? notes : Collections.emptyList();
     }
 
-    @NotNull public List<IPAddress> getIpList() {
+    public @NotNull List<IPAddress> getIpList() {
         return ipList != null ? ipList : Collections.emptyList();
     }
 
-    @NotNull public List<Punishment> getPunishments() {
+    public @NotNull List<Punishment> getPunishments() {
         return punishments != null ? punishments : Collections.emptyList();
     }
 
-    @NotNull public List<Map<String, Object>> getPendingNotifications() {
+    public @NotNull List<Map<String, Object>> getPendingNotifications() {
         return pendingNotifications != null ? pendingNotifications : Collections.emptyList();
     }
 
-    @NotNull public Map<String, Object> getData() {
+    public @NotNull Map<String, Object> getData() {
         return data != null ? data : Collections.emptyMap();
     }
 
-    @Getter
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Getter @NoArgsConstructor @AllArgsConstructor
     public static class Username {
-        @SerializedName("username")
-        private String username;
+        private @SerializedName("username") String username;
 
-        @SerializedName("date")
-        private Date date;
+        private @SerializedName("date") Date date;
     }
 }

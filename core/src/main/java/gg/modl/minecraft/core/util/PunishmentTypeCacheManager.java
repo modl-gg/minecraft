@@ -6,18 +6,17 @@ import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
 
 public final class PunishmentTypeCacheManager {
 
     private final Map<Integer, String> namesByOrdinal = new ConcurrentHashMap<>();
     private final Map<String, String> namesById = new ConcurrentHashMap<>();
 
-    public void initialize(ModlHttpClient httpClient, Logger logger) {
+    public void initialize(ModlHttpClient httpClient, PluginLogger logger) {
         httpClient.getPunishmentTypes().thenAccept(response -> {
             if (response.isSuccess()) update(response.getData());
         }).exceptionally(throwable -> {
-            if (logger != null) logger.fine("Error loading punishment types for cache: " + throwable.getMessage());
+            if (logger != null) logger.debug("Error loading punishment types for cache: " + throwable.getMessage());
             return null;
         });
     }

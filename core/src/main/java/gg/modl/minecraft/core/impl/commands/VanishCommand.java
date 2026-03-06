@@ -18,9 +18,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.UUID;
 
-@CommandAlias("%cmd_vanish")
-@Conditions("staff|player")
-@RequiredArgsConstructor
+@CommandAlias("%cmd_vanish") @Conditions("staff|player") @RequiredArgsConstructor
 public class VanishCommand extends BaseCommand {
     private final Platform platform;
     private final Cache cache;

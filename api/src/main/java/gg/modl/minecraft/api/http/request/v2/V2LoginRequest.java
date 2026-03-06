@@ -9,9 +9,7 @@ import java.util.Map;
 /**
  * V2 API login request matching backend's LoginRequest record.
  */
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class V2LoginRequest {
     private String minecraftUUID;
     private String username;

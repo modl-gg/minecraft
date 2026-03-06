@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
+import gg.modl.minecraft.core.util.PluginLogger;
 
 @Data
 public class PunishGuiConfig {
@@ -20,8 +20,7 @@ public class PunishGuiConfig {
     private final Map<Integer, PunishSlotConfig> slots = new HashMap<>();
     private final Map<Integer, String> itemsByOrdinal = new HashMap<>();
 
-    @Data
-    @NoArgsConstructor
+    @Data @NoArgsConstructor
     public static class PunishSlotConfig {
         private int slotNumber;
         private boolean enabled = false;
@@ -41,7 +40,7 @@ public class PunishGuiConfig {
     }
 
     @SuppressWarnings("unchecked")
-    public static PunishGuiConfig load(Path dataDirectory, Logger logger) {
+    public static PunishGuiConfig load(Path dataDirectory, PluginLogger logger) {
         PunishGuiConfig config = new PunishGuiConfig();
         try {
             loadItemsByOrdinal(config, dataDirectory, logger);
@@ -99,7 +98,7 @@ public class PunishGuiConfig {
     }
 
     @SuppressWarnings("unchecked")
-    private static void loadItemsByOrdinal(PunishGuiConfig config, Path dataDirectory, Logger logger) {
+    private static void loadItemsByOrdinal(PunishGuiConfig config, Path dataDirectory, PluginLogger logger) {
         try {
             Map<?, ?> itemsMap = null;
 

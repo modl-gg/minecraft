@@ -11,6 +11,7 @@ import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
 import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.bungee.factory.BungeePacketEventsBuilder;
 import lombok.Getter;
@@ -40,9 +41,11 @@ public class BungeePlugin extends Plugin {
     private Configuration configuration;
     private PluginLoader loader;
     private QueryStatWipeExecutor queryStatWipeExecutor;
+    private PluginLogger pluginLogger;
 
     @Override
     public synchronized void onEnable() {
+        this.pluginLogger = PluginLogger.fromJul(getLogger());
         loadLibraries();
         initializePacketEvents();
         loadConfig();
@@ -101,9 +104,9 @@ public class BungeePlugin extends Plugin {
 
     private void mergeDefaultConfigs() {
         YamlMergeUtil.mergeWithDefaults("/config.yml",
-                getDataFolder().toPath().resolve("config.yml"), getLogger());
+                getDataFolder().toPath().resolve("config.yml"), pluginLogger);
         YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",
-                getDataFolder().toPath().resolve("locale/en_US.yml"), getLogger());
+                getDataFolder().toPath().resolve("locale/en_US.yml"), pluginLogger);
     }
 
     private void logConfigurationError() {
@@ -123,13 +126,13 @@ public class BungeePlugin extends Plugin {
 
         int bridgePort = configuration.getInt("bridge.port", DEFAULT_BRIDGE_PORT);
         String apiKey = configuration.getString("api.key");
-        queryStatWipeExecutor = new QueryStatWipeExecutor(getLogger(), httpManager.isDebugHttp());
+        queryStatWipeExecutor = new QueryStatWipeExecutor(pluginLogger, httpManager.isDebugHttp());
         queryStatWipeExecutor.addBridge(DEFAULT_BRIDGE_NAME, bridgeHost, bridgePort, apiKey);
         loader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
 
         BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
                 platform, loader.getLocaleManager(), loader.getFreezeService(),
-                loader.getStaffModeService(), loader.getVanishService(), getLogger());
+                loader.getStaffModeService(), loader.getVanishService(), pluginLogger);
         queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
         loader.getBridgeService().setExecutor(queryStatWipeExecutor);
     }

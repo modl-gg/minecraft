@@ -7,16 +7,16 @@ import org.jetbrains.annotations.Nullable;
 @Data
 public class CreateTicketResponse {
     private boolean success;
-    @Nullable private String ticketId;
-    @Nullable private String message;
-    @Nullable private TicketInfo ticket;
+    private @Nullable String ticketId;
+    private @Nullable String message;
+    private @Nullable TicketInfo ticket;
     
     @Data
     public static class TicketInfo {
-        @NotNull private String id;
-        @NotNull private String type;
-        @Nullable private String subject;
-        @Nullable private String status;
-        @Nullable private String created;
+        private @NotNull String id;
+        private @NotNull String type;
+        private @Nullable String subject;
+        private @Nullable String status;
+        private @Nullable String created;
     }
 }

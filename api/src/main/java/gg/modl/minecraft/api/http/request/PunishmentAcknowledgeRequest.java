@@ -6,17 +6,15 @@ import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Data @NoArgsConstructor @AllArgsConstructor
 public class PunishmentAcknowledgeRequest {
-    @NotNull private String punishmentId;
+    private @NotNull String punishmentId;
     
-    @NotNull private String playerUuid;
+    private @NotNull String playerUuid;
     
-    @NotNull private String executedAt;
+    private @NotNull String executedAt;
     
     private boolean success;
     
-    @Nullable private String errorMessage;
+    private @Nullable String errorMessage;
 }

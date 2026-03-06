@@ -63,8 +63,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import gg.modl.minecraft.core.util.PluginLogger;
 
 @Getter
 public class PluginLoader {
@@ -80,7 +79,7 @@ public class PluginLoader {
     private final boolean queryMojang;
     private final AsyncCommandExecutor asyncCommandExecutor;
     private final Path dataDirectory;
-    private final Logger logger;
+    private final PluginLogger logger;
     private final boolean debugMode;
     private final ConfigManager configManager;
     private final StaffChatService staffChatService;
@@ -109,11 +108,11 @@ public class PluginLoader {
         loginCache = new LoginCache();
         platform.setCache(cache);
 
-        this.configManager = new ConfigManager(dataDirectory, Logger.getLogger("modl-config"));
+        this.configManager = new ConfigManager(dataDirectory, platform.getLogger());
         this.httpClientHolder = httpManager.getHttpClientHolder();
-        this.logger = Logger.getLogger("modl-" + platform.getClass().getSimpleName());
+        this.logger = platform.getLogger();
 
-        Logger logger = this.logger;
+        PluginLogger logger = this.logger;
         Map<String, Object> configYml = readConfigYml(dataDirectory, logger);
         String configuredLocale = readLocaleFromConfig(configYml, logger);
 
@@ -253,7 +252,7 @@ public class PluginLoader {
     }
     
     @SuppressWarnings("unchecked")
-    private static Map<String, Object> readConfigYml(Path dataDirectory, Logger logger) {
+    private static Map<String, Object> readConfigYml(Path dataDirectory, PluginLogger logger) {
         try {
             Path configFile = dataDirectory.resolve("config.yml");
             if (!Files.exists(configFile)) return Collections.emptyMap();
@@ -267,7 +266,7 @@ public class PluginLoader {
         }
     }
 
-    private static String readLocaleFromConfig(Map<String, Object> config, Logger logger) {
+    private static String readLocaleFromConfig(Map<String, Object> config, PluginLogger logger) {
         if (config.containsKey("locale")) {
             String locale = (String) config.get("locale");
             if (locale != null && !locale.isEmpty()) {
@@ -321,7 +320,7 @@ public class PluginLoader {
     );
 
     @SuppressWarnings("unchecked")
-    private static Map<String, String> loadCommandAliases(Map<String, Object> config, Logger logger) {
+    private static Map<String, String> loadCommandAliases(Map<String, Object> config, PluginLogger logger) {
         Map<String, String> aliases = new LinkedHashMap<>(DEFAULT_COMMAND_ALIASES);
         try {
             if (config.containsKey("commands")) {
@@ -349,7 +348,7 @@ public class PluginLoader {
     }
 
     @SuppressWarnings("unchecked")
-    private void loadLocaleConfig(Map<String, Object> config, Logger logger) {
+    private void loadLocaleConfig(Map<String, Object> config, PluginLogger logger) {
         try {
             if (config.containsKey("locale_config")) {
                 Map<String, Object> localeConfig = (Map<String, Object>) config.get("locale_config");
@@ -373,7 +372,7 @@ public class PluginLoader {
     }
 
     @SuppressWarnings("unchecked")
-    private DatabaseConfig loadDatabaseConfig(Map<String, Object> config, Path dataDirectory, Logger logger) {
+    private DatabaseConfig loadDatabaseConfig(Map<String, Object> config, Path dataDirectory, PluginLogger logger) {
         try {
             if (config.containsKey("migration")) {
                 Map<String, Object> migration = (Map<String, Object>) config.get("migration");
@@ -403,7 +402,7 @@ public class PluginLoader {
                 return new DatabaseConfig(host, port, dbName, username, password, dbType, tablePrefix);
             }
         } catch (Exception e) {
-            logger.log(Level.WARNING, "Failed to load database config", e);
+            logger.warning("Failed to load database config: " + e.getMessage());
         }
 
         return createDefaultDatabaseConfig();
@@ -413,7 +412,7 @@ public class PluginLoader {
         return new DatabaseConfig("localhost", 3306, "minecraft", "root", "", DatabaseConfig.DatabaseType.MYSQL, "litebans_");
     }
 
-    private String detectLiteBansTablePrefix(Path dataDirectory, Logger logger) {
+    private String detectLiteBansTablePrefix(Path dataDirectory, PluginLogger logger) {
         try {
             // LiteBans config is in plugins/LiteBans/config.yml
             Path litebansConfig = dataDirectory.getParent().resolve("LiteBans").resolve("config.yml");
@@ -458,7 +457,7 @@ public class PluginLoader {
     }
 
     @SuppressWarnings("unchecked")
-    private static UpdateCheckerConfig loadUpdateCheckerConfig(Map<String, Object> config, Logger logger) {
+    private static UpdateCheckerConfig loadUpdateCheckerConfig(Map<String, Object> config, PluginLogger logger) {
         boolean enabled = true;
         int intervalMinutes = UpdateCheckerService.getDefaultIntervalMinutes();
 
@@ -554,7 +553,7 @@ public class PluginLoader {
         });
     }
 
-    private static void initializeStaffPermissions(ModlHttpClient httpClient, Cache cache, Logger logger, boolean debugMode) {
+    private static void initializeStaffPermissions(ModlHttpClient httpClient, Cache cache, PluginLogger logger, boolean debugMode) {
         StaffPermissionLoader.load(httpClient, cache, logger, debugMode, false);
     }
 }
