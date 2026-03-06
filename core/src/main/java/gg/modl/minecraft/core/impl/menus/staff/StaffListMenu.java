@@ -14,6 +14,10 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
+import gg.modl.minecraft.core.util.Permissions;
+import gg.modl.minecraft.core.util.WebPlayer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -24,10 +28,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Staff List Menu - displays all staff members for role management.
- * Secondary menu accessed from Settings.
- */
 public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> {
 
     public static class StaffMember {
@@ -54,7 +54,6 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
     // Role name → order (0 = highest/Super Admin)
     private Map<String, Integer> roleOrders = new HashMap<>();
     private final String panelUrl;
-    private final Consumer<CirrusPlayerWrapper> parentBackAction;
     private final boolean hasPermission;
     private String viewerRole;
 
@@ -63,27 +62,19 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
 
     private static final String SUPER_ADMIN_ROLE = "Super Admin";
 
-    /**
-     * Create a new staff list menu.
-     */
     public StaffListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                          boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
         super("Manage Staff", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
         this.panelUrl = panelUrl;
-        this.parentBackAction = backAction;
         activeTab = StaffTab.SETTINGS;
 
         Cache cache = platform.getCache();
-        this.hasPermission = cache != null && cache.hasPermission(viewerUuid, "admin.staff.manage");
+        this.hasPermission = cache != null && cache.hasPermission(viewerUuid, Permissions.STAFF_MANAGE);
 
-        if (hasPermission) {
+        if (hasPermission)
             fetchStaffAndRoles();
-        }
     }
 
-    /**
-     * Internal constructor for refreshing with preserved state.
-     */
     private StaffListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                           boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction,
                           List<StaffMember> existingStaff, List<String> existingRoles,
@@ -91,11 +82,10 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
                           Map<String, String> existingSelections) {
         super("Manage Staff", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
         this.panelUrl = panelUrl;
-        this.parentBackAction = backAction;
         activeTab = StaffTab.SETTINGS;
 
         Cache cache = platform.getCache();
-        this.hasPermission = cache != null && cache.hasPermission(viewerUuid, "admin.staff.manage");
+        this.hasPermission = cache != null && cache.hasPermission(viewerUuid, Permissions.STAFF_MANAGE);
 
         if (existingStaff != null) this.staffMembers = new ArrayList<>(existingStaff);
         if (existingRoles != null) this.availableRoles = new ArrayList<>(existingRoles);
@@ -105,17 +95,14 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
     }
 
     private void fetchStaffAndRoles() {
-        // Fetch roles first to build the order map
         httpClient.getRoles().thenAccept(response -> {
             if (response != null && response.getRoles() != null) {
                 availableRoles.clear();
                 roleOrders.clear();
                 for (RolesListResponse.RoleEntry role : response.getRoles()) {
                     roleOrders.put(role.getName(), role.getOrder());
-                    // Don't include Super Admin as an assignable role
-                    if (!SUPER_ADMIN_ROLE.equals(role.getName())) {
+                    if (!SUPER_ADMIN_ROLE.equals(role.getName()))
                         availableRoles.add(role.getName());
-                    }
                 }
             }
         }).exceptionally(e -> null);
@@ -133,18 +120,16 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
                     String displayName = entry.getMinecraftUsername() != null ? entry.getMinecraftUsername() : entry.getUsername();
                     staffMembers.add(new StaffMember(entry.getId(), uuid, displayName, entry.getRole()));
 
-                    // Identify the viewer's role
                     if (uuid != null && uuid.equals(viewerUuid)) {
                         viewerRole = entry.getRole();
                     }
                 }
 
-                // Pre-fetch textures for staff members not in cache
                 if (platform.getCache() != null) {
                     for (StaffMember staff : staffMembers) {
                         if (staff.getUuid() != null && platform.getCache().getSkinTexture(staff.getUuid()) == null) {
                             final UUID staffUuid = staff.getUuid();
-                            gg.modl.minecraft.core.util.WebPlayer.get(staffUuid).thenAccept(wp -> {
+                            WebPlayer.get(staffUuid).thenAccept(wp -> {
                                 if (wp != null && wp.valid() && wp.textureValue() != null) {
                                     platform.getCache().cacheSkinTexture(staffUuid, wp.textureValue());
                                 }
@@ -180,12 +165,10 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
 
     @Override
     protected Collection<StaffMember> elements() {
-        if (!hasPermission) {
+        if (!hasPermission)
             return Collections.singletonList(new StaffMember("no_permission", null, null, null));
-        }
-        if (staffMembers.isEmpty()) {
+        if (staffMembers.isEmpty())
             return Collections.singletonList(new StaffMember(null, null, null, null));
-        }
         return staffMembers;
     }
 
@@ -201,15 +184,13 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
                     )
             );
         }
-        if (staff.getId() == null) {
+        if (staff.getId() == null)
             return createEmptyPlaceholder("No staff members");
-        }
 
         List<String> lore = new ArrayList<>();
         boolean canMod = canModify(staff);
 
         if (!canMod) {
-            // Show why they can't modify
             lore.add(MenuItems.COLOR_GRAY + "Role: " + MenuItems.COLOR_WHITE + staff.getCurrentRole());
             lore.add("");
             if (isSuperAdmin(staff)) {
@@ -245,15 +226,13 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
                 MenuItems.lore(lore)
         );
 
-        // Apply skin texture from cache if available
         if (staff.getUuid() != null && platform.getCache() != null) {
             String cachedTexture = platform.getCache().getSkinTexture(staff.getUuid());
             if (cachedTexture != null) {
                 headItem = headItem.texture(cachedTexture);
             } else {
-                // Async fire-and-forget to populate cache for next menu open
                 final UUID uuid = staff.getUuid();
-                gg.modl.minecraft.core.util.WebPlayer.get(uuid).thenAccept(wp -> {
+                WebPlayer.get(uuid).thenAccept(wp -> {
                     if (wp != null && wp.valid() && wp.textureValue() != null) {
                         platform.getCache().cacheSkinTexture(uuid, wp.textureValue());
                     }
@@ -274,11 +253,10 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
             return;
         }
 
-        if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
+        if (click.clickType().equals(CirrusClickType.RIGHT_CLICK))
             cycleRole(click, staff);
-        } else {
+        else
             applyRole(click, staff);
-        }
     }
 
     private void cycleRole(Click click, StaffMember staff) {
@@ -296,7 +274,6 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         sendMessage(MenuItems.COLOR_YELLOW + "Selected role: " + MenuItems.COLOR_GREEN + nextRole +
                 MenuItems.COLOR_GRAY + " (left-click to apply)");
 
-        // Refresh menu - preserve state
         StaffListMenu newMenu = new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl,
                 backAction, staffMembers, availableRoles, roleOrders, viewerRole, selectedRoles);
         ActionHandlers.openMenu(newMenu).handle(click);
@@ -317,10 +294,8 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
             sendMessage(MenuItems.COLOR_GREEN + "Role updated successfully!");
             selectedRoles.remove(staff.getId());
 
-            // Refresh staff permissions cache
             httpClient.getStaffPermissions().exceptionally(e -> null);
 
-            // Rebuild menu with fresh data
             StaffListMenu newMenu = new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
             ActionHandlers.openMenu(newMenu).handle(click);
         }).exceptionally(e -> {
@@ -333,33 +308,8 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
-                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openReports", ActionHandlers.openMenu(
-                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPunishments", ActionHandlers.openMenu(
-                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openTickets", ActionHandlers.openMenu(
-                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPanel", click -> {
-            click.clickedMenu().close();
-            String escapedUrl = panelUrl.replace("\"", "\\\"");
-            String panelJson = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"Staff Panel: \",\"color\":\"gold\"}," +
-                "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-                escapedUrl, panelUrl
-            );
-            platform.sendJsonMessage(viewerUuid, panelJson);
-        });
-
-        registerActionHandler("openSettings", ActionHandlers.openMenu(
-                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+        StaffNavigationHandlers.registerAll(
+                (name, handler) -> registerActionHandler(name, handler),
+                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 }

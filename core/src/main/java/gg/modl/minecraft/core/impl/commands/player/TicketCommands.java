@@ -1,22 +1,28 @@
-package gg.modl.minecraft.core.impl.commands;
+package gg.modl.minecraft.core.impl.commands.player;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.*;
+import co.aikar.commands.annotation.CommandAlias;
+import co.aikar.commands.annotation.CommandCompletion;
+import co.aikar.commands.annotation.Conditions;
+import co.aikar.commands.annotation.Description;
+import co.aikar.commands.annotation.Optional;
+import co.aikar.commands.annotation.Syntax;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
+import gg.modl.minecraft.api.http.request.ClaimTicketRequest;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.api.http.response.CreateTicketResponse;
 import gg.modl.minecraft.core.AsyncCommandExecutor;
-import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ReportGuiConfig;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.ReportMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.util.Constants;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
@@ -27,15 +33,23 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @RequiredArgsConstructor
 public class TicketCommands extends BaseCommand {
+    private static final long COOLDOWN_MS = 60_000;
+    private static final String CLICKABLE_TICKET_JSON =
+            "{\"text\":\"\",\"extra\":[" +
+            "{\"text\":\"\uD83D\uDCCB \",\"color\":\"gold\"}," +
+            "{\"text\":\"%s: \",\"color\":\"gray\"}," +
+            "{\"text\":\"[Click to view]\",\"color\":\"aqua\",\"underlined\":true," +
+            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket %s\"}}]}";
+
     private final AsyncCommandExecutor commandExecutor;
     private final Platform platform;
-    private final HttpClientHolder httpClientHolder;
     private final ModlHttpClient httpClient;
-    private final String panelUrl; // e.g., "https://myserver.modl.gg"
+    private final String panelUrl;
     private final LocaleManager localeManager;
     private final ChatMessageCache chatMessageCache;
 
-    private Map<UUID, Map<String, Long>> cooldowns = new ConcurrentHashMap<>();
+    private final Map<UUID, Map<String, Long>> cooldowns = new ConcurrentHashMap<>();
 
     @CommandAlias("%cmd_report")
     @CommandCompletion("@players")
@@ -63,7 +77,6 @@ public class TicketCommands extends BaseCommand {
         }
 
         commandExecutor.execute(() -> {
-            // Load report GUI config (cached after first load)
             ReportGuiConfig guiConfig = getOrLoadReportGuiConfig();
 
             UUID senderUuid = sender.getUniqueId();
@@ -80,19 +93,15 @@ public class TicketCommands extends BaseCommand {
         Cache cache = platform.getCache();
         if (cache != null) {
             ReportGuiConfig cached = cache.getCachedReportGuiConfig();
-            if (cached != null) {
-                return cached;
-            }
+            if (cached != null) return cached;
         }
         ReportGuiConfig config = ReportGuiConfig.load(
                 platform.getDataFolder().toPath(),
                 java.util.logging.Logger.getLogger("modl"));
-        if (cache != null) {
-            cache.cacheReportGuiConfig(config);
-        }
+        if (cache != null) cache.cacheReportGuiConfig(config);
         return config;
     }
-    
+
     @CommandAlias("%cmd_chatreport")
     @CommandCompletion("@players")
     @Description("Report a player for chat violations (automatically includes recent chat logs)")
@@ -108,20 +117,16 @@ public class TicketCommands extends BaseCommand {
             return;
         }
 
-        // Get chat log for the report - all messages from all players on the server
-        // between the reported player's 10th last message and now
         String chatLog = chatMessageCache.getChatLogForReport(
             targetPlayer.uuid().toString(),
             reporter.uuid().toString()
         );
 
-        // If no messages are cached, show error and return
         if (chatLog.isEmpty()) {
             sender.sendMessage(localeManager.getMessage("messages.no_chat_logs_available", Map.of("player", targetPlayer.username())));
             return;
         }
 
-        // Build the report description with the chat log
         String description = "**Chat Report for " + targetPlayer.username() + "**\n\n" +
                              "Reported by: " + reporter.username() + "\n\n" +
                              "**Chat Log:**\n```\n" + chatLog + "\n```";
@@ -202,18 +207,17 @@ public class TicketCommands extends BaseCommand {
             applicant.username(),
             "staff",
             "Application: " + applicant.username(),
-            null, // description will be filled in form
-            null,
+            null, null,
             null,
             null,
             List.of(),
             "normal",
             createdServer
         );
-        
+
         submitUnfinishedTicket(sender, request, "Staff application", "staff");
     }
-    
+
     @CommandAlias("%cmd_bugreport")
     @Description("Report a bug")
     @Syntax("<title...>")
@@ -238,10 +242,10 @@ public class TicketCommands extends BaseCommand {
             "normal",
             createdServer
         );
-        
+
         submitUnfinishedTicket(sender, request, "Bug report", "bug");
     }
-    
+
     @CommandAlias("%cmd_support")
     @Description("Request support")
     @Syntax("<title...>")
@@ -279,8 +283,8 @@ public class TicketCommands extends BaseCommand {
 
         sender.sendMessage(localeManager.getMessage("messages.claiming_ticket", Map.of("ticketId", ticketId)));
 
-        gg.modl.minecraft.api.http.request.ClaimTicketRequest request =
-            new gg.modl.minecraft.api.http.request.ClaimTicketRequest(
+        ClaimTicketRequest request =
+            new ClaimTicketRequest(
                 ticketId,
                 player.uuid().toString(),
                 player.username()
@@ -289,41 +293,36 @@ public class TicketCommands extends BaseCommand {
         httpClient.claimTicket(request).thenAccept(response -> {
             if (response.isSuccess()) {
                 sender.sendMessage(localeManager.getMessage("messages.ticket_claimed_success",
-                    Map.of("ticketId", ticketId, "subject", response.getSubject() != null ? response.getSubject() : "Unknown")));
+                    Map.of("ticketId", ticketId, "subject", response.getSubject() != null ? response.getSubject() : Constants.UNKNOWN)));
 
                 String ticketUrl = panelUrl + "/ticket/" + ticketId;
                 sendClickableTicketMessage(sender, localeManager.getMessage("messages.view_ticket_label"), ticketUrl, ticketId);
-            } else {
-                sender.sendMessage(localeManager.getMessage("messages.ticket_claim_failed",
+            } else sender.sendMessage(localeManager.getMessage("messages.ticket_claim_failed",
                     Map.of("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
-            }
         }).exceptionally(throwable -> {
             String errorMessage = throwable.getMessage();
-            if (throwable.getCause() != null) {
-                errorMessage = throwable.getCause().getMessage();
-            }
+            if (throwable.getCause() != null) errorMessage = throwable.getCause().getMessage();
             sender.sendMessage(localeManager.getMessage("messages.ticket_claim_failed",
                 Map.of("error", localeManager.sanitizeErrorMessage(errorMessage))));
             return null;
         });
     }
-    
+
     private boolean checkCooldown(CommandIssuer sender, String ticketType) {
         UUID uuid = sender.getUniqueId();
         Map<String, Long> playerCooldowns = cooldowns.get(uuid);
-        if (playerCooldowns != null) {
-            Long lastUsed = playerCooldowns.get(ticketType);
-            if (lastUsed != null) {
-                long elapsed = System.currentTimeMillis() - lastUsed;
-                if (elapsed < 60_000) {
-                    long remainingSeconds = (60_000 - elapsed) / 1000;
-                    sender.sendMessage(localeManager.getMessage("messages.ticket_cooldown",
-                            Map.of("seconds", String.valueOf(remainingSeconds))));
-                    return false;
-                }
-            }
-        }
-        return true;
+        if (playerCooldowns == null) return true;
+
+        Long lastUsed = playerCooldowns.get(ticketType);
+        if (lastUsed == null) return true;
+
+        long elapsed = System.currentTimeMillis() - lastUsed;
+        if (elapsed >= COOLDOWN_MS) return true;
+
+        long remainingSeconds = (COOLDOWN_MS - elapsed) / 1000;
+        sender.sendMessage(localeManager.getMessage("messages.ticket_cooldown",
+                Map.of("seconds", String.valueOf(remainingSeconds))));
+        return false;
     }
 
     private void setCooldown(UUID uuid, String ticketType) {
@@ -332,9 +331,9 @@ public class TicketCommands extends BaseCommand {
 
     private void submitFinishedTicket(CommandIssuer sender, CreateTicketRequest request, String ticketType, String cooldownType) {
         sender.sendMessage(localeManager.getMessage("messages.submitting", Map.of("type", ticketType.toLowerCase())));
-        
+
         CompletableFuture<CreateTicketResponse> future = httpClient.createTicket(request);
-        
+
         future.thenAccept(response -> {
             if (response.isSuccess() && response.getTicketId() != null) {
                 setCooldown(sender.getUniqueId(), cooldownType);
@@ -349,9 +348,8 @@ public class TicketCommands extends BaseCommand {
                 sender.sendMessage(localeManager.getMessage("messages.try_again"));
             }
         }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) {
-                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-            } else {
+            if (throwable.getCause() instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+            else {
                 sender.sendMessage(localeManager.getMessage("messages.failed_submit", Map.of("type", ticketType.toLowerCase(), "error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
                 sender.sendMessage(localeManager.getMessage("messages.try_again"));
             }
@@ -377,39 +375,23 @@ public class TicketCommands extends BaseCommand {
                 sender.sendMessage(localeManager.getMessage("messages.try_again"));
             }
         }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) {
-                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-            } else {
+            if (throwable.getCause() instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+            else {
                 sender.sendMessage(localeManager.getMessage("messages.failed_create", Map.of("type", ticketType.toLowerCase(), "error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
                 sender.sendMessage(localeManager.getMessage("messages.try_again"));
             }
             return null;
         });
     }
-    
-    /**
-     * Send a clickable ticket message that opens the ticket URL when clicked
-     */
+
     private void sendClickableTicketMessage(CommandIssuer sender, String message, String ticketUrl, String ticketId) {
-        if (sender.isPlayer()) {
-            // Create clickable JSON message for players
-            String clickableMessage = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"📋 \",\"color\":\"gold\"}," +
-                "{\"text\":\"%s: \",\"color\":\"gray\"}," +
-                "{\"text\":\"[Click to view]\",\"color\":\"aqua\",\"underlined\":true," +
-                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket %s\"}}]}",
-                message, ticketUrl, ticketId
-            );
-            
-            UUID senderUuid = sender.getUniqueId();
-            platform.runOnMainThread(() -> {
-                platform.sendJsonMessage(senderUuid, clickableMessage);
-            });
-        } else {
-            // For console, send plain text with URL
+        if (!sender.isPlayer()) {
             sender.sendMessage(localeManager.getMessage("messages.console_ticket_url", Map.of("message", message, "url", ticketUrl)));
+            return;
         }
+
+        String clickableMessage = String.format(CLICKABLE_TICKET_JSON, message, ticketUrl, ticketId);
+        UUID senderUuid = sender.getUniqueId();
+        platform.runOnMainThread(() -> platform.sendJsonMessage(senderUuid, clickableMessage));
     }
 }

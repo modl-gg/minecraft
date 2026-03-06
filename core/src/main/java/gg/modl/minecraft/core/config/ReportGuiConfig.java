@@ -13,18 +13,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-/**
- * Configuration for the report GUI menu.
- * Maps to the report_gui section in config.yml.
- */
 @Data
 public class ReportGuiConfig {
+    private static final Yaml yaml = new Yaml();
+
     private final Map<Integer, ReportSlotConfig> slots = new HashMap<>();
     private InfoConfig infoConfig;
 
-    /**
-     * Configuration for a single report slot (1-14).
-     */
     @Data
     @NoArgsConstructor
     public static class ReportSlotConfig {
@@ -45,9 +40,6 @@ public class ReportGuiConfig {
         }
     }
 
-    /**
-     * Configuration for the info item at the bottom of the menu.
-     */
     @Data
     @NoArgsConstructor
     public static class InfoConfig {
@@ -56,45 +48,30 @@ public class ReportGuiConfig {
         private List<String> description = new ArrayList<>();
     }
 
-    /**
-     * Load the report GUI config from report_gui.yml first, falling back to config.yml.
-     */
     @SuppressWarnings("unchecked")
     public static ReportGuiConfig load(Path dataDirectory, Logger logger) {
         ReportGuiConfig config = new ReportGuiConfig();
-
         try {
-            // Try dedicated report_gui.yml first
             Map<?, ?> reportGui = null;
             Path dedicatedFile = dataDirectory.resolve("report_gui.yml");
             if (Files.exists(dedicatedFile)) {
-                Yaml yaml = new Yaml();
                 try (InputStream is = Files.newInputStream(dedicatedFile)) {
                     Map<String, Object> data = yaml.load(is);
-                    if (data != null && data.containsKey("report_gui")) {
-                        reportGui = (Map<?, ?>) data.get("report_gui");
-                    } else if (data != null) {
-                        reportGui = data;
-                    }
+                    if (data != null && data.containsKey("report_gui")) reportGui = (Map<?, ?>) data.get("report_gui");
+                    else if (data != null) reportGui = data;
                 }
-                if (reportGui != null) {
-                    logger.info("[ReportGuiConfig] Loaded from report_gui.yml");
-                }
+                if (reportGui != null) logger.info("[ReportGuiConfig] Loaded from report_gui.yml");
             }
 
-            // Fall back to config.yml
             if (reportGui == null) {
                 Path configFile = dataDirectory.resolve("config.yml");
                 if (!Files.exists(configFile)) {
                     logger.info("[ReportGuiConfig] Config file not found, using defaults");
                     return createDefault();
                 }
-                Yaml yaml = new Yaml();
                 try (InputStream inputStream = Files.newInputStream(configFile)) {
                     Map<String, Object> rootConfig = yaml.load(inputStream);
-                    if (rootConfig != null && rootConfig.containsKey("report_gui")) {
-                        reportGui = (Map<?, ?>) rootConfig.get("report_gui");
-                    }
+                    if (rootConfig != null && rootConfig.containsKey("report_gui")) reportGui = (Map<?, ?>) rootConfig.get("report_gui");
                 }
             }
 
@@ -102,7 +79,6 @@ public class ReportGuiConfig {
                 for (Map.Entry<?, ?> entry : reportGui.entrySet()) {
                     Object key = entry.getKey();
 
-                    // Handle the "info" key separately
                     if ("info".equals(key)) {
                         Map<String, Object> infoData = (Map<String, Object>) entry.getValue();
                         config.infoConfig = parseInfoConfig(infoData);
@@ -111,29 +87,19 @@ public class ReportGuiConfig {
 
                     try {
                         int slotNumber;
-                        if (key instanceof Integer) {
-                            slotNumber = (Integer) key;
-                        } else if (key instanceof String) {
-                            slotNumber = Integer.parseInt((String) key);
-                        } else {
-                            continue;
-                        }
+                        if (key instanceof Integer) slotNumber = (Integer) key;
+                        else if (key instanceof String) slotNumber = Integer.parseInt((String) key);
+                        else continue;
 
-                        if (slotNumber < 1 || slotNumber > 14) {
-                            continue;
-                        }
+                        if (slotNumber < 1 || slotNumber > 14) continue;
 
                         Map<String, Object> slotData = (Map<String, Object>) entry.getValue();
                         ReportSlotConfig slotConfig = parseSlotConfig(slotNumber, slotData);
                         config.slots.put(slotNumber, slotConfig);
-                    } catch (NumberFormatException e) {
-                        // Skip non-numeric keys
-                    }
+                    } catch (NumberFormatException ignored) {}
                 }
 
-                if (config.infoConfig == null) {
-                    config.infoConfig = new InfoConfig();
-                }
+                if (config.infoConfig == null) config.infoConfig = new InfoConfig();
 
                 logger.info("[ReportGuiConfig] Loaded " + config.slots.size() + " report slots from config");
             } else {
@@ -153,23 +119,13 @@ public class ReportGuiConfig {
         ReportSlotConfig config = new ReportSlotConfig();
         config.setSlotNumber(slotNumber);
 
-        if (data.containsKey("enabled")) {
-            config.setEnabled((Boolean) data.get("enabled"));
-        }
-        if (data.containsKey("item")) {
-            config.setItem((String) data.get("item"));
-        }
-        if (data.containsKey("title")) {
-            config.setTitle((String) data.get("title"));
-        }
-        if (data.containsKey("chat-report")) {
-            config.setChatReport((Boolean) data.get("chat-report"));
-        }
+        if (data.containsKey("enabled")) config.setEnabled((Boolean) data.get("enabled"));
+        if (data.containsKey("item")) config.setItem((String) data.get("item"));
+        if (data.containsKey("title")) config.setTitle((String) data.get("title"));
+        if (data.containsKey("chat-report")) config.setChatReport((Boolean) data.get("chat-report"));
         if (data.containsKey("description")) {
             Object desc = data.get("description");
-            if (desc instanceof List) {
-                config.setDescription(new ArrayList<>((List<String>) desc));
-            }
+            if (desc instanceof List) config.setDescription(new ArrayList<>((List<String>) desc));
         }
 
         return config;
@@ -178,24 +134,15 @@ public class ReportGuiConfig {
     @SuppressWarnings("unchecked")
     private static InfoConfig parseInfoConfig(Map<String, Object> data) {
         InfoConfig config = new InfoConfig();
-        if (data.containsKey("item")) {
-            config.setItem((String) data.get("item"));
-        }
-        if (data.containsKey("title")) {
-            config.setTitle((String) data.get("title"));
-        }
+        if (data.containsKey("item")) config.setItem((String) data.get("item"));
+        if (data.containsKey("title")) config.setTitle((String) data.get("title"));
         if (data.containsKey("description")) {
             Object desc = data.get("description");
-            if (desc instanceof List) {
-                config.setDescription(new ArrayList<>((List<String>) desc));
-            }
+            if (desc instanceof List) config.setDescription(new ArrayList<>((List<String>) desc));
         }
         return config;
     }
 
-    /**
-     * Create a default configuration.
-     */
     public static ReportGuiConfig createDefault() {
         ReportGuiConfig config = new ReportGuiConfig();
 
@@ -237,19 +184,6 @@ public class ReportGuiConfig {
         return config;
     }
 
-    /**
-     * Get all enabled slots sorted by slot number.
-     */
-    public List<ReportSlotConfig> getEnabledSlots() {
-        return slots.values().stream()
-                .filter(ReportSlotConfig::isEnabled)
-                .sorted((a, b) -> Integer.compare(a.getSlotNumber(), b.getSlotNumber()))
-                .toList();
-    }
-
-    /**
-     * Get slot config by slot number (1-14).
-     */
     public ReportSlotConfig getSlot(int slotNumber) {
         return slots.get(slotNumber);
     }

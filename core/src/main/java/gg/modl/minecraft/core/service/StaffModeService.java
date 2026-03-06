@@ -6,11 +6,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Manages staff mode state per player.
- */
 public class StaffModeService {
-
     public enum StaffModeState {
         OFF,
         STAFF,
@@ -18,7 +14,8 @@ public class StaffModeService {
     }
 
     private final Map<UUID, StaffModeState> staffModes = new ConcurrentHashMap<>();
-    private final Map<UUID, UUID> targetMap = new ConcurrentHashMap<>(); // staff -> target
+    /** staff UUID -> target UUID */
+    private final Map<UUID, UUID> targetMap = new ConcurrentHashMap<>();
 
     public void enable(UUID staff) {
         staffModes.put(staff, StaffModeState.STAFF);
@@ -45,9 +42,7 @@ public class StaffModeService {
 
     public void clearTarget(UUID staff) {
         targetMap.remove(staff);
-        if (staffModes.get(staff) == StaffModeState.TARGETING) {
-            staffModes.put(staff, StaffModeState.STAFF);
-        }
+        if (staffModes.get(staff) == StaffModeState.TARGETING) staffModes.put(staff, StaffModeState.STAFF);
     }
 
     public UUID getTarget(UUID staff) {

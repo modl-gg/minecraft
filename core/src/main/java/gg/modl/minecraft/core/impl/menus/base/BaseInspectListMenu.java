@@ -1,52 +1,29 @@
 package gg.modl.minecraft.core.impl.menus.base;
 
 import dev.simplix.cirrus.item.CirrusItem;
-import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.IPAddress;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.impl.menus.util.InspectTabItems;
+import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
-import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.impl.menus.util.PlayerHeadItemBuilder;
+import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
+import gg.modl.minecraft.core.impl.menus.util.TargetPlayerAction;
 
-import java.util.*;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Base class for Inspect Menu list screens (Notes, Alts, History, Reports).
- * Provides the common header with target player information and navigation items.
- *
- * @param <T> The type of elements displayed in the browser
- */
 public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
 
     protected final Account targetAccount;
     protected final String targetName;
     protected final UUID targetUuid;
 
-    /**
-     * Track which tab is currently active for enchantment glow.
-     */
-    public enum InspectTab {
-        NONE, NOTES, ALTS, HISTORY, REPORTS, PUNISH
-    }
-
     protected InspectTab activeTab = InspectTab.NONE;
 
-    /**
-     * Create a new inspect list menu.
-     *
-     * @param title The menu title
-     * @param platform The platform instance
-     * @param httpClient The HTTP client for API calls
-     * @param viewerUuid The UUID of the staff viewing the menu
-     * @param viewerName The name of the staff viewing the menu
-     * @param targetAccount The account being inspected
-     * @param backAction Action to perform when back button is clicked
-     */
     public BaseInspectListMenu(String title, Platform platform, ModlHttpClient httpClient,
                                UUID viewerUuid, String viewerName, Account targetAccount,
                                Consumer<CirrusPlayerWrapper> backAction) {
@@ -59,301 +36,22 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
     @Override
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
-
-        // Add inspect menu header items in the second row
-        // Slot 10: Player head with info (left-click to target)
-        items.put(MenuSlots.INSPECT_PLAYER_HEAD, createPlayerHeadItem().actionHandler("targetPlayer"));
-
-        // Slot 12: Notes
-        CirrusItem notesItem = CirrusItem.of(
-            CirrusItemType.PAPER,
-            CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Notes"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "View and edit " + targetName + "'s staff notes",
-                        MenuItems.COLOR_GRAY + "(" + targetAccount.getNotes().size() + " notes)"
-                )
-        ).actionHandler("openNotes");
-        if (activeTab == InspectTab.NOTES) notesItem = addGlow(notesItem);
-        items.put(MenuSlots.INSPECT_NOTES, notesItem);
-
-        // Slot 13: Alts
-        CirrusItem altsItem = CirrusItem.of(
-            CirrusItemType.VINE,
-            CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Alts"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "View " + targetName + "'s known alternate accounts"
-                )
-        ).actionHandler("openAlts");
-        if (activeTab == InspectTab.ALTS) altsItem = addGlow(altsItem);
-        items.put(MenuSlots.INSPECT_ALTS, altsItem);
-
-        // Slot 14: History
-        CirrusItem historyItem = CirrusItem.of(
-            CirrusItemType.WRITABLE_BOOK,
-            CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "History"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "View " + targetName + "'s past punishments",
-                        MenuItems.COLOR_GRAY + "(" + targetAccount.getPunishments().size() + " punishments)"
-                )
-        ).actionHandler("openHistory");
-        if (activeTab == InspectTab.HISTORY) historyItem = addGlow(historyItem);
-        items.put(MenuSlots.INSPECT_HISTORY, historyItem);
-
-        // Slot 15: Reports
-        CirrusItem reportsItem = CirrusItem.of(
-            CirrusItemType.ENDER_EYE,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Reports"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "View and handle reports against " + targetName
-                )
-        ).actionHandler("openReports");
-        if (activeTab == InspectTab.REPORTS) reportsItem = addGlow(reportsItem);
-        items.put(MenuSlots.INSPECT_REPORTS, reportsItem);
-
-        // Slot 17: Punish
-        CirrusItem punishItem = CirrusItem.of(
-                CirrusItemType.BOW,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + "Punish"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Issue a new punishment against " + targetName
-                )
-        ).actionHandler("openPunish");
-        if (activeTab == InspectTab.PUNISH) punishItem = addGlow(punishItem);
-        items.put(MenuSlots.INSPECT_PUNISH, punishItem);
-
+        items.put(MenuSlots.INSPECT_PLAYER_HEAD,
+                PlayerHeadItemBuilder.create(platform, targetAccount, targetName, targetUuid)
+                        .actionHandler("targetPlayer"));
+        items.putAll(InspectTabItems.createItems(activeTab, targetAccount, targetName));
         return items;
     }
 
-    /**
-     * Create the player head item with account information.
-     * Uses the same format as BaseInspectMenu for consistency.
-     */
-    protected CirrusItem createPlayerHeadItem() {
-        LocaleManager locale = platform.getLocaleManager();
-        List<String> lore = new ArrayList<>();
-
-        // Calculate first login from earliest username date
-        String firstLogin = "Unknown";
-        if (!targetAccount.getUsernames().isEmpty()) {
-            Date earliest = targetAccount.getUsernames().stream()
-                    .map(Account.Username::getDate)
-                    .filter(d -> d != null)
-                    .min(Date::compareTo)
-                    .orElse(null);
-            if (earliest != null) {
-                firstLogin = MenuItems.formatDate(earliest);
-            }
-        }
-
-        // Check online status and ban/mute status from cache
-        boolean isOnline = platform.getCache() != null && platform.getCache().isOnline(targetUuid);
-        boolean isBanned = targetAccount.getPunishments().stream()
-                .anyMatch(p -> p.isActive() && p.isBanType());
-        boolean isMuted = targetAccount.getPunishments().stream()
-                .anyMatch(p -> p.isActive() && p.isMuteType());
-
-        // Real IP logged
-        boolean realIpLogged = !targetAccount.getIpList().isEmpty();
-
-        // Session time (if online) or last seen (if offline)
-        String lastSeenOrSessionTime = "N/A";
-        if (isOnline && platform.getCache() != null) {
-            // Player is online - show session time
-            long sessionMs = platform.getCache().getSessionDuration(targetUuid);
-            lastSeenOrSessionTime = MenuItems.formatDuration(sessionMs);
-        } else if (!targetAccount.getUsernames().isEmpty()) {
-            // Player is offline - show last seen date
-            Date latest = targetAccount.getUsernames().stream()
-                    .map(Account.Username::getDate)
-                    .filter(d -> d != null)
-                    .max(Date::compareTo)
-                    .orElse(null);
-            if (latest != null) {
-                lastSeenOrSessionTime = MenuItems.formatDate(latest);
-            }
-        }
-
-        // Determine server (current if online, last from data if offline)
-        String server = "Unknown";
-        if (isOnline) {
-            server = platform.getPlayerServer(targetUuid);
-        } else {
-            Object lastServer = targetAccount.getData().get("lastServer");
-            if (lastServer instanceof String) {
-                server = (String) lastServer;
-            }
-        }
-
-        // Get region/country from latest IP
-        String region = "Unknown";
-        String country = "Unknown";
-        if (!targetAccount.getIpList().isEmpty()) {
-            IPAddress latestIp = targetAccount.getIpList().get(targetAccount.getIpList().size() - 1);
-            region = latestIp.getRegion();
-            country = latestIp.getCountry();
-        }
-
-        // Playtime from data (add current session time if player is online)
-        String playtime = "N/A";
-        Object playtimeObj = targetAccount.getData().get("totalPlaytimeSeconds");
-        long totalSeconds = 0;
-        if (playtimeObj instanceof Number) {
-            totalSeconds = ((Number) playtimeObj).longValue();
-        }
-        if (isOnline && platform.getCache() != null) {
-            totalSeconds += platform.getCache().getSessionDuration(targetUuid) / 1000;
-        }
-        if (totalSeconds > 0) {
-            long hours = totalSeconds / 3600;
-            long minutes = (totalSeconds % 3600) / 60;
-            playtime = hours > 0 ? hours + "h " + minutes + "m" : minutes + "m";
-        }
-
-        // Build variables map using HashMap to allow more entries
-        Map<String, String> vars = new HashMap<>();
-        vars.put("player_name", targetName);
-        vars.put("uuid", targetUuid.toString());
-        vars.put("first_login", firstLogin);
-        vars.put("is_online", isOnline ? "&aYes" : "&cNo");
-        vars.put("last_seen_or_session_time", lastSeenOrSessionTime);
-        vars.put("playtime", playtime);
-        vars.put("real_ip_logged", realIpLogged ? "&aYes" : "&cNo");
-        vars.put("is_banned", isBanned ? "&cYes" : "&aNo");
-        vars.put("is_muted", isMuted ? "&cYes" : "&aNo");
-        vars.put("server", server);
-        vars.put("region", region);
-        vars.put("country", country);
-
-        // Get lore lines from locale and substitute variables
-        List<String> loreLinesRaw = locale.getMessageList("menus.player_head.lore");
-        for (String line : loreLinesRaw) {
-            String processed = line;
-            for (Map.Entry<String, String> entry : vars.entrySet()) {
-                processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
-            }
-            lore.add(processed);
-        }
-
-        // Get title from locale and translate color codes
-        String title = locale.getMessage("menus.player_head.title", Map.of("player_name", targetName));
-        title = MenuItems.translateColorCodes(title);
-
-        CirrusItem headItem = CirrusItem.of(
-                CirrusItemType.PLAYER_HEAD,
-                CirrusChatElement.ofLegacyText(title),
-                MenuItems.lore(lore)
-        );
-
-        // Apply skin texture from cache, or fetch from Mojang for offline players
-        if (platform.getCache() != null) {
-            String cachedTexture = platform.getCache().getSkinTexture(targetUuid);
-            if (cachedTexture == null) {
-                // Fetch texture synchronously with short timeout (single player, acceptable delay)
-                try {
-                    gg.modl.minecraft.core.util.WebPlayer wp = gg.modl.minecraft.core.util.WebPlayer.get(targetUuid)
-                            .get(3, java.util.concurrent.TimeUnit.SECONDS);
-                    if (wp != null && wp.valid() && wp.textureValue() != null) {
-                        platform.getCache().cacheSkinTexture(targetUuid, wp.textureValue());
-                        cachedTexture = wp.textureValue();
-                    }
-                } catch (Exception ignored) {}
-            }
-            if (cachedTexture != null) {
-                headItem = headItem.texture(cachedTexture);
-            }
-        }
-
-        return headItem;
-    }
-
-    /**
-     * Add enchantment glow to an item.
-     */
-    protected CirrusItem addGlow(CirrusItem item) {
-        // In Cirrus, we'd typically add an enchantment to create glow
-        // For now, return as-is - implementation depends on Cirrus version
-        return item;
-    }
-
-    /**
-     * Get the current player name from the account.
-     */
     protected String getPlayerName(Account account) {
-        if (account.getUsernames() != null && !account.getUsernames().isEmpty()) {
-            return account.getUsernames().stream()
-                    .max((u1, u2) -> u1.getDate().compareTo(u2.getDate()))
-                    .map(Account.Username::getUsername)
-                    .orElse("Unknown");
-        }
-        return "Unknown";
+        return ReportRenderUtil.getPlayerName(account);
     }
 
     @Override
     protected void registerActionHandlers() {
         super.registerActionHandlers();
-        registerActionHandler("targetPlayer", this::handleTargetPlayer);
-        // Note: Tab navigation handlers (openNotes, openAlts, openHistory, etc.)
-        // MUST be registered by each subclass. Do not register no-op handlers here
-        // as they would take precedence over the actual handlers in subclasses.
+        registerActionHandler("targetPlayer", (dev.simplix.cirrus.model.Click click) ->
+                TargetPlayerAction.handle(click, platform, viewerUuid, targetUuid, targetName));
     }
 
-    /**
-     * Handle left-click on player head to target the player.
-     */
-    private void handleTargetPlayer(dev.simplix.cirrus.model.Click click) {
-        if (targetUuid == null) return;
-
-        if (platform.getCache() == null || !platform.getCache().isOnline(targetUuid)) {
-            platform.sendMessage(viewerUuid, MenuItems.COLOR_RED + "Player is not online");
-            return;
-        }
-
-        click.clickedMenu().close();
-
-        gg.modl.minecraft.core.service.StaffModeService staffModeService = platform.getStaffModeService();
-        if (staffModeService != null) {
-            if (!staffModeService.isInStaffMode(viewerUuid)) {
-                staffModeService.enable(viewerUuid);
-                gg.modl.minecraft.api.AbstractPlayer staffPlayer = platform.getPlayer(viewerUuid);
-                String inGameName = staffPlayer != null ? staffPlayer.getName() : "Staff";
-                String panelName = platform.getCache() != null ? platform.getCache().getStaffDisplayName(viewerUuid) : null;
-                if (panelName == null) panelName = inGameName;
-                platform.sendMessage(viewerUuid, platform.getLocaleManager().getMessage("staff_mode.enabled"));
-                platform.staffBroadcast(platform.getLocaleManager().getMessage("staff_mode.enabled_broadcast", java.util.Map.of(
-                        "staff", panelName, "in-game-name", inGameName)));
-                gg.modl.minecraft.core.service.BridgeService bridgeService = platform.getBridgeService();
-                if (bridgeService != null) {
-                    bridgeService.sendStaffModeEnter(viewerUuid.toString(), inGameName, panelName);
-                }
-            }
-
-            staffModeService.setTarget(viewerUuid, targetUuid);
-            gg.modl.minecraft.core.service.BridgeService bridgeService = platform.getBridgeService();
-            if (bridgeService != null) {
-                bridgeService.sendTargetRequest(viewerUuid.toString(), targetUuid.toString());
-            }
-            platform.sendMessage(viewerUuid, MenuItems.COLOR_GREEN + "Now targeting " + MenuItems.COLOR_GOLD + targetName);
-        }
-    }
-
-    /**
-     * Get the target account.
-     */
-    public Account getTargetAccount() {
-        return targetAccount;
-    }
-
-    /**
-     * Get the target player's name.
-     */
-    public String getTargetName() {
-        return targetName;
-    }
-
-    /**
-     * Get the target player's UUID.
-     */
-    public UUID getTargetUuid() {
-        return targetUuid;
-    }
 }

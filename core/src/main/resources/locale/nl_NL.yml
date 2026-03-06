@@ -556,6 +556,16 @@ menus:
       - ""
       - "&eLinksklick om te richten | Rechtsklick om te inspecteren"
 
+  notes:
+    created: "&aNotitie succesvol aangemaakt!"
+    create_failed: "&cKon notitie niet aanmaken."
+    cancelled: "&7Notitie aanmaken geannuleerd."
+  modify_punishment:
+    no_permission_tickets: "&cJe hebt geen toestemming om gekoppelde tickets te wijzigen."
+    no_changes: "&7Geen wijzigingen aan gekoppelde tickets."
+    tickets_updated: "&aGekoppelde tickets succesvol bijgewerkt!"
+    tickets_update_failed: "&cKon gekoppelde tickets niet bijwerken."
+
 # Standing GUI (player-facing)
 standing_gui:
   title: "&fJouw Reputatie"
@@ -609,4 +619,242 @@ standing_gui:
       - "&7{duration} {type} ({status})"
       - ""
       - "&f{reason}"
+
+# Strafactie Commando
+punishment_action:
+  unknown_action: "&cOnbekende actie: {action}"
+  enter_evidence_url: "&7Voer de bewijs-URL in voor straf #{id}:"
+  no_url: "&cGeen URL opgegeven."
+  evidence_linked: "&aBewijs gekoppeld aan straf #{id}"
+  evidence_link_failed: "&cKon bewijs niet koppelen: {error}"
+  evidence_cancelled: "&7Bewijskoppeling geannuleerd."
+  generating_upload: "&7Upload-link wordt gegenereerd..."
+  upload_failed: "&cKon upload-link niet genereren."
+
+# Straffen
+punishments:
+  public_notification:
+    ban_default: "&c{target} is verbannen."
+    mute_default: "&c{target} is gedempt."
+    kick_default: "&c{target} is van de server gekickt."
+    default: "&c{target} is bestraft."
+
+# Help Commando
+help:
+  header: "&a&lmodl.gg &av{version} &f- &eCommandolijst (Pagina {page}/{total_pages})"
+  entry: "&f/{command} &7- {description}"
+  footer: "&ePagina {page}/{total_pages}. Gebruik &a/modl help {next_page}&e voor de volgende pagina."
+  no_more_pages: "&7Geen verdere pagina's."
+  player_commands:
+    iammuted:
+      usage: "iammuted <speler>"
+      description: "Vertel iemand dat je gedempt bent"
+    standing:
+      usage: "standing"
+      description: "Bekijk je strafstatus"
+    report:
+      usage: "report <speler> <reden>"
+      description: "Rapporteer een speler"
+    chatreport:
+      usage: "chatreport <speler>"
+      description: "Rapporteer de chat van een speler"
+    claimticket:
+      usage: "claimticket <id>"
+      description: "Koppel een ticket aan je account"
+    apply:
+      usage: "apply"
+      description: "Solliciteer als personeelslid"
+    bugreport:
+      usage: "bugreport <titel>"
+      description: "Meld een bug"
+    support:
+      usage: "support <titel>"
+      description: "Open een supportticket"
+  staff_commands:
+    staffmenu:
+      usage: "staffmenu"
+      description: "Open personeelsmenu"
+    inspect:
+      usage: "inspect <speler> [-p]"
+      description: "Open inspectie menu (-p voor tekst)"
+    history:
+      usage: "history <speler> [-p]"
+      description: "Open spelersgeschiedenis (-p voor tekst)"
+    notes:
+      usage: "notes <speler> [-p]"
+      description: "Open spelersnotities (-p voor tekst)"
+    alts:
+      usage: "alts <speler> [-p]"
+      description: "Open alt-accounts (-p voor tekst)"
+    reports:
+      usage: "reports [speler] [-p]"
+      description: "Open rapportenmenu (-p voor tekst)"
+    punish:
+      usage: "punish <speler> [type] [reden]"
+      description: "Leg een straf op"
+    ban:
+      usage: "ban <speler> [duur] [reden]"
+      description: "Verban een speler"
+    mute:
+      usage: "mute <speler> [duur] [reden]"
+      description: "Demp een speler"
+    kick:
+      usage: "kick <speler> [reden]"
+      description: "Kick een speler"
+    blacklist:
+      usage: "blacklist <speler> [reden]"
+      description: "Zet een speler op de zwarte lijst"
+    pardon:
+      usage: "pardon <speler>"
+      description: "Scheld ALLE actieve straffen kwijt"
+    unban:
+      usage: "unban <speler>"
+      description: "Scheld actieve of oudste niet-gestarte ban kwijt"
+    unmute:
+      usage: "unmute <speler>"
+      description: "Scheld actieve of oudste niet-gestarte mute kwijt"
+    modl_reload:
+      usage: "modl reload"
+      description: "Herlaad configuratie"
+
+# Stat Reset
+stat_wipe:
+  kick_message: "&cLog alsjeblieft even opnieuw in. Je statistieken worden gereset vanwege een recent verlopen ban."
+
+# Personeelschat
+staff_chat:
+  enabled: "&ePersoneelschat &aactiveerd&e. Berichten gaan standaard naar personeelschat."
+  disabled: "&ePersoneelschat &cuitgeschakeld&e. Berichten gaan standaard naar lokale chat."
+  feature_disabled: "&cPersoneelschat is niet ingeschakeld op deze server."
+  already_normal: "&cJe bent al in lokale chatmodus."
+  format: "&b[PERSONEEL] &e{panel-name}&f: {message}"
+  local_chat_enabled: "&ePersoneelschat &cuitgeschakeld&e. Berichten gaan standaard naar lokale chat."
+
+# Chatbeheer
+chat_management:
+  chat_toggled_on: "&7&o[{staff}: chat ingeschakeld]"
+  chat_toggled_off: "&7&o[{staff}: chat uitgeschakeld]"
+  chat_disabled: "&cChat is momenteel uitgeschakeld."
+  chat_cleared: "&7&o[{staff}: chat gewist]"
+  slow_mode_enabled: "&7&o[{staff}: chat vertraagd naar {seconds}s]"
+  slow_mode_disabled: "&7&o[{staff}: trage modus uitgeschakeld]"
+  slow_mode_wait: "&cWacht alsjeblieft {seconds} seconden voordat je weer chat."
+  invalid_seconds: "&cVoer alsjeblieft een geldig aantal seconden in."
+  usage_toggle: "&fGebruik: &a/chat &ftoggle"
+  usage_clear: "&fGebruik: &a/chat &fclear"
+  usage_slow: "&fGebruik: &a/chat &fslow <seconden|off>"
+  help:
+    header: "&eChatcommando's:"
+    staff: "&f/chat staff &7- Wissel personeelschat modus"
+    toggle: "&f/chat toggle &7- Schakel openbare chat in/uit"
+    clear: "&f/chat clear [aantal] &7- Wis chat"
+    slow: "&f/chat slow <seconden|off> &7- Stel trage modus in/uit"
+
+# Personeelslijst
+staff_list:
+  header: ""
+  entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &eop &f{server}{v}"
+  vanish: " &7[V]"
+  empty: "&7Geen personeelsleden online."
+  footer: "&eAantal: &f{count} &epersoneel online"
+
+# Personeelsmeldingen
+staff_notifications:
+  join: "&7&o[{staff}: is ingelogd]"
+  verified: "&7&o[{staff}: geverifieerd]"
+  leave: "&7&o[{staff}: is uitgelogd]"
+  switch: "&7&o[{staff}: verbonden met {server}]"
+  generic: "&7&o[{message}]"
+
+# Personeel 2FA
+staff_2fa:
+  not_verified: "&cJe moet je identiteit verifiëren voordat je personeelscommando's kunt gebruiken. Gebruik &f/verify"
+  verify_prompt: "&aKlik op de link om te verifiëren: &f{url}"
+  verify_success: "&aIdentiteit succesvol geverifieerd!"
+  verify_error: "&cVerificatielink genereren mislukt. Probeer het opnieuw."
+  auto_verified: "&aAutomatisch geverifieerd via vertrouwd IP."
+
+# Verify Commando (Personeel 2FA)
+verify:
+  only_players: "&cDit commando kan alleen door spelers worden gebruikt."
+  disabled: "&cPersoneel 2FA is niet ingeschakeld op deze server."
+  already_verified: "&aJe bent al geverifieerd."
+  header: ""
+  instructions: "&aKlik op de onderstaande link om je identiteit te verifiëren:"
+  click_here: "Klik hier om te verifiëren"
+  error: "&cVerificatielink genereren mislukt. Probeer het opnieuw."
+  footer: "&eDeze link verloopt binnenkort."
+
+# Onderhoud
+maintenance:
+  enabled: "&7&o[{staff}: onderhoud ingeschakeld]"
+  disabled: "&7&o[{staff}: onderhoud uitgeschakeld]"
+  already_enabled: "&cOnderhoudsmodus is al ingeschakeld."
+  already_disabled: "&cOnderhoudsmodus is al uitgeschakeld."
+  status_enabled: "&eOnderhoudsmodus is momenteel ingeschakeld."
+  status_disabled: "&eOnderhoudsmodus is momenteel uitgeschakeld."
+  login_denied: "&cServer is momenteel in onderhoud. Probeer het later opnieuw."
+  kick_message: "&cServer is nu in onderhoudsmodus. Probeer het later opnieuw."
+  usage: "&fGebruik: &a/maintenance&f <on|off>"
+
+# Bevriezen
+freeze:
+  frozen_message: "&cJe bent bevroren! Verbreek niet de verbinding."
+  staff_notification_freeze: "&7&o[{staff}: heeft {player} bevroren]"
+  staff_notification_unfreeze: "&7&o[{staff}: heeft {player} ontdooid]"
+  unfrozen: "&aJe bent ontdooid."
+  logout_notification: "&c&l{player} logde uit terwijl bevroren!"
+  frozen_chat: "&b[BEVROREN] &e{player}&f: {message}"
+  command_blocked: "&cJe kunt geen commando's gebruiken terwijl je bevroren bent."
+
+# Netwerk Chat Interceptie
+intercept_chat:
+  enabled: "&aNetwerk chat interceptie ingeschakeld"
+  disabled: "&aNetwerk chat interceptie uitgeschakeld"
+  format: "&8[G-{server}] &e{player}&f: {message}"
+
+# Interceptie (alleen personeel)
+intercept:
+  message: "&8[Interceptie] &f{player}: &7{message}"
+
+# Chatlogs
+chat_logs:
+  header: ""
+  entry: "&7[{timestamp}] &8[{server}] &f{message}"
+  empty: "&7Geen chatlogs gevonden voor deze speler."
+  footer: "&ePagina {page}/{total_pages} ({total} totaal)"
+  error: "&cKon chatlogs niet ophalen."
+  usage: "&fGebruik: &a/chatlogs&f <speler>"
+
+# Commandologs
+command_logs:
+  header: ""
+  entry: "&7[{timestamp}] &e{player}&7: &f/{command}"
+  empty: "&7Geen commandologs gevonden voor deze speler."
+  footer: "&ePagina {page}/{total_pages} ({total} totaal)"
+  error: "&cKon commandologs niet ophalen."
+  usage: "&fGebruik: &a/commandlogs&f <speler>"
+
+# Personeelsmodus
+staff_mode:
+  enabled: "&aPersoneelsmodus ingeschakeld"
+  disabled: "&aPersoneelsmodus uitgeschakeld"
+  enabled_broadcast: "&7&o[{staff}: personeelsmodus betreden]"
+  disabled_broadcast: "&7&o[{staff}: personeelsmodus verlaten]"
+
+# Onzichtbaarheid
+vanish:
+  enabled: "&aJe bent nu onzichtbaar"
+  disabled: "&aJe bent niet meer onzichtbaar"
+  enabled_broadcast: "&7&o[{staff}: onzichtbaar]"
+  disabled_broadcast: "&7&o[{staff}: zichtbaar]"
+
+# Doel
+target:
+  targeting: "&eRicht nu op &f{player}"
+  cleared: "&aDoel gewist."
+  usage: "&fGebruik: &a/target&f <speler>"
+  connecting: "&eVerbinden met &f{server} &eom &f{player}&e te volgen..."
+  cannot_target_self: "&cJe kunt niet op jezelf richten."
+  not_online: "&cDe speler is niet online."
 

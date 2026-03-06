@@ -10,15 +10,11 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.NetworkChatInterceptService;
 import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
 
-import java.util.Map;
 import java.util.UUID;
 
-/**
- * Command to toggle network chat interception for a staff member.
- * When enabled, the staff member receives all chat messages from across the network.
- */
 @RequiredArgsConstructor
 @CommandAlias("%cmd_interceptnetworkchat")
 @Conditions("staff")
@@ -34,8 +30,7 @@ public class InterceptNetworkChatCommand extends BaseCommand {
             sender.sendMessage(localeManager.getMessage("general.players_only"));
             return;
         }
-
-        if (!PermissionUtil.hasPermission(sender, cache, "staff.intercept")) {
+        if (!PermissionUtil.hasPermission(sender, cache, Permissions.INTERCEPT)) {
             sender.sendMessage(localeManager.getMessage("general.no_permission"));
             return;
         }
@@ -43,10 +38,7 @@ public class InterceptNetworkChatCommand extends BaseCommand {
         UUID senderUuid = sender.getUniqueId();
         boolean nowIntercepting = interceptService.toggle(senderUuid);
 
-        if (nowIntercepting) {
-            sender.sendMessage(localeManager.getMessage("intercept_chat.enabled"));
-        } else {
-            sender.sendMessage(localeManager.getMessage("intercept_chat.disabled"));
-        }
+        if (nowIntercepting) sender.sendMessage(localeManager.getMessage("intercept_chat.enabled"));
+        else sender.sendMessage(localeManager.getMessage("intercept_chat.disabled"));
     }
 }

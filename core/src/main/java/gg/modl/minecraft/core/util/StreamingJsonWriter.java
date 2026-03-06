@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 public class StreamingJsonWriter implements AutoCloseable {
+
     private final JsonWriter jsonWriter;
     private final FileWriter fileWriter;
     private final Gson gson;
@@ -21,24 +22,17 @@ public class StreamingJsonWriter implements AutoCloseable {
         this.jsonWriter = new JsonWriter(fileWriter);
         this.jsonWriter.setIndent("  ");
         this.gson = new Gson();
-        
-        // Start root object and players array
         jsonWriter.beginObject();
         jsonWriter.name("players");
         jsonWriter.beginArray();
     }
 
     public void writePlayer(PlayerData playerData) throws IOException {
-        if (closed) {
-            throw new IllegalStateException("Writer is closed");
-        }
+        if (closed) throw new IllegalStateException("Writer is closed");
 
-        // Write player object
         jsonWriter.beginObject();
-        
         jsonWriter.name("minecraftUuid").value(playerData.minecraftUuid);
-        
-        // Usernames array
+
         jsonWriter.name("usernames");
         jsonWriter.beginArray();
         for (UsernameEntry username : playerData.usernames) {
@@ -48,8 +42,7 @@ public class StreamingJsonWriter implements AutoCloseable {
             jsonWriter.endObject();
         }
         jsonWriter.endArray();
-        
-        // Notes array
+
         jsonWriter.name("notes");
         jsonWriter.beginArray();
         for (NoteEntry note : playerData.notes) {
@@ -60,50 +53,31 @@ public class StreamingJsonWriter implements AutoCloseable {
             jsonWriter.endObject();
         }
         jsonWriter.endArray();
-        
-        // IP List array
+
         jsonWriter.name("ipList");
         jsonWriter.beginArray();
         for (IpEntry ip : playerData.ipList) {
             jsonWriter.beginObject();
             jsonWriter.name("ipAddress").value(ip.ipAddress);
-            if (ip.country != null) {
-                jsonWriter.name("country").value(ip.country);
-            }
-            if (ip.region != null) {
-                jsonWriter.name("region").value(ip.region);
-            }
-            if (ip.asn != null) {
-                jsonWriter.name("asn").value(ip.asn);
-            }
-            if (ip.proxy != null) {
-                jsonWriter.name("proxy").value(ip.proxy);
-            }
-            if (ip.hosting != null) {
-                jsonWriter.name("hosting").value(ip.hosting);
-            }
-            // firstLogin is required by schema - should never be null, but add safety check
-            if (ip.firstLogin != null) {
-                jsonWriter.name("firstLogin").value(ip.firstLogin);
-            } else {
-                // Fallback - shouldn't happen but safety check
-                jsonWriter.name("firstLogin").value("");
-            }
+            if (ip.country != null) jsonWriter.name("country").value(ip.country);
+            if (ip.region != null) jsonWriter.name("region").value(ip.region);
+            if (ip.asn != null) jsonWriter.name("asn").value(ip.asn);
+            if (ip.proxy != null) jsonWriter.name("proxy").value(ip.proxy);
+            if (ip.hosting != null) jsonWriter.name("hosting").value(ip.hosting);
+            if (ip.firstLogin != null) jsonWriter.name("firstLogin").value(ip.firstLogin);
+            else jsonWriter.name("firstLogin").value("");
             jsonWriter.name("logins");
             jsonWriter.beginArray();
             if (ip.logins != null) {
                 for (String login : ip.logins) {
-                    if (login != null) {
-                        jsonWriter.value(login);
-                    }
+                    if (login != null) jsonWriter.value(login);
                 }
             }
             jsonWriter.endArray();
             jsonWriter.endObject();
         }
         jsonWriter.endArray();
-        
-        // Punishments array
+
         jsonWriter.name("punishments");
         jsonWriter.beginArray();
         for (PunishmentEntry punishment : playerData.punishments) {
@@ -111,15 +85,12 @@ public class StreamingJsonWriter implements AutoCloseable {
             jsonWriter.name("_id").value(punishment.id);
             jsonWriter.name("type").value(punishment.type);
             jsonWriter.name("typeOrdinal").value(punishment.typeOrdinal);
-            jsonWriter.name("reason").value(punishment.reason != null ? punishment.reason : "No reason provided");
+            jsonWriter.name("reason").value(punishment.reason != null ? punishment.reason : Constants.DEFAULT_REASON);
             jsonWriter.name("issued").value(punishment.issued != null ? punishment.issued : "");
-            jsonWriter.name("issuerName").value(punishment.issuerName != null ? punishment.issuerName : "Console");
+            jsonWriter.name("issuerName").value(punishment.issuerName != null ? punishment.issuerName : Constants.DEFAULT_CONSOLE_NAME);
             
-            if (punishment.started != null) {
-                jsonWriter.name("started").value(punishment.started);
-            }
-            
-            // Write notes array
+            if (punishment.started != null) jsonWriter.name("started").value(punishment.started);
+
             jsonWriter.name("notes");
             jsonWriter.beginArray();
             if (punishment.notes != null) {
@@ -129,14 +100,13 @@ public class StreamingJsonWriter implements AutoCloseable {
                     String issuerName = (String) note.get("issuerName");
                     String date = (String) note.get("date");
                     jsonWriter.name("text").value(text != null ? text : "");
-                    jsonWriter.name("issuerName").value(issuerName != null ? issuerName : "Unknown");
+                    jsonWriter.name("issuerName").value(issuerName != null ? issuerName : Constants.UNKNOWN);
                     jsonWriter.name("date").value(date != null ? date : "");
                     jsonWriter.endObject();
                 }
             }
             jsonWriter.endArray();
-            
-            // Write evidence array
+
             jsonWriter.name("evidence");
             jsonWriter.beginArray();
             if (punishment.evidence != null) {
@@ -149,59 +119,47 @@ public class StreamingJsonWriter implements AutoCloseable {
                 }
             }
             jsonWriter.endArray();
-            
-            // Write attachedTicketIds array
+
             jsonWriter.name("attachedTicketIds");
             jsonWriter.beginArray();
             if (punishment.attachedTicketIds != null) {
-                for (String ticketId : punishment.attachedTicketIds) {
-                    jsonWriter.value(ticketId);
-                }
+                for (String ticketId : punishment.attachedTicketIds) jsonWriter.value(ticketId);
             }
             jsonWriter.endArray();
-            
-            // Write modifications array
+
             jsonWriter.name("modifications");
             jsonWriter.beginArray();
             if (punishment.modifications != null) {
-                for (Object modification : punishment.modifications) {
-                    gson.toJson(modification, Object.class, jsonWriter);
-                }
+                for (Object modification : punishment.modifications) gson.toJson(modification, Object.class, jsonWriter);
             }
             jsonWriter.endArray();
-            
-            // Write data map
+
             if (punishment.data != null && !punishment.data.isEmpty()) {
                 jsonWriter.name("data");
                 gson.toJson(punishment.data, Map.class, jsonWriter);
             }
-            
+
             jsonWriter.endObject();
         }
         jsonWriter.endArray();
-        
-        // Optional data field
+
         if (playerData.data != null && !playerData.data.isEmpty()) {
             jsonWriter.name("data");
             gson.toJson(playerData.data, Map.class, jsonWriter);
         }
-        
+
         jsonWriter.endObject();
-        
-        // Flush periodically to avoid buffering too much in memory
         jsonWriter.flush();
     }
 
     @Override
     public void close() throws IOException {
-        if (!closed) {
-            // End players array and root object
-            jsonWriter.endArray();
-            jsonWriter.endObject();
-            jsonWriter.close();
-            fileWriter.close();
-            closed = true;
-        }
+        if (closed) return;
+        jsonWriter.endArray();
+        jsonWriter.endObject();
+        jsonWriter.close();
+        fileWriter.close();
+        closed = true;
     }
 
     public static class PlayerData {

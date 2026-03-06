@@ -4,321 +4,195 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
 import java.time.Instant;
-import java.util.*;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class ChatMessageCache {
-    
+    private static final int DEFAULT_MAX_MESSAGES = 100;
+    private static final long DEFAULT_MAX_AGE_MS = 600_000; // 10 minutes
+    private static final long CLEANUP_INTERVAL_MS = 30_000;
+    private static final int REPORT_LOOKBACK_MESSAGES = 10;
+    private static final int REPORT_FALLBACK_SECONDS = 120;
+    private static final String JSON_FORMAT = "{\"username\":\"%s\",\"message\":\"%s\",\"timestamp\":\"%s\"}";
+    private static final DateTimeFormatter REPORT_TIME_FORMAT =
+            DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault());
+
     private final int maxMessagesPerServer;
     private final long maxMessageAge;
-    
-    // Server -> Queue of chat messages
     private final Map<String, ConcurrentLinkedQueue<ChatMessage>> serverMessages = new ConcurrentHashMap<>();
-    
-    // Player -> Server mapping (for cross-platform setups)
     private final Map<String, String> playerToServer = new ConcurrentHashMap<>();
-
-    // Throttle time-based cleanup to at most once per 30 seconds
     private volatile long lastCleanupTime = 0;
-    private static final long CLEANUP_INTERVAL_MS = 30_000;
-    
+
     public ChatMessageCache() {
-        this(100, 600_000); // Default: 100 messages per server, 10 minutes TTL
+        this(DEFAULT_MAX_MESSAGES, DEFAULT_MAX_AGE_MS);
     }
-    
-    /**
-     * Add a chat message to the cache
-     * 
-     * @param serverName The server name (used for cross-platform setups)
-     * @param playerUuid The player's UUID
-     * @param playerName The player's name
-     * @param message The chat message
-     */
+
     public void addMessage(String serverName, String playerUuid, String playerName, String message) {
-        // Update player-to-server mapping
         playerToServer.put(playerUuid, serverName);
-        
-        // Get or create message queue for this server
-        ConcurrentLinkedQueue<ChatMessage> messageQueue = serverMessages.computeIfAbsent(serverName, k -> new ConcurrentLinkedQueue<>());
-        
-        // Add the new message
-        ChatMessage chatMessage = new ChatMessage(
-            playerUuid,
-            playerName,
-            message,
-            Instant.now(),
-            serverName
-        );
-        
-        messageQueue.offer(chatMessage);
-        
-        // Remove oldest messages if we exceed the limit
-        while (messageQueue.size() > maxMessagesPerServer) {
-            messageQueue.poll();
+        ConcurrentLinkedQueue<ChatMessage> queue = serverMessages.computeIfAbsent(serverName, k -> new ConcurrentLinkedQueue<>());
+        queue.offer(new ChatMessage(playerUuid, playerName, message, Instant.now(), serverName));
+
+        while (queue.size() > maxMessagesPerServer) {
+            queue.poll();
         }
 
-        // Periodically clean up time-expired messages (at most once per 30s)
         long now = System.currentTimeMillis();
         if (now - lastCleanupTime > CLEANUP_INTERVAL_MS) {
             lastCleanupTime = now;
             serverMessages.values().forEach(this::cleanupOldMessages);
         }
     }
-    
-    /**
-     * Get the last N chat messages from the server where the player is currently located
-     * 
-     * @param playerUuid The player's UUID
-     * @param count Number of messages to retrieve (default: 30)
-     * @return List of formatted chat messages
-     */
+
     public List<String> getRecentMessages(String playerUuid, int count) {
         String serverName = playerToServer.get(playerUuid);
-        if (serverName == null) {
-            return Collections.emptyList();
-        }
-        
+        if (serverName == null) return Collections.emptyList();
         return getRecentMessagesFromServer(serverName, count);
     }
-    
-    /**
-     * Get the last N chat messages from a specific server
-     * 
-     * @param serverName The server name
-     * @param count Number of messages to retrieve
-     * @return List of formatted chat messages
-     */
+
     public List<String> getRecentMessagesFromServer(String serverName, int count) {
-        ConcurrentLinkedQueue<ChatMessage> messageQueue = serverMessages.get(serverName);
-        if (messageQueue == null || messageQueue.isEmpty()) {
-            return Collections.emptyList();
-        }
-        
-        // Clean up old messages first
-        cleanupOldMessages(messageQueue);
-        
-        // Convert to list and get the last N messages
-        List<ChatMessage> allMessages = new ArrayList<>(messageQueue);
-        
-        // Take the last 'count' messages
-        int startIndex = Math.max(0, allMessages.size() - count);
-        List<ChatMessage> recentMessages = allMessages.subList(startIndex, allMessages.size());
-        
-        // Format messages for the API
-        return recentMessages.stream()
-                .map(this::formatMessage)
-                .collect(Collectors.toList());
+        ConcurrentLinkedQueue<ChatMessage> queue = serverMessages.get(serverName);
+        if (queue == null || queue.isEmpty()) return Collections.emptyList();
+        cleanupOldMessages(queue);
+        return formatTail(new ArrayList<>(queue), count);
     }
-    
-    /**
-     * Get recent chat messages for a specific player (messages they sent)
-     * 
-     * @param playerUuid The player's UUID
-     * @param count Number of messages to retrieve
-     * @return List of formatted chat messages from that player
-     */
+
     public List<String> getRecentMessagesFromPlayer(String playerUuid, int count) {
         String serverName = playerToServer.get(playerUuid);
-        if (serverName == null) {
-            return Collections.emptyList();
-        }
-        
-        ConcurrentLinkedQueue<ChatMessage> messageQueue = serverMessages.get(serverName);
-        if (messageQueue == null || messageQueue.isEmpty()) {
-            return Collections.emptyList();
-        }
-        
-        // Clean up old messages first
-        cleanupOldMessages(messageQueue);
-        
-        // Filter messages from the specific player and take the last N
-        List<ChatMessage> playerMessages = messageQueue.stream()
+        if (serverName == null) return Collections.emptyList();
+
+        ConcurrentLinkedQueue<ChatMessage> queue = serverMessages.get(serverName);
+        if (queue == null || queue.isEmpty()) return Collections.emptyList();
+        cleanupOldMessages(queue);
+
+        List<ChatMessage> playerMessages = queue.stream()
                 .filter(msg -> msg.getPlayerUuid().equals(playerUuid))
                 .collect(Collectors.toList());
-        
-        // Take the last 'count' messages
-        int startIndex = Math.max(0, playerMessages.size() - count);
-        List<ChatMessage> recentMessages = playerMessages.subList(startIndex, playerMessages.size());
-        
-        return recentMessages.stream()
-                .map(this::formatMessage)
-                .collect(Collectors.toList());
+        return formatTail(playerMessages, count);
     }
-    
+
     /**
-     * Get all chat messages from all players on the server between the reported player's
-     * 10th last message and now. This is used for chat reports.
-     *
-     * @param reportedPlayerUuid The UUID of the player being reported
-     * @param reporterUuid The UUID of the player making the report
-     * @return Formatted chat log string with "{date} {player}: {message}" format, newline separated
+     * Returns chat context for a report: all messages on the server from the
+     * reported player's 10th-last message onward (or last 2 minutes if no messages).
      */
     public String getChatLogForReport(String reportedPlayerUuid, String reporterUuid) {
-        String serverName = playerToServer.get(reporterUuid);
-        if (serverName == null) {
-            serverName = playerToServer.get(reportedPlayerUuid);
-        }
-        if (serverName == null) {
-            return "";
-        }
+        String serverName = resolveServerName(reporterUuid, reportedPlayerUuid);
+        if (serverName == null) return "";
 
-        ConcurrentLinkedQueue<ChatMessage> messageQueue = serverMessages.get(serverName);
-        if (messageQueue == null || messageQueue.isEmpty()) {
-            return "";
-        }
+        ConcurrentLinkedQueue<ChatMessage> queue = serverMessages.get(serverName);
+        if (queue == null || queue.isEmpty()) return "";
+        cleanupOldMessages(queue);
 
-        // Clean up old messages first
-        cleanupOldMessages(messageQueue);
+        List<ChatMessage> allMessages = new ArrayList<>(queue);
+        Instant startTimestamp = determineReportStartTimestamp(allMessages, reportedPlayerUuid);
 
-        List<ChatMessage> allMessages = new ArrayList<>(messageQueue);
-
-        // Find the reported player's messages
-        List<ChatMessage> reportedPlayerMessages = allMessages.stream()
-                .filter(msg -> msg.getPlayerUuid().equals(reportedPlayerUuid))
-                .collect(Collectors.toList());
-
-        // Get the 10th last message timestamp (or earliest if less than 10)
-        Instant startTimestamp;
-        if (reportedPlayerMessages.isEmpty()) {
-            // No messages from reported player, use last 2 minutes of all messages
-            startTimestamp = Instant.now().minusSeconds(120);
-        } else {
-            int startIndex = Math.max(0, reportedPlayerMessages.size() - 10);
-            startTimestamp = reportedPlayerMessages.get(startIndex).getTimestamp();
-        }
-
-        // Get all messages from all players between startTimestamp and now
         List<ChatMessage> relevantMessages = allMessages.stream()
                 .filter(msg -> !msg.getTimestamp().isBefore(startTimestamp))
                 .sorted(Comparator.comparing(ChatMessage::getTimestamp))
                 .collect(Collectors.toList());
 
-        if (relevantMessages.isEmpty()) {
-            return "";
-        }
+        if (relevantMessages.isEmpty()) return "";
 
-        // Format as "{date} {player}: {message}"
         StringBuilder chatLog = new StringBuilder();
-        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
-                .ofPattern("HH:mm:ss")
-                .withZone(java.time.ZoneId.systemDefault());
-
         for (ChatMessage msg : relevantMessages) {
-            String time = formatter.format(msg.getTimestamp());
-            chatLog.append(time)
-                   .append(" ")
-                   .append(msg.getPlayerName())
-                   .append(": ")
-                   .append(msg.getMessage())
+            chatLog.append(REPORT_TIME_FORMAT.format(msg.getTimestamp()))
+                   .append(" ").append(msg.getPlayerName())
+                   .append(": ").append(msg.getMessage())
                    .append("\n");
         }
-
         return chatLog.toString().trim();
     }
 
-    /**
-     * Update a player's server mapping without adding a message.
-     * This should be called when players join or switch servers.
-     *
-     * @param serverName The server name
-     * @param playerUuid The player's UUID
-     */
     public void updatePlayerServer(String serverName, String playerUuid) {
         playerToServer.put(playerUuid, serverName);
     }
 
-    /**
-     * Remove a player from the cache when they disconnect
-     *
-     * @param playerUuid The player's UUID
-     */
     public void removePlayer(String playerUuid) {
         playerToServer.remove(playerUuid);
     }
-    
-    /**
-     * Clear all cached messages for a server
-     * 
-     * @param serverName The server name
-     */
+
     public void clearServer(String serverName) {
         serverMessages.remove(serverName);
     }
-    
-    /**
-     * Clear all cached messages
-     */
+
     public void clearAll() {
         serverMessages.clear();
         playerToServer.clear();
     }
-    
-    /**
-     * Get the current size of the cache for a server
-     * 
-     * @param serverName The server name
-     * @return Number of cached messages
-     */
+
     public int getServerCacheSize(String serverName) {
-        ConcurrentLinkedQueue<ChatMessage> messageQueue = serverMessages.get(serverName);
-        return messageQueue != null ? messageQueue.size() : 0;
+        ConcurrentLinkedQueue<ChatMessage> queue = serverMessages.get(serverName);
+        return queue != null ? queue.size() : 0;
     }
-    
-    /**
-     * Format a chat message for the API as stringified JSON
-     * 
-     * @param message The chat message
-     * @return Formatted message string as JSON
-     */
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+
+    private String resolveServerName(String primaryUuid, String fallbackUuid) {
+        String server = playerToServer.get(primaryUuid);
+        if (server == null) server = playerToServer.get(fallbackUuid);
+        return server;
+    }
+
+    private Instant determineReportStartTimestamp(List<ChatMessage> allMessages, String reportedPlayerUuid) {
+        List<ChatMessage> reportedMessages = allMessages.stream()
+                .filter(msg -> msg.getPlayerUuid().equals(reportedPlayerUuid))
+                .collect(Collectors.toList());
+
+        if (reportedMessages.isEmpty()) {
+            return Instant.now().minusSeconds(REPORT_FALLBACK_SECONDS);
+        }
+        int startIndex = Math.max(0, reportedMessages.size() - REPORT_LOOKBACK_MESSAGES);
+        return reportedMessages.get(startIndex).getTimestamp();
+    }
+
+    /** Returns the last {@code count} messages formatted as JSON strings. */
+    private List<String> formatTail(List<ChatMessage> messages, int count) {
+        int startIndex = Math.max(0, messages.size() - count);
+        return messages.subList(startIndex, messages.size()).stream()
+                .map(this::formatMessage)
+                .collect(Collectors.toList());
+    }
+
     private String formatMessage(ChatMessage message) {
-        // Format as stringified JSON: {"username":"PlayerName","message":"Message","timestamp":"2024-07-26T10:00:00Z"}
-        String escapedMessage = escapeJsonString(message.getMessage());
-        String escapedPlayerName = escapeJsonString(message.getPlayerName());
-        String timestamp = message.getTimestamp().toString(); // ISO-8601 format
-        
-        return String.format("{\"username\":\"%s\",\"message\":\"%s\",\"timestamp\":\"%s\"}", 
-            escapedPlayerName,
-            escapedMessage,
-            timestamp
+        return String.format(JSON_FORMAT,
+            escapeJsonString(message.getPlayerName()),
+            escapeJsonString(message.getMessage()),
+            message.getTimestamp().toString()
         );
     }
-    
-    /**
-     * Escape special characters in JSON strings
-     * 
-     * @param input The input string
-     * @return Escaped string for JSON
-     */
+
     private String escapeJsonString(String input) {
-        if (input == null) {
-            return "";
+        if (input == null) return "";
+        StringBuilder sb = new StringBuilder(input.length() + 16);
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            switch (c) {
+                case '\\' -> sb.append("\\\\");
+                case '"' -> sb.append("\\\"");
+                case '\b' -> sb.append("\\b");
+                case '\f' -> sb.append("\\f");
+                case '\n' -> sb.append("\\n");
+                case '\r' -> sb.append("\\r");
+                case '\t' -> sb.append("\\t");
+                default -> sb.append(c);
+            }
         }
-        
-        return input
-            .replace("\\", "\\\\")  // Escape backslashes
-            .replace("\"", "\\\"")  // Escape quotes
-            .replace("\b", "\\b")   // Escape backspace
-            .replace("\f", "\\f")   // Escape form feed
-            .replace("\n", "\\n")   // Escape newline
-            .replace("\r", "\\r")   // Escape carriage return
-            .replace("\t", "\\t");  // Escape tab
+        return sb.toString();
     }
-    
-    /**
-     * Clean up old messages from the queue
-     * 
-     * @param messageQueue The message queue to clean
-     */
-    private void cleanupOldMessages(ConcurrentLinkedQueue<ChatMessage> messageQueue) {
+
+    private void cleanupOldMessages(ConcurrentLinkedQueue<ChatMessage> queue) {
         Instant cutoff = Instant.now().minusMillis(maxMessageAge);
-        
-        // Remove messages older than the cutoff
-        messageQueue.removeIf(message -> message.getTimestamp().isBefore(cutoff));
+        queue.removeIf(message -> message.getTimestamp().isBefore(cutoff));
     }
-    
+
     @Data
     public static class ChatMessage {
         private final String playerUuid;

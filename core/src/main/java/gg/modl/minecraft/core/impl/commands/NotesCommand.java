@@ -12,7 +12,6 @@ import co.aikar.commands.annotation.Syntax;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Note;
-import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
@@ -20,26 +19,19 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.NotesMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
-
+import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.DateFormatter;
-import java.util.Map;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 
-/**
- * Command to open the Notes Menu GUI for a player,
- * or print staff notes to chat with the -p flag.
- */
+import java.util.Map;
+import java.util.UUID;
+
 @RequiredArgsConstructor
 public class NotesCommand extends BaseCommand {
     private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
-
-    private ModlHttpClient getHttpClient() {
-        return httpClientHolder.getClient();
-    }
 
     @CommandCompletion("@players")
     @CommandAlias("%cmd_notes")
@@ -49,61 +41,34 @@ public class NotesCommand extends BaseCommand {
     public void notes(CommandIssuer sender, @Name("player") String playerQuery, @Default("") String flags) {
         boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
 
-        // Console always uses print mode
-        if (!sender.isPlayer()) {
-            printNotes(sender, playerQuery);
-            return;
-        }
-
-        if (printMode) {
+        if (!sender.isPlayer() || printMode) {
             printNotes(sender, playerQuery);
             return;
         }
 
         UUID senderUuid = sender.getUniqueId();
-
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
 
-        // Look up the player
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
-
-        getHttpClient().lookupPlayer(request).thenAccept(response -> {
+        httpClientHolder.getClient().lookupPlayer(request).thenAccept(response -> {
             if (response.isSuccess() && response.getData() != null) {
                 UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
 
-                // Fetch full profile for the notes menu
-                getHttpClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
+                httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
                     if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
-                        // Get sender name (prefer panel username)
-                        String senderName = cache.getStaffDisplayName(senderUuid);
-                        if (senderName == null && platform.getPlayer(senderUuid) != null) {
-                            senderName = platform.getPlayer(senderUuid).username();
-                        }
-                        if (senderName == null) senderName = "Staff";
-
-                        // Open the notes menu
+                        String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
                         NotesMenu menu = new NotesMenu(
-                            platform,
-                            getHttpClient(),
-                            senderUuid,
-                            senderName,
-                            profileResponse.getProfile(),
-                            null // No parent menu when opened from command
+                            platform, httpClientHolder.getClient(), senderUuid, senderName,
+                            profileResponse.getProfile(), null
                         );
-
-                        // Get CirrusPlayerWrapper and display
                         CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
                         menu.display(player);
-                    } else {
-                        sender.sendMessage(localeManager.getMessage("general.player_not_found"));
-                    }
+                    } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
                 }).exceptionally(throwable -> {
                     handleException(sender, throwable, playerQuery);
                     return null;
                 });
-            } else {
-                sender.sendMessage(localeManager.getMessage("general.player_not_found"));
-            }
+            } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
             handleException(sender, throwable, playerQuery);
             return null;
@@ -115,25 +80,21 @@ public class NotesCommand extends BaseCommand {
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
 
-        getHttpClient().lookupPlayer(request).thenAccept(response -> {
+        httpClientHolder.getClient().lookupPlayer(request).thenAccept(response -> {
             if (response.isSuccess() && response.getData() != null) {
                 String playerName = response.getData().getCurrentUsername();
                 UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
 
-                getHttpClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
+                httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
                     if (profileResponse.getStatus() == 200 && profileResponse.getProfile() != null) {
                         Account profile = profileResponse.getProfile();
                         displayNotes(sender, playerName, profile);
-                    } else {
-                        sender.sendMessage(localeManager.getMessage("general.player_not_found"));
-                    }
+                    } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
                 }).exceptionally(throwable -> {
                     handleException(sender, throwable, playerQuery);
                     return null;
                 });
-            } else {
-                sender.sendMessage(localeManager.getMessage("general.player_not_found"));
-            }
+            } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
             handleException(sender, throwable, playerQuery);
             return null;
@@ -143,9 +104,8 @@ public class NotesCommand extends BaseCommand {
     private void displayNotes(CommandIssuer sender, String playerName, Account profile) {
         sender.sendMessage(localeManager.getMessage("print.notes.header", Map.of("player", playerName)));
 
-        if (profile.getNotes().isEmpty()) {
-            sender.sendMessage(localeManager.getMessage("print.notes.empty"));
-        } else {
+        if (profile.getNotes().isEmpty()) sender.sendMessage(localeManager.getMessage("print.notes.empty"));
+        else {
             int ordinal = 1;
             for (Note note : profile.getNotes()) {
                 String date = DateFormatter.format(note.getDate());
@@ -169,10 +129,7 @@ public class NotesCommand extends BaseCommand {
     }
 
     private void handleException(CommandIssuer sender, Throwable throwable, String playerQuery) {
-        if (throwable.getCause() instanceof PanelUnavailableException) {
-            sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-        } else {
-            sender.sendMessage(localeManager.getMessage("player_lookup.error", Map.of("error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
-        }
+        if (throwable.getCause() instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+        else sender.sendMessage(localeManager.getMessage("player_lookup.error", Map.of("error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
     }
 }

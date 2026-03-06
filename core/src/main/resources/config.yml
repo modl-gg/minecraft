@@ -64,10 +64,12 @@ update_checker:
 # This plugin connects to it to send stat-wipe commands without needing any
 # players online. Authentication uses the API key configured above.
 bridge:
-  # IP/hostname of the server running modl-bridge (leave empty to disable)
-  # set this to 127.0.0.1 if the bridge is running on the same server as this plugin
+  # IP/hostname of the server running modl-bridge (leave empty to disable).
+  # Set this to 127.0.0.1 if the bridge is running on the same server as this plugin.
   host: ""
   # TCP port the bridge query server listens on (must match bridge config)
+  # There is auth (using API key) so it is technically (kind of) safe to expose this
+  # port to the internet if needed, but it's recommended to firewall/use private network.
   port: 25590
 
 # Commands that muted players cannot use
@@ -173,3 +175,38 @@ locale_config:
     minutes: "{minutes}m"
     seconds: "{seconds}s"
     permanent: "permanent"
+
+# Standing GUI Configuration
+# Player-facing menu for viewing their own social/gameplay standing and punishments.
+# Players can open this with /standing.
+#
+# Text content (titles, descriptions, status display names, punishment lore)
+# is configured in the locale files (e.g., locale/en_US.yml under "standing_gui").
+standing_gui:
+  # Social status item type (slot 11 in the GUI)
+  social_status:
+    item: "minecraft:creeper_head"
+  # Gameplay status item type (slot 15 in the GUI)
+  gameplay_status:
+    item: "minecraft:tnt"
+
+# What item should be used to display punishment type in history/recent punishment GUI
+punishment_type_items_by_ordinal:
+  0: "minecraft:leather_boots"
+  1: "minecraft:orange_wool"
+  2: "minecraft:red_wool"
+  3: "minecraft:barrier"
+  4: "minecraft:player_head"
+  5: "minecraft:bedrock"
+  6: "minecraft:feather"
+  7: "minecraft:pufferfish"
+  8: "minecraft:creeper_head"
+  9: "minecraft:ink_sac"
+  10: "minecraft:name_tag"
+  11: "minecraft:armor_stand"
+  12: "minecraft:lava_bucket"
+  13: "minecraft:spider_eye"
+  14: "minecraft:diamond_sword"
+  15: "minecraft:gold_ingot"
+  16: "minecraft:experience_bottle"
+  17: "minecraft:barrier"

@@ -11,7 +11,7 @@ public class PardonPlayerRequest {
     @NotNull
     private final String issuerName;
     @Nullable
-    private final String punishmentType; // "ban", "mute", or null for all types
+    private final String punishmentType;
     @Nullable
     private final String reason;
 }

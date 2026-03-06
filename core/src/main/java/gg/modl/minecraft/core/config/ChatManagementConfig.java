@@ -15,7 +15,13 @@ public class ChatManagementConfig {
         Map<String, Object> data = ConfigManager.loadSection(dataFolder, "chat_management.yml", "chat_management", logger);
         if (data == null) return config;
 
-        if (data.containsKey("clear_lines")) config.clearLines = ((Number) data.get("clear_lines")).intValue();
+        if (data.containsKey("clear_lines")) {
+            Object val = data.get("clear_lines");
+            if (val instanceof Number) config.clearLines = ((Number) val).intValue();
+            else if (val instanceof String) {
+                try { config.clearLines = Integer.parseInt((String) val); } catch (NumberFormatException ignored) {}
+            }
+        }
 
         return config;
     }

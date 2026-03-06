@@ -35,6 +35,6 @@ public class ReportsResponse {
         private String priority;
         private Date createdAt;
         private List<String> assignedTo;
-        private List<Object> chatMessages; // Chat messages for chat reports
+        private List<Object> chatMessages;
     }
 }

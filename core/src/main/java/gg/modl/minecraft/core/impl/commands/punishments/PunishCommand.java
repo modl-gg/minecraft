@@ -11,8 +11,6 @@ import co.aikar.commands.annotation.Optional;
 import co.aikar.commands.annotation.Syntax;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.http.ModlHttpClient;
-import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
 import gg.modl.minecraft.api.http.response.PunishmentCreateResponse;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
@@ -22,9 +20,14 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.PunishMenu;
 import gg.modl.minecraft.core.impl.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.CommandUtil;
+import gg.modl.minecraft.core.util.Constants;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.PunishmentTypeParser;
+import gg.modl.minecraft.core.util.StaffPermissionLoader;
 import gg.modl.minecraft.core.util.WebPlayer;
+import lombok.RequiredArgsConstructor;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -34,26 +37,30 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class PunishCommand extends BaseCommand {
+    private static final Map<String, String> SEVERITY_ALIASES = Map.of(
+        "lenient", "low",
+        "normal", "regular",
+        "regular", "regular",
+        "aggravated", "severe",
+        "severe", "severe",
+        "low", "low"
+    );
+
+    private static final Set<String> VALID_SEVERITIES = Set.of("low", "regular", "severe");
+    private static final String DEFAULT_SEVERITY = "regular";
+    private static final int MANUAL_PUNISHMENT_MAX_ORDINAL = 5;
+    private static final int MAX_TYPE_WORD_LENGTH = 4;
+
     private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
-    private final String panelUrl;
 
-    // Helper to get the current HTTP client
-    private ModlHttpClient getHttpClient() {
-        return httpClientHolder.getClient();
-    }
-
-    // Cache for punishment types - loaded once at startup and manually refreshed
     private volatile List<PunishmentTypesResponse.PunishmentTypeData> cachedPunishmentTypes = new ArrayList<>();
     private volatile boolean cacheInitialized = false;
-
-    private static final Set<String> VALID_SEVERITIES = Set.of("low", "regular", "severe");
 
     @CommandCompletion("@players @punishment-types")
     @CommandAlias("%cmd_punish")
@@ -66,28 +73,22 @@ public class PunishCommand extends BaseCommand {
             return;
         }
 
-        // If no args provided and sender is a player, open the punishment GUI
         if ((args == null || args.length == 0) && sender.isPlayer()) {
             openPunishmentGui(sender, target);
             return;
         }
 
-        // Console or with args: require type argument
         if (args == null || args.length == 0) {
             sender.sendMessage(localeManager.getPunishmentMessage("general.invalid_syntax", Map.of()));
             return;
         }
 
-        // Check if cache is initialized, if not show error
         if (!cacheInitialized || cachedPunishmentTypes.isEmpty()) {
             sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_types_not_loaded", Map.of()));
             return;
         }
 
-        // Use cached punishment types
         List<PunishmentTypesResponse.PunishmentTypeData> punishmentTypes = cachedPunishmentTypes;
-        
-        // Parse punishment type and remaining arguments
         ParsedCommand parsed = parsePunishmentTypeAndArgs(args, punishmentTypes);
         if (parsed == null) {
             String availableTypes = punishmentTypes.stream()
@@ -99,8 +100,6 @@ public class PunishCommand extends BaseCommand {
         }
 
         final PunishmentTypesResponse.PunishmentTypeData punishmentType = parsed.punishmentType;
-
-        // Check permission for this specific punishment type
         String punishmentPermission = PermissionUtil.formatPunishmentPermission(punishmentType.getName());
         if (!PermissionUtil.hasPermission(sender, cache, punishmentPermission)) {
             sender.sendMessage(localeManager.getPunishmentMessage("general.no_permission_punishment", 
@@ -108,547 +107,216 @@ public class PunishCommand extends BaseCommand {
             return;
         }
 
-        // Parse arguments
         PunishmentArgs punishmentArgs = parseArguments(parsed.remainingArgs);
-        
-        // Validate severity
         if (punishmentArgs.severity != null && !VALID_SEVERITIES.contains(punishmentArgs.severity)) {
             sender.sendMessage(localeManager.getMessage("punishment_commands.invalid_severity"));
             return;
         }
 
-        // Validate punishment type compatibility
         String validationError = validatePunishmentCompatibility(punishmentArgs, punishmentType);
         if (validationError != null) {
             sender.sendMessage(validationError);
             return;
         }
 
-        // Set default values if not specified (matching panel logic)
-        if (punishmentArgs.severity == null) {
-            punishmentArgs.severity = "regular"; // Default severity
-        }
-
-        // Calculate offense level automatically based on player status (matching panel AI logic)
-        String calculatedOffenseLevel = calculateOffenseLevel(target, punishmentType);
-        punishmentArgs.offenseLevel = calculatedOffenseLevel;
-
-        final String issuerName = gg.modl.minecraft.core.util.CommandUtil.resolveIssuerName(sender, cache, platform);
-
-        // Build punishment data (matching panel logic)
+        if (punishmentArgs.severity == null) punishmentArgs.severity = DEFAULT_SEVERITY;
+        final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
         Map<String, Object> data = buildPunishmentData(punishmentArgs, punishmentType, target);
 
         data.put("issuedServer", sender.isPlayer()
             ? platform.getPlayerServer(sender.getUniqueId())
             : platform.getServerName());
 
-        // Create notes list (matching panel logic)
         List<String> notes = new ArrayList<>();
-        if (!punishmentArgs.reason.isEmpty()) {
-            notes.add(punishmentArgs.reason);
-        }
+        if (!punishmentArgs.reason.isEmpty()) notes.add(punishmentArgs.reason);
 
-        // Create punishment request matching panel API structure
         PunishmentCreateRequest request = new PunishmentCreateRequest(
             target.getMinecraftUuid().toString(),
             issuerName,
-            punishmentType.getOrdinal(), // Use integer ordinal
-            punishmentArgs.reason.isEmpty() ? "No reason specified" : punishmentArgs.reason,
+            punishmentType.getOrdinal(),
+            punishmentArgs.reason.isEmpty() ? Constants.DEFAULT_REASON_SPECIFIED : punishmentArgs.reason,
             punishmentArgs.duration > 0 ? punishmentArgs.duration : null,
             data,
             notes,
-            new ArrayList<>(), // attachedTicketIds
-            punishmentArgs.severity, // severity for punishment calculation
-            punishmentArgs.offenseLevel // status (offense level) for punishment calculation
+            new ArrayList<>(),
+            punishmentArgs.severity,
+            null
         );
 
-        // Make copies for lambda usage
         final String punishmentTypeName = punishmentType.getName();
-        final boolean silentPunishment = punishmentArgs.silent;
-        final int ordinal = punishmentType.getOrdinal();
 
-        // Use the dynamic punishment endpoint
-        CompletableFuture<PunishmentCreateResponse> future = getHttpClient().createPunishmentWithResponse(request);
+        CompletableFuture<PunishmentCreateResponse> future = httpClientHolder.getClient().createPunishmentWithResponse(request);
 
         future.thenAccept(response -> {
             if (response.isSuccess()) {
                 String targetName = target.getUsernames().get(0).getUsername();
 
-                // Success message to issuer
                 sender.sendMessage(localeManager.punishment()
                     .type(punishmentTypeName)
                     .target(targetName)
                     .punishmentId(response.getPunishmentId())
                     .get("general.punishment_issued"));
 
-                // Send action buttons if player
-                if (sender.isPlayer() && response.getPunishmentId() != null) {
-                    platform.runOnMainThread(() -> {
-                        PunishmentActionMessages.sendPunishmentActions(platform, sender.getUniqueId(), response.getPunishmentId());
-                    });
-                }
-
-            } else {
-                sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
+                if (sender.isPlayer() && response.getPunishmentId() != null)
+                    platform.runOnMainThread(() ->
+                        PunishmentActionMessages.sendPunishmentActions(platform, sender.getUniqueId(), response.getPunishmentId()));
+            } else sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
                     Map.of("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
-            }
-        }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) {
-                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-            } else {
-                sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
-                    Map.of("error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
-            }
-            return null;
-        });
+        }).exceptionally(throwable -> CommandUtil.handleApiError(sender, throwable, localeManager));
     }
 
-    /**
-     * Open the punishment GUI for a player target
-     */
     private void openPunishmentGui(CommandIssuer sender, Account target) {
         UUID senderUuid = sender.getUniqueId();
+        String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
 
-        // Get sender name (prefer panel username)
-        String senderName = cache.getStaffDisplayName(senderUuid);
-        if (senderName == null && platform.getPlayer(senderUuid) != null) {
-            senderName = platform.getPlayer(senderUuid).username();
-        }
-        if (senderName == null) senderName = "Staff";
-
-        // Open the punish menu
         PunishMenu menu = new PunishMenu(
-            platform,
-            getHttpClient(),
-            senderUuid,
-            senderName,
-            target,
-            null // No parent menu when opened from command
+            platform, httpClientHolder.getClient(), senderUuid, senderName, target, null
         );
-
-        // Get CirrusPlayerWrapper and display
         CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
         menu.display(player);
     }
 
-    /**
-     * Initialize punishment types cache - called once at startup
-     */
     public void initializePunishmentTypes() {
-        // Load punishment types
-        getHttpClient().getPunishmentTypes().thenAccept(response -> {
+        httpClientHolder.getClient().getPunishmentTypes().thenAccept(response -> {
             if (response.isSuccess()) {
-                // Populate the punishment type registry for ban/mute detection
                 PunishmentTypeParser.populateRegistry(response.getData());
-
-                // Filter out manual punishment types (ordinals 0-5: kick, manual_mute, manual_ban, security_ban, linked_ban, blacklist)
                 cachedPunishmentTypes = response.getData().stream()
-                        .filter(pt -> pt.getOrdinal() > 5)
+                        .filter(pt -> pt.getOrdinal() > MANUAL_PUNISHMENT_MAX_ORDINAL)
                         .collect(Collectors.toList());
                 cacheInitialized = true;
-                platform.runOnMainThread(() -> {
-                    // Log successful initialization
-                    platform.log("[modl.gg] Loaded " + cachedPunishmentTypes.size() + " punishment types from API");
-                });
+                platform.runOnMainThread(() ->
+                    platform.log("[modl.gg] Loaded " + cachedPunishmentTypes.size() + " punishment types from API"));
             } else {
-                platform.runOnMainThread(() -> {
-                    platform.log("[modl.gg] Failed to load punishment types from API: " + response.getStatus());
-                });
+                platform.runOnMainThread(() ->
+                    platform.log("[modl.gg] Failed to load punishment types from API: " + response.getStatus()));
             }
         }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) {
-                platform.runOnMainThread(() -> {
-                    platform.log("[modl.gg] Panel restarting, cannot load punishment types: " + throwable.getMessage());
-                });
-            } else {
-                platform.runOnMainThread(() -> {
-                    platform.log("[modl.gg] Error loading punishment types: " + throwable.getMessage());
-                });
-            }
+            platform.runOnMainThread(() ->
+                platform.log("[modl.gg] Error loading punishment types: " + throwable.getMessage()));
             return null;
         });
 
-        // Load staff permissions
-        loadStaffPermissions();
-    }
-    
-    /**
-     * Load staff permissions into cache
-     */
-    private void loadStaffPermissions() {
-        getHttpClient().getStaffPermissions().thenAccept(response -> {
-            cache.clearStaffPermissions();
-            
-            for (var staffMember : response.getData().getStaff()) {
-                if (staffMember.getMinecraftUuid() != null) {
-                    try {
-                        UUID uuid = UUID.fromString(staffMember.getMinecraftUuid());
-                        cache.cacheStaffPermissions(uuid, staffMember.getStaffUsername(), staffMember.getStaffRole(), staffMember.getPermissions());
-                    } catch (IllegalArgumentException e) {
-                        platform.runOnMainThread(() -> {
-                            platform.log("[modl.gg] Invalid UUID for staff member " + staffMember.getStaffUsername() + ": " + staffMember.getMinecraftUuid());
-                        });
-                    }
-                }
-            }
-            
-            platform.runOnMainThread(() -> {
-                platform.log("[modl.gg] Loaded permissions for " + response.getData().getStaff().size() + " staff members");
-            });
-        }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) {
-                platform.runOnMainThread(() -> {
-                    System.err.println("[modl.gg] Panel restarting, cannot load staff permissions: " + throwable.getMessage());
-                });
-            } else {
-                platform.runOnMainThread(() -> {
-                    System.err.println("[modl.gg] Error loading staff permissions: " + throwable.getMessage());
-                });
-            }
-            return null;
-        });
+        StaffPermissionLoader.load(
+            httpClientHolder.getClient(), cache, java.util.logging.Logger.getLogger("modl"), false, true);
     }
 
-
-    /**
-     * Get available punishment type names for tab completion
-     */
     public List<String> getPunishmentTypeNames() {
         return cachedPunishmentTypes.stream()
                 .map(PunishmentTypesResponse.PunishmentTypeData::getName)
                 .collect(Collectors.toList());
     }
-    
-    /**
-     * Update punishment types cache (called by reload command)
-     */
-    public void updatePunishmentTypesCache(List<PunishmentTypesResponse.PunishmentTypeData> allTypes) {
-        // Populate the punishment type registry for ban/mute detection
-        PunishmentTypeParser.populateRegistry(allTypes);
 
-        // Filter out manual punishment types (ordinals 0-5: kick, manual_mute, manual_ban, security_ban, linked_ban, blacklist)
+    public void updatePunishmentTypesCache(List<PunishmentTypesResponse.PunishmentTypeData> allTypes) {
+        PunishmentTypeParser.populateRegistry(allTypes);
         cachedPunishmentTypes = allTypes.stream()
-                .filter(pt -> pt.getOrdinal() > 5)
+                .filter(pt -> pt.getOrdinal() > MANUAL_PUNISHMENT_MAX_ORDINAL)
                 .collect(Collectors.toList());
         cacheInitialized = true;
-    }
-    
-    /**
-     * Get public notification message for punishment
-     */
-    private String getPublicNotificationMessage(String punishmentTypeName, String targetName, long duration, int ordinal, String reason) {
-        // Find the punishment type to get description and other details
-        PunishmentTypesResponse.PunishmentTypeData punishmentType = cachedPunishmentTypes.stream()
-                .filter(pt -> pt.getOrdinal() == ordinal)
-                .findFirst()
-                .orElse(null);
-                
-        Map<String, String> variables = new HashMap<>();
-        variables.put("target", targetName);
-        variables.put("duration", localeManager.formatDuration(duration));
-        variables.put("reason", reason != null ? reason : "No reason specified");
-        variables.put("description", punishmentType != null ? punishmentType.getName() : punishmentTypeName);
-        if (panelUrl != null && !panelUrl.isEmpty()) {
-            variables.put("appeal_url", panelUrl + "/appeal");
-        } else {
-            variables.put("appeal_url", "https://server.modl.gg/appeal");
-        }
-        
-        // Get public notification using new locale format
-        return localeManager.getPublicNotificationMessage(ordinal, variables);
-    }
-    
-    /**
-     * Map punishment type name to basic category for default messages
-     */
-    private String getBasicPunishmentCategory(String punishmentTypeName) {
-        String lower = punishmentTypeName.toLowerCase();
-        if (lower.contains("kick")) return "kick";
-        if (lower.contains("mute")) return "mute";
-        if (lower.contains("ban")) return "ban";
-        if (lower.contains("blacklist")) return "blacklist";
-        
-        // Default to ban for unknown types
-        return "ban";
     }
 
     private PunishmentArgs parseArguments(String args) {
         String[] arguments = args.split(" ");
         PunishmentArgs result = new PunishmentArgs();
-        
         StringBuilder reasonBuilder = new StringBuilder();
-        
+
         for (int i = 0; i < arguments.length; i++) {
             String arg = arguments[i];
-            
+
             if (arg.equalsIgnoreCase("-severity") && i + 1 < arguments.length) {
                 String severityInput = arguments[++i].toLowerCase();
-                // Map UI severity names to API severity names (matching panel logic)
-                switch (severityInput) {
-                    case "lenient":
-                        result.severity = "low";
-                        break;
-                    case "normal":
-                    case "regular":
-                        result.severity = "regular";
-                        break;
-                    case "aggravated":
-                    case "severe":
-                        result.severity = "severe";
-                        break;
-                    default:
-                        result.severity = severityInput; // Use as-is for lenient/regular/severe
-                }
-            } else if (arg.equalsIgnoreCase("-lenient")) {
-                result.severity = "low";
-            } else if (arg.equalsIgnoreCase("-regular") || arg.equalsIgnoreCase("-normal")) {
-                result.severity = "regular";
-            } else if (arg.equalsIgnoreCase("-severe")) {
-                result.severity = "severe";
-            // Removed manual offense level - now calculated automatically
-            } else if (arg.equalsIgnoreCase("-alt-blocking") || arg.equalsIgnoreCase("-ab")) {
-                result.altBlocking = true;
-            } else if (arg.equalsIgnoreCase("-silent") || arg.equalsIgnoreCase("-s")) {
-                result.silent = true;
-            } else if (arg.equalsIgnoreCase("-stat-wipe") || arg.equalsIgnoreCase("-sw")) {
-                result.statWipe = true;
-            } else {
-                // For dynamic punishments, durations are calculated automatically based on severity and offense level
-                // Any non-flag argument is treated as part of the reason
-                if (reasonBuilder.length() > 0) {
-                    reasonBuilder.append(" ");
-                }
+                result.severity = SEVERITY_ALIASES.getOrDefault(severityInput, severityInput);
+            } else if (arg.equalsIgnoreCase("-lenient")) result.severity = "low";
+            else if (arg.equalsIgnoreCase("-regular") || arg.equalsIgnoreCase("-normal")) result.severity = DEFAULT_SEVERITY;
+            else if (arg.equalsIgnoreCase("-severe")) result.severity = "severe";
+            else if (arg.equalsIgnoreCase("-alt-blocking") || arg.equalsIgnoreCase("-ab")) result.altBlocking = true;
+            else if (arg.equalsIgnoreCase("-silent") || arg.equalsIgnoreCase("-s")) result.silent = true;
+            else if (arg.equalsIgnoreCase("-stat-wipe") || arg.equalsIgnoreCase("-sw")) result.statWipe = true;
+            else {
+                if (reasonBuilder.length() > 0) reasonBuilder.append(" ");
                 reasonBuilder.append(arg);
             }
         }
-        
+
         result.reason = reasonBuilder.toString().trim();
         return result;
     }
 
     private Map<String, Object> buildPunishmentData(PunishmentArgs args, PunishmentTypesResponse.PunishmentTypeData punishmentType, Account target) {
         Map<String, Object> data = new HashMap<>();
-        
-        // Initialize default fields (matching panel backend logic)
         data.put("duration", 0L);
-        
-        // Set blockedName and blockedSkin for "permanent until" punishment types
-        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilUsernameChange())) {
-            String currentUsername = target.getUsernames() != null && !target.getUsernames().isEmpty()
-                ? target.getUsernames().get(target.getUsernames().size() - 1).getUsername()
-                : "Unknown";
-            data.put("blockedName", currentUsername);
-        } else {
-            data.put("blockedName", null);
-        }
-        
-        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange())) {
-            String currentSkinHash = null;
-            try {
-                WebPlayer webPlayer = WebPlayer.getSync(target.getMinecraftUuid()); // Use sync wrapper
-                if (webPlayer != null && webPlayer.valid()) {
-                    currentSkinHash = webPlayer.skin();
-                }
-            } catch (Exception e) {
-                // Log warning but continue with null skin hash
-                System.err.println("Failed to get skin hash for " + target.getUsernames().get(0).getUsername() + ": " + e.getMessage());
-            }
-            data.put("blockedSkin", currentSkinHash);
-        } else {
-            data.put("blockedSkin", null);
-        }
+        data.put("blockedName", resolveBlockedName(punishmentType, target));
+        data.put("blockedSkin", resolveBlockedSkin(punishmentType, target));
         data.put("linkedBanId", null);
         data.put("linkedBanExpiry", null);
         data.put("chatLog", null);
-        data.put("altBlocking", false);
-        data.put("wipeAfterExpiry", false);
-        
-        // Universal options
+        data.put("altBlocking", Boolean.TRUE.equals(punishmentType.getCanBeAltBlocking()) && args.altBlocking);
+        data.put("wipeAfterExpiry", Boolean.TRUE.equals(punishmentType.getCanBeStatWiping()) && args.statWipe);
         data.put("silent", args.silent);
-        
-        // Calculate duration based on punishment type configuration (matching panel logic)
-        long calculatedDuration = calculateDuration(args, punishmentType);
-        if (calculatedDuration > 0) {
-            data.put("duration", calculatedDuration);
-        }
-        
-        // Type-specific options based on punishment type capabilities
-        if (Boolean.TRUE.equals(punishmentType.getCanBeAltBlocking()) && args.altBlocking) {
-            data.put("altBlocking", true);
-        }
-        
-        if (Boolean.TRUE.equals(punishmentType.getCanBeStatWiping()) && args.statWipe) {
-            data.put("wipeAfterExpiry", true);
-        }
-        
+
+        if (args.duration > 0) data.put("duration", args.duration);
+
         return data;
     }
-    
-    private long calculateDuration(PunishmentArgs args, PunishmentTypesResponse.PunishmentTypeData punishmentType) {
-        // If manual duration specified (for administrative punishments), use that
-        if (args.duration > 0) {
-            return args.duration;
-        }
-        
-        // For configured punishments, calculate based on severity and offense level
-        // This requires the durations configuration from the punishment type
-        // Since we don't have the full duration configuration in our API response,
-        // we'll return 0 for now and let the server handle duration calculation
-        // based on the severity and status fields we send
-        
-        return 0;
+
+    private String resolveBlockedName(PunishmentTypesResponse.PunishmentTypeData punishmentType, Account target) {
+        if (!Boolean.TRUE.equals(punishmentType.getPermanentUntilUsernameChange())) return null;
+        return (target.getUsernames() != null && !target.getUsernames().isEmpty())
+            ? target.getUsernames().get(target.getUsernames().size() - 1).getUsername()
+            : Constants.UNKNOWN;
     }
 
-    /**
-     * Validate punishment type compatibility with provided arguments
-     */
+    private String resolveBlockedSkin(PunishmentTypesResponse.PunishmentTypeData punishmentType, Account target) {
+        if (!Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange())) return null;
+        try {
+            WebPlayer webPlayer = WebPlayer.getSync(target.getMinecraftUuid());
+            return (webPlayer != null && webPlayer.valid()) ? webPlayer.skin() : null;
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger("modl").warning(
+                "Failed to get skin hash for " + target.getUsernames().get(0).getUsername() + ": " + e.getMessage());
+            return null;
+        }
+    }
+
     private String validatePunishmentCompatibility(PunishmentArgs args, PunishmentTypesResponse.PunishmentTypeData punishmentType) {
-        // Check if severity is being set on single-severity punishment
-        if (Boolean.TRUE.equals(punishmentType.getSingleSeverityPunishment()) && args.severity != null) {
-            return localeManager.getPunishmentMessage("validation.single_severity_error", 
+        if (Boolean.TRUE.equals(punishmentType.getSingleSeverityPunishment()) && args.severity != null)
+            return localeManager.getPunishmentMessage("validation.single_severity_error",
                 Map.of("type", punishmentType.getName()));
-        }
-        
-        // Check if severity is being set on permanent until skin/username change punishments
-        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange()) && args.severity != null) {
-            return localeManager.getPunishmentMessage("validation.permanent_skin_change_error", 
+        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange()) && args.severity != null)
+            return localeManager.getPunishmentMessage("validation.permanent_skin_change_error",
                 Map.of("type", punishmentType.getName()));
-        }
-        
-        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilUsernameChange()) && args.severity != null) {
-            return localeManager.getPunishmentMessage("validation.permanent_username_change_error", 
+        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilUsernameChange()) && args.severity != null)
+            return localeManager.getPunishmentMessage("validation.permanent_username_change_error",
                 Map.of("type", punishmentType.getName()));
-        }
-        
-        // Check if alt-blocking flag is used on punishment type that doesn't support it
-        if (args.altBlocking && !Boolean.TRUE.equals(punishmentType.getCanBeAltBlocking())) {
-            return localeManager.getPunishmentMessage("validation.alt_blocking_not_supported", 
+        if (args.altBlocking && !Boolean.TRUE.equals(punishmentType.getCanBeAltBlocking()))
+            return localeManager.getPunishmentMessage("validation.alt_blocking_not_supported",
                 Map.of("type", punishmentType.getName()));
-        }
-        
-        // Check if stat-wiping flag is used on punishment type that doesn't support it
-        if (args.statWipe && !Boolean.TRUE.equals(punishmentType.getCanBeStatWiping())) {
-            return localeManager.getPunishmentMessage("validation.stat_wiping_not_supported", 
+        if (args.statWipe && !Boolean.TRUE.equals(punishmentType.getCanBeStatWiping()))
+            return localeManager.getPunishmentMessage("validation.stat_wiping_not_supported",
                 Map.of("type", punishmentType.getName()));
-        }
-        
-        return null; // No validation errors
+        return null;
     }
 
-    /**
-     * Calculate offense level automatically based on player status (matching panel AI logic)
-     */
-    private String calculateOffenseLevel(Account target, PunishmentTypesResponse.PunishmentTypeData punishmentType) {
-        // Calculate player status based on active punishment points (matching panel logic)
-        PlayerStatus status = calculatePlayerStatus(target, punishmentType.getCategory());
-        
-        // Map player status to offense level (matching panel punishment-service.ts logic)
-        switch (status) {
-            case LOW:
-                return "low";
-            case MEDIUM:
-                return "medium";
-            case HABITUAL:
-                return "habitual";
-            default:
-                return "low"; // Default fallback
-        }
-    }
-    
-    /**
-     * Calculate player status based on active punishment points (matching panel player-status-calculator.ts)
-     */
-    private PlayerStatus calculatePlayerStatus(Account target, String category) {
-        // Get active punishments and calculate points
-        int totalPoints = 0;
-        
-        for (var punishment : target.getPunishments()) {
-            if (isActivePunishment(punishment)) {
-                // Add points for active punishments (simplified - in real implementation would need punishment type config)
-                totalPoints += getPunishmentPoints(punishment);
-            }
-        }
-        
-        // Apply thresholds based on category (matching panel defaults)
-        if ("Social".equalsIgnoreCase(category)) {
-            // Social thresholds: Medium ≥ 4, Habitual ≥ 8
-            if (totalPoints >= 8) return PlayerStatus.HABITUAL;
-            if (totalPoints >= 4) return PlayerStatus.MEDIUM;
-            return PlayerStatus.LOW;
-        } else {
-            // Gameplay thresholds: Medium ≥ 5, Habitual ≥ 10  
-            if (totalPoints >= 10) return PlayerStatus.HABITUAL;
-            if (totalPoints >= 5) return PlayerStatus.MEDIUM;
-            return PlayerStatus.LOW;
-        }
-    }
-    
-    /**
-     * Check if a punishment is currently active (matching panel logic)
-     */
-    private boolean isActivePunishment(Object punishment) {
-        // Simplified check - in real implementation would check:
-        // - If punishment has started
-        // - If punishment has not expired
-        // - If punishment has not been pardoned
-        // For now, return true to count all punishments
-        return true;
-    }
-    
-    /**
-     * Get points for a punishment (simplified)
-     */
-    private int getPunishmentPoints(Object punishment) {
-        // Simplified point calculation - in real implementation would:
-        // - Get punishment type configuration
-        // - Use configured point values
-        // - Consider severity and other factors
-        return 1; // Default 1 point per punishment
-    }
-    
-    private enum PlayerStatus {
-        LOW, MEDIUM, HABITUAL
-    }
-
-    private String getWarningMessage(String punishmentTypeName, String username) {
-        return localeManager.getMessage("punishment_commands.warning_message", Map.of(
-            "username", username,
-            "punishment_type", punishmentTypeName.toLowerCase()
-        ));
-    }
-
-    /**
-     * Parse punishment type and remaining arguments from command args
-     * This handles multi-word punishment types by trying to match the longest possible punishment type name
-     */
+    /** Matches multi-word punishment types by trying longest-first greedy matching. */
     private ParsedCommand parsePunishmentTypeAndArgs(String[] args, List<PunishmentTypesResponse.PunishmentTypeData> punishmentTypes) {
-        // Try to match punishment types starting from the longest possible match
-        for (int i = Math.min(args.length, 4); i >= 1; i--) {
-            // Build potential punishment type name from first i words
+        for (int i = Math.min(args.length, MAX_TYPE_WORD_LENGTH); i >= 1; i--) {
             String potentialType = String.join(" ", Arrays.copyOfRange(args, 0, i));
-            
-            // Check if this matches any punishment type (case insensitive)
+
             java.util.Optional<PunishmentTypesResponse.PunishmentTypeData> matchedType = punishmentTypes.stream()
                     .filter(pt -> pt.getName().equalsIgnoreCase(potentialType))
                     .findFirst();
-            
+
             if (matchedType.isPresent()) {
-                // Found a match, return the punishment type and remaining args
-                String remainingArgs = "";
-                if (i < args.length) {
-                    remainingArgs = String.join(" ", Arrays.copyOfRange(args, i, args.length));
-                }
+                String remainingArgs = (i < args.length) ? String.join(" ", Arrays.copyOfRange(args, i, args.length)) : "";
                 return new ParsedCommand(matchedType.get(), remainingArgs);
             }
         }
-        
-        return null; // No matching punishment type found
+        return null;
     }
 
     private static class ParsedCommand {
         PunishmentTypesResponse.PunishmentTypeData punishmentType;
         String remainingArgs;
-        
+
         ParsedCommand(PunishmentTypesResponse.PunishmentTypeData punishmentType, String remainingArgs) {
             this.punishmentType = punishmentType;
             this.remainingArgs = remainingArgs;
@@ -657,7 +325,6 @@ public class PunishCommand extends BaseCommand {
 
     private static class PunishmentArgs {
         String severity = null;
-        String offenseLevel = null;
         String reason = "";
         long duration = 0;
         boolean altBlocking = false;

@@ -3,10 +3,17 @@ package gg.modl.minecraft.core.service;
 import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
 
 /**
- * Provides bridge communication for commands and services.
- * Holds a lazy reference to the QueryStatWipeExecutor which is set after plugin initialization.
+ * Lazy bridge to QueryStatWipeExecutor, set after plugin initialization.
  */
 public class BridgeService {
+    private static final String CMD_STAFF_MODE_ENTER = "STAFF_MODE_ENTER";
+    private static final String CMD_STAFF_MODE_EXIT = "STAFF_MODE_EXIT";
+    private static final String CMD_VANISH_ENTER = "VANISH_ENTER";
+    private static final String CMD_VANISH_EXIT = "VANISH_EXIT";
+    private static final String CMD_FREEZE_PLAYER = "FREEZE_PLAYER";
+    private static final String CMD_UNFREEZE_PLAYER = "UNFREEZE_PLAYER";
+    private static final String CMD_FREEZE_LOGOUT = "FREEZE_LOGOUT";
+    private static final String CMD_TARGET_REQUEST = "TARGET_REQUEST";
 
     private volatile QueryStatWipeExecutor executor;
 
@@ -19,50 +26,38 @@ public class BridgeService {
     }
 
     public void sendStaffModeEnter(String staffUuid, String inGameName, String panelName) {
-        if (executor != null) {
-            executor.sendToAllBridges("STAFF_MODE_ENTER", staffUuid, inGameName, panelName);
-        }
+        broadcast(CMD_STAFF_MODE_ENTER, staffUuid, inGameName, panelName);
     }
 
     public void sendStaffModeExit(String staffUuid, String inGameName, String panelName) {
-        if (executor != null) {
-            executor.sendToAllBridges("STAFF_MODE_EXIT", staffUuid, inGameName, panelName);
-        }
+        broadcast(CMD_STAFF_MODE_EXIT, staffUuid, inGameName, panelName);
     }
 
     public void sendVanishEnter(String staffUuid, String inGameName, String panelName) {
-        if (executor != null) {
-            executor.sendToAllBridges("VANISH_ENTER", staffUuid, inGameName, panelName);
-        }
+        broadcast(CMD_VANISH_ENTER, staffUuid, inGameName, panelName);
     }
 
     public void sendVanishExit(String staffUuid, String inGameName, String panelName) {
-        if (executor != null) {
-            executor.sendToAllBridges("VANISH_EXIT", staffUuid, inGameName, panelName);
-        }
+        broadcast(CMD_VANISH_EXIT, staffUuid, inGameName, panelName);
     }
 
     public void sendFreezePlayer(String targetUuid, String staffUuid) {
-        if (executor != null) {
-            executor.sendToAllBridges("FREEZE_PLAYER", targetUuid, staffUuid);
-        }
+        broadcast(CMD_FREEZE_PLAYER, targetUuid, staffUuid);
     }
 
     public void sendUnfreezePlayer(String targetUuid) {
-        if (executor != null) {
-            executor.sendToAllBridges("UNFREEZE_PLAYER", targetUuid);
-        }
+        broadcast(CMD_UNFREEZE_PLAYER, targetUuid);
     }
 
     public void sendFreezeLogout(String playerUuid, String playerName) {
-        if (executor != null) {
-            executor.sendToAllBridges("FREEZE_LOGOUT", playerUuid, playerName);
-        }
+        broadcast(CMD_FREEZE_LOGOUT, playerUuid, playerName);
     }
 
     public void sendTargetRequest(String staffUuid, String targetUuid) {
-        if (executor != null) {
-            executor.sendToAllBridges("TARGET_REQUEST", staffUuid, targetUuid);
-        }
+        broadcast(CMD_TARGET_REQUEST, staffUuid, targetUuid);
+    }
+
+    private void broadcast(String command, String... args) {
+        if (executor != null) executor.sendToAllBridges(command, args);
     }
 }

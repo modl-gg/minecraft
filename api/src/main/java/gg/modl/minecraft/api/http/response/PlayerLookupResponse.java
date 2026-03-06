@@ -31,15 +31,10 @@ public class PlayerLookupResponse {
         private boolean isOnline;
         private String ipAddress;
         private String country;
-        
-        // Punishment statistics
+
         private PunishmentStats punishmentStats;
-        
-        // Recent activity
         private List<RecentPunishment> recentPunishments;
         private List<RecentTicket> recentTickets;
-        
-        // Profile URLs
         private String profileUrl;
         private String punishmentsUrl;
         private String ticketsUrl;
@@ -56,7 +51,7 @@ public class PlayerLookupResponse {
         private int kicks;
         private int warnings;
         private int points;
-        private String status; // low, medium, habitual
+        private String status;
     }
     
     @Data

@@ -15,10 +15,6 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
 
-/**
- * Command to enable or disable server maintenance mode.
- * Only staff members with the {@code staff.maintenance} permission may use this command.
- */
 @RequiredArgsConstructor
 @CommandAlias("%cmd_maintenance")
 @Conditions("staff")
@@ -41,8 +37,6 @@ public class MaintenanceCommand extends BaseCommand {
 
         String inGameName = getInGameName(sender);
         String panelName = getPanelName(sender, inGameName);
-
-        // Broadcast to all staff
         platform.staffBroadcast(localeManager.getMessage("maintenance.enabled", Map.of(
                 "staff", panelName,
                 "in-game-name", inGameName
@@ -62,8 +56,6 @@ public class MaintenanceCommand extends BaseCommand {
 
         String inGameName = getInGameName(sender);
         String panelName = getPanelName(sender, inGameName);
-
-        // Broadcast to all staff
         platform.staffBroadcast(localeManager.getMessage("maintenance.disabled", Map.of(
                 "staff", panelName,
                 "in-game-name", inGameName
@@ -73,11 +65,8 @@ public class MaintenanceCommand extends BaseCommand {
     @Default
     @Description("Show maintenance mode status")
     public void status(CommandIssuer sender) {
-        if (maintenanceService.isEnabled()) {
-            sender.sendMessage(localeManager.getMessage("maintenance.status_enabled"));
-        } else {
-            sender.sendMessage(localeManager.getMessage("maintenance.status_disabled"));
-        }
+        if (maintenanceService.isEnabled()) sender.sendMessage(localeManager.getMessage("maintenance.status_enabled"));
+        else sender.sendMessage(localeManager.getMessage("maintenance.status_disabled"));
     }
 
     private String getInGameName(CommandIssuer sender) {

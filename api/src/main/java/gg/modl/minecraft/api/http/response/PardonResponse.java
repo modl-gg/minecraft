@@ -13,9 +13,6 @@ public class PardonResponse {
     private int pardonedCount;
     private String message;
 
-    /**
-     * Check if any punishments were actually pardoned.
-     */
     public boolean hasPardoned() {
         return success && pardonedCount > 0;
     }

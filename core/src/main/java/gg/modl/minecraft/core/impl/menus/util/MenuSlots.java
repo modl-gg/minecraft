@@ -1,19 +1,7 @@
 package gg.modl.minecraft.core.impl.menus.util;
 
-/**
- * Constants for menu slot positions in a 54-slot (6-row) inventory.
- */
 public final class MenuSlots {
     private MenuSlots() {}
-
-    // Header row (row 0: slots 0-8)
-    public static final int HEADER_START = 0;
-    public static final int HEADER_END = 8;
-    public static final int HEADER_CENTER = 4;
-
-    // Content area for primary menus (rows 1-2: slots 9-26)
-    public static final int CONTENT_ROW_1_START = 9;
-    public static final int CONTENT_ROW_2_START = 18;
 
     // Inspect menu primary layout
     public static final int INSPECT_PLAYER_HEAD = 10;
@@ -30,18 +18,6 @@ public final class MenuSlots {
     public static final int STAFF_TICKETS = 13;
     public static final int STAFF_PANEL_LINK = 15;
     public static final int STAFF_SETTINGS = 16;
-
-    // List menu content area (rows 2-3: slots 18-35 for 18 items, or rows 3-4 for 6-row menus)
-    public static final int LIST_CONTENT_START = 27;
-    public static final int LIST_CONTENT_END = 34;
-
-    // Footer row for 5-row menu (row 4: slots 36-44)
-    public static final int FOOTER_5ROW_START = 36;
-    public static final int FOOTER_5ROW_END = 44;
-
-    // Footer row for 6-row menu (row 5: slots 45-53)
-    public static final int FOOTER_6ROW_START = 45;
-    public static final int FOOTER_6ROW_END = 53;
 
     // Navigation slots
     // Row 4 (36-44): * * < * y * > * * where < is prev, y is filter/sort, > is next
@@ -104,31 +80,4 @@ public final class MenuSlots {
     public static final int COMPACT_INSPECT_REPORTS = 14;
     public static final int COMPACT_INSPECT_PUNISH = 16;
 
-    /**
-     * Check if a slot is in the header row.
-     */
-    public static boolean isHeaderSlot(int slot) {
-        return slot >= HEADER_START && slot <= HEADER_END;
-    }
-
-    /**
-     * Check if a slot is in the footer row (6-row menu).
-     */
-    public static boolean isFooterSlot(int slot) {
-        return slot >= FOOTER_6ROW_START && slot <= FOOTER_6ROW_END;
-    }
-
-    /**
-     * Get all header slots.
-     */
-    public static int[] getHeaderSlots() {
-        return new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8};
-    }
-
-    /**
-     * Get all footer slots for a 6-row menu.
-     */
-    public static int[] getFooterSlots() {
-        return new int[]{45, 46, 47, 48, 49, 50, 51, 52, 53};
-    }
 }

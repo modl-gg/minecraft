@@ -1,37 +1,102 @@
 package gg.modl.minecraft.core.impl.http;
 
+import com.google.gson.Gson;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
-import com.google.gson.Gson;
-import gg.modl.minecraft.api.http.request.*;
-import gg.modl.minecraft.api.http.request.v2.*;
-import gg.modl.minecraft.api.http.response.*;
-import java.util.HashMap;
-import java.util.Map;
+import gg.modl.minecraft.api.http.request.AddPunishmentEvidenceRequest;
+import gg.modl.minecraft.api.http.request.AddPunishmentNoteRequest;
+import gg.modl.minecraft.api.http.request.ChangePunishmentDurationRequest;
+import gg.modl.minecraft.api.http.request.ChatLogBatchRequest;
+import gg.modl.minecraft.api.http.request.ClaimTicketRequest;
+import gg.modl.minecraft.api.http.request.CommandLogBatchRequest;
+import gg.modl.minecraft.api.http.request.CreatePlayerNoteRequest;
+import gg.modl.minecraft.api.http.request.CreatePunishmentRequest;
+import gg.modl.minecraft.api.http.request.CreateTicketRequest;
+import gg.modl.minecraft.api.http.request.MigrationStatusUpdateRequest;
+import gg.modl.minecraft.api.http.request.ModifyPunishmentTicketsRequest;
+import gg.modl.minecraft.api.http.request.NotificationAcknowledgeRequest;
+import gg.modl.minecraft.api.http.request.PardonPlayerRequest;
+import gg.modl.minecraft.api.http.request.PardonPunishmentRequest;
+import gg.modl.minecraft.api.http.request.PlayerDisconnectRequest;
+import gg.modl.minecraft.api.http.request.PlayerGetRequest;
+import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
+import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
+import gg.modl.minecraft.api.http.request.PlayerNameRequest;
+import gg.modl.minecraft.api.http.request.PlayerNoteCreateRequest;
+import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
+import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
+import gg.modl.minecraft.api.http.request.StatWipeAcknowledgeRequest;
+import gg.modl.minecraft.api.http.request.SyncRequest;
+import gg.modl.minecraft.api.http.request.TogglePunishmentOptionRequest;
+import gg.modl.minecraft.api.http.request.v2.V2CreateNoteRequest;
+import gg.modl.minecraft.api.http.request.v2.V2CreatePunishmentRequest;
+import gg.modl.minecraft.api.http.request.v2.V2DisconnectRequest;
+import gg.modl.minecraft.api.http.request.v2.V2LoginRequest;
+import gg.modl.minecraft.api.http.request.v2.V2LookupRequest;
+import gg.modl.minecraft.api.http.request.v2.V2NotificationAcknowledgeRequest;
+import gg.modl.minecraft.api.http.request.v2.V2PardonPlayerRequest;
+import gg.modl.minecraft.api.http.request.v2.V2PardonPunishmentRequest;
+import gg.modl.minecraft.api.http.request.v2.V2PunishmentAcknowledgeRequest;
+import gg.modl.minecraft.api.http.request.v2.V2SubmitIpInfoRequest;
+import gg.modl.minecraft.api.http.request.v2.V2SyncRequest;
+import gg.modl.minecraft.api.http.response.ChatLogsResponse;
+import gg.modl.minecraft.api.http.response.ClaimTicketResponse;
+import gg.modl.minecraft.api.http.response.CommandLogsResponse;
+import gg.modl.minecraft.api.http.response.CreateTicketResponse;
+import gg.modl.minecraft.api.http.response.DashboardStatsResponse;
+import gg.modl.minecraft.api.http.response.EvidenceUploadTokenResponse;
+import gg.modl.minecraft.api.http.response.LinkedAccountsResponse;
+import gg.modl.minecraft.api.http.response.OnlinePlayersResponse;
+import gg.modl.minecraft.api.http.response.PardonResponse;
+import gg.modl.minecraft.api.http.response.PlayerGetResponse;
+import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
+import gg.modl.minecraft.api.http.response.PlayerLookupResponse;
+import gg.modl.minecraft.api.http.response.PlayerNameResponse;
+import gg.modl.minecraft.api.http.response.PlayerNoteCreateResponse;
+import gg.modl.minecraft.api.http.response.PlayerProfileResponse;
+import gg.modl.minecraft.api.http.response.PunishmentCreateResponse;
+import gg.modl.minecraft.api.http.response.PunishmentDetailResponse;
+import gg.modl.minecraft.api.http.response.PunishmentPreviewResponse;
+import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
+import gg.modl.minecraft.api.http.response.RecentPunishmentsResponse;
+import gg.modl.minecraft.api.http.response.ReportsResponse;
+import gg.modl.minecraft.api.http.response.RolesListResponse;
+import gg.modl.minecraft.api.http.response.Staff2faTokenResponse;
+import gg.modl.minecraft.api.http.response.StaffListResponse;
+import gg.modl.minecraft.api.http.response.StaffPermissionsResponse;
+import gg.modl.minecraft.api.http.response.SyncResponse;
+import gg.modl.minecraft.api.http.response.TicketsResponse;
 import gg.modl.minecraft.core.util.CircuitBreaker;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
-/**
- * V2 API HTTP client implementation.
- * Connects to centralized API at api.modl.gg or api.modl.top.
- * Uses X-API-Key and X-Server-Domain headers for authentication.
- */
 public class ModlHttpClientV2Impl implements ModlHttpClient {
+    private static final String HEADER_API_KEY = "X-API-Key";
+    private static final String HEADER_SERVER_DOMAIN = "X-Server-Domain";
+    private static final String HEADER_CONTENT_TYPE = "Content-Type";
+    private static final String CONTENT_TYPE_JSON = "application/json";
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration LOGIN_TIMEOUT = Duration.ofSeconds(15);
+    private static final Duration SYNC_TIMEOUT = Duration.ofSeconds(20);
+    private static final int MAX_LOG_BODY_LENGTH = 1000;
+    private static final int HTTP_BAD_GATEWAY = 502;
+
     @NotNull
     private final String baseUrl;
     @NotNull
@@ -48,16 +113,12 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     private final CircuitBreaker circuitBreaker;
 
-    public ModlHttpClientV2Impl(@NotNull String baseUrl, @NotNull String apiKey, @NotNull String serverDomain) {
-        this(baseUrl, apiKey, serverDomain, false);
-    }
-
     public ModlHttpClientV2Impl(@NotNull String baseUrl, @NotNull String apiKey, @NotNull String serverDomain, boolean debugMode) {
         this.baseUrl = baseUrl;
         this.apiKey = apiKey;
         this.serverDomain = serverDomain;
         this.debugMode = debugMode;
-        this.circuitBreaker = new CircuitBreaker("modl-api-v2");
+        this.circuitBreaker = new CircuitBreaker();
 
         ThreadFactory httpThreadFactory = r -> {
             Thread t = new Thread(r, "modl-http-v2-client");
@@ -67,7 +128,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         };
 
         this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
+                .connectTimeout(CONNECT_TIMEOUT)
                 .executor(Executors.newCachedThreadPool(httpThreadFactory))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
@@ -75,14 +136,11 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         this.logger = Logger.getLogger(ModlHttpClientV2Impl.class.getName());
     }
 
-    /**
-     * Build a request with standard V2 headers.
-     */
     private HttpRequest.Builder requestBuilder(String endpoint) {
         return HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + endpoint))
-                .header("X-API-Key", apiKey)
-                .header("X-Server-Domain", serverDomain);
+                .header(HEADER_API_KEY, apiKey)
+                .header(HEADER_SERVER_DOMAIN, serverDomain);
     }
 
     @NotNull
@@ -104,7 +162,6 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<PlayerLoginResponse> playerLogin(@NotNull PlayerLoginRequest request) {
-        // Convert to V2 format with optional IP geo data
         Map<String, Object> ipInfoMap = null;
         if (request.getIpInfo() != null) {
             ipInfoMap = new HashMap<>();
@@ -124,13 +181,11 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 request.getServerName()
         );
         String requestBody = gson.toJson(v2Request);
-        if (debugMode) {
-            logger.info(String.format("[V2] Player login request body: %s", requestBody));
-        }
+        if (debugMode) logger.info(String.format("[V2] Player login request body: %s", requestBody));
 
         return sendAsync(requestBuilder("/minecraft/players/login")
-                .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(15))
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
+                .timeout(LOGIN_TIMEOUT)
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build(), PlayerLoginResponse.class, "LOGIN");
     }
@@ -138,10 +193,10 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<Void> playerDisconnect(@NotNull PlayerDisconnectRequest request) {
-        // Convert to V2 format
+
         V2DisconnectRequest v2Request = new V2DisconnectRequest(request.getMinecraftUuid(), request.getSessionDurationMs());
         return sendAsync(requestBuilder("/minecraft/players/disconnect")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
                 .build(), Void.class);
     }
@@ -150,7 +205,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @Override
     public CompletableFuture<CreateTicketResponse> createTicket(@NotNull CreateTicketRequest request) {
         return sendAsync(requestBuilder("/minecraft/tickets")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
                 .build(), CreateTicketResponse.class);
     }
@@ -159,12 +214,10 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @Override
     public CompletableFuture<CreateTicketResponse> createUnfinishedTicket(@NotNull CreateTicketRequest request) {
         String requestBody = gson.toJson(request);
-        if (debugMode) {
-            logger.info(String.format("[V2] Create unfinished ticket request body: %s", requestBody));
-        }
+        if (debugMode) logger.info(String.format("[V2] Create unfinished ticket request body: %s", requestBody));
 
         return sendAsync(requestBuilder("/minecraft/tickets/unfinished")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build(), CreateTicketResponse.class, "CREATE_UNFINISHED_TICKET");
     }
@@ -172,9 +225,9 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<Void> createPunishment(@NotNull CreatePunishmentRequest request) {
-        // Note: CreatePunishmentRequest is not currently used - see createPunishmentWithResponse
+
         return sendAsync(requestBuilder("/minecraft/punishments/create")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
                 .build(), Void.class);
     }
@@ -182,13 +235,13 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<Void> createPlayerNote(@NotNull CreatePlayerNoteRequest request) {
-        // Build body without targetUuid since it's in the path
+
         Map<String, String> body = new HashMap<>();
         body.put("issuerName", request.getIssuerName());
         body.put("text", request.getText());
 
         return sendAsync(requestBuilder("/minecraft/players/" + request.getTargetUuid() + "/notes")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
@@ -196,7 +249,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<PunishmentCreateResponse> createPunishmentWithResponse(@NotNull PunishmentCreateRequest request) {
-        // Convert to V2 format - backend expects typeOrdinal not typeOrdinal
+
         V2CreatePunishmentRequest v2Request = new V2CreatePunishmentRequest(
                 request.getTargetUuid(),
                 request.getIssuerName(),
@@ -210,7 +263,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 request.getStatus()
         );
         return sendAsync(requestBuilder("/minecraft/punishments/dynamic")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
                 .build(), PunishmentCreateResponse.class);
     }
@@ -234,13 +287,13 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<PlayerNoteCreateResponse> createPlayerNoteWithResponse(@NotNull PlayerNoteCreateRequest request) {
-        // Convert to V2 format - backend expects only text and issuerName in body, targetUuid in path
+
         V2CreateNoteRequest v2Request = new V2CreateNoteRequest(
                 request.getText(),
                 request.getIssuerName()
         );
         return sendAsync(requestBuilder("/minecraft/players/" + request.getTargetUuid() + "/notes")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
                 .build(), PlayerNoteCreateResponse.class);
     }
@@ -248,7 +301,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<SyncResponse> sync(@NotNull SyncRequest request) {
-        // Convert to V2 format
+
         V2SyncRequest v2Request = new V2SyncRequest(
                 request.getLastSyncTimestamp(),
                 request.getOnlinePlayers().stream()
@@ -263,13 +316,11 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 request.getServerName()
         );
         String requestBody = gson.toJson(v2Request);
-        if (debugMode) {
-            logger.info(String.format("[V2] Sync request body: %s", requestBody));
-        }
+        if (debugMode) logger.info(String.format("[V2] Sync request body: %s", requestBody));
 
         return sendAsync(requestBuilder("/minecraft/players/sync")
-                .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(20))
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
+                .timeout(SYNC_TIMEOUT)
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build(), SyncResponse.class, "SYNC");
     }
@@ -277,7 +328,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<Void> acknowledgePunishment(@NotNull PunishmentAcknowledgeRequest request) {
-        // Convert to V2 format
+
         V2PunishmentAcknowledgeRequest v2Request = new V2PunishmentAcknowledgeRequest(
                 request.getPunishmentId(),
                 request.getPlayerUuid(),
@@ -286,7 +337,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 request.getErrorMessage()
         );
         return sendAsync(requestBuilder("/minecraft/punishments/acknowledge")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
                 .build(), Void.class);
     }
@@ -294,14 +345,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<Void> acknowledgeNotifications(@NotNull NotificationAcknowledgeRequest request) {
-        // Convert to V2 format
+
         V2NotificationAcknowledgeRequest v2Request = new V2NotificationAcknowledgeRequest(
                 request.getPlayerUuid(),
                 request.getNotificationIds(),
                 request.getAcknowledgedAt()
         );
         return sendAsync(requestBuilder("/minecraft/notifications/acknowledge")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
                 .build(), Void.class);
     }
@@ -325,10 +376,10 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<PlayerLookupResponse> lookupPlayer(@NotNull PlayerLookupRequest request) {
-        // Convert to V2 format
+
         V2LookupRequest v2Request = new V2LookupRequest(request.getQuery(), false);
         return sendAsync(requestBuilder("/minecraft/players/lookup")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
                 .build(), PlayerLookupResponse.class);
     }
@@ -336,14 +387,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<PardonResponse> pardonPunishment(@NotNull PardonPunishmentRequest request) {
-        // Convert to V2 format - backend expects issuerName, reason, expectedType in body
+
         V2PardonPunishmentRequest v2Request = new V2PardonPunishmentRequest(
                 request.getIssuerName(),
                 request.getReason(),
                 request.getExpectedType()
         );
         return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/pardon")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
                 .build(), PardonResponse.class);
     }
@@ -351,7 +402,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<PardonResponse> pardonPlayer(@NotNull PardonPlayerRequest request) {
-        // Convert to V2 format
+
         V2PardonPlayerRequest v2Request = new V2PardonPlayerRequest(
                 request.getPlayerName(),
                 request.getIssuerName(),
@@ -359,7 +410,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 request.getReason()
         );
         return sendAsync(requestBuilder("/minecraft/players/pardon")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
                 .build(), PardonResponse.class);
     }
@@ -368,7 +419,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> updateMigrationStatus(@NotNull MigrationStatusUpdateRequest request) {
         return sendAsync(requestBuilder("/minecraft/migration/progress")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
                 .build(), Void.class);
     }
@@ -379,7 +430,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                                                  String country, String region, String asn, boolean proxy, boolean hosting) {
         V2SubmitIpInfoRequest v2Request = new V2SubmitIpInfoRequest(minecraftUUID, ip, country, region, asn, proxy, hosting);
         return sendAsync(requestBuilder("/minecraft/players/submit-ip-info")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(v2Request)))
                 .build(), Void.class);
     }
@@ -404,9 +455,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @Override
     public CompletableFuture<ReportsResponse> getReports(String status) {
         String endpoint = "/minecraft/reports";
-        if (status != null && !status.isEmpty()) {
-            endpoint += "?status=" + status;
-        }
+        if (status != null && !status.isEmpty()) endpoint += "?status=" + status;
         return sendAsync(requestBuilder(endpoint)
                 .GET()
                 .build(), ReportsResponse.class);
@@ -416,9 +465,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @Override
     public CompletableFuture<ReportsResponse> getPlayerReports(@NotNull java.util.UUID playerUuid, String status) {
         String endpoint = "/minecraft/reports/player/" + playerUuid.toString();
-        if (status != null && !status.isEmpty()) {
-            endpoint += "?status=" + status;
-        }
+        if (status != null && !status.isEmpty()) endpoint += "?status=" + status;
         return sendAsync(requestBuilder(endpoint)
                 .GET()
                 .build(), ReportsResponse.class);
@@ -432,7 +479,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         if (reason != null) body.put("reason", reason);
 
         return sendAsync(requestBuilder("/minecraft/reports/" + reportId + "/dismiss")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
@@ -446,7 +493,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         if (punishmentId != null) body.put("punishmentId", punishmentId);
 
         return sendAsync(requestBuilder("/minecraft/reports/" + reportId + "/resolve")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
@@ -461,9 +508,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
             endpoint.append("?status=").append(status);
             hasParam = true;
         }
-        if (type != null && !type.isEmpty()) {
-            endpoint.append(hasParam ? "&" : "?").append("type=").append(type);
-        }
+        if (type != null && !type.isEmpty()) endpoint.append(hasParam ? "&" : "?").append("type=").append(type);
 
         return sendAsync(requestBuilder(endpoint.toString())
                 .GET()
@@ -495,7 +540,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         body.put("note", request.getNote());
 
         return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/note")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
@@ -508,7 +553,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         body.put("evidenceUrl", request.getEvidenceUrl());
 
         return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/evidence")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
@@ -521,7 +566,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         body.put("newDuration", request.getNewDuration());
 
         return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/duration")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
@@ -535,7 +580,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         body.put("enabled", request.isEnabled());
 
         return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/toggle")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
@@ -548,7 +593,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         body.put("playerName", request.getPlayerName());
 
         return sendAsync(requestBuilder("/minecraft/tickets/" + request.getTicketId() + "/claim")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), ClaimTicketResponse.class);
     }
@@ -569,7 +614,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         body.put("sessionDurationMs", sessionDurationMs);
 
         return sendAsync(requestBuilder("/minecraft/staff/disconnect")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
@@ -581,7 +626,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         body.put("role", roleName);
 
         return sendAsync(requestBuilder("/minecraft/staff/" + staffId + "/role")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .method("PATCH", HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
@@ -601,7 +646,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         body.put("permissions", permissions);
 
         return sendAsync(requestBuilder("/minecraft/roles/" + roleId + "/permissions")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .method("PATCH", HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
@@ -621,7 +666,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         body.put("issuerName", issuerName);
 
         return sendAsync(requestBuilder("/minecraft/punishments/" + punishmentId + "/upload-token")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), EvidenceUploadTokenResponse.class);
     }
@@ -631,14 +676,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     public CompletableFuture<Void> updatePlayerServer(@NotNull String minecraftUuid, @NotNull String serverName) {
         Map<String, String> body = Map.of("minecraftUuid", minecraftUuid, "serverName", serverName);
         return sendAsync(requestBuilder("/minecraft/players/update-server")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
 
     @NotNull
     @Override
-    public CompletableFuture<Void> modifyPunishmentTickets(@NotNull gg.modl.minecraft.api.http.request.ModifyPunishmentTicketsRequest request) {
+    public CompletableFuture<Void> modifyPunishmentTickets(@NotNull ModifyPunishmentTicketsRequest request) {
         Map<String, Object> body = new HashMap<>();
         body.put("issuerName", request.getIssuerName());
         body.put("addTicketIds", request.getAddTicketIds());
@@ -646,21 +691,21 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         body.put("modifyAssociatedTickets", request.isModifyAssociatedTickets());
 
         return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/tickets")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
 
     @NotNull
     @Override
-    public CompletableFuture<Void> acknowledgeStatWipe(@NotNull gg.modl.minecraft.api.http.request.StatWipeAcknowledgeRequest request) {
+    public CompletableFuture<Void> acknowledgeStatWipe(@NotNull StatWipeAcknowledgeRequest request) {
         Map<String, Object> body = new HashMap<>();
         body.put("punishmentId", request.getPunishmentId());
         body.put("serverName", request.getServerName());
         body.put("success", request.isSuccess());
 
         return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/stat-wipe-acknowledge")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Void.class);
     }
@@ -672,7 +717,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         body.put("ids", ticketIds);
 
         return sendAsync(requestBuilder("/minecraft/tickets/by-ids")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), TicketsResponse.class);
     }
@@ -682,7 +727,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     public CompletableFuture<Staff2faTokenResponse> generateStaff2faToken(@NotNull String minecraftUuid, @NotNull String ip) {
         Map<String, String> body = Map.of("minecraftUuid", minecraftUuid, "ip", ip);
         return sendAsync(requestBuilder("/minecraft/staff/2fa/generate")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .build(), Staff2faTokenResponse.class);
     }
@@ -691,7 +736,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> submitChatLogs(@NotNull ChatLogBatchRequest chatLogBatch) {
         return sendAsync(requestBuilder("/minecraft/players/chat-log")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(chatLogBatch)))
                 .build(), Void.class);
     }
@@ -700,7 +745,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> submitCommandLogs(@NotNull CommandLogBatchRequest commandLogBatch) {
         return sendAsync(requestBuilder("/minecraft/players/command-log")
-                .header("Content-Type", "application/json")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(commandLogBatch)))
                 .build(), Void.class);
     }
@@ -731,7 +776,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
 
         if (!circuitBreaker.allowRequest()) {
             return CompletableFuture.failedFuture(
-                    new PanelUnavailableException(503, request.uri().getPath(),
+                    new PanelUnavailableException(HttpURLConnection.HTTP_UNAVAILABLE, request.uri().getPath(),
                             "V2 API is temporarily unavailable (circuit breaker open)"));
         }
 
@@ -754,28 +799,19 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
 
                         String body = response.body();
                         if (body != null && !body.isEmpty()) {
-                            if ("LOGIN".equals(operation) || "SYNC".equals(operation) || body.length() <= 1000) {
-                                logger.info(String.format("[V2-RES-%s] Body: %s", requestId, body));
-                            } else {
-                                logger.info(String.format("[V2-RES-%s] Body: %s... (truncated, %d chars total)",
-                                        requestId, body.substring(0, 1000), body.length()));
-                            }
+                            if ("LOGIN".equals(operation) || "SYNC".equals(operation) || body.length() <= MAX_LOG_BODY_LENGTH) logger.info(String.format("[V2-RES-%s] Body: %s", requestId, body));
+                            else logger.info(String.format("[V2-RES-%s] Body: %s... (truncated, %d chars total)", requestId, body.substring(0, MAX_LOG_BODY_LENGTH), body.length()));
                         }
                     }
 
                     if (response.statusCode() >= 200 && response.statusCode() < 300) {
                         circuitBreaker.recordSuccess();
 
-                        if (responseType == Void.class) {
-                            return null;
-                        }
+                        if (responseType == Void.class) return null;
 
                         try {
                             T result = gson.fromJson(response.body(), responseType);
-                            if (debugMode) {
-                                logger.info(String.format("[V2-REQ-%s] Successfully parsed response to %s",
-                                        requestId, responseType.getSimpleName()));
-                            }
+                            if (debugMode) logger.info(String.format("[V2-REQ-%s] Successfully parsed response to %s", requestId, responseType.getSimpleName()));
                             return result;
                         } catch (Exception e) {
                             logger.severe(String.format("[V2-REQ-%s] Failed to parse response: %s", requestId, e.getMessage()));
@@ -789,10 +825,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                                 String msg = errorResponse.has("message") ? errorResponse.get("message").getAsString() : "";
                                 String errors = errorResponse.has("errors") ? errorResponse.get("errors").getAsString() : "";
                                 errorMessage = !errors.isEmpty() ? msg + " Details: " + errors : msg;
-                                if (errorMessage.isEmpty()) {
-                                    errorMessage = String.format("V2 request failed with status code %d: %s",
-                                            response.statusCode(), response.body());
-                                }
+                                if (errorMessage.isEmpty()) errorMessage = String.format("V2 request failed with status code %d: %s", response.statusCode(), response.body());
                             } else {
                                 errorMessage = String.format("V2 request failed with status code %d: %s",
                                         response.statusCode(), response.body());
@@ -802,15 +835,12 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                                     response.statusCode(), response.body());
                         }
 
-                        if (response.statusCode() == 502) {
+                        if (response.statusCode() == HTTP_BAD_GATEWAY) {
                             circuitBreaker.recordFailure();
-                            throw new PanelUnavailableException(502, request.uri().getPath(),
+                            throw new PanelUnavailableException(HTTP_BAD_GATEWAY, request.uri().getPath(),
                                     "V2 API is temporarily unavailable (502 Bad Gateway)");
-                        } else if (response.statusCode() == 404) {
-                            // 404 is expected for player/resource lookups — not a real error
-                            if (debugMode) {
-                                logger.fine(String.format("[V2-REQ-%s] Not found (404): %s — %s", requestId, request.uri().getPath(), errorMessage));
-                            }
+                        } else if (response.statusCode() == HttpURLConnection.HTTP_NOT_FOUND) {
+                            if (debugMode) logger.fine(String.format("[V2-REQ-%s] Not found (404): %s — %s", requestId, request.uri().getPath(), errorMessage));
                         } else if (response.statusCode() == 401 || response.statusCode() == 403) {
                             circuitBreaker.recordFailure();
                             logger.severe(String.format("[V2-REQ-%s] Authentication failed - check API key and server domain", requestId));
@@ -818,7 +848,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                             circuitBreaker.recordFailure();
                             logger.severe(String.format("[V2-REQ-%s] Method Not Allowed (405) - %s %s", requestId, request.method(), request.uri()));
                             logger.severe(String.format("[V2-REQ-%s] This usually means the endpoint exists but doesn't accept %s requests", requestId, request.method()));
-                        } else if (response.statusCode() == 500) {
+                        } else if (response.statusCode() == HttpURLConnection.HTTP_INTERNAL_ERROR) {
                             circuitBreaker.recordFailure();
                             logger.severe(String.format("[V2-REQ-%s] Server Error (500) - %s %s", requestId, request.method(), request.uri()));
                             logger.severe(String.format("[V2-REQ-%s] Response body: %s", requestId, response.body()));
@@ -831,18 +861,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                     }
                 })
                 .exceptionally(throwable -> {
-                    if (!(throwable instanceof PanelUnavailableException)) {
-                        circuitBreaker.recordFailure();
-                    }
+                    if (!(throwable instanceof PanelUnavailableException)) circuitBreaker.recordFailure();
 
-                    if (throwable instanceof RuntimeException) {
-                        throw (RuntimeException) throwable;
-                    }
+                    if (throwable instanceof RuntimeException) throw (RuntimeException) throwable;
                     throw new RuntimeException("V2 HTTP request failed", throwable);
                 });
     }
 
     private String generateRequestId() {
-        return "V2-" + String.valueOf(System.nanoTime() % 1000000);
+        return "V2-" + (System.nanoTime() % 1000000);
     }
 }

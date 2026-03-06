@@ -13,23 +13,23 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.WebPlayer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-/**
- * Staff Members Menu - displays all staff members with configurable lore.
- * Accessible from Settings menu. Read-only view with online/offline/all filter.
- */
 public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMemberEntry> {
 
     public static class StaffMemberEntry {
@@ -75,7 +75,6 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
     private String currentFilter = "Online";
     private final List<String> filterOptions = Arrays.asList("Online", "Offline", "All");
     private final String panelUrl;
-    private final Consumer<CirrusPlayerWrapper> parentBackAction;
 
     public StaffMembersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                             boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
@@ -87,15 +86,13 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
                             String filter, List<StaffMemberEntry> existingMembers) {
         super("Staff Members", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
         this.panelUrl = panelUrl;
-        this.parentBackAction = backAction;
         this.currentFilter = filter;
         activeTab = StaffTab.SETTINGS;
 
-        if (existingMembers != null) {
+        if (existingMembers != null)
             this.staffMembers = new ArrayList<>(existingMembers);
-        } else {
+        else
             fetchStaffMembers();
-        }
     }
 
     private void fetchStaffMembers() {
@@ -127,10 +124,9 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
                             sessionDuration
                     ));
 
-                    // Pre-fetch skin textures
                     if (uuid != null && cache != null && cache.getSkinTexture(uuid) == null) {
                         final UUID staffUuid = uuid;
-                        gg.modl.minecraft.core.util.WebPlayer.get(staffUuid).thenAccept(wp -> {
+                        WebPlayer.get(staffUuid).thenAccept(wp -> {
                             if (wp != null && wp.valid() && wp.textureValue() != null) {
                                 cache.cacheSkinTexture(staffUuid, wp.textureValue());
                             }
@@ -144,22 +140,19 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
     private List<String> buildLore(StaffMemberEntry entry) {
         LocaleManager localeManager = platform.getLocaleManager();
 
-        // Compute last_seen_or_session_time: session duration if online, last seen date if offline
         String lastSeenOrSessionTime;
-        if (entry.isOnline()) {
+        if (entry.isOnline())
             lastSeenOrSessionTime = MenuItems.formatDuration(entry.getSessionDuration());
-        } else {
+        else
             lastSeenOrSessionTime = entry.getLastSeen() != null ? MenuItems.formatDate(entry.getLastSeen()) : "Never";
-        }
 
-        // Get server name if online
         String server = "Unknown";
         if (entry.isOnline() && entry.getMinecraftUuid() != null) {
             String playerServer = platform.getPlayerServer(entry.getMinecraftUuid());
             if (playerServer != null) server = playerServer;
         }
 
-        java.util.Map<String, String> placeholders = new java.util.HashMap<>();
+        Map<String, String> placeholders = new HashMap<>();
         placeholders.put("panel_name", entry.getPanelName() != null ? entry.getPanelName() : "Unknown");
         placeholders.put("role", entry.getRole() != null ? entry.getRole() : "Unknown");
         placeholders.put("minecraft_username", entry.getMinecraftUsername() != null ? entry.getMinecraftUsername() : "Not linked");
@@ -179,7 +172,6 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
-        // Add filter button
         items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions)
                 .actionHandler("filter"));
 
@@ -201,9 +193,8 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
                 break;
         }
 
-        if (filtered.isEmpty()) {
+        if (filtered.isEmpty())
             return Collections.singletonList(new StaffMemberEntry(null, null, null, null, null, null, null, 0, false, 0));
-        }
         return filtered;
     }
 
@@ -228,12 +219,10 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
                 MenuItems.lore(lore)
         );
 
-        // Apply skin texture from cache
         if (entry.getMinecraftUuid() != null && platform.getCache() != null) {
             String cachedTexture = platform.getCache().getSkinTexture(entry.getMinecraftUuid());
-            if (cachedTexture != null) {
+            if (cachedTexture != null)
                 headItem = headItem.texture(cachedTexture);
-            }
         }
 
         return headItem;
@@ -241,45 +230,17 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
 
     @Override
     protected void handleClick(Click click, StaffMemberEntry entry) {
-        // Read-only view - no action on click
     }
 
     @Override
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Filter handler
         registerActionHandler("filter", this::handleFilter);
 
-        // Tab navigation handlers
-        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
-                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openReports", ActionHandlers.openMenu(
-                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPunishments", ActionHandlers.openMenu(
-                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openTickets", ActionHandlers.openMenu(
-                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPanel", click -> {
-            click.clickedMenu().close();
-            String escapedUrl = panelUrl.replace("\"", "\\\"");
-            String panelJson = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"Staff Panel: \",\"color\":\"gold\"}," +
-                "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-                escapedUrl, panelUrl
-            );
-            platform.sendJsonMessage(viewerUuid, panelJson);
-        });
-
-        registerActionHandler("openSettings", ActionHandlers.openMenu(
-                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+        StaffNavigationHandlers.registerAll(
+                (name, handler) -> registerActionHandler(name, handler),
+                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 
     private void handleFilter(Click click) {

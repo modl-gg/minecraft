@@ -17,9 +17,12 @@ public class StaffChatConfig {
         Map<String, Object> data = ConfigManager.loadSection(dataFolder, "staff_chat.yml", "staff_chat", logger);
         if (data == null) return config;
 
-        if (data.containsKey("enabled")) config.enabled = Boolean.TRUE.equals(data.get("enabled"));
-        if (data.containsKey("prefix")) config.prefix = String.valueOf(data.get("prefix"));
-        if (data.containsKey("format")) config.format = String.valueOf(data.get("format"));
+        Object enabled = data.get("enabled");
+        if (enabled != null) config.enabled = Boolean.TRUE.equals(enabled);
+        Object prefix = data.get("prefix");
+        if (prefix != null) config.prefix = String.valueOf(prefix);
+        Object format = data.get("format");
+        if (format != null) config.format = String.valueOf(format);
 
         return config;
     }

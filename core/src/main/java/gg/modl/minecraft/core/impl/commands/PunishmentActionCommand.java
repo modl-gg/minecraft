@@ -2,11 +2,11 @@ package gg.modl.minecraft.core.impl.commands;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.*;
+import co.aikar.commands.annotation.CommandAlias;
+import co.aikar.commands.annotation.Conditions;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Punishment;
-import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.AddPunishmentEvidenceRequest;
 import gg.modl.minecraft.api.http.response.PunishmentDetailResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
@@ -15,34 +15,25 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.ModifyPunishmentMenu;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.util.Colors;
+import gg.modl.minecraft.core.util.CommandUtil;
+import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Internal command for punishment action buttons (Modify, Link Evidence, Upload Evidence).
- * Not intended to be used directly by players - triggered by clickable chat buttons.
- */
+@RequiredArgsConstructor
 public class PunishmentActionCommand extends BaseCommand {
+    private static final String UPLOAD_LINK_JSON =
+            "{\"text\":\"\",\"extra\":[" +
+            "{\"text\":\"Click here to upload evidence\",\"color\":\"green\",\"underlined\":true,\"bold\":true," +
+            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Opens in your browser\"}}" +
+            "]}";
     private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
     private final String panelUrl;
-
-    public PunishmentActionCommand(HttpClientHolder httpClientHolder, Platform platform, Cache cache,
-                                    LocaleManager localeManager, String panelUrl) {
-        this.httpClientHolder = httpClientHolder;
-        this.platform = platform;
-        this.cache = cache;
-        this.localeManager = localeManager;
-        this.panelUrl = panelUrl;
-    }
-
-    private ModlHttpClient getHttpClient() {
-        return httpClientHolder.getClient();
-    }
 
     @CommandAlias("%cmd_punishment_action")
     @Conditions("staff")
@@ -56,7 +47,7 @@ public class PunishmentActionCommand extends BaseCommand {
             case "modify" -> openModifyMenu(sender, punishmentId);
             case "link-evidence" -> promptLinkEvidence(sender, punishmentId);
             case "upload-evidence" -> openUploadPage(sender, punishmentId);
-            default -> sender.sendMessage("&cUnknown action: " + action);
+            default -> sender.sendMessage(localeManager.getMessage("punishment_action.unknown_action", Map.of("action", action)));
         }
     }
 
@@ -64,7 +55,7 @@ public class PunishmentActionCommand extends BaseCommand {
         UUID senderUuid = sender.getUniqueId();
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", "#" + punishmentId)));
 
-        getHttpClient().getPunishmentDetail(punishmentId).thenAccept(response -> {
+        httpClientHolder.getClient().getPunishmentDetail(punishmentId).thenAccept(response -> {
             if (!response.isSuccess() || response.getPunishment() == null) {
                 sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", Map.of("id", punishmentId)));
                 return;
@@ -73,37 +64,30 @@ public class PunishmentActionCommand extends BaseCommand {
             PunishmentDetailResponse.PunishmentDetail detail = response.getPunishment();
             UUID playerUuid = UUID.fromString(detail.getPlayerUuid());
 
-            // Fetch full player profile for the modify menu
-            getHttpClient().getPlayerProfile(playerUuid).thenAccept(profileResponse -> {
+            httpClientHolder.getClient().getPlayerProfile(playerUuid).thenAccept(profileResponse -> {
                 if (profileResponse.getStatus() != 200 || profileResponse.getProfile() == null) {
                     sender.sendMessage(localeManager.getMessage("general.player_not_found"));
                     return;
                 }
 
                 Account account = profileResponse.getProfile();
-                // Find the matching punishment in the account
                 Punishment punishment = null;
-                if (account.getPunishments() != null) {
-                    for (Punishment p : account.getPunishments()) {
+                if (account.getPunishments() != null)
+                    for (Punishment p : account.getPunishments())
                         if (p.getId().equals(punishmentId)) {
                             punishment = p;
                             break;
                         }
-                    }
-                }
 
                 if (punishment == null) {
                     sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", Map.of("id", punishmentId)));
                     return;
                 }
 
-                String senderName = "Staff";
-                if (platform.getPlayer(senderUuid) != null) {
-                    senderName = platform.getPlayer(senderUuid).username();
-                }
+                String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
 
                 ModifyPunishmentMenu menu = new ModifyPunishmentMenu(
-                    platform, getHttpClient(), senderUuid, senderName,
+                    platform, httpClientHolder.getClient(), senderUuid, senderName,
                     account, punishment, null, null
                 );
 
@@ -121,67 +105,48 @@ public class PunishmentActionCommand extends BaseCommand {
 
     private void promptLinkEvidence(CommandIssuer sender, String punishmentId) {
         UUID senderUuid = sender.getUniqueId();
-        String senderName = "Staff";
-        if (platform.getPlayer(senderUuid) != null) {
-            senderName = platform.getPlayer(senderUuid).username();
-        }
-
-        String finalSenderName = senderName;
+        String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
         ChatInputManager.requestInput(platform, senderUuid,
-                "Enter the evidence URL for punishment #" + punishmentId + ":",
+                localeManager.getMessage("punishment_action.enter_evidence_url", Map.of("id", punishmentId)),
                 (url) -> {
                     if (url == null || url.isBlank()) {
-                        platform.sendMessage(senderUuid, Colors.translate("&cNo URL provided."));
+                        platform.sendMessage(senderUuid, localeManager.getMessage("punishment_action.no_url"));
                         return;
                     }
 
                     AddPunishmentEvidenceRequest request = new AddPunishmentEvidenceRequest(
-                            punishmentId, finalSenderName, url
+                            punishmentId, senderName, url
                     );
 
-                    getHttpClient().addPunishmentEvidence(request).thenAccept(v -> {
-                        platform.sendMessage(senderUuid, Colors.translate("&aEvidence linked to punishment #" + punishmentId));
+                    httpClientHolder.getClient().addPunishmentEvidence(request).thenAccept(v -> {
+                        platform.sendMessage(senderUuid, localeManager.getMessage("punishment_action.evidence_linked", Map.of("id", punishmentId)));
                     }).exceptionally(throwable -> {
-                        platform.sendMessage(senderUuid, Colors.translate("&cFailed to link evidence: " + throwable.getMessage()));
+                        platform.sendMessage(senderUuid, localeManager.getMessage("punishment_action.evidence_link_failed", Map.of("error", throwable.getMessage())));
                         return null;
                     });
                 },
-                () -> platform.sendMessage(senderUuid, Colors.translate("&7Evidence linking cancelled."))
+                () -> platform.sendMessage(senderUuid, localeManager.getMessage("punishment_action.evidence_cancelled"))
         );
     }
 
     private void openUploadPage(CommandIssuer sender, String punishmentId) {
         UUID senderUuid = sender.getUniqueId();
-        String senderName = "Staff";
-        if (platform.getPlayer(senderUuid) != null) {
-            senderName = platform.getPlayer(senderUuid).username();
-        }
+        String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
 
-        sender.sendMessage(Colors.translate("&7Generating upload link..."));
+        sender.sendMessage(localeManager.getMessage("punishment_action.generating_upload"));
 
-        getHttpClient().createEvidenceUploadToken(punishmentId, senderName).thenAccept(response -> {
+        httpClientHolder.getClient().createEvidenceUploadToken(punishmentId, senderName).thenAccept(response -> {
             if (!response.isSuccess() || response.getToken() == null) {
-                sender.sendMessage(Colors.translate("&cFailed to generate upload link."));
+                sender.sendMessage(localeManager.getMessage("punishment_action.upload_failed"));
                 return;
             }
 
             String uploadUrl = panelUrl + "/upload-evidence/" + response.getToken();
+            String json = String.format(UPLOAD_LINK_JSON, uploadUrl);
 
-            // Send clickable open_url message
-            String json = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"Click here to upload evidence\",\"color\":\"green\",\"underlined\":true,\"bold\":true," +
-                 "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                 "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Opens in your browser\"}}" +
-                "]}",
-                uploadUrl
-            );
-
-            platform.runOnMainThread(() -> {
-                platform.sendJsonMessage(senderUuid, json);
-            });
+            platform.runOnMainThread(() -> platform.sendJsonMessage(senderUuid, json));
         }).exceptionally(throwable -> {
-            sender.sendMessage("&cFailed to generate upload link: " + throwable.getMessage());
+            sender.sendMessage(localeManager.getMessage("punishment_action.upload_failed"));
             return null;
         });
     }

@@ -5,10 +5,10 @@ import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.menu.CirrusInventoryType;
-import dev.simplix.cirrus.model.CallResult;
-import dev.simplix.cirrus.text.CirrusChatElement;
 import dev.simplix.cirrus.menus.SimpleMenu;
+import dev.simplix.cirrus.model.CallResult;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
@@ -21,11 +21,12 @@ import gg.modl.minecraft.core.service.ChatMessageCache;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Add details decision menu (3x9 layout).
- * Asks the player whether to type additional details for the report via chat prompt.
- */
 public class ReportDetailsMenu extends SimpleMenu {
+
+    private static final int SLOT_ADD_DETAILS = 11;
+    private static final int SLOT_PLAYER_HEAD = 13;
+    private static final int SLOT_SKIP_DETAILS = 15;
+    private static final int SLOT_BACK = 22;
 
     private final AbstractPlayer reporter;
     private final AbstractPlayer target;
@@ -53,108 +54,89 @@ public class ReportDetailsMenu extends SimpleMenu {
         this.chatMessageCache = chatMessageCache;
         this.reportData = reportData;
         this.previousMenu = previousMenu;
-
         title(locale.getMessage("messages.report_gui_title", Map.of("player", target.username())));
         type(CirrusInventoryType.GENERIC_9X3);
         buildMenu();
     }
 
     private void buildMenu() {
-        // Row 1 layout: * * Y * P * N * *
-        // Y (slot 11): Add Details
         set(CirrusItem.of(
                 CirrusItemType.WRITABLE_BOOK,
                 CirrusChatElement.ofLegacyText(locale.getMessage("messages.report_add_details")),
                 MenuItems.lore(locale.getMessageList("messages.report_add_details_lore"))
-        ).slot(11).actionHandler("addDetails"));
+        ).slot(SLOT_ADD_DETAILS).actionHandler("addDetails"));
 
-        // P (slot 13): Player skull
-        List<String> skullLines = locale.getMessageList("messages.report_skull_details", Map.of("player", target.username()));
-        CirrusItem detailsHead = MenuItems.playerHead(
+        set(buildTargetHead("messages.report_skull_details").slot(SLOT_PLAYER_HEAD));
+
+        set(CirrusItem.of(
+                CirrusItemType.of("minecraft:wooden_sword"),
+                CirrusChatElement.ofLegacyText(locale.getMessage("messages.report_skip_details")),
+                MenuItems.lore(locale.getMessageList("messages.report_skip_details_lore"))
+        ).slot(SLOT_SKIP_DETAILS).actionHandler("skipDetails"));
+
+        set(MenuItems.backButton().slot(SLOT_BACK));
+    }
+
+    private CirrusItem buildTargetHead(String localeKey) {
+        List<String> skullLines = locale.getMessageList(localeKey, Map.of("player", target.username()));
+        CirrusItem head = MenuItems.playerHead(
                 target.username(),
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
         );
         if (platform.getCache() != null) {
             String texture = platform.getCache().getSkinTexture(target.uuid());
-            if (texture != null) detailsHead = detailsHead.texture(texture);
+            if (texture != null) head = head.texture(texture);
         }
-        set(detailsHead.slot(13));
+        return head;
+    }
 
-        // N (slot 15): Skip Details
-        set(CirrusItem.of(
-                CirrusItemType.of("minecraft:wooden_sword"),
-                CirrusChatElement.ofLegacyText(locale.getMessage("messages.report_skip_details")),
-                MenuItems.lore(locale.getMessageList("messages.report_skip_details_lore"))
-        ).slot(15).actionHandler("skipDetails"));
-
-        // Row 2 layout: * * * * B * * * *
-        // B (slot 22): Back button
-        set(MenuItems.backButton().slot(22));
+    private void displayMenu(SimpleMenu menu) {
+        CirrusPlayerWrapper playerWrapper = platform.getPlayerWrapper(reporter.uuid());
+        menu.display(playerWrapper);
     }
 
     @Override
     protected void registerActionHandlers() {
         registerActionHandler("addDetails", (ActionHandler) click -> {
-            // Close menu and prompt for chat input
             click.clickedMenu().close();
-
             String prompt = locale.getMessage("messages.report_details_prompt", Map.of("player", target.username()));
-
             ChatInputManager.requestInput(platform, reporter.uuid(), prompt, input -> {
-                // Player typed their details
                 reportData.setDetails(input);
-
-                ReportConfirmMenu confirmMenu = new ReportConfirmMenu(
+                displayMenu(new ReportConfirmMenu(
                     reporter, target, httpClient, locale, platform, panelUrl,
                     guiConfig, chatMessageCache, reportData
-                );
-                CirrusPlayerWrapper playerWrapper = platform.getPlayerWrapper(reporter.uuid());
-                confirmMenu.display(playerWrapper);
+                ));
             }, () -> {
-                ReportDetailsMenu detailsMenu = new ReportDetailsMenu(
+                displayMenu(new ReportDetailsMenu(
                     reporter, target, httpClient, locale, platform, panelUrl,
                     guiConfig, chatMessageCache, reportData, previousMenu
-                );
-                CirrusPlayerWrapper playerWrapper = platform.getPlayerWrapper(reporter.uuid());
-                detailsMenu.display(playerWrapper);
+                ));
             });
-
             return CallResult.DENY_GRABBING;
         });
 
         registerActionHandler("skipDetails", (ActionHandler) click -> {
-            // Proceed without details
             ActionHandlers.openMenu(new ReportConfirmMenu(
                     reporter, target, httpClient, locale, platform, panelUrl,
                     guiConfig, chatMessageCache, reportData
             )).handle(click);
-
             return CallResult.DENY_GRABBING;
         });
 
         registerActionHandler("back", (ActionHandler) click -> {
-            if (previousMenu != null) {
-                // Return to previous menu (chat log menu or category menu)
-                if (reportData.isChatReport()) {
-                    ActionHandlers.openMenu(new ReportChatLogMenu(
-                            reporter, target, httpClient, locale, platform, panelUrl,
-                            guiConfig, chatMessageCache, reportData
-                    )).handle(click);
-                } else {
-                    ActionHandlers.openMenu(new ReportMenu(
-                            reporter, target, httpClient, locale, platform, panelUrl,
-                            guiConfig, chatMessageCache
-                    )).handle(click);
-                }
+            // Chat reports go back to chat log menu; all others go to category selection
+            if (previousMenu != null && reportData.isChatReport()) {
+                ActionHandlers.openMenu(new ReportChatLogMenu(
+                        reporter, target, httpClient, locale, platform, panelUrl,
+                        guiConfig, chatMessageCache, reportData
+                )).handle(click);
             } else {
-                // No previous menu, go to category selection
                 ActionHandlers.openMenu(new ReportMenu(
                         reporter, target, httpClient, locale, platform, panelUrl,
                         guiConfig, chatMessageCache
                 )).handle(click);
             }
-
             return CallResult.DENY_GRABBING;
         });
     }

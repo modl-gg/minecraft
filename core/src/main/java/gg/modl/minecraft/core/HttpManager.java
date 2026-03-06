@@ -12,14 +12,7 @@ import java.util.logging.Logger;
 public class HttpManager {
     private static final Logger logger = Logger.getLogger(HttpManager.class.getName());
 
-    /**
-     * Production V2 API URL
-     */
     public static final String V2_API_URL = "https://api.modl.gg";
-
-    /**
-     * Testing V2 API URL
-     */
     public static final String TESTING_API_URL = "https://api.modl.top";
 
     private static final String V2_BASE_PATH = "/v1";
@@ -40,24 +33,16 @@ public class HttpManager {
     private final String panelUrl;
     private final boolean queryMojang;
 
-    public HttpManager(@NotNull String key, @NotNull String url, boolean debugHttp, boolean useTestingApi) {
-        this(key, url, debugHttp, useTestingApi, false);
-    }
-
     public HttpManager(@NotNull String key, @NotNull String url, boolean debugHttp, boolean useTestingApi, boolean queryMojang) {
         this.apiKey = key;
         this.debugHttp = debugHttp;
         this.useTestingApi = useTestingApi;
         this.queryMojang = queryMojang;
 
-        // Normalize URL: remove trailing slash and /api if present
         String normalizedUrl = url.replaceAll("/+$", "");
-        if (normalizedUrl.endsWith("/api")) {
-            normalizedUrl = normalizedUrl.substring(0, normalizedUrl.length() - 4);
-        }
+        if (normalizedUrl.endsWith("/api")) normalizedUrl = normalizedUrl.substring(0, normalizedUrl.length() - 4);
         this.panelUrl = normalizedUrl;
 
-        // Extract server domain from panel URL
         this.serverDomain = extractDomain(normalizedUrl);
 
         String v2BaseUrl = useTestingApi ? TESTING_API_URL : V2_API_URL;
@@ -66,37 +51,23 @@ public class HttpManager {
         this.httpClientHolder = new HttpClientHolder(this.httpClient);
 
         if (debugHttp) {
-            logger.info("==============================================");
-            logger.info("modl.gg API: Using V2 API (centralized)");
-            logger.info("  Base URL: " + apiUrl);
-            logger.info("  Server Domain: " + this.serverDomain);
-            logger.info("  Testing API: " + useTestingApi);
-            logger.info("==============================================");
+            logger.info("Base URL: " + apiUrl);
+            logger.info("Server Domain: " + this.serverDomain);
+            logger.info("Testing API: " + useTestingApi);
         }
     }
 
-    /**
-     * Extracts the domain from a URL.
-     * e.g., "https://yourserver.modl.gg" -> "yourserver.modl.gg"
-     */
     private static String extractDomain(String url) {
         try {
             URI uri = URI.create(url);
             String host = uri.getHost();
             return host != null ? host : url;
         } catch (Exception e) {
-            // If parsing fails, try to extract domain manually
             String result = url;
-            if (result.startsWith("https://")) {
-                result = result.substring(8);
-            } else if (result.startsWith("http://")) {
-                result = result.substring(7);
-            }
-            // Remove trailing path
+            if (result.startsWith("https://")) result = result.substring(8);
+            else if (result.startsWith("http://")) result = result.substring(7);
             int slashIndex = result.indexOf('/');
-            if (slashIndex > 0) {
-                result = result.substring(0, slashIndex);
-            }
+            if (slashIndex > 0) result = result.substring(0, slashIndex);
             return result;
         }
     }

@@ -5,11 +5,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Manages vanish state per player.
- */
 public class VanishService {
-
     private final Set<UUID> vanished = ConcurrentHashMap.newKeySet();
 
     public void vanish(UUID uuid) {
@@ -24,17 +20,13 @@ public class VanishService {
         return vanished.contains(uuid);
     }
 
-    /**
-     * Toggle vanish state atomically.
-     * @return true if now vanished, false if now visible
-     */
+    /** @return true if now vanished, false if now visible */
     public boolean toggle(UUID uuid) {
-        // add() returns false if already present
         if (!vanished.add(uuid)) {
             vanished.remove(uuid);
-            return false; // was vanished, now visible
+            return false;
         }
-        return true; // now vanished
+        return true;
     }
 
     public Set<UUID> getVanishedPlayers() {

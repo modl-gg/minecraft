@@ -43,6 +43,15 @@ import java.util.Map;
         url = PluginInfo.URL)
 public final class VelocityPlugin {
 
+    private static final Yaml yaml = new Yaml();
+    private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg";
+    private static final String DEFAULT_BRIDGE_NAME = "bridge";
+    private static final int DEFAULT_BRIDGE_PORT = 25590;
+    private static final int MIN_SYNC_POLLING_RATE = 1;
+    private static final int DEFAULT_SYNC_POLLING_RATE = 2;
+    private static final int BSTATS_PLUGIN_ID = 29830;
+    private static final String JUL_LOGGER_NAME = "modl";
+
     private final PluginContainer plugin;
     private final ProxyServer server;
     private final Path folder;
@@ -64,32 +73,15 @@ public final class VelocityPlugin {
 
     @Subscribe
     public synchronized void onProxyInitialize(ProxyInitializeEvent evt) {
-        // Load runtime dependencies via libby before anything else
         loadLibraries();
-
-        // Initialize PacketEvents before Cirrus
         initializePacketEvents();
-
         loadConfig();
         createLocaleFiles();
+        mergeDefaultConfigs();
 
-        // Auto-merge new keys from plugin update
-        YamlMergeUtil.mergeWithDefaults("/config.yml",
-                folder.resolve("config.yml"), java.util.logging.Logger.getLogger("modl"));
-        YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",
-                folder.resolve("locale/en_US.yml"), java.util.logging.Logger.getLogger("modl"));
-
-        // Validate configuration before proceeding
-        String apiUrl = getConfigString("api.url", "https://yourserver.modl.gg");
-        if ("https://yourserver.modl.gg".equals(apiUrl)) {
-            logger.error("===============================================");
-            logger.error("modl.gg CONFIGURATION ERROR");
-            logger.error("===============================================");
-            logger.error("You must configure your API URL in config.yml!");
-            logger.error("Please set 'api.url' to your actual modl.gg panel URL.");
-            logger.error("Example: https://yourserver.modl.gg");
-            logger.error("Plugin initialization stopped due to invalid configuration.");
-            logger.error("===============================================");;
+        String apiUrl = getConfigString("api.url", PLACEHOLDER_API_URL);
+        if (PLACEHOLDER_API_URL.equals(apiUrl)) {
+            logConfigurationError();
             return;
         }
 
@@ -106,56 +98,74 @@ public final class VelocityPlugin {
 
         VelocityPlatform platform = new VelocityPlatform(this.server, commandManager, logger, folder.toFile(), getConfigString("server.name", "Server 1"));
         ChatMessageCache chatMessageCache = new ChatMessageCache();
-        
-        // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)
-        int syncPollingRate = Math.max(1, getConfigInt("sync.polling_rate", 2));
-        
+        int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfigInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
+
         this.pluginLoader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder, chatMessageCache, httpManager, syncPollingRate);
-
-        // Set up bridge TCP connection for stat-wipe execution
-        // Uses the API key as shared secret for bridge authentication
-        String bridgeHost = getConfigString("bridge.host", "");
-        if (!bridgeHost.isEmpty()) {
-            int bridgePort = getConfigInt("bridge.port", 25590);
-            String apiKey = getConfigString("api.key", "your-api-key-here");
-            queryStatWipeExecutor = new QueryStatWipeExecutor(
-                    java.util.logging.Logger.getLogger("modl"), httpManager.isDebugHttp());
-            queryStatWipeExecutor.addBridge("bridge", bridgeHost, bridgePort, apiKey);
-            pluginLoader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
-
-            // Wire up bridge message dispatcher for incoming messages
-            BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
-                    platform, pluginLoader.getLocaleManager(), pluginLoader.getFreezeService(),
-                    pluginLoader.getStaffModeService(), pluginLoader.getVanishService(),
-                    java.util.logging.Logger.getLogger("modl"));
-            queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
-
-            // Set executor on bridge service for outgoing messages
-            pluginLoader.getBridgeService().setExecutor(queryStatWipeExecutor);
-        }
-
-        server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClientHolder(), pluginLoader.getCache(), logger, chatMessageCache, platform, pluginLoader.getSyncService(), pluginLoader.getLocaleManager(), httpManager.isDebugHttp(), pluginLoader.getStaffChatService(), pluginLoader.getChatManagementService(), pluginLoader.getMaintenanceService(), pluginLoader.getFreezeService(), pluginLoader.getNetworkChatInterceptService(), pluginLoader.getStaff2faService()));
+        configureBridgeExecutor(platform, httpManager);
 
         @SuppressWarnings("unchecked")
         List<String> mutedCommands = (List<String>) getNestedConfig("muted_commands", Collections.emptyList());
 
-        server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache(), chatMessageCache, pluginLoader.getLocaleManager(), mutedCommands, pluginLoader.getStaffChatService(), pluginLoader.getChatManagementService(), pluginLoader.getFreezeService(), pluginLoader.getNetworkChatInterceptService(), pluginLoader.getChatCommandLogService(), pluginLoader.getConfigManager().getStaffChatConfig()));
+        server.getEventManager().register(this, new JoinListener(
+                pluginLoader.getHttpClientHolder(), pluginLoader.getCache(), logger,
+                pluginLoader.getChatMessageCache(), platform, pluginLoader.getSyncService(),
+                pluginLoader.getLocaleManager(), pluginLoader.isDebugMode(),
+                pluginLoader.getStaffChatService(), pluginLoader.getChatManagementService(),
+                pluginLoader.getMaintenanceService(), pluginLoader.getFreezeService(),
+                pluginLoader.getNetworkChatInterceptService(), pluginLoader.getStaff2faService(),
+                pluginLoader.getVanishService(), pluginLoader.getStaffModeService(),
+                pluginLoader.getBridgeService()));
+        server.getEventManager().register(this, new ChatListener(
+                platform, pluginLoader.getCache(), pluginLoader.getChatMessageCache(),
+                pluginLoader.getLocaleManager(), mutedCommands,
+                pluginLoader.getStaffChatService(), pluginLoader.getChatManagementService(),
+                pluginLoader.getFreezeService(), pluginLoader.getNetworkChatInterceptService(),
+                pluginLoader.getChatCommandLogService(),
+                pluginLoader.getConfigManager().getStaffChatConfig()));
 
-        metrics.make(this, 29830);
+        metrics.make(this, BSTATS_PLUGIN_ID);
     }
 
     @Subscribe
     public synchronized void onProxyShutdown(ProxyShutdownEvent evt) {
-        if (queryStatWipeExecutor != null) {
-            queryStatWipeExecutor.shutdown();
-        }
-        if (pluginLoader != null) {
-            pluginLoader.shutdown();
-        }
-        // Terminate PacketEvents
-        if (PacketEvents.getAPI() != null) {
-            PacketEvents.getAPI().terminate();
-        }
+        if (queryStatWipeExecutor != null) queryStatWipeExecutor.shutdown();
+        if (pluginLoader != null) pluginLoader.shutdown();
+        if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
+    }
+
+    private void mergeDefaultConfigs() {
+        java.util.logging.Logger julLogger = java.util.logging.Logger.getLogger(JUL_LOGGER_NAME);
+        YamlMergeUtil.mergeWithDefaults("/config.yml", folder.resolve("config.yml"), julLogger);
+        YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml", folder.resolve("locale/en_US.yml"), julLogger);
+    }
+
+    private void logConfigurationError() {
+        logger.error("===============================================");
+        logger.error("modl.gg CONFIGURATION ERROR");
+        logger.error("===============================================");
+        logger.error("You must configure your API URL in config.yml!");
+        logger.error("Please set 'api.url' to your actual modl.gg panel URL.");
+        logger.error("Example: https://yourserver.modl.gg");
+        logger.error("Plugin initialization stopped due to invalid configuration.");
+        logger.error("===============================================");
+    }
+
+    private void configureBridgeExecutor(VelocityPlatform platform, HttpManager httpManager) {
+        String bridgeHost = getConfigString("bridge.host", "");
+        if (bridgeHost.isEmpty()) return;
+
+        int bridgePort = getConfigInt("bridge.port", DEFAULT_BRIDGE_PORT);
+        String apiKey = getConfigString("api.key", "your-api-key-here");
+        java.util.logging.Logger julLogger = java.util.logging.Logger.getLogger(JUL_LOGGER_NAME);
+        queryStatWipeExecutor = new QueryStatWipeExecutor(julLogger, httpManager.isDebugHttp());
+        queryStatWipeExecutor.addBridge(DEFAULT_BRIDGE_NAME, bridgeHost, bridgePort, apiKey);
+        pluginLoader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
+
+        BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
+                platform, pluginLoader.getLocaleManager(), pluginLoader.getFreezeService(),
+                pluginLoader.getStaffModeService(), pluginLoader.getVanishService(), julLogger);
+        queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
+        pluginLoader.getBridgeService().setExecutor(queryStatWipeExecutor);
     }
 
     private void initializePacketEvents() {
@@ -164,7 +174,7 @@ public final class VelocityPlugin {
         PacketEvents.getAPI().init();
         logger.info("PacketEvents initialized successfully");
     }
-    
+
     private void loadLibraries() {
         VelocityLibraryManager<VelocityPlugin> libraryManager = new VelocityLibraryManager<>(
                 logger, folder, server.getPluginManager(), this);
@@ -172,28 +182,17 @@ public final class VelocityPlugin {
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
 
-        // Load common libraries
-        for (LibraryRecord record : Libraries.COMMON) {
-            loadLibrary(libraryManager, record);
-        }
-
-        // Load ACF (core first, then platform-specific)
+        for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
         loadLibrary(libraryManager, Libraries.ACF_CORE);
         loadLibrary(libraryManager, Libraries.ACF_VELOCITY);
-
-        // Load Cirrus (platform-specific shadow jar includes cirrus-api + cirrus-common)
         loadLibrary(libraryManager, Libraries.CIRRUS_VELOCITY);
-
-        // Load PacketEvents (API first, then netty, then platform implementation)
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_VELOCITY);
-
-        // Load Adventure serializers (Velocity bundles adventure-api but not these)
+        // Velocity bundles adventure-api but not these serializers
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_JSON);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_GSON);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_MINIMESSAGE);
-
         logger.info("Runtime libraries loaded successfully");
     }
 
@@ -204,141 +203,85 @@ public final class VelocityPlugin {
                 .version(record.version())
                 .id(record.id());
 
-        if (record.hasRelocation()) {
-            builder.relocate(record.oldRelocation(), record.newRelocation());
-        }
-
-        if (record.url() != null) {
-            builder.url(record.url());
-        }
-
-        if (record.hasChecksum()) {
-            builder.checksum(record.checksum());
-        }
+        if (record.hasRelocation()) builder.relocate(record.oldRelocation(), record.newRelocation());
+        if (record.url() != null) builder.url(record.url());
+        if (record.hasChecksum()) builder.checksum(record.checksum());
 
         libraryManager.loadLibrary(builder.build());
     }
 
     private void loadConfig() {
         try {
-            if (!Files.exists(folder)) {
-                Files.createDirectories(folder);
-            }
-
+            if (!Files.exists(folder)) Files.createDirectories(folder);
             Path configFile = folder.resolve("config.yml");
-            
-            // Create default config if it doesn't exist
-            if (!Files.exists(configFile)) {
-                createDefaultConfig(configFile);
-            }
-            
-            // Load configuration
+            if (!Files.exists(configFile)) createDefaultConfig(configFile);
+
             try (InputStream inputStream = Files.newInputStream(configFile)) {
-                Yaml yaml = new Yaml();
                 this.configuration = yaml.load(inputStream);
-                
                 if (this.configuration == null) {
                     logger.warn("Configuration file is empty, using defaults");
                     this.configuration = Map.of();
                 }
             }
-            
             logger.info("Configuration loaded successfully");
-            
         } catch (IOException e) {
             logger.error("Failed to load configuration", e);
-            this.configuration = Map.of(); // Use empty config as fallback
+            this.configuration = Map.of();
         }
     }
-    
+
     private void createDefaultConfig(Path configFile) throws IOException {
         try (InputStream defaultConfig = getClass().getResourceAsStream("/config.yml")) {
-            if (defaultConfig != null) {
-                Files.copy(defaultConfig, configFile);
-                logger.info("Created default configuration file at: " + configFile);
-            } else {
-                logger.warn("Default config resource not found in JAR");
-            }
+            if (defaultConfig != null) Files.copy(defaultConfig, configFile);
+            else logger.warn("Default config resource not found in JAR");
         }
     }
-    
+
     @SuppressWarnings("unchecked")
     private String getConfigString(String path, String defaultValue) {
-        if (configuration == null) {
-            return defaultValue;
-        }
-        
+        if (configuration == null) return defaultValue;
         String[] keys = path.split("\\.");
         Object current = configuration;
-        
         for (String key : keys) {
-            if (current instanceof Map) {
-                current = ((Map<String, Object>) current).get(key);
-            } else {
-                return defaultValue;
-            }
+            if (current instanceof Map) current = ((Map<String, Object>) current).get(key);
+            else return defaultValue;
         }
-        
         return current instanceof String ? (String) current : defaultValue;
     }
-    
+
     @SuppressWarnings("unchecked")
     private Object getNestedConfig(String path, Object defaultValue) {
-        if (configuration == null) {
-            return defaultValue;
-        }
-        
+        if (configuration == null) return defaultValue;
         String[] keys = path.split("\\.");
         Object current = configuration;
-        
         for (String key : keys) {
-            if (current instanceof Map) {
-                current = ((Map<String, Object>) current).get(key);
-            } else {
-                return defaultValue;
-            }
+            if (current instanceof Map) current = ((Map<String, Object>) current).get(key);
+            else return defaultValue;
         }
-        
         return current != null ? current : defaultValue;
     }
-    
-    @SuppressWarnings("unchecked")
+
     private int getConfigInt(String path, int defaultValue) {
         Object value = getNestedConfig(path, defaultValue);
-        if (value instanceof Integer) {
-            return (Integer) value;
-        } else if (value instanceof Number) {
-            return ((Number) value).intValue();
-        } else {
-            return defaultValue;
-        }
+        if (value instanceof Integer) return (Integer) value;
+        if (value instanceof Number) return ((Number) value).intValue();
+        return defaultValue;
     }
-    
+
     private void createLocaleFiles() {
         try {
-            // Create locale directory
             Path localeDir = folder.resolve("locale");
-            if (!Files.exists(localeDir)) {
-                Files.createDirectories(localeDir);
-                logger.info("Created locale directory at: " + localeDir);
-            }
-            
-            // Create default en_US.yml if it doesn't exist
+            if (!Files.exists(localeDir)) Files.createDirectories(localeDir);
+
             Path enUsFile = localeDir.resolve("en_US.yml");
-            if (!Files.exists(enUsFile)) {
-                // Copy the default locale from resources
-                try (InputStream defaultLocale = getClass().getResourceAsStream("/locale/en_US.yml")) {
-                    if (defaultLocale != null) {
-                        Files.copy(defaultLocale, enUsFile);
-                        logger.info("Created default locale file at: " + enUsFile);
-                    } else {
-                        logger.warn("Default locale resource not found in JAR");
-                    }
-                }
+            if (Files.exists(enUsFile)) return;
+
+            try (InputStream defaultLocale = getClass().getResourceAsStream("/locale/en_US.yml")) {
+                if (defaultLocale != null) Files.copy(defaultLocale, enUsFile);
+                else logger.warn("Default locale resource not found in JAR");
             }
         } catch (IOException e) {
             logger.error("Failed to create locale files", e);
         }
     }
-
 }

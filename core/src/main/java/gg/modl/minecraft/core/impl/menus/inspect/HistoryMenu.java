@@ -13,8 +13,13 @@ import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.config.PunishGuiConfig;
+import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
+import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
@@ -27,31 +32,15 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * History Menu - displays punishment history for a player.
- */
 public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
-    private final Consumer<CirrusPlayerWrapper> backAction;
     private final Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
 
-    /**
-     * Create a new history menu.
-     *
-     * @param platform The platform instance
-     * @param httpClient The HTTP client for API calls
-     * @param viewerUuid The UUID of the staff viewing the menu
-     * @param viewerName The name of the staff viewing the menu
-     * @param targetAccount The account being inspected
-     * @param backAction Action to return to parent menu
-     */
     public HistoryMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                        Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
-        super("History: " + getPlayerNameStatic(targetAccount), platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
-        this.backAction = backAction;
+        super("History: " + ReportRenderUtil.getPlayerName(targetAccount), platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
         activeTab = InspectTab.HISTORY;
 
-        // Load punishment types for proper type name display
         loadPunishmentTypes();
     }
 
@@ -64,32 +53,14 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
                     }
                 }
             }).join();
-        } catch (Exception e) {
-            // Failed to load - will use fallback type detection
-        }
-    }
-
-    private static String getPlayerNameStatic(Account account) {
-        if (account.getUsernames() != null && !account.getUsernames().isEmpty()) {
-            return account.getUsernames().stream()
-                    .max((u1, u2) -> u1.getDate().compareTo(u2.getDate()))
-                    .map(Account.Username::getUsername)
-                    .orElse("Unknown");
-        }
-        return "Unknown";
+        } catch (Exception ignored) {}
     }
 
     @Override
     protected Collection<Punishment> elements() {
-        // Punishments are stored in the account object
         List<Punishment> punishments = new ArrayList<>(targetAccount.getPunishments());
-
-        // Return placeholder if empty to prevent Cirrus from shrinking inventory
-        if (punishments.isEmpty()) {
+        if (punishments.isEmpty())
             return Collections.singletonList(new Punishment());
-        }
-
-        // Sort by date, newest first
         punishments.sort((p1, p2) -> p2.getIssued().compareTo(p1.getIssued()));
         return punishments;
     }
@@ -98,12 +69,9 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     protected CirrusItem map(Punishment punishment) {
         LocaleManager locale = platform.getLocaleManager();
 
-        // Handle placeholder for empty list
-        if (punishment.getId() == null || punishment.getId().isEmpty()) {
+        if (punishment.getId() == null || punishment.getId().isEmpty())
             return createEmptyPlaceholder(locale.getMessage("menus.empty.history"));
-        }
 
-        // Type and status - get type name from loaded punishment types
         String typeName = getTypeName(punishment);
         int ordinal = punishment.getTypeOrdinal();
         PunishmentTypesResponse.PunishmentTypeData typeData = typesByOrdinal.get(ordinal);
@@ -111,13 +79,9 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         boolean isBan = typeData != null && typeData.isBan();
         boolean isMute = typeData != null && typeData.isMute();
 
-        // Get effective duration (considering modifications)
         Long effectiveDuration = getEffectiveDuration(punishment);
-
-        // Check if punishment is truly active (considering duration modifications and pardons)
         boolean isActive = !isKick && isPunishmentEffectivelyActive(punishment, effectiveDuration);
 
-        // Calculate initial duration (empty for kicks)
         String initialDuration = "";
         if (!isKick) {
             Long duration = punishment.getDuration();
@@ -128,7 +92,6 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
             }
         }
 
-        // Determine type category for title
         String spaceBanMuteOrKick = "";
         if (isKick) {
             spaceBanMuteOrKick = "Kick";
@@ -138,9 +101,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
             spaceBanMuteOrKick = " Mute";
         }
 
-        // Build status line
         String statusLine;
-        // Check for pardon first (pardoned-but-unstarted should show "Pardoned", not "Not started")
         Date pardonDate = isKick ? null : findPardonDate(punishment);
         if (isKick) {
             statusLine = ""; // Don't show status for kicks
@@ -150,14 +111,11 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
             statusLine = locale.getMessage("menus.history_item.status_pardoned",
                     Map.of("pardoned", pardonedFormatted));
         } else if (punishment.getStarted() == null) {
-            // Punishment not yet started
             statusLine = locale.getMessage("menus.history_item.status_unstarted");
         } else if (isActive) {
             if (effectiveDuration == null || effectiveDuration <= 0) {
-                // Permanent
                 statusLine = locale.getMessage("menus.history_item.status_permanent");
             } else {
-                // Calculate remaining time using effective duration
                 long expiryTime = punishment.getStarted().getTime() + effectiveDuration;
                 long remaining = expiryTime - System.currentTimeMillis();
                 String expiryFormatted = MenuItems.formatDuration(remaining > 0 ? remaining : 0);
@@ -165,7 +123,6 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
                         Map.of("expiry", expiryFormatted));
             }
         } else {
-            // Naturally expired - calculate time since expired using effective duration
             if (effectiveDuration != null && effectiveDuration > 0 && punishment.getStarted() != null) {
                 long expiryTime = punishment.getStarted().getTime() + effectiveDuration;
                 long expiredAgo = System.currentTimeMillis() - expiryTime;
@@ -178,7 +135,6 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
             }
         }
 
-        // Build notes section - each note on a new line using note_format
         StringBuilder notesBuilder = new StringBuilder();
         List<Note> notes = punishment.getNotes();
         if (notes != null && !notes.isEmpty()) {
@@ -192,14 +148,12 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
                         .replace("{note_date}", noteDate)
                         .replace("{note_issuer}", noteIssuer)
                         .replace("{note}", noteText);
-                if (i > 0) {
+                if (i > 0)
                     notesBuilder.append("\n");
-                }
                 notesBuilder.append(formattedNote);
             }
         }
 
-        // Build variables map using HashMap to allow more than 10 entries
         Map<String, String> vars = new HashMap<>();
         vars.put("punishment_id", punishment.getId() != null ? punishment.getId() : "Unknown");
         vars.put("punishment_type", typeName);
@@ -213,28 +167,21 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         Object issuedServerObj = punishment.getDataMap().get("issuedServer");
         vars.put("issued_server", issuedServerObj instanceof String ? (String) issuedServerObj : "");
 
-        // Get lore from locale
         List<String> lore = new ArrayList<>();
         for (String line : locale.getMessageList("menus.history_item.lore")) {
             String processed = line;
             for (Map.Entry<String, String> entry : vars.entrySet()) {
                 processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
             }
-            // Handle {notes} which may contain newlines - split into multiple lore lines
-            if (processed.contains("\n")) {
-                for (String subLine : processed.split("\n")) {
+            if (processed.contains("\n"))
+                for (String subLine : processed.split("\n"))
                     lore.add(subLine);
-                }
-            } else if (!processed.isEmpty()) {
+            else if (!processed.isEmpty())
                 lore.add(processed);
-            }
         }
 
-        // Get title from locale
         String titleKey = isActive ? "menus.history_item.title_active" : "menus.history_item.title_inactive";
         String title = locale.getMessage(titleKey, vars);
-
-        // Get appropriate item type based on punishment type
         CirrusItemType itemType = getPunishmentItemType(punishment);
 
         return CirrusItem.of(
@@ -245,28 +192,24 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     }
 
     private String getTypeName(Punishment punishment) {
-        // First try to get from our loaded punishment types
         int ordinal = punishment.getTypeOrdinal();
         PunishmentTypesResponse.PunishmentTypeData typeData = typesByOrdinal.get(ordinal);
         if (typeData != null && typeData.getName() != null) {
             return typeData.getName();
         }
 
-        // Fall back to dataMap typeName
         Object typeName = punishment.getDataMap().get("typeName");
         if (typeName instanceof String && !((String) typeName).isEmpty()) {
             return (String) typeName;
         }
 
-        // Last resort - use category detection
         return punishment.getTypeCategory();
     }
 
     private CirrusItemType getPunishmentItemType(Punishment punishment) {
         int ordinal = punishment.getTypeOrdinal();
 
-        // Check config-defined item mapping first
-        gg.modl.minecraft.core.config.PunishGuiConfig guiConfig = getOrLoadGuiConfig();
+        PunishGuiConfig guiConfig = getOrLoadGuiConfig();
         if (guiConfig != null) {
             String itemId = guiConfig.getItemForOrdinal(ordinal);
             if (itemId != null) {
@@ -274,7 +217,6 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
             }
         }
 
-        // Fall back to registry-based detection
         if (punishment.isBanType()) {
             return CirrusItemType.BARRIER;
         } else if (punishment.isMuteType()) {
@@ -285,12 +227,12 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         return CirrusItemType.PAPER;
     }
 
-    private gg.modl.minecraft.core.config.PunishGuiConfig getOrLoadGuiConfig() {
-        gg.modl.minecraft.core.impl.cache.Cache cache = platform.getCache();
+    private PunishGuiConfig getOrLoadGuiConfig() {
+        Cache cache = platform.getCache();
         if (cache == null) return null;
-        gg.modl.minecraft.core.config.PunishGuiConfig config = cache.getCachedPunishGuiConfig();
+        PunishGuiConfig config = cache.getCachedPunishGuiConfig();
         if (config == null) {
-            config = gg.modl.minecraft.core.config.PunishGuiConfig.load(
+            config = PunishGuiConfig.load(
                     platform.getDataFolder().toPath(),
                     java.util.logging.Logger.getLogger("modl"));
             cache.cachePunishGuiConfig(config);
@@ -300,13 +242,9 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
     @Override
     protected void handleClick(Click click, Punishment punishment) {
-        // Handle placeholder - do nothing
-        if (punishment.getId() == null || punishment.getId().isEmpty()) {
+        if (punishment.getId() == null || punishment.getId().isEmpty())
             return;
-        }
 
-        // Open modify punishment menu - this is a secondary menu, back button returns to HistoryMenu
-        // Pass backAction as rootBackAction so primary tab navigation preserves the back button
         ActionHandlers.openMenu(
                 new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishment, backAction,
                         p -> new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction).display(p)))
@@ -317,32 +255,17 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Override header navigation handlers - pass backAction to preserve the back button
-        registerActionHandler("openNotes", ActionHandlers.openMenu(
-                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
-        registerActionHandler("openAlts", ActionHandlers.openMenu(
-                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
-        registerActionHandler("openHistory", click -> {
-            // Already on history, do nothing
-        });
-        registerActionHandler("openReports", ActionHandlers.openMenu(
-                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
-        registerActionHandler("openPunish", ActionHandlers.openMenu(
-                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)));
+        InspectNavigationHandlers.registerAll(
+                (name, handler) -> registerActionHandler(name, handler),
+                platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
+        registerActionHandler("openHistory", click -> {});
     }
 
-    /**
-     * Find the date when a punishment was pardoned by looking for MANUAL_PARDON or APPEAL_ACCEPT modifications.
-     * @param punishment The punishment to check
-     * @return The pardon date, or null if not pardoned
-     */
     private Date findPardonDate(Punishment punishment) {
         List<Modification> modifications = punishment.getModifications();
-        if (modifications == null || modifications.isEmpty()) {
+        if (modifications == null || modifications.isEmpty())
             return null;
-        }
 
-        // Look for pardon modifications
         for (Modification mod : modifications) {
             if (mod.getType() == Modification.Type.MANUAL_PARDON ||
                 mod.getType() == Modification.Type.APPEAL_ACCEPT) {
@@ -352,62 +275,38 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         return null;
     }
 
-    /**
-     * Get the effective duration of a punishment, considering any duration change modifications.
-     * @param punishment The punishment to check
-     * @return The effective duration in milliseconds, or null for permanent
-     */
     private Long getEffectiveDuration(Punishment punishment) {
         List<Modification> modifications = punishment.getModifications();
-        if (modifications == null || modifications.isEmpty()) {
+        if (modifications == null || modifications.isEmpty())
             return punishment.getDuration();
-        }
 
-        // Look for the most recent duration change modification
         Long effectiveDuration = punishment.getDuration();
         for (Modification mod : modifications) {
             if (mod.getType() == Modification.Type.MANUAL_DURATION_CHANGE ||
                 mod.getType() == Modification.Type.APPEAL_DURATION_CHANGE) {
-                // Get effective duration from modification (null or <= 0 means permanent)
                 Long modDuration = mod.getEffectiveDuration();
-                if (modDuration == null || modDuration <= 0) {
+                if (modDuration == null || modDuration <= 0)
                     effectiveDuration = null;
-                } else {
+                else
                     effectiveDuration = modDuration;
-                }
             }
         }
         return effectiveDuration;
     }
 
-    /**
-     * Check if a punishment is effectively active, considering duration modifications and pardons.
-     * @param punishment The punishment to check
-     * @param effectiveDuration The effective duration (from getEffectiveDuration)
-     * @return True if the punishment is effectively active
-     */
     private boolean isPunishmentEffectivelyActive(Punishment punishment, Long effectiveDuration) {
-        // First check if it was pardoned
-        if (findPardonDate(punishment) != null) {
+        if (findPardonDate(punishment) != null)
             return false;
-        }
 
-        // Check if the data.active flag is false
-        if (!punishment.isActive()) {
+        if (!punishment.isActive())
             return false;
-        }
 
-        // Check if it has a started date
-        if (punishment.getStarted() == null) {
-            return true; // Not started yet, considered active
-        }
-
-        // If permanent (null or <= 0 duration), it's active
-        if (effectiveDuration == null || effectiveDuration <= 0) {
+        if (punishment.getStarted() == null)
             return true;
-        }
 
-        // Check if the effective duration has expired
+        if (effectiveDuration == null || effectiveDuration <= 0)
+            return true;
+
         long expiryTime = punishment.getStarted().getTime() + effectiveDuration;
         return System.currentTimeMillis() < expiryTime;
     }

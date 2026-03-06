@@ -4,7 +4,9 @@ import gg.modl.minecraft.core.sync.StatWipeExecutor;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -42,9 +44,7 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
 
         for (QueryClient client : clients) {
             if (!client.isConnected()) {
-                if (debugMode) {
-                    logger.info("[StatWipe] Skipping bridge on " + client.getServerName() + " (not connected)");
-                }
+                if (debugMode) logger.info("[StatWipe] Skipping bridge on " + client.getServerName() + " (not connected)");
                 continue;
             }
 
@@ -57,9 +57,7 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
                 out.writeUTF(punishmentId);
 
                 client.sendMessage(bytes.toByteArray());
-                if (firstServerName == null) {
-                    firstServerName = client.getServerName();
-                }
+                if (firstServerName == null) firstServerName = client.getServerName();
                 logger.info("[StatWipe] Sent stat wipe request to bridge on " + client.getServerName() +
                         " for " + username + " (punishment: " + punishmentId + ")");
             } catch (IOException e) {
@@ -69,7 +67,6 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
         }
 
         if (firstServerName != null) {
-            // ACK immediately — the TCP connection is reliable, so if we sent it the bridge will process it
             callback.onComplete(true, firstServerName);
         } else {
             logger.warning("[StatWipe] No connected bridges available for stat wipe of " + username +
@@ -83,30 +80,21 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
                 String bridgeServerName = message.getData().readUTF();
                 logger.info("[modl] modl-bridge detected on backend server '" + serverName + "' (TCP query)");
             } else {
-                if (bridgeMessageDispatcher != null) {
-                    bridgeMessageDispatcher.dispatch(message.getAction(), message.getData());
-                }
+                if (bridgeMessageDispatcher != null) bridgeMessageDispatcher.dispatch(message.getAction(), message.getData());
             }
         } catch (IOException e) {
             logger.warning("[modl] Failed to read query message from " + serverName + ": " + e.getMessage());
         }
     }
 
-    /**
-     * Send a typed message to all connected bridges.
-     */
     public void sendToAllBridges(String action, String... args) {
         for (QueryClient client : clients) {
-            if (client.isConnected()) {
-                client.sendTypedMessage(action, args);
-            }
+            if (client.isConnected()) client.sendTypedMessage(action, args);
         }
     }
 
     public void shutdown() {
-        for (QueryClient client : clients) {
-            client.shutdown();
-        }
+        for (QueryClient client : clients) client.shutdown();
         eventLoopGroup.shutdownGracefully();
     }
 }

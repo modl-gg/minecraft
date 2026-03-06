@@ -2,21 +2,22 @@ package gg.modl.minecraft.velocity;
 
 import co.aikar.commands.CommandManager;
 import co.aikar.commands.VelocityCommandManager;
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ProxyServer;
+import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import dev.simplix.cirrus.velocity.wrapper.VelocityPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffModeService;
+import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
-import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import gg.modl.minecraft.core.util.WebPlayer;
-import com.velocitypowered.api.proxy.Player;
-import com.velocitypowered.api.proxy.ProxyServer;
-import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.cirrus.velocity.wrapper.VelocityPlayerWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import net.kyori.adventure.text.Component;
@@ -24,7 +25,6 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.slf4j.Logger;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -43,85 +43,77 @@ public class VelocityPlatform implements Platform {
     @Setter
     private StaffModeService staffModeService;
     @Setter
-    private gg.modl.minecraft.core.service.BridgeService bridgeService;
+    private BridgeService bridgeService;
     @Setter
     private Staff2faService staff2faService;
 
-    private static Component get(String string) {
+    private static Component colorize(String string) {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(string);
+    }
+
+    private boolean isAuthenticatedStaff(Player player) {
+        return PermissionUtil.isStaff(player.getUniqueId(), cache)
+                && (staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()));
     }
 
     @Override
     public void broadcast(String string) {
-        server.getAllPlayers().forEach(player -> player.sendMessage(get(string)));
+        server.getAllPlayers().forEach(player -> player.sendMessage(colorize(string)));
     }
 
     @Override
     public void staffBroadcast(String string) {
-        server.getAllPlayers().forEach(player -> {
-            if (PermissionUtil.isStaff(player.getUniqueId(), cache)
-                    && (staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))) {
-                player.sendMessage(get(string));
-            }
-        });
+        server.getAllPlayers().stream()
+            .filter(this::isAuthenticatedStaff)
+            .forEach(player -> player.sendMessage(colorize(string)));
     }
 
     @Override
     public void staffChatBroadcast(String message) {
-        net.kyori.adventure.text.Component component = Colors.get(message);
+        Component component = Colors.get(message);
         server.getAllPlayers().stream()
-            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
-            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
+            .filter(this::isAuthenticatedStaff)
             .filter(player -> cache.isStaffNotificationsEnabled(player.getUniqueId()))
             .forEach(player -> player.sendMessage(component));
     }
 
     @Override
     public void connectToServer(java.util.UUID playerUuid, String serverName) {
-        server.getPlayer(playerUuid).ifPresent(player -> {
-            server.getServer(serverName).ifPresent(srv -> {
-                player.createConnectionRequest(srv).fireAndForget();
-            });
-        });
+        server.getPlayer(playerUuid).ifPresent(player ->
+            server.getServer(serverName).ifPresent(srv ->
+                player.createConnectionRequest(srv).fireAndForget()));
     }
 
     @Override
     public void staffJsonBroadcast(String jsonMessage) {
-        server.getAllPlayers().forEach(player -> {
-            if (PermissionUtil.isStaff(player.getUniqueId(), cache)
-                    && (staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))) {
-                try {
-                    net.kyori.adventure.text.Component component = net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson().deserialize(jsonMessage);
-                    player.sendMessage(component);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    player.sendMessage(net.kyori.adventure.text.Component.text("Notification: " + jsonMessage));
-                }
-            }
-        });
+        server.getAllPlayers().stream()
+            .filter(this::isAuthenticatedStaff)
+            .forEach(player -> sendJsonToPlayer(player, jsonMessage));
     }
 
     @Override
     public void disconnect(UUID uuid, String message) {
-        server.getPlayer(uuid).ifPresent(player -> player.disconnect(get(message)));
+        server.getPlayer(uuid).ifPresent(player -> player.disconnect(colorize(message)));
     }
 
     @Override
     public void sendMessage(UUID uuid, String message) {
-        server.getPlayer(uuid).orElseThrow().sendMessage(get(StringUtil.unescapeNewlines(message)));
+        server.getPlayer(uuid).orElseThrow().sendMessage(colorize(StringUtil.unescapeNewlines(message)));
     }
-    
+
     @Override
     public void sendJsonMessage(UUID uuid, String jsonMessage) {
-        server.getPlayer(uuid).ifPresent(player -> {
-            try {
-                net.kyori.adventure.text.Component component = net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson().deserialize(jsonMessage);
-                player.sendMessage(component);
-            } catch (Exception e) {
-                e.printStackTrace();
-                player.sendMessage(net.kyori.adventure.text.Component.text("Notification: " + jsonMessage));
-            }
-        });
+        server.getPlayer(uuid).ifPresent(player -> sendJsonToPlayer(player, jsonMessage));
+    }
+
+    private void sendJsonToPlayer(Player player, String jsonMessage) {
+        try {
+            Component component = net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson().deserialize(jsonMessage);
+            player.sendMessage(component);
+        } catch (Exception e) {
+            e.printStackTrace();
+            player.sendMessage(Component.text("Notification: " + jsonMessage));
+        }
     }
 
     @Override
@@ -135,21 +127,18 @@ public class VelocityPlatform implements Platform {
     }
 
     private Player getOnlinePlayer(String username) {
-        return server.getPlayer(username).isPresent() ? server.getPlayer(username).get() : null;
+        return server.getPlayer(username).orElse(null);
     }
 
     private Player getOnlinePlayer(UUID uuid) {
-        return server.getPlayer(uuid).isPresent() ? server.getPlayer(uuid).get() : null;
+        return server.getPlayer(uuid).orElse(null);
     }
 
     @Override
     public AbstractPlayer getAbstractPlayer(UUID uuid, boolean queryMojang) {
         Player player = getOnlinePlayer(uuid);
 
-        if (player != null) {
-            return new AbstractPlayer(player.getUniqueId(), player.getUsername(), true,
-                player.getRemoteAddress().getAddress().getHostAddress());
-        }
+        if (player != null) return new AbstractPlayer(player.getUniqueId(), player.getUsername(), true, player.getRemoteAddress().getAddress().getHostAddress());
         if (!queryMojang) return null;
 
         WebPlayer webPlayer;
@@ -167,10 +156,7 @@ public class VelocityPlatform implements Platform {
     public AbstractPlayer getAbstractPlayer(String username, boolean queryMojang) {
         Player player = getOnlinePlayer(username);
 
-        if (player != null) {
-            return new AbstractPlayer(player.getUniqueId(), player.getUsername(), true,
-                player.getRemoteAddress().getAddress().getHostAddress());
-        }
+        if (player != null) return new AbstractPlayer(player.getUniqueId(), player.getUsername(), true, player.getRemoteAddress().getAddress().getHostAddress());
         if (!queryMojang) return null;
 
         WebPlayer webPlayer;
@@ -227,17 +213,14 @@ public class VelocityPlatform implements Platform {
 
     @Override
     public void runOnMainThread(Runnable task) {
-        // Velocity doesn't have a main thread concept like Bukkit
-        // Execute immediately since we're already on the main event thread
+        // Velocity has no main thread; all APIs are thread-safe
         task.run();
     }
 
     @Override
     public void kickPlayer(AbstractPlayer player, String reason) {
         Player velocityPlayer = server.getPlayer(player.getUuid()).orElse(null);
-        if (velocityPlayer != null) {
-            velocityPlayer.disconnect(get(StringUtil.unescapeNewlines(reason)));
-        }
+        if (velocityPlayer != null) velocityPlayer.disconnect(colorize(StringUtil.unescapeNewlines(reason)));
     }
 
     @Override
@@ -261,19 +244,15 @@ public class VelocityPlatform implements Platform {
     @Override
     public DatabaseProvider createLiteBansDatabaseProvider() {
         try {
-            // Check if LiteBans plugin is loaded
-            if (server.getPluginManager().getPlugin("litebans").isPresent()) {
-                // Verify LiteBans API is accessible
-                Class.forName("litebans.api.Database");
-                logger.info("[Migration] LiteBans plugin detected, using LiteBans API");
-                return new LiteBansDatabaseProvider();
-            }
+            if (server.getPluginManager().getPlugin("litebans").isEmpty()) return null;
+            Class.forName("litebans.api.Database");
+            logger.info("[Migration] LiteBans plugin detected, using LiteBans API");
+            return new LiteBansDatabaseProvider();
         } catch (ClassNotFoundException e) {
             logger.info("[Migration] LiteBans API not found in classpath");
         } catch (Exception e) {
             logger.warn("[Migration] Error checking for LiteBans: " + e.getMessage());
         }
-
         return null;
     }
 
@@ -319,7 +298,7 @@ public class VelocityPlatform implements Platform {
     }
 
     @Override
-    public gg.modl.minecraft.core.service.BridgeService getBridgeService() {
+    public BridgeService getBridgeService() {
         return bridgeService;
     }
 }

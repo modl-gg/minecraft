@@ -7,13 +7,20 @@ import dev.simplix.cirrus.model.CirrusClickType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
+import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
+import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.StaffModeService;
+import gg.modl.minecraft.core.util.Permissions;
+import gg.modl.minecraft.core.util.WebPlayer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,12 +31,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Online Players Menu - displays all online players.
- */
 public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.OnlinePlayer> {
 
-    // Placeholder OnlinePlayer class since no endpoint exists yet
     public static class OnlinePlayer {
         private final UUID uuid;
         private final String name;
@@ -47,7 +50,6 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
         public UUID getUuid() { return uuid; }
         public String getName() { return name; }
-        public long getSessionStartTime() { return sessionStartTime; }
         public long getTotalPlaytime() { return totalPlaytime; }
         public int getPunishmentCount() { return punishmentCount; }
         public long getSessionDuration() { return System.currentTimeMillis() - sessionStartTime; }
@@ -57,47 +59,20 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
     private String currentSort = "Recent Reports";
     private final List<String> sortOptions = Arrays.asList("Least Playtime", "Recent Reports", "Longest Session");
     private final String panelUrl;
-    private final Consumer<CirrusPlayerWrapper> parentBackAction;
 
-    /**
-     * Create a new online players menu.
-     *
-     * @param platform The platform instance
-     * @param httpClient The HTTP client for API calls
-     * @param viewerUuid The UUID of the staff viewing the menu
-     * @param viewerName The name of the staff viewing the menu
-     * @param isAdmin Whether the viewer has admin permissions
-     * @param panelUrl The panel URL
-     * @param backAction Action to return to parent menu
-     */
     public OnlinePlayersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                              boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
         this(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction, "Recent Reports", null);
     }
 
-    /**
-     * Create a new online players menu with preserved state.
-     *
-     * @param platform The platform instance
-     * @param httpClient The HTTP client for API calls
-     * @param viewerUuid The UUID of the staff viewing the menu
-     * @param viewerName The name of the staff viewing the menu
-     * @param isAdmin Whether the viewer has admin permissions
-     * @param panelUrl The panel URL
-     * @param backAction Action to return to parent menu
-     * @param sortOption Current sort option to preserve
-     * @param existingPlayers Existing player list to preserve (if null, will fetch)
-     */
     public OnlinePlayersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                              boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction,
                              String sortOption, List<OnlinePlayer> existingPlayers) {
         super("Online Players", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
         this.panelUrl = panelUrl;
-        this.parentBackAction = backAction;
         this.currentSort = sortOption;
         activeTab = StaffTab.ONLINE_PLAYERS;
 
-        // Use existing players if provided, otherwise fetch
         if (existingPlayers != null) {
             this.onlinePlayers = new ArrayList<>(existingPlayers);
         } else {
@@ -120,11 +95,11 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                     onlinePlayers.add(new OnlinePlayer(uuid, player.getUsername(), sessionStart, totalPlaytime, 0));
                 }
             } else {
-                System.err.println("[modl.gg] Online players fetch: success=" + response.isSuccess()
+                java.util.logging.Logger.getLogger("modl").warning("Online players fetch: success=" + response.isSuccess()
                         + " players=" + (response.getPlayers() != null ? response.getPlayers().size() : "null"));
             }
         }).exceptionally(e -> {
-            System.err.println("[modl.gg] Failed to fetch online players: " + e.getMessage());
+            java.util.logging.Logger.getLogger("modl").warning("Failed to fetch online players: " + e.getMessage());
             return null;
         });
     }
@@ -133,7 +108,6 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
-        // Add sort button at slot 40 (y position in navigation row)
         items.put(MenuSlots.SORT_BUTTON, MenuItems.sortButton(currentSort, sortOptions)
                 .actionHandler("sort"));
 
@@ -142,12 +116,9 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
     @Override
     protected Collection<OnlinePlayer> elements() {
-        // Return placeholder if empty to prevent Cirrus from shrinking inventory
-        if (onlinePlayers.isEmpty()) {
+        if (onlinePlayers.isEmpty())
             return Collections.singletonList(new OnlinePlayer(null, null, 0, 0, 0));
-        }
 
-        // Sort players based on current sort option
         List<OnlinePlayer> sorted = new ArrayList<>(onlinePlayers);
 
         switch (currentSort) {
@@ -168,12 +139,10 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
     @Override
     protected CirrusItem map(OnlinePlayer player) {
-        // Handle placeholder for empty list
-        if (player.getName() == null) {
+        if (player.getName() == null)
             return createEmptyPlaceholder("No online players");
-        }
 
-        gg.modl.minecraft.core.locale.LocaleManager localeManager = platform.getLocaleManager();
+        LocaleManager localeManager = platform.getLocaleManager();
 
         String punishments = player.getPunishmentCount() > 0
                 ? "&c" + player.getPunishmentCount()
@@ -195,15 +164,13 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                 MenuItems.lore(lore)
         );
 
-        // Apply skin texture from cache if available
         if (player.getUuid() != null && platform.getCache() != null) {
             String cachedTexture = platform.getCache().getSkinTexture(player.getUuid());
             if (cachedTexture != null) {
                 headItem = headItem.texture(cachedTexture);
             } else {
-                // Async fire-and-forget to populate cache for next menu open
                 final UUID uuid = player.getUuid();
-                gg.modl.minecraft.core.util.WebPlayer.get(uuid).thenAccept(wp -> {
+                WebPlayer.get(uuid).thenAccept(wp -> {
                     if (wp != null && wp.valid() && wp.textureValue() != null) {
                         platform.getCache().cacheSkinTexture(uuid, wp.textureValue());
                     }
@@ -216,15 +183,15 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
     @Override
     protected void handleClick(Click click, OnlinePlayer player) {
-        // Handle placeholder - do nothing
-        if (player.getName() == null) {
-            return;
-        }
+        if (player.getName() == null) return;
 
-        // Left-click = target the player
         StaffModeService staffModeService = platform.getStaffModeService();
         if (staffModeService != null && !click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
-            // Cannot target yourself
+            if (platform.getCache() == null || !platform.getCache().hasPermission(viewerUuid, Permissions.MOD_ACTIONS)) {
+                sendMessage(platform.getLocaleManager().getMessage("general.no_permission"));
+                return;
+            }
+
             if (player.getUuid() != null && player.getUuid().equals(viewerUuid)) {
                 sendMessage(MenuItems.COLOR_RED + "You cannot target yourself");
                 return;
@@ -232,24 +199,23 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
             click.clickedMenu().close();
 
-            // Enter staff mode if not already in it
             if (!staffModeService.isInStaffMode(viewerUuid)) {
                 staffModeService.enable(viewerUuid);
-                gg.modl.minecraft.api.AbstractPlayer staffPlayer = platform.getPlayer(viewerUuid);
+                AbstractPlayer staffPlayer = platform.getPlayer(viewerUuid);
                 String inGameName = staffPlayer != null ? staffPlayer.getName() : "Staff";
                 String panelName = platform.getCache() != null ? platform.getCache().getStaffDisplayName(viewerUuid) : null;
                 if (panelName == null) panelName = inGameName;
                 platform.sendMessage(viewerUuid, platform.getLocaleManager().getMessage("staff_mode.enabled"));
                 platform.staffBroadcast(platform.getLocaleManager().getMessage("staff_mode.enabled_broadcast", Map.of(
                         "staff", panelName, "in-game-name", inGameName)));
-                gg.modl.minecraft.core.service.BridgeService bridgeService = platform.getBridgeService();
+                BridgeService bridgeService = platform.getBridgeService();
                 if (bridgeService != null) {
                     bridgeService.sendStaffModeEnter(viewerUuid.toString(), inGameName, panelName);
                 }
             }
 
             staffModeService.setTarget(viewerUuid, player.getUuid());
-            gg.modl.minecraft.core.service.BridgeService bridgeService = platform.getBridgeService();
+            BridgeService bridgeService = platform.getBridgeService();
             if (bridgeService != null) {
                 bridgeService.sendTargetRequest(viewerUuid.toString(), player.getUuid().toString());
             }
@@ -257,10 +223,8 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
             return;
         }
 
-        // Right click (or any click when not in staff mode) = open inspect menu
         click.clickedMenu().close();
 
-        // Capture current state for back action
         final String sortState = currentSort;
         final List<OnlinePlayer> playerState = new ArrayList<>(onlinePlayers);
 
@@ -283,48 +247,20 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Sort handler
         registerActionHandler("sort", this::handleSort);
 
-        // Override header navigation - primary tabs should NOT pass backAction
-        registerActionHandler("openOnlinePlayers", click -> {
-            // Already here, do nothing
-        });
+        StaffNavigationHandlers.registerAll(
+                (name, handler) -> registerActionHandler(name, handler),
+                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
-        registerActionHandler("openReports", ActionHandlers.openMenu(
-                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPunishments", ActionHandlers.openMenu(
-                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openTickets", ActionHandlers.openMenu(
-                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPanel", click -> {
-            click.clickedMenu().close();
-            String escapedUrl = panelUrl.replace("\"", "\\\"");
-            String panelJson = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"Staff Panel: \",\"color\":\"gold\"}," +
-                "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-                escapedUrl, panelUrl
-            );
-            platform.sendJsonMessage(viewerUuid, panelJson);
-        });
-
-        registerActionHandler("openSettings", ActionHandlers.openMenu(
-                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+        registerActionHandler("openOnlinePlayers", click -> {});
     }
 
     private void handleSort(Click click) {
-        // Cycle through sort options
         int currentIndex = sortOptions.indexOf(currentSort);
         int nextIndex = (currentIndex + 1) % sortOptions.size();
         String nextSort = sortOptions.get(nextIndex);
 
-        // Refresh menu - preserve backAction and existing data
         ActionHandlers.openMenu(
                 new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction,
                         nextSort, onlinePlayers))

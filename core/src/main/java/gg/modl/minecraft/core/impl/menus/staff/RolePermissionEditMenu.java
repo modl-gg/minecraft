@@ -14,6 +14,9 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
+import gg.modl.minecraft.core.util.Permissions;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,11 +30,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Role Permission Edit Menu - edit permissions for a role.
- * Tertiary menu accessed from RoleListMenu.
- * Changes are batched and saved via an Apply button.
- */
 public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEditMenu.Permission> {
 
     public static class Permission {
@@ -82,6 +80,15 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             "punishment.modify.evidence",
             "punishment.modify.options",
             // punishment.apply.* added dynamically
+            // Staff tool permissions
+            Permissions.CHAT_TOGGLE,
+            Permissions.CHAT_CLEAR,
+            Permissions.CHAT_SLOW,
+            Permissions.MAINTENANCE,
+            Permissions.MOD_ACTIONS,
+            Permissions.INTERCEPT,
+            Permissions.CHAT_LOGS,
+            Permissions.COMMAND_LOGS,
             // Ticket permissions
             "ticket.view.all",
             "ticket.view.all.notes",
@@ -96,9 +103,6 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             "ticket.delete.all"
     );
 
-    /**
-     * Create a new role permission edit menu.
-     */
     public RolePermissionEditMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                    boolean isAdmin, String panelUrl, RoleListMenu.Role role, Consumer<CirrusPlayerWrapper> backAction) {
         super("Edit: " + role.getName(), platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
@@ -107,22 +111,17 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         activeTab = StaffTab.SETTINGS;
 
         Cache cache = platform.getCache();
-        // Prevent editing the Super Admin role
         boolean isSuperAdmin = "Super Admin".equals(role.getName());
-        this.hasPermission = !isSuperAdmin && cache != null && cache.hasPermission(viewerUuid, "admin.settings.modify");
+        this.hasPermission = !isSuperAdmin && cache != null && cache.hasPermission(viewerUuid, Permissions.SETTINGS_MODIFY);
 
-        // Initialize permissions from role data
         enabledPermissions = new HashSet<>(role.getPermissions());
         originalPermissions = new HashSet<>(role.getPermissions());
 
-        // Build full permission list: static permissions + any dynamic punishment permissions from the role
         Set<String> allNodes = new LinkedHashSet<>(AVAILABLE_PERMISSIONS);
         for (String perm : role.getPermissions()) {
-            if (perm.startsWith("punishment.apply.")) {
+            if (perm.startsWith("punishment.apply."))
                 allNodes.add(perm);
-            }
         }
-        // Also add dynamic punishment permissions from cached punishment types
         if (cache != null && cache.getCachedPunishmentTypes() != null
                 && cache.getCachedPunishmentTypes().getData() != null) {
             for (var type : cache.getCachedPunishmentTypes().getData()) {
@@ -140,7 +139,6 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
-        // Add Apply button at slot 40 (between prev/next arrows)
         boolean hasChanges = !enabledPermissions.equals(originalPermissions);
         items.put(MenuSlots.FILTER_BUTTON, CirrusItem.of(
                 hasChanges ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
@@ -158,19 +156,13 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
     @Override
     protected Collection<Permission> elements() {
-        if (!hasPermission) {
+        if (!hasPermission)
             return Collections.singletonList(new Permission("no_permission", false));
-        }
-        if (allPermissions.isEmpty()) {
+        if (allPermissions.isEmpty())
             return Collections.singletonList(new Permission(null, false));
-        }
         return allPermissions;
     }
 
-    /**
-     * Get the parent node for a permission (everything up to the last '.' segment).
-     * Returns null if the node has no parent in AVAILABLE_PERMISSIONS.
-     */
     private static String getParentNode(String node) {
         int lastDot = node.lastIndexOf('.');
         if (lastDot <= 0) return null;
@@ -199,16 +191,13 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
                     )
             );
         }
-        if (permission.getNode() == null) {
-            return createEmptyPlaceholder("No permissions");
-        }
+        if (permission.getNode() == null) return createEmptyPlaceholder("No permissions");
 
         boolean changed = permission.isEnabled() != originalPermissions.contains(permission.getNode());
         String suffix = changed ? MenuItems.COLOR_YELLOW + " *" : "";
         boolean isChild = isChildPermission(permission.getNode());
         String displayPrefix = isChild ? "  \u21b3 " : "";
 
-        // Child permission auto-granted by parent
         if (isChild && isParentEnabled(permission.getNode())) {
             CirrusItem item = CirrusItem.of(
                     CirrusItemType.LIME_DYE,
@@ -238,18 +227,15 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             return;
         }
 
-        // If child is auto-granted by parent, clicking does nothing
         if (isChildPermission(permission.getNode()) && isParentEnabled(permission.getNode())) {
             return;
         }
 
-        // Toggle permission locally (no API call)
         boolean newState = !permission.isEnabled();
         permission.setEnabled(newState);
 
         if (newState) {
             enabledPermissions.add(permission.getNode());
-            // When toggling parent ON, also enable all children
             for (Permission p : allPermissions) {
                 String parent = getParentNode(p.getNode());
                 if (permission.getNode().equals(parent)) {
@@ -261,7 +247,6 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             enabledPermissions.remove(permission.getNode());
         }
 
-        // Create new menu for fresh render, but preserve permission order
         RoleListMenu.Role localRole = new RoleListMenu.Role(
                 role.getId(), role.getName(), role.getDescription(), new ArrayList<>(enabledPermissions));
         RolePermissionEditMenu newMenu = new RolePermissionEditMenu(
@@ -269,7 +254,6 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         newMenu.originalPermissions.clear();
         newMenu.originalPermissions.addAll(this.originalPermissions);
 
-        // Copy permission order from current menu instead of the reconstructed order
         newMenu.allPermissions.clear();
         for (Permission p : this.allPermissions) {
             newMenu.allPermissions.add(new Permission(p.getNode(), enabledPermissions.contains(p.getNode())));
@@ -282,40 +266,14 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Apply button handler
         registerActionHandler("applyPermissions", (ActionHandler) click -> {
             handleApply(click);
             return CallResult.DENY_GRABBING;
         });
 
-        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
-                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openReports", ActionHandlers.openMenu(
-                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPunishments", ActionHandlers.openMenu(
-                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openTickets", ActionHandlers.openMenu(
-                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPanel", click -> {
-            click.clickedMenu().close();
-            String escapedUrl = panelUrl.replace("\"", "\\\"");
-            String panelJson = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"Staff Panel: \",\"color\":\"gold\"}," +
-                "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-                escapedUrl, panelUrl
-            );
-            platform.sendJsonMessage(viewerUuid, panelJson);
-        });
-
-        registerActionHandler("openSettings", ActionHandlers.openMenu(
-                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+        StaffNavigationHandlers.registerAll(
+                (name, handler) -> registerActionHandler(name, handler),
+                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 
     private void handleApply(Click click) {
@@ -329,10 +287,8 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         httpClient.updateRolePermissions(role.getId(), new ArrayList<>(enabledPermissions)).thenAccept(v -> {
             sendMessage(MenuItems.COLOR_GREEN + "Permissions saved successfully!");
 
-            // Go back to previous menu (RoleListMenu)
-            if (backAction != null) {
+            if (backAction != null)
                 backAction.accept(click.player());
-            }
         }).exceptionally(e -> {
             sendMessage(MenuItems.COLOR_RED + "Failed to save: " + e.getMessage());
             return null;

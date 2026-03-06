@@ -30,9 +30,11 @@ public final class Modification {
         return type;
     }
 
+    private static final String UNKNOWN_ISSUER = "Unknown";
+
     @NotNull
     public String getIssuer() {
-        return issuer != null ? issuer : "Unknown";
+        return issuer != null ? issuer : UNKNOWN_ISSUER;
     }
 
     @NotNull
@@ -41,7 +43,6 @@ public final class Modification {
     }
 
     /**
-     * Get the effective duration in milliseconds.
      * Returns null for permanent punishments.
      */
     @Nullable

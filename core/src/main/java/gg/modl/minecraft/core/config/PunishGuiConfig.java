@@ -13,18 +13,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-/**
- * Configuration for the punishment GUI menu.
- * Maps to the punish_gui section in config.yml or CLAUDE.md.
- */
 @Data
 public class PunishGuiConfig {
+    private static final Yaml yaml = new Yaml();
+    public static final int MAX_PUNISHMENT_SLOTS = 14;
     private final Map<Integer, PunishSlotConfig> slots = new HashMap<>();
     private final Map<Integer, String> itemsByOrdinal = new HashMap<>();
 
-    /**
-     * Configuration for a single punishment slot (1-14).
-     */
     @Data
     @NoArgsConstructor
     public static class PunishSlotConfig {
@@ -45,34 +40,20 @@ public class PunishGuiConfig {
         }
     }
 
-    /**
-     * Load the punish GUI config from punish_gui.yml first, falling back to config.yml.
-     */
     @SuppressWarnings("unchecked")
     public static PunishGuiConfig load(Path dataDirectory, Logger logger) {
         PunishGuiConfig config = new PunishGuiConfig();
-
         try {
-            // Load punishment_type_items_by_ordinal from config.yml (always lives there)
             loadItemsByOrdinal(config, dataDirectory, logger);
-
-            // Try dedicated punish_gui.yml first, then fall back to config.yml section
             Map<?, ?> punishGui = null;
             Path dedicatedFile = dataDirectory.resolve("punish_gui.yml");
             if (Files.exists(dedicatedFile)) {
-                Yaml yaml = new Yaml();
                 try (InputStream is = Files.newInputStream(dedicatedFile)) {
                     Map<String, Object> data = yaml.load(is);
-                    if (data != null && data.containsKey("punish_gui")) {
-                        punishGui = (Map<?, ?>) data.get("punish_gui");
-                    } else if (data != null) {
-                        // The file itself IS the punish_gui content (no wrapper key)
-                        punishGui = data;
-                    }
+                    if (data != null && data.containsKey("punish_gui")) punishGui = (Map<?, ?>) data.get("punish_gui");
+                    else if (data != null) punishGui = data;
                 }
-                if (punishGui != null) {
-                    logger.info("[PunishGuiConfig] Loaded from punish_gui.yml");
-                }
+                if (punishGui != null) logger.info("[PunishGuiConfig] Loaded from punish_gui.yml");
             }
 
             if (punishGui == null) {
@@ -81,12 +62,9 @@ public class PunishGuiConfig {
                     logger.info("[PunishGuiConfig] Config file not found, using defaults");
                     return createDefault();
                 }
-                Yaml yaml = new Yaml();
                 try (InputStream is = Files.newInputStream(configFile)) {
                     Map<String, Object> rootConfig = yaml.load(is);
-                    if (rootConfig != null && rootConfig.containsKey("punish_gui")) {
-                        punishGui = (Map<?, ?>) rootConfig.get("punish_gui");
-                    }
+                    if (rootConfig != null && rootConfig.containsKey("punish_gui")) punishGui = (Map<?, ?>) rootConfig.get("punish_gui");
                 }
             }
 
@@ -99,22 +77,16 @@ public class PunishGuiConfig {
                 try {
                     int slotNumber;
                     Object key = entry.getKey();
-                    if (key instanceof Integer) {
-                        slotNumber = (Integer) key;
-                    } else if (key instanceof String) {
-                        slotNumber = Integer.parseInt((String) key);
-                    } else {
-                        continue;
-                    }
+                    if (key instanceof Integer) slotNumber = (Integer) key;
+                    else if (key instanceof String) slotNumber = Integer.parseInt((String) key);
+                    else continue;
 
-                    if (slotNumber < 1 || slotNumber > 14) continue;
+                    if (slotNumber < 1 || slotNumber > MAX_PUNISHMENT_SLOTS) continue;
 
                     Map<String, Object> slotData = (Map<String, Object>) entry.getValue();
                     PunishSlotConfig slotConfig = parseSlotConfig(slotNumber, slotData);
                     config.slots.put(slotNumber, slotConfig);
-                } catch (NumberFormatException e) {
-                    // Skip non-numeric keys
-                }
+                } catch (NumberFormatException ignored) {}
             }
 
             logger.info("[PunishGuiConfig] Loaded " + config.slots.size() + " punishment slots from config");
@@ -131,28 +103,26 @@ public class PunishGuiConfig {
         try {
             Map<?, ?> itemsMap = null;
 
-            // Try punish_gui.yml first
-            Path dedicatedFile = dataDirectory.resolve("punish_gui.yml");
-            if (Files.exists(dedicatedFile)) {
-                Yaml yaml = new Yaml();
-                try (InputStream is = Files.newInputStream(dedicatedFile)) {
-                    Map<String, Object> data = yaml.load(is);
-                    if (data != null && data.containsKey("punishment_type_items_by_ordinal")) {
-                        itemsMap = (Map<?, ?>) data.get("punishment_type_items_by_ordinal");
-                    }
-                }
-            }
-
-            // Fall back to config.yml
-            if (itemsMap == null) {
-                Path configFile = dataDirectory.resolve("config.yml");
-                if (!Files.exists(configFile)) return;
-
-                Yaml yaml = new Yaml();
+            // Primary: config.yml punishment_type_items_by_ordinal section
+            Path configFile = dataDirectory.resolve("config.yml");
+            if (Files.exists(configFile)) {
                 try (InputStream is = Files.newInputStream(configFile)) {
                     Map<String, Object> rootConfig = yaml.load(is);
                     if (rootConfig != null && rootConfig.containsKey("punishment_type_items_by_ordinal")) {
                         itemsMap = (Map<?, ?>) rootConfig.get("punishment_type_items_by_ordinal");
+                    }
+                }
+            }
+
+            // Fallback: legacy punish_gui.yml
+            if (itemsMap == null) {
+                Path dedicatedFile = dataDirectory.resolve("punish_gui.yml");
+                if (Files.exists(dedicatedFile)) {
+                    try (InputStream is = Files.newInputStream(dedicatedFile)) {
+                        Map<String, Object> data = yaml.load(is);
+                        if (data != null && data.containsKey("punishment_type_items_by_ordinal")) {
+                            itemsMap = (Map<?, ?>) data.get("punishment_type_items_by_ordinal");
+                        }
                     }
                 }
             }
@@ -163,9 +133,7 @@ public class PunishGuiConfig {
                         int ordinal = entry.getKey() instanceof Integer ? (Integer) entry.getKey() : Integer.parseInt(entry.getKey().toString());
                         String itemId = entry.getValue().toString();
                         String[] parts = itemId.split(":");
-                        if (parts.length > 2) {
-                            itemId = parts[0] + ":" + parts[1];
-                        }
+                        if (parts.length > 2) itemId = parts[0] + ":" + parts[1];
                         config.itemsByOrdinal.put(ordinal, itemId);
                     } catch (NumberFormatException ignored) {}
                 }
@@ -180,35 +148,26 @@ public class PunishGuiConfig {
         PunishSlotConfig config = new PunishSlotConfig();
         config.setSlotNumber(slotNumber);
 
-        if (data.containsKey("enabled")) {
-            config.setEnabled((Boolean) data.get("enabled"));
-        }
-        if (data.containsKey("item")) {
-            config.setItem((String) data.get("item"));
-        }
-        if (data.containsKey("title")) {
-            config.setTitle((String) data.get("title"));
-        }
+        if (data.containsKey("enabled")) config.setEnabled((Boolean) data.get("enabled"));
+        if (data.containsKey("item")) config.setItem((String) data.get("item"));
+        if (data.containsKey("title")) config.setTitle((String) data.get("title"));
         if (data.containsKey("ordinal")) {
-            config.setOrdinal(((Number) data.get("ordinal")).intValue());
+            Object val = data.get("ordinal");
+            if (val instanceof Number) config.setOrdinal(((Number) val).intValue());
+            else if (val instanceof String) {
+                try { config.setOrdinal(Integer.parseInt((String) val)); } catch (NumberFormatException ignored) {}
+            }
         }
         if (data.containsKey("description")) {
             Object desc = data.get("description");
-            if (desc instanceof List) {
-                config.setDescription(new ArrayList<>((List<String>) desc));
-            }
+            if (desc instanceof List) config.setDescription(new ArrayList<>((List<String>) desc));
         }
 
         return config;
     }
 
-    /**
-     * Create a default configuration.
-     */
     public static PunishGuiConfig createDefault() {
         PunishGuiConfig config = new PunishGuiConfig();
-
-        // Default item mappings by ordinal
         config.itemsByOrdinal.put(0, "minecraft:leather_boots");
         config.itemsByOrdinal.put(1, "minecraft:paper");
         config.itemsByOrdinal.put(2, "minecraft:barrier");
@@ -228,7 +187,6 @@ public class PunishGuiConfig {
         config.itemsByOrdinal.put(16, "minecraft:experience_bottle");
         config.itemsByOrdinal.put(17, "minecraft:barrier");
 
-        // Default configuration matching CLAUDE.md
         config.slots.put(1, new PunishSlotConfig(1, true, "minecraft:feather", "Chat Abuse", 6,
             List.of("&7{staff-description}", "", "&fSocial Offender Level: {social-status}", "", "Click to issue new punishment.")));
         config.slots.put(2, new PunishSlotConfig(2, true, "minecraft:pufferfish", "Anti Social", 7,
@@ -259,9 +217,6 @@ public class PunishGuiConfig {
         return config;
     }
 
-    /**
-     * Get all enabled slots sorted by slot number.
-     */
     public List<PunishSlotConfig> getEnabledSlots() {
         return slots.values().stream()
                 .filter(PunishSlotConfig::isEnabled)
@@ -269,17 +224,10 @@ public class PunishGuiConfig {
                 .toList();
     }
 
-    /**
-     * Get slot config by slot number (1-14).
-     */
     public PunishSlotConfig getSlot(int slotNumber) {
         return slots.get(slotNumber);
     }
 
-    /**
-     * Get the item ID for a punishment type ordinal (e.g., "minecraft:feather" for ordinal 6).
-     * Returns null if no mapping exists.
-     */
     public String getItemForOrdinal(int ordinal) {
         return itemsByOrdinal.get(ordinal);
     }

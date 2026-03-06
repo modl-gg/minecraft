@@ -40,7 +40,6 @@ public class Account {
     @SerializedName("data")
     private Map<String, Object> data;
 
-    // Null-safe getters for list fields
     @NotNull
     public List<Username> getUsernames() {
         return usernames != null ? usernames : Collections.emptyList();

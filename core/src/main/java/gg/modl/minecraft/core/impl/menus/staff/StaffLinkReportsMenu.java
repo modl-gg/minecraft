@@ -13,17 +13,25 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
+import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.util.StringUtil;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-/**
- * Staff variant of the Link Reports Menu.
- * Uses the staff menu header instead of the inspect menu header.
- */
 public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu.Report> {
 
     public static class Report {
@@ -32,15 +40,13 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
         private final String reporterName;
         private final String content;
         private final Date date;
-        private final String status;
 
-        public Report(String id, String type, String reporterName, String content, Date date, String status) {
+        public Report(String id, String type, String reporterName, String content, Date date) {
             this.id = id;
             this.type = type;
             this.reporterName = reporterName;
             this.content = content;
             this.date = date;
-            this.status = status;
         }
 
         public String getId() { return id; }
@@ -48,7 +54,6 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
         public String getReporterName() { return reporterName; }
         public String getContent() { return content; }
         public Date getDate() { return date; }
-        public String getStatus() { return status; }
     }
 
     private final Account targetAccount;
@@ -63,7 +68,7 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
     public StaffLinkReportsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                  boolean isAdmin, String panelUrl, Account targetAccount, Set<String> preSelectedIds,
                                  Consumer<CirrusPlayerWrapper> backAction, Consumer<Set<String>> onComplete) {
-        super("Link Reports: " + getPlayerNameStatic(targetAccount), platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
+        super("Link Reports: " + ReportRenderUtil.getPlayerName(targetAccount), platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
         this.targetAccount = targetAccount;
         this.targetUuid = targetAccount.getMinecraftUuid();
         this.selectedReportIds = new LinkedHashSet<>(preSelectedIds);
@@ -73,16 +78,6 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
         activeTab = StaffTab.PUNISHMENTS;
 
         fetchReports();
-    }
-
-    private static String getPlayerNameStatic(Account account) {
-        if (account.getUsernames() != null && !account.getUsernames().isEmpty()) {
-            return account.getUsernames().stream()
-                    .max((u1, u2) -> u1.getDate().compareTo(u2.getDate()))
-                    .map(Account.Username::getUsername)
-                    .orElse("Unknown");
-        }
-        return "Unknown";
     }
 
     private void fetchReports() {
@@ -98,14 +93,12 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
                                 type,
                                 report.getReporterName(),
                                 report.getContent() != null ? report.getContent() : report.getSubject(),
-                                report.getCreatedAt(),
-                                report.getStatus()
+                                report.getCreatedAt()
                         ));
                     }
                 }
             }).join();
-        } catch (Exception e) {
-            // Failed to fetch - list remains empty
+        } catch (Exception ignored) {
         }
     }
 
@@ -118,10 +111,8 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
-        // Slot 39: Filter button
         items.put(39, MenuItems.filterButton(currentFilter, filterOptions));
 
-        // Slot 40: Apply selection (sign)
         items.put(40, CirrusItem.of(
                 CirrusItemType.OAK_SIGN,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Apply Selection"),
@@ -132,7 +123,6 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
                 )
         ).actionHandler("applySelection"));
 
-        // Slot 41: Select All (emerald)
         items.put(41, CirrusItem.of(
                 CirrusItemType.EMERALD,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Select All"),
@@ -146,9 +136,8 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
 
     @Override
     protected Collection<Report> elements() {
-        if (reports.isEmpty()) {
-            return Collections.singletonList(new Report(null, null, null, null, null, null));
-        }
+        if (reports.isEmpty())
+            return Collections.singletonList(new Report(null, null, null, null, null));
 
         List<Report> filtered;
         if (currentFilter.equals("all")) {
@@ -159,9 +148,8 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
                     .collect(Collectors.toList());
         }
 
-        if (filtered.isEmpty()) {
-            return Collections.singletonList(new Report(null, null, null, null, null, null));
-        }
+        if (filtered.isEmpty())
+            return Collections.singletonList(new Report(null, null, null, null, null));
 
         return filtered;
     }
@@ -170,55 +158,21 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
     protected CirrusItem map(Report report) {
         LocaleManager locale = platform.getLocaleManager();
 
-        if (report.getId() == null) {
-            return createEmptyPlaceholder(locale.getMessage("menus.empty.reports"));
-        }
+        if (report.getId() == null) return createEmptyPlaceholder(locale.getMessage("menus.empty.reports"));
 
         boolean selected = selectedReportIds.contains(report.getId());
 
-        String reportType = report.getType() != null ? report.getType() : "Unknown";
-        String reporter = report.getReporterName() != null ? report.getReporterName() : "Unknown";
-        String content = report.getContent() != null ? report.getContent() : "";
-        String formattedDate = report.getDate() != null ? MenuItems.formatDate(report.getDate()) : "Unknown";
-
-        content = StringUtil.unescapeNewlines(content);
-        content = content.replace("**", "").replace("```", "");
-        List<String> wrappedContent = new ArrayList<>();
-        for (String paragraph : content.split("\n")) {
-            if (paragraph.trim().isEmpty()) {
-                wrappedContent.add("");
-            } else {
-                wrappedContent.addAll(MenuItems.wrapText(paragraph.trim(), 7));
-            }
-        }
-
         Map<String, String> vars = new HashMap<>();
         vars.put("id", report.getId());
-        vars.put("type", reportType);
-        vars.put("date", formattedDate);
-        vars.put("reporter", reporter);
-        vars.put("content", String.join("\n", wrappedContent));
+        vars.put("type", report.getType() != null ? report.getType() : "Unknown");
+        vars.put("date", report.getDate() != null ? MenuItems.formatDate(report.getDate()) : "Unknown");
+        vars.put("reporter", report.getReporterName() != null ? report.getReporterName() : "Unknown");
+        vars.put("content", String.join("\n", ReportRenderUtil.processContent(report.getContent())));
 
         String localeKey = selected ? "menus.link_report_item_selected" : "menus.link_report_item_unselected";
-
-        List<String> lore = new ArrayList<>();
-        for (String line : locale.getMessageList(localeKey + ".lore")) {
-            String processed = line;
-            for (Map.Entry<String, String> entry : vars.entrySet()) {
-                processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
-            }
-            if (processed.contains("\n")) {
-                for (String subLine : processed.split("\n")) {
-                    lore.add(subLine);
-                }
-            } else if (!processed.isEmpty()) {
-                lore.add(processed);
-            }
-        }
-
+        List<String> lore = ReportRenderUtil.buildLore(locale, localeKey + ".lore", vars);
         String title = locale.getMessage(localeKey + ".title", vars);
-
-        CirrusItemType itemType = selected ? CirrusItemType.LIME_DYE : getReportItemType(report.getType());
+        CirrusItemType itemType = selected ? CirrusItemType.LIME_DYE : ReportRenderUtil.getReportItemType(report.getType());
 
         return CirrusItem.of(
                 itemType,
@@ -227,28 +181,14 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
         ).actionHandler("toggleReport_" + report.getId());
     }
 
-    private CirrusItemType getReportItemType(String type) {
-        if (type == null) return CirrusItemType.PAPER;
-        return switch (type.toLowerCase()) {
-            case "gameplay" -> CirrusItemType.PLAYER_HEAD;
-            case "chat" -> CirrusItemType.WRITABLE_BOOK;
-            case "cheating" -> CirrusItemType.DIAMOND_SWORD;
-            case "behavior" -> CirrusItemType.SKELETON_SKULL;
-            default -> CirrusItemType.PAPER;
-        };
-    }
-
     @Override
     protected void handleClick(Click click, Report report) {
-        if (report.getId() == null) {
-            return;
-        }
+        if (report.getId() == null) return;
 
-        if (selectedReportIds.contains(report.getId())) {
+        if (selectedReportIds.contains(report.getId()))
             selectedReportIds.remove(report.getId());
-        } else {
+        else
             selectedReportIds.add(report.getId());
-        }
 
         StaffLinkReportsMenu refreshed = new StaffLinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
                 isAdmin, panelUrl, targetAccount, selectedReportIds, backAction, onComplete);
@@ -260,52 +200,22 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Staff header navigation handlers
-        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
-                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+        StaffNavigationHandlers.registerAll(
+                (name, handler) -> registerActionHandler(name, handler),
+                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
-        registerActionHandler("openReports", ActionHandlers.openMenu(
-                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPunishments", ActionHandlers.openMenu(
-                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openTickets", ActionHandlers.openMenu(
-                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPanel", click -> {
-            click.clickedMenu().close();
-            String escapedUrl = panelUrl.replace("\"", "\\\"");
-            String panelJson = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"Staff Panel: \",\"color\":\"gold\"}," +
-                "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-                escapedUrl, panelUrl
-            );
-            platform.sendJsonMessage(viewerUuid, panelJson);
-        });
-
-        registerActionHandler("openSettings", ActionHandlers.openMenu(
-                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        // Filter handler
         registerActionHandler("filter", this::handleFilter);
 
-        // Apply selection handler
         registerActionHandler("applySelection", (ActionHandler) click -> {
             handleApply(click);
             return CallResult.DENY_GRABBING;
         });
 
-        // Select All handler
         registerActionHandler("selectAll", (ActionHandler) click -> {
             handleSelectAll(click);
             return CallResult.DENY_GRABBING;
         });
 
-        // Register toggle handlers for each report
         for (Report report : reports) {
             if (report.getId() != null) {
                 registerActionHandler("toggleReport_" + report.getId(), (ActionHandler) click -> {
@@ -347,17 +257,13 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
                 .allMatch(r -> selectedReportIds.contains(r.getId()));
 
         if (allSelected) {
-            for (Report report : filtered) {
-                if (report.getId() != null) {
+            for (Report report : filtered)
+                if (report.getId() != null)
                     selectedReportIds.remove(report.getId());
-                }
-            }
         } else {
-            for (Report report : filtered) {
-                if (report.getId() != null) {
+            for (Report report : filtered)
+                if (report.getId() != null)
                     selectedReportIds.add(report.getId());
-                }
-            }
         }
 
         StaffLinkReportsMenu refreshed = new StaffLinkReportsMenu(platform, httpClient, viewerUuid, viewerName,

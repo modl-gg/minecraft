@@ -12,49 +12,33 @@ import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.Permissions;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Settings Menu - staff settings and admin options.
- */
 public class SettingsMenu extends BaseStaffMenu {
 
     private final String panelUrl;
-    private final Consumer<CirrusPlayerWrapper> parentBackAction;
 
-    // Permission flags
     private final boolean canModifySettings;
     private final boolean canManageStaff;
 
-    /**
-     * Create a new settings menu.
-     *
-     * @param platform The platform instance
-     * @param httpClient The HTTP client for API calls
-     * @param viewerUuid The UUID of the staff viewing the menu
-     * @param viewerName The name of the staff viewing the menu
-     * @param isAdmin Whether the viewer has admin permissions
-     * @param panelUrl The panel URL
-     * @param backAction Action to return to parent menu
-     */
     public SettingsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                         boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
         super(platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
         this.panelUrl = panelUrl;
-        this.parentBackAction = backAction;
 
-        // Check specific permissions from cache
         Cache cache = platform.getCache();
         if (cache != null) {
-            this.canModifySettings = cache.hasPermission(viewerUuid, "admin.settings.modify");
-            this.canManageStaff = cache.hasPermission(viewerUuid, "admin.staff.manage");
+            this.canModifySettings = cache.hasPermission(viewerUuid, Permissions.SETTINGS_MODIFY);
+            this.canManageStaff = cache.hasPermission(viewerUuid, Permissions.STAFF_MANAGE);
         } else {
-            // Fallback to isAdmin if cache not available
             this.canModifySettings = isAdmin;
             this.canManageStaff = isAdmin;
         }
@@ -67,19 +51,16 @@ public class SettingsMenu extends BaseStaffMenu {
     private void buildMenu() {
         buildHeader();
 
-        // Slot 28: Information (anvil)
         List<String> infoLore = new ArrayList<>();
         infoLore.add(MenuItems.COLOR_GRAY + "Username: " + MenuItems.COLOR_WHITE + viewerName);
         infoLore.add(MenuItems.COLOR_GRAY + "Role: " + MenuItems.COLOR_WHITE + (isAdmin ? "Administrator" : "Staff"));
         if (canModifySettings || canManageStaff) {
             infoLore.add("");
             infoLore.add(MenuItems.COLOR_GRAY + "Permissions:");
-            if (canModifySettings) {
+            if (canModifySettings)
                 infoLore.add(MenuItems.COLOR_GREEN + "  ✓ " + MenuItems.COLOR_GRAY + "Modify Settings");
-            }
-            if (canManageStaff) {
+            if (canManageStaff)
                 infoLore.add(MenuItems.COLOR_GREEN + "  ✓ " + MenuItems.COLOR_GRAY + "Manage Staff");
-            }
         }
         if (isAdmin) {
             infoLore.add("");
@@ -93,7 +74,6 @@ public class SettingsMenu extends BaseStaffMenu {
                 MenuItems.lore(infoLore)
         ).slot(MenuSlots.SETTINGS_INFO));
 
-        // Slot 30: Staff Notifications toggle
         Cache cache = platform.getCache();
         boolean staffNotificationsEnabled = cache != null && cache.isStaffNotificationsEnabled(viewerUuid);
         set(CirrusItem.of(
@@ -105,7 +85,6 @@ public class SettingsMenu extends BaseStaffMenu {
                 )
         ).slot(MenuSlots.SETTINGS_NOTIFICATIONS).actionHandler("toggleNotifications"));
 
-        // Slot 31: Staff List
         set(CirrusItem.of(
                 CirrusItemType.PLAYER_HEAD,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Staff List"),
@@ -115,8 +94,6 @@ public class SettingsMenu extends BaseStaffMenu {
                 )
         ).slot(MenuSlots.SETTINGS_TICKETS).actionHandler("staffMembers"));
 
-        // Permission-based options
-        // Edit Roles - requires modl.settings.modify
         if (canModifySettings) {
             set(CirrusItem.of(
                     CirrusItemType.BLAZE_ROD,
@@ -127,7 +104,6 @@ public class SettingsMenu extends BaseStaffMenu {
             ).slot(MenuSlots.SETTINGS_ROLES).actionHandler("editRoles"));
         }
 
-        // Manage Staff - requires modl.staff.manage
         if (canManageStaff) {
             set(CirrusItem.of(
                     CirrusItemType.IRON_CHESTPLATE,
@@ -138,7 +114,6 @@ public class SettingsMenu extends BaseStaffMenu {
             ).slot(MenuSlots.SETTINGS_STAFF).actionHandler("manageStaff"));
         }
 
-        // Reload Modl - requires modl.settings.modify
         if (canModifySettings) {
             set(CirrusItem.of(
                     CirrusItemType.REDSTONE,
@@ -154,19 +129,14 @@ public class SettingsMenu extends BaseStaffMenu {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Toggle notifications handler
         registerActionHandler("toggleNotifications", this::handleToggleNotifications);
 
-        // Staff Members handler
         Consumer<CirrusPlayerWrapper> returnToSettings = p ->
                 new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p);
 
         registerActionHandler("staffMembers", ActionHandlers.openMenu(
                 new StaffMembersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings)));
 
-        // Permission-based handlers - secondary menus SHOULD have back action to return to Settings
-
-        // Edit Roles - requires modl.settings.modify
         if (canModifySettings) {
             registerActionHandler("editRoles", ActionHandlers.openMenu(
                     new RoleListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings)));
@@ -174,42 +144,16 @@ public class SettingsMenu extends BaseStaffMenu {
             registerActionHandler("reloadModl", this::handleReloadModl);
         }
 
-        // Manage Staff - requires modl.staff.manage
         if (canManageStaff) {
             registerActionHandler("manageStaff", ActionHandlers.openMenu(
                     new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings)));
         }
 
-        // Override header navigation - primary tabs should NOT pass backAction
-        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
-                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+        StaffNavigationHandlers.registerAll(
+                (name, handler) -> registerActionHandler(name, handler),
+                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
-        registerActionHandler("openReports", ActionHandlers.openMenu(
-                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPunishments", ActionHandlers.openMenu(
-                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openTickets", ActionHandlers.openMenu(
-                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPanel", click -> {
-            click.clickedMenu().close();
-            String escapedUrl = panelUrl.replace("\"", "\\\"");
-            String panelJson = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"Staff Panel: \",\"color\":\"gold\"}," +
-                "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-                escapedUrl, panelUrl
-            );
-            platform.sendJsonMessage(viewerUuid, panelJson);
-        });
-
-        registerActionHandler("openSettings", click -> {
-            // Already here, do nothing
-        });
+        registerActionHandler("openSettings", click -> {});
     }
 
     private void handleToggleNotifications(Click click) {
@@ -222,7 +166,6 @@ public class SettingsMenu extends BaseStaffMenu {
             sendMessage(MenuItems.COLOR_RED + "Unable to save preference - cache unavailable");
         }
 
-        // Refresh menu - preserve backAction if present
         ActionHandlers.openMenu(
                 new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction))
                 .handle(click);
@@ -234,7 +177,6 @@ public class SettingsMenu extends BaseStaffMenu {
             LocaleManager localeManager = platform.getLocaleManager();
             if (localeManager != null) {
                 localeManager.reloadLocale();
-                // Clear caches so they're re-fetched/reloaded from disk
                 Cache cache = platform.getCache();
                 if (cache != null) {
                     cache.clearPunishmentTypes();
@@ -248,16 +190,8 @@ public class SettingsMenu extends BaseStaffMenu {
             sendMessage(MenuItems.COLOR_RED + "Reload failed: " + e.getMessage());
         }
 
-        // Refresh menu
         ActionHandlers.openMenu(
                 new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction))
                 .handle(click);
-    }
-
-    /**
-     * Get the panel URL.
-     */
-    public String getPanelUrl() {
-        return panelUrl;
     }
 }

@@ -151,7 +151,7 @@ public class SyncResponse {
     @NoArgsConstructor
     public static class StaffNotification {
         private String id;
-        private String type;    // TICKET_CREATED, PUNISHMENT_ISSUED, PUNISHMENT_PARDONED
+        private String type;
         private String message;
         private Long timestamp;
         private java.util.Map<String, Object> data;

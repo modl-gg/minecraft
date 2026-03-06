@@ -342,6 +342,7 @@ menus:
       - "&fEn Línea: {is_online} ({last_seen_or_session_time})"
       - "&fTiempo de Juego: {playtime}"
       - "&fIP Real Registrada: {real_ip_logged}"
+      - "&fRegión: {region} (País: {country})"
       - "&fBaneado: {is_banned}"
       - "&fSilenciado: {is_muted}"
   history_item:
@@ -453,6 +454,16 @@ menus:
       - "&7Tiempo de juego: &f{playtime}"
       - "&7Castigos emitidos: &f{punishments_count}"
 
+  notes:
+    created: "&a¡Nota creada exitosamente!"
+    create_failed: "&cError al crear nota."
+    cancelled: "&7Creación de nota cancelada."
+  modify_punishment:
+    no_permission_tickets: "&cNo tienes permiso para modificar tickets vinculados."
+    no_changes: "&7Sin cambios en tickets vinculados."
+    tickets_updated: "&a¡Tickets vinculados actualizados exitosamente!"
+    tickets_update_failed: "&cError al actualizar tickets vinculados."
+
   # Online Players Menu
   online_players:
     title: "&6{player_name}"
@@ -516,4 +527,242 @@ standing_gui:
       - "&7{duration} {type} ({status})"
       - ""
       - "&f{reason}"
+
+# Comando de Acción de Sanción
+punishment_action:
+  unknown_action: "&cAcción desconocida: {action}"
+  enter_evidence_url: "&7Ingresa la URL de evidencia para la sanción #{id}:"
+  no_url: "&cNo se proporcionó URL."
+  evidence_linked: "&aEvidencia vinculada a la sanción #{id}"
+  evidence_link_failed: "&cError al vincular evidencia: {error}"
+  evidence_cancelled: "&7Vinculación de evidencia cancelada."
+  generating_upload: "&7Generando enlace de carga..."
+  upload_failed: "&cError al generar enlace de carga."
+
+# Sanciones
+punishments:
+  public_notification:
+    ban_default: "&c{target} ha sido baneado."
+    mute_default: "&c{target} ha sido silenciado."
+    kick_default: "&c{target} ha sido expulsado."
+    default: "&c{target} ha sido sancionado."
+
+# Comando de Ayuda
+help:
+  header: "&a&lmodl.gg &av{version} &f- &eLista de Comandos (Página {page}/{total_pages})"
+  entry: "&f/{command} &7- {description}"
+  footer: "&ePágina {page}/{total_pages}. Usa &a/modl help {next_page}&e para la siguiente página."
+  no_more_pages: "&7No hay más páginas."
+  player_commands:
+    iammuted:
+      usage: "iammuted <jugador>"
+      description: "Decirle a alguien que estás silenciado"
+    standing:
+      usage: "standing"
+      description: "Ver tu estado de sanciones"
+    report:
+      usage: "report <jugador> <razón>"
+      description: "Reportar a un jugador"
+    chatreport:
+      usage: "chatreport <jugador>"
+      description: "Reportar el chat de un jugador"
+    claimticket:
+      usage: "claimticket <id>"
+      description: "Vincular un ticket a tu cuenta"
+    apply:
+      usage: "apply"
+      description: "Solicitar puesto de staff"
+    bugreport:
+      usage: "bugreport <título>"
+      description: "Reportar un error"
+    support:
+      usage: "support <título>"
+      description: "Abrir ticket de soporte"
+  staff_commands:
+    staffmenu:
+      usage: "staffmenu"
+      description: "Abrir menú de staff"
+    inspect:
+      usage: "inspect <jugador> [-p]"
+      description: "Abrir menú de inspección (-p para texto)"
+    history:
+      usage: "history <jugador> [-p]"
+      description: "Abrir historial del jugador (-p para texto)"
+    notes:
+      usage: "notes <jugador> [-p]"
+      description: "Abrir notas del jugador (-p para texto)"
+    alts:
+      usage: "alts <jugador> [-p]"
+      description: "Abrir cuentas alt (-p para texto)"
+    reports:
+      usage: "reports [jugador] [-p]"
+      description: "Abrir reportes (-p para texto)"
+    punish:
+      usage: "punish <jugador> [tipo] [razón]"
+      description: "Aplicar una sanción"
+    ban:
+      usage: "ban <jugador> [duración] [razón]"
+      description: "Banear a un jugador"
+    mute:
+      usage: "mute <jugador> [duración] [razón]"
+      description: "Silenciar a un jugador"
+    kick:
+      usage: "kick <jugador> [razón]"
+      description: "Expulsar a un jugador"
+    blacklist:
+      usage: "blacklist <jugador> [razón]"
+      description: "Poner en lista negra a un jugador"
+    pardon:
+      usage: "pardon <jugador>"
+      description: "Perdonar TODAS las sanciones activas"
+    unban:
+      usage: "unban <jugador>"
+      description: "Perdonar ban activo o el más antiguo no iniciado"
+    unmute:
+      usage: "unmute <jugador>"
+      description: "Perdonar silenciamiento activo o el más antiguo no iniciado"
+    modl_reload:
+      usage: "modl reload"
+      description: "Recargar configuración"
+
+# Borrado de Estadísticas
+stat_wipe:
+  kick_message: "&cPor favor reconéctate momentáneamente. Tus estadísticas están siendo reiniciadas debido a un baneo expirado recientemente."
+
+# Chat de Staff
+staff_chat:
+  enabled: "&eChat de staff &aactivado&e. Los mensajes irán al chat de staff por defecto."
+  disabled: "&eChat de staff &cdesactivado&e. Los mensajes irán al chat local por defecto."
+  feature_disabled: "&cEl chat de staff no está habilitado en este servidor."
+  already_normal: "&cYa estás en modo de chat local."
+  format: "&b[STAFF] &e{panel-name}&f: {message}"
+  local_chat_enabled: "&eChat de staff &cdesactivado&e. Los mensajes irán al chat local por defecto."
+
+# Gestión de Chat
+chat_management:
+  chat_toggled_on: "&7&o[{staff}: activó el chat]"
+  chat_toggled_off: "&7&o[{staff}: desactivó el chat]"
+  chat_disabled: "&cEl chat está actualmente desactivado."
+  chat_cleared: "&7&o[{staff}: limpió el chat]"
+  slow_mode_enabled: "&7&o[{staff}: ralentizó el chat a {seconds}s]"
+  slow_mode_disabled: "&7&o[{staff}: desactivó modo lento]"
+  slow_mode_wait: "&cPor favor espera {seconds} segundos antes de chatear de nuevo."
+  invalid_seconds: "&cPor favor ingresa un número válido de segundos."
+  usage_toggle: "&fUso: &a/chat &ftoggle"
+  usage_clear: "&fUso: &a/chat &fclear"
+  usage_slow: "&fUso: &a/chat &fslow <segundos|off>"
+  help:
+    header: "&eComandos de Chat:"
+    staff: "&f/chat staff &7- Alternar modo de chat de staff"
+    toggle: "&f/chat toggle &7- Activar/desactivar chat público"
+    clear: "&f/chat clear [cantidad] &7- Limpiar chat"
+    slow: "&f/chat slow <segundos|off> &7- Configurar/desactivar modo lento"
+
+# Lista de Staff
+staff_list:
+  header: ""
+  entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &een &f{server}{v}"
+  vanish: " &7[V]"
+  empty: "&7No hay miembros del staff en línea."
+  footer: "&eCantidad: &f{count} &estaff en línea"
+
+# Notificaciones de Staff
+staff_notifications:
+  join: "&7&o[{staff}: se unió]"
+  verified: "&7&o[{staff}: verificado]"
+  leave: "&7&o[{staff}: se fue]"
+  switch: "&7&o[{staff}: conectado a {server}]"
+  generic: "&7&o[{message}]"
+
+# Staff 2FA
+staff_2fa:
+  not_verified: "&cDebes verificar tu identidad antes de usar comandos de staff. Usa &f/verify"
+  verify_prompt: "&aHaz clic en el enlace para verificar: &f{url}"
+  verify_success: "&a¡Identidad verificada exitosamente!"
+  verify_error: "&cError al generar enlace de verificación. Por favor intenta de nuevo."
+  auto_verified: "&aAuto-verificado vía IP de confianza."
+
+# Comando Verify (Staff 2FA)
+verify:
+  only_players: "&cEste comando solo puede ser usado por jugadores."
+  disabled: "&cStaff 2FA no está habilitado en este servidor."
+  already_verified: "&aYa estás verificado."
+  header: ""
+  instructions: "&aHaz clic en el enlace de abajo para verificar tu identidad:"
+  click_here: "Haz clic aquí para verificar"
+  error: "&cError al generar enlace de verificación. Por favor intenta de nuevo."
+  footer: "&eEste enlace expirará pronto."
+
+# Mantenimiento
+maintenance:
+  enabled: "&7&o[{staff}: activó mantenimiento]"
+  disabled: "&7&o[{staff}: desactivó mantenimiento]"
+  already_enabled: "&cEl modo de mantenimiento ya está activado."
+  already_disabled: "&cEl modo de mantenimiento ya está desactivado."
+  status_enabled: "&eEl modo de mantenimiento está actualmente activado."
+  status_disabled: "&eEl modo de mantenimiento está actualmente desactivado."
+  login_denied: "&cEl servidor está actualmente en mantenimiento. Por favor intenta más tarde."
+  kick_message: "&cEl servidor está ahora en modo de mantenimiento. Por favor intenta más tarde."
+  usage: "&fUso: &a/maintenance&f <on|off>"
+
+# Congelar
+freeze:
+  frozen_message: "&c¡Has sido congelado! No te desconectes."
+  staff_notification_freeze: "&7&o[{staff}: congeló a {player}]"
+  staff_notification_unfreeze: "&7&o[{staff}: descongeló a {player}]"
+  unfrozen: "&aHas sido descongelado."
+  logout_notification: "&c&l¡{player} se desconectó mientras estaba congelado!"
+  frozen_chat: "&b[CONGELADO] &e{player}&f: {message}"
+  command_blocked: "&cNo puedes usar comandos mientras estás congelado."
+
+# Intercepción de Chat en Red
+intercept_chat:
+  enabled: "&aIntercepción de chat en red activada"
+  disabled: "&aIntercepción de chat en red desactivada"
+  format: "&8[G-{server}] &e{player}&f: {message}"
+
+# Intercepción (solo staff)
+intercept:
+  message: "&8[Intercepción] &f{player}: &7{message}"
+
+# Registros de Chat
+chat_logs:
+  header: ""
+  entry: "&7[{timestamp}] &8[{server}] &f{message}"
+  empty: "&7No se encontraron registros de chat para este jugador."
+  footer: "&ePágina {page}/{total_pages} ({total} total)"
+  error: "&cError al obtener registros de chat."
+  usage: "&fUso: &a/chatlogs&f <jugador>"
+
+# Registros de Comandos
+command_logs:
+  header: ""
+  entry: "&7[{timestamp}] &e{player}&7: &f/{command}"
+  empty: "&7No se encontraron registros de comandos para este jugador."
+  footer: "&ePágina {page}/{total_pages} ({total} total)"
+  error: "&cError al obtener registros de comandos."
+  usage: "&fUso: &a/commandlogs&f <jugador>"
+
+# Modo Staff
+staff_mode:
+  enabled: "&aModo staff activado"
+  disabled: "&aModo staff desactivado"
+  enabled_broadcast: "&7&o[{staff}: entró en modo staff]"
+  disabled_broadcast: "&7&o[{staff}: salió del modo staff]"
+
+# Invisibilidad
+vanish:
+  enabled: "&aAhora estás invisible"
+  disabled: "&aYa no estás invisible"
+  enabled_broadcast: "&7&o[{staff}: se hizo invisible]"
+  disabled_broadcast: "&7&o[{staff}: se hizo visible]"
+
+# Objetivo
+target:
+  targeting: "&eApuntando a &f{player}"
+  cleared: "&aObjetivo limpiado."
+  usage: "&fUso: &a/target&f <jugador>"
+  connecting: "&eConectando a &f{server} &epara apuntar a &f{player}&e..."
+  cannot_target_self: "&cNo puedes apuntarte a ti mismo."
+  not_online: "&cEl jugador no está en línea."
 

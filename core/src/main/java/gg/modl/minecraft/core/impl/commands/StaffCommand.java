@@ -6,62 +6,38 @@ import co.aikar.commands.annotation.CommandAlias;
 import co.aikar.commands.annotation.Conditions;
 import co.aikar.commands.annotation.Description;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.staff.StaffMenu;
-import gg.modl.minecraft.core.locale.LocaleManager;
-import java.util.UUID;
+import gg.modl.minecraft.core.util.CommandUtil;
+import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
 
-/**
- * Command to open the Staff Menu GUI.
- */
+import java.util.UUID;
+
 @RequiredArgsConstructor
 public class StaffCommand extends BaseCommand {
     private final AsyncCommandExecutor commandExecutor;
     private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
-    private final LocaleManager localeManager;
     private final String panelUrl;
-
-    private ModlHttpClient getHttpClient() {
-        return httpClientHolder.getClient();
-    }
 
     @CommandAlias("%cmd_staffmenu")
     @Description("Open the staff menu")
     @Conditions("player|staff")
     public void staff(CommandIssuer sender) {
         UUID senderUuid = sender.getUniqueId();
-
-        // Check if user has admin permissions
-        boolean isAdmin = cache.hasPermission(senderUuid, "modl.admin");
-
-        // Get sender name
-        String senderName;
-        if (platform.getPlayer(senderUuid) != null) {
-            senderName = platform.getPlayer(senderUuid).username();
-        } else {
-            senderName = "Staff";
-        }
+        boolean isAdmin = cache.hasPermission(senderUuid, Permissions.ADMIN);
+        String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
 
         commandExecutor.execute(() -> {
-            // Open the staff menu
             StaffMenu menu = new StaffMenu(
-                platform,
-                getHttpClient(),
-                senderUuid,
-                senderName,
-                isAdmin,
-                panelUrl,
-                null // No parent menu when opened from command
+                platform, httpClientHolder.getClient(), senderUuid, senderName,
+                isAdmin, panelUrl, null
             );
-
-            // Get CirrusPlayerWrapper and display
             CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
             menu.display(player);
         });

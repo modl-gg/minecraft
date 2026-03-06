@@ -8,19 +8,37 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.*;
-import java.lang.annotation.*;
-import java.lang.reflect.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-// TODO: Customizable placeholders, more docs
 public class YamlConfig {
 
     private final Yaml yaml = new Yaml();
@@ -42,14 +60,13 @@ public class YamlConfig {
         LoadResult result = this.load(configFile, prefix);
         switch (result) {
             case SUCCESS: {
-                // TODO: Save only if needed.
                 this.save(configFile);
                 break;
             }
             case FAIL:
             case CONFIG_NOT_EXISTS: {
                 this.save(configFile);
-                this.load(configFile, prefix); // Load again, because it now exists.
+                this.load(configFile, prefix);
                 break;
             }
             default: {
@@ -66,9 +83,7 @@ public class YamlConfig {
         } catch (InstantiationException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             throw new IllegalStateException("Unable to create new instance of " + this.getClass().getName());
         }
-        if (!configFile.exists()) {
-            return LoadResult.CONFIG_NOT_EXISTS;
-        }
+        if (!configFile.exists()) return LoadResult.CONFIG_NOT_EXISTS;
 
         this.dispose();
 
@@ -108,15 +123,11 @@ public class YamlConfig {
             if (value instanceof String) {
                 String stringValue = ((String) value).replace("{NL}", "\n");
                 if (usePrefix) {
-                    if (this.prefix != null) {
-                        stringValue = stringValue.replace("{PRFX}", this.prefix);
-                    }
+                    if (this.prefix != null) stringValue = stringValue.replace("{PRFX}", this.prefix);
 
                     value = stringValue;
 
-                    if (key.equals("prefix")) {
-                        this.prefix = stringValue;
-                    }
+                    if (key.equals("prefix")) this.prefix = stringValue;
                 }
             }
 
@@ -124,12 +135,6 @@ public class YamlConfig {
         }
     }
 
-    /**
-     * Sets the value of a specific node. Probably throws some error if you supply non-existing keys or invalid values.
-     *
-     * @param key   The config node.
-     * @param value The value.
-     */
     @SuppressWarnings("unchecked")
     private void setFieldByKey(String key, Object dest, Object value, File configFile, String now, boolean usePrefix) {
         String[] split = key.split("\\.");
@@ -197,12 +202,6 @@ public class YamlConfig {
         }
     }
 
-    /**
-     * Gets the instance for a specific config node.
-     *
-     * @param split The node. (split by period)
-     * @return      The instance.
-     */
     private Object getInstance(@NotNull Object instance, String[] split) {
         try {
             for (int i = 0; i < split.length - 1; i++) {
@@ -225,14 +224,6 @@ public class YamlConfig {
         return instance;
     }
 
-    /**
-     * Gets the field for a specific config node and instance.
-     *
-     * <p>As expiry can have multiple blocks there will be multiple instances.
-     *
-     * @param split    The node (split by period).
-     * @param instance The instance.
-     */
     private Field getField(String[] split, Object instance) {
         try {
             Field field = instance.getClass().getField(this.toFieldName(split[split.length - 1]));
@@ -244,16 +235,10 @@ public class YamlConfig {
         }
     }
 
-    /**
-     * Converts the field name to the config node format.
-     */
     private String toFieldName(String node) {
         return node.toUpperCase(Locale.ROOT).replaceAll("-", "_");
     }
 
-    /**
-     * Sets all values in the file (load first to avoid overwriting).
-     */
     @SuppressWarnings("ResultOfMethodCallIgnored")
     public void save(@NotNull File configFile) {
         try {
@@ -278,14 +263,10 @@ public class YamlConfig {
             String spacing = this.getSpacing(indent);
 
             for (Field field : clazz.getFields()) {
-                if (field.getAnnotation(Ignore.class) != null) {
-                    continue;
-                }
+                if (field.getAnnotation(Ignore.class) != null) continue;
 
                 Class<?> current = field.getType();
-                if (current.getAnnotation(Ignore.class) != null) {
-                    continue;
-                }
+                if (current.getAnnotation(Ignore.class) != null) continue;
 
                 this.writeNewLines(field.getAnnotation(NewLine.class), writer, lineSeparator);
 
@@ -295,9 +276,7 @@ public class YamlConfig {
                 if (field.getAnnotation(Create.class) != null) {
                     this.writeNewLines(current.getAnnotation(NewLine.class), writer, lineSeparator);
 
-                    if (indent == 0) {
-                        writer.write(lineSeparator);
-                    }
+                    if (indent == 0) writer.write(lineSeparator);
 
                     comments = current.getAnnotationsByType(Comment.class);
                     this.writePrependComments(comments, writer, spacing, lineSeparator);
@@ -369,11 +348,7 @@ public class YamlConfig {
     }
 
     private void writeNewLines(NewLine newLine, PrintWriter writer, String lineSeparator) {
-        if (newLine != null) {
-            for (int i = 0; i < newLine.amount(); ++i) {
-                writer.write(lineSeparator);
-            }
-        }
+        if (newLine != null) for (int i = 0; i < newLine.amount(); ++i) writer.write(lineSeparator);
     }
 
     private void writePrependComments(Comment[] comments, PrintWriter writer, String spacing, String lineSeparator) {
@@ -392,11 +367,9 @@ public class YamlConfig {
 
     private void setField(Field field, Object owner, Object value) throws IllegalAccessException {
         int modifiers = field.getModifiers();
-        if (Modifier.isStatic(modifiers)) {
-            throw new IllegalStateException("This field shouldn't be static.");
-        } else if (Modifier.isFinal(modifiers)) {
-            throw new IllegalStateException("This field shouldn't be final.");
-        } else {
+        if (Modifier.isStatic(modifiers)) throw new IllegalStateException("This field shouldn't be static.");
+        else if (Modifier.isFinal(modifiers)) throw new IllegalStateException("This field shouldn't be final.");
+        else {
             if (field.getType() == Map.class && value instanceof Map) {
                 if (((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0] != String.class) {
                     throw new IllegalStateException("Key type of this map should be " + String.class);
@@ -408,11 +381,6 @@ public class YamlConfig {
         }
     }
 
-    /**
-     * Creates a new node sequence instance with unchanged fields.
-     *
-     * @param nodeSequenceClass Class with {@link NodeSequence} annotation.
-     */
     protected static <T> T createNodeSequence(Class<T> nodeSequenceClass) {
         try {
             if (nodeSequenceClass.getAnnotation(NodeSequence.class) == null) {
@@ -428,24 +396,12 @@ public class YamlConfig {
         }
     }
 
-    /**
-     * Creates a new node sequence instance with specified field values.
-     *
-     * @param nodeSequenceClass Class with {@link NodeSequence} annotation.
-     * @param objects           Values
-     */
     private <T> T createNodeSequence(Class<T> nodeSequenceClass, Map<String, Object> objects, boolean usePrefix) {
         T instance = createNodeSequence(nodeSequenceClass);
         this.processMap(objects, instance, "", null, null, usePrefix);
         return instance;
     }
 
-    /**
-     * Creates a new node sequence instance with specified field values.
-     *
-     * @param nodeSequenceClass Class with {@link NodeSequence} annotation.
-     * @param values            The values to be set for the fields, not including fields with {@link Final} and {@link Ignore} annotations.
-     */
     protected static <T> T createNodeSequence(Class<T> nodeSequenceClass, Object... values) {
         try {
             T instance = createNodeSequence(nodeSequenceClass);
@@ -458,11 +414,8 @@ public class YamlConfig {
                     continue;
                 }
                 int modifiers = field.getModifiers();
-                if (Modifier.isFinal(modifiers)) {
-                    throw new IllegalStateException("Field " + field.getName() + " can't be final");
-                } else if (Modifier.isStatic(modifiers)) {
-                    throw new IllegalStateException("Field " + field.getName() + " can't be static");
-                }
+                if (Modifier.isFinal(modifiers)) throw new IllegalStateException("Field " + field.getName() + " can't be final");
+                else if (Modifier.isStatic(modifiers)) throw new IllegalStateException("Field " + field.getName() + " can't be static");
                 field.setAccessible(true);
                 Object value = idx >= values.length ? null : values[idx];
                 if (field.getAnnotation(Create.class) != null && !field.getType().isInstance(value)) {
@@ -482,13 +435,8 @@ public class YamlConfig {
         }
     }
 
-    /**
-     * Translate a field to a config node.
-     */
     private String toNodeName(String fieldName) {
-        if (fieldName.matches("^\\d+$")) {
-            return '"' + fieldName + '"';
-        }
+        if (fieldName.matches("^\\d+$")) return '"' + fieldName + '"';
         return fieldName.toLowerCase(Locale.ROOT).replace("_", "-");
     }
 
@@ -499,9 +447,7 @@ public class YamlConfig {
     private String toYamlString(Object value, String fieldName, String lineSeparator, String spacing, boolean isMap, int nested, boolean usePrefix) {
         if (value instanceof Map) {
             Map<?, ?> map = (Map<?, ?>) value;
-            if (map.isEmpty()) {
-                return "{}";
-            }
+            if (map.isEmpty()) return "{}";
 
             StringBuilder builder = new StringBuilder();
             map.forEach((key, mapValue) -> {
@@ -516,18 +462,13 @@ public class YamlConfig {
             return builder.toString();
         } else if (value instanceof List) {
             List<?> listValue = (List<?>) value;
-            if (listValue.isEmpty()) {
-                return "[]";
-            }
+            if (listValue.isEmpty()) return "[]";
 
             StringBuilder builder = new StringBuilder();
             boolean newLine = nested == 0;
             for (Object obj : listValue) {
-                if (newLine) {
-                    builder.append(lineSeparator).append(spacing).append(this.getSpacing(2 + nested * 2));
-                } else {
-                    newLine = true;
-                }
+                if (newLine) builder.append(lineSeparator).append(spacing).append(this.getSpacing(2 + nested * 2));
+                else newLine = true;
 
                 builder.append("- ").append(
                         this.toYamlString(obj, fieldName, lineSeparator, spacing, false, nested + 1, usePrefix));
@@ -536,9 +477,7 @@ public class YamlConfig {
             return builder.toString();
         } else if (value instanceof String) {
             String stringValue = (String) value;
-            if (stringValue.isEmpty()) {
-                return "\"\"";
-            }
+            if (stringValue.isEmpty()) return "\"\"";
 
             return ('"' + stringValue + '"').replace("\n", "{NL}");
         } else if (value != null && value.getClass().getAnnotation(NodeSequence.class) != null) {
@@ -546,9 +485,7 @@ public class YamlConfig {
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))
             ) {
-                if (isMap) {
-                    writer.write(lineSeparator);
-                }
+                if (isMap) writer.write(lineSeparator);
                 int indent = spacing.length() + 4;
                 this.writeConfigKeyValue(writer, value.getClass(), value, value, indent, usePrefix);
                 writer.flush();
@@ -575,27 +512,18 @@ public class YamlConfig {
         CONFIG_NOT_EXISTS
     }
 
-    /**
-     * Indicates that a field should be instantiated / created.
-     */
     @Target(ElementType.FIELD)
     @Retention(RetentionPolicy.RUNTIME)
     protected @interface Create {
 
     }
 
-    /**
-     * Indicates that a field cannot be modified.
-     */
     @Target(ElementType.FIELD)
     @Retention(RetentionPolicy.RUNTIME)
     protected @interface Final {
 
     }
 
-    /**
-     * Creates a new line for better formatting.
-     */
     @Target({
             ElementType.FIELD,
             ElementType.TYPE
@@ -606,9 +534,6 @@ public class YamlConfig {
         int amount() default 1;
     }
 
-    /**
-     * Comments holder.
-     */
     @Target({
             ElementType.FIELD,
             ElementType.TYPE
@@ -619,9 +544,6 @@ public class YamlConfig {
         Comment[] value();
     }
 
-    /**
-     * Creates a comment.
-     */
     @Target({
             ElementType.FIELD,
             ElementType.TYPE
@@ -632,49 +554,15 @@ public class YamlConfig {
 
         String[] value();
 
-        /**
-         * Comment position.
-         */
         At at() default At.PREPEND;
 
         enum At {
-
-            /**
-             * The comment will be placed before the field.
-             *
-             * <pre> {@code
-             *   # Line1
-             *   # Line2
-             *   regular-field: "regular value"
-             * } </pre>
-             */
             PREPEND,
-            /**
-             * The comment will be placed on the same line with the field.
-             *
-             * <p>The comment text shouldn't have more than one line.
-             *
-             * <pre> {@code
-             *   regular-field: "regular value" # Line1
-             * } </pre>
-             */
             SAME_LINE,
-            /**
-             * The comment will be placed after the field.
-             *
-             * <pre> {@code
-             *   regular-field: "regular value"
-             *   # Line1
-             *   # Line2
-             * } </pre>
-             */
             APPEND
         }
     }
 
-    /**
-     * Any field or class with is not part of the config.
-     */
     @Target({
             ElementType.FIELD,
             ElementType.TYPE
@@ -684,9 +572,6 @@ public class YamlConfig {
 
     }
 
-    /**
-     * Indicates that a class is a node sequence.
-     */
     @Target(ElementType.TYPE)
     @Retention(RetentionPolicy.RUNTIME)
     protected @interface NodeSequence {

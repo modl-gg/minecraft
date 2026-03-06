@@ -1,12 +1,20 @@
 package gg.modl.minecraft.core.util;
 
-
 import java.util.Calendar;
 import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class TimeUtil {
+
+    private static final long MILLIS_PER_SECOND = 1000L;
+    private static final long MILLIS_PER_MINUTE = 60 * MILLIS_PER_SECOND;
+    private static final long MILLIS_PER_HOUR = 60 * MILLIS_PER_MINUTE;
+    private static final long MILLIS_PER_DAY = 24 * MILLIS_PER_HOUR;
+    private static final long MILLIS_PER_WEEK = 7 * MILLIS_PER_DAY;
+    private static final long MILLIS_PER_MONTH = 30 * MILLIS_PER_DAY;
+    private static final Pattern DURATION_TOKEN_PATTERN = Pattern.compile("[a-z]+|\\d+");
+
     public static String formatTimeMillis(long millis) {
         long seconds = (millis / 1000L) + 1;
 
@@ -33,61 +41,51 @@ public class TimeUtil {
     }
 
     public static long getDuration(String arg) {
-        Pattern p = Pattern.compile("[a-z]+|\\d+");
-        Matcher m = p.matcher(arg.toLowerCase());
+        Matcher m = DURATION_TOKEN_PATTERN.matcher(arg.toLowerCase());
 
         int time = -1;
         String type = null;
         long duration = 0;
         while (m.find()) {
-            String a = m.group();
+            String token = m.group();
             try {
-                time = Integer.parseInt(a);
-                if (time < 1) {
-                    time = -1;
-                }
+                time = Integer.parseInt(token);
+                if (time < 1) time = -1;
             } catch (NumberFormatException ignored) {
-                type = a;
+                type = token;
             }
 
             if (time > 0 && type != null) {
                 switch (type) {
-                    case "seconds", "second", "sec", "s" -> duration += time * 1000L;
-                    case "minutes", "minute", "m" -> duration += time * 60 * 1000L;
-                    case "hours", "hrs", "hr", "h" -> duration += time * 60 * 60 * 1000L;
-                    case "days", "day", "d" -> duration += time * 24 * 60 * 60 * 1000L;
-                    case "weeks", "week", "w" -> duration += time * 7 * 24 * 60 * 60 * 1000L;
-                    case "months", "month", "mo" -> duration += time * 30 * 24 * 60 * 60 * 1000L; // Approximation
+                    case "seconds", "second", "sec", "s" -> duration += time * MILLIS_PER_SECOND;
+                    case "minutes", "minute", "m" -> duration += time * MILLIS_PER_MINUTE;
+                    case "hours", "hrs", "hr", "h" -> duration += time * MILLIS_PER_HOUR;
+                    case "days", "day", "d" -> duration += time * MILLIS_PER_DAY;
+                    case "weeks", "week", "w" -> duration += time * MILLIS_PER_WEEK;
+                    case "months", "month", "mo" -> duration += time * MILLIS_PER_MONTH;
                 }
-
                 time = -1;
                 type = null;
             }
         }
 
-        if (duration == 0) return -1L;
-
-        return duration;
+        return duration == 0 ? -1L : duration;
     }
 
     public static Date getTime(String arg) {
-        Pattern p = Pattern.compile("[a-z]+|\\d+");
-        Matcher m = p.matcher(arg.toLowerCase());
+        Matcher m = DURATION_TOKEN_PATTERN.matcher(arg.toLowerCase());
 
         int time = -1;
         String type = null;
         boolean isTemp = false;
         Calendar calendar = Calendar.getInstance();
-        calendar.setTime(new Date());
         while (m.find()) {
-            String a = m.group();
+            String token = m.group();
             try {
-                time = Integer.parseInt(a);
-                if (time < 1) {
-                    time = -1;
-                }
+                time = Integer.parseInt(token);
+                if (time < 1) time = -1;
             } catch (NumberFormatException ignored) {
-                type = a;
+                type = token;
             }
 
             if (time > 0 && type != null) {
@@ -108,5 +106,4 @@ public class TimeUtil {
 
         return isTemp ? calendar.getTime() : null;
     }
-
 }

@@ -13,24 +13,15 @@ public class PunishmentPreviewResponse {
     private boolean success;
     private String message;
 
-    // Player's current status
     private String socialStatus;
     private String gameplayStatus;
     private int socialPoints;
     private int gameplayPoints;
-
-    // Offense level calculation
     private String offenseLevel;
-
-    // Punishment preview for each severity
     private SeverityPreview lenient;
     private SeverityPreview regular;
     private SeverityPreview aggravated;
-
-    // For single-severity punishments
     private SeverityPreview singleSeverity;
-
-    // Punishment type info
     private boolean singleSeverityPunishment;
     private boolean permanentUntilUsernameChange;
     private boolean permanentUntilSkinChange;
@@ -42,13 +33,6 @@ public class PunishmentPreviewResponse {
         return success || (status >= 200 && status < 300);
     }
 
-    /**
-     * Check if this is a single-severity type (includes permanent-until-change types).
-     */
-    public boolean isSingleSeverityType() {
-        return singleSeverityPunishment || permanentUntilUsernameChange || permanentUntilSkinChange;
-    }
-
     @Data
     @NoArgsConstructor
     public static class SeverityPreview {
@@ -58,8 +42,6 @@ public class PunishmentPreviewResponse {
         private String durationFormatted;
         private String punishmentType;
         private boolean permanent;
-
-        // New status after this punishment
         private String newSocialStatus;
         private String newGameplayStatus;
         private int newSocialPoints;

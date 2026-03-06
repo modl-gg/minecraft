@@ -11,30 +11,27 @@ import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
-import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.api.http.response.PunishmentPreviewResponse;
+import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
+import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.impl.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Punish Severity Menu - select severity level for a punishment.
- * Secondary menu accessed from PunishMenu.
- * Adapts layout based on punishment type:
- * - Single severity types show one central button
- * - Multi-severity types show lenient/regular/aggravated options
- */
 public class PunishSeverityMenu extends BaseInspectMenu {
 
     private final PunishmentTypesResponse.PunishmentTypeData punishmentType;
@@ -46,27 +43,12 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     private List<String> linkedReportIds;
     private PunishmentPreviewResponse previewData;
 
-    /**
-     * Create a new severity menu.
-     *
-     * @param platform The platform instance
-     * @param httpClient The HTTP client for API calls
-     * @param viewerUuid The UUID of the staff viewing the menu
-     * @param viewerName The name of the staff viewing the menu
-     * @param targetAccount The account being inspected
-     * @param punishmentType The punishment type to issue
-     * @param rootBackAction Root back action for primary tab navigation (e.g., back to Staff Menu)
-     * @param menuBackAction Action to return to parent menu (PunishMenu)
-     */
     public PunishSeverityMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                Account targetAccount, PunishmentTypesResponse.PunishmentTypeData punishmentType,
                                Consumer<CirrusPlayerWrapper> rootBackAction, Consumer<CirrusPlayerWrapper> menuBackAction) {
         this(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, false, false, false, new ArrayList<>());
     }
 
-    /**
-     * Create a new severity menu with initial toggle states.
-     */
     public PunishSeverityMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                Account targetAccount, PunishmentTypesResponse.PunishmentTypeData punishmentType,
                                Consumer<CirrusPlayerWrapper> rootBackAction, Consumer<CirrusPlayerWrapper> menuBackAction,
@@ -83,7 +65,6 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         title("Punish: " + punishmentType.getName());
         activeTab = InspectTab.PUNISH;
 
-        // Load preview data
         loadPreviewData();
         buildMenu();
     }
@@ -95,15 +76,12 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                     this.previewData = response;
                 }
             }).join();
-        } catch (Exception e) {
-            // Preview failed - continue without it
-        }
+        } catch (Exception ignored) {}
     }
 
     private void buildMenu() {
         buildHeader();
 
-        // Check if this is a single-severity type
         Boolean singleSeverity = punishmentType.getSingleSeverityPunishment();
         Boolean permUsername = punishmentType.getPermanentUntilUsernameChange();
         Boolean permSkin = punishmentType.getPermanentUntilSkinChange();
@@ -112,18 +90,15 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                                (permUsername != null && permUsername) ||
                                (permSkin != null && permSkin);
 
-        if (isSingleType) {
+        if (isSingleType)
             buildSingleSeverityLayout();
-        } else {
+        else
             buildMultiSeverityLayout();
-        }
 
-        // Add toggle buttons
         buildToggleButtons();
     }
 
     private void buildSingleSeverityLayout() {
-        // Single center button at slot 31
         PunishmentPreviewResponse.SeverityPreview preview = previewData != null ?
                 previewData.getSingleSeverity() : null;
 
@@ -133,7 +108,6 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         List<String> lore = new ArrayList<>();
 
         if (!restriction) {
-            // Show what the punishment will be
             if (preview != null) {
                 lore.add(MenuItems.COLOR_GRAY + "Punishment: " + MenuItems.COLOR_WHITE + preview.getDurationFormatted() +
                         (preview.isPermanent() ? " " + MenuItems.COLOR_RED + "(Permanent)" : ""));
@@ -142,7 +116,6 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                 lore.add("");
             }
 
-            // Show current/new offender level
             if (previewData != null && preview != null) {
                 String category = punishmentType.getCategory();
                 if ("Social".equalsIgnoreCase(category)) {
@@ -157,7 +130,6 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                 lore.add("");
             }
         }
-
 
         // Special messages for permanent-until-change types
         if (punishmentType.getPermanentUntilUsernameChange() != null && punishmentType.getPermanentUntilUsernameChange()) {
@@ -180,27 +152,23 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     }
 
     private void buildMultiSeverityLayout() {
-        // Slot 28: Lenient (lime wool)
-        set(createSeverityButton("Lenient", 0, CirrusItemType.LIME_WOOL, MenuItems.COLOR_GREEN,
+        set(createSeverityButton("Lenient", CirrusItemType.LIME_WOOL, MenuItems.COLOR_GREEN,
                 previewData != null ? previewData.getLenient() : null, "issueLenient", MenuSlots.SEVERITY_LENIENT));
 
-        // Slot 30: Regular (yellow wool)
-        set(createSeverityButton("Regular", 1, CirrusItemType.YELLOW_WOOL, MenuItems.COLOR_YELLOW,
+        set(createSeverityButton("Regular", CirrusItemType.YELLOW_WOOL, MenuItems.COLOR_YELLOW,
                 previewData != null ? previewData.getRegular() : null, "issueRegular", MenuSlots.SEVERITY_REGULAR));
 
-        // Slot 32: Aggravated (red wool)
-        set(createSeverityButton("Aggravated", 2, CirrusItemType.RED_WOOL, MenuItems.COLOR_RED,
+        set(createSeverityButton("Aggravated", CirrusItemType.RED_WOOL, MenuItems.COLOR_RED,
                 previewData != null ? previewData.getAggravated() : null, "issueAggravated", MenuSlots.SEVERITY_AGGRAVATED));
     }
 
-    private CirrusItem createSeverityButton(String name, int severityLevel, CirrusItemType itemType, String color,
+    private CirrusItem createSeverityButton(String name, CirrusItemType itemType, String color,
                                              PunishmentPreviewResponse.SeverityPreview preview, String action, int slot) {
         List<String> lore = new ArrayList<>();
 
         lore.add(MenuItems.COLOR_GRAY + "Issue a " + name.toLowerCase() + " punishment");
         lore.add("");
 
-        // Show preview data
         if (preview != null) {
             lore.add(MenuItems.COLOR_GRAY + "Punishment: " + MenuItems.COLOR_WHITE + preview.getDurationFormatted() +
                     (preview.isPermanent() ? " " + MenuItems.COLOR_RED + "(Permanent)" : ""));
@@ -208,7 +176,6 @@ public class PunishSeverityMenu extends BaseInspectMenu {
             lore.add(MenuItems.COLOR_GRAY + "Points: " + MenuItems.COLOR_YELLOW + "+" + preview.getPoints());
             lore.add("");
 
-            // Show offender level change
             String category = punishmentType.getCategory();
             if ("Social".equalsIgnoreCase(category)) {
                 lore.add(MenuItems.COLOR_GRAY + "Offender Level: " + getOffenseLevelColor(previewData.getSocialStatus()) +
@@ -232,11 +199,9 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     }
 
     private void buildToggleButtons() {
-        // Slot 33: Link Reports button
         String linkTitle = MenuItems.COLOR_GOLD + "Link Reports";
-        if (!linkedReportIds.isEmpty()) {
+        if (!linkedReportIds.isEmpty())
             linkTitle += MenuItems.COLOR_GREEN + " (" + linkedReportIds.size() + ")";
-        }
         List<String> linkLore = new ArrayList<>();
         linkLore.add(MenuItems.COLOR_GRAY + "Select reports to link with this punishment");
         linkLore.add("");
@@ -256,7 +221,6 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                 MenuItems.lore(linkLore)
         ).slot(MenuSlots.SEVERITY_LINK_REPORTS).actionHandler("linkReports"));
 
-        // Slot 34: Silent Mode toggle
         set(CirrusItem.of(
                 silentMode ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Silent Mode: " + (silentMode ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED +
@@ -268,7 +232,6 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                 )
         ).slot(MenuSlots.SEVERITY_SILENT).actionHandler("toggleSilent"));
 
-        // Slot 42: Alt-Blocking toggle (if punishment type allows it)
         if (punishmentType.getCanBeAltBlocking() != null && punishmentType.getCanBeAltBlocking()) {
             set(CirrusItem.of(
                     altBlocking ? CirrusItemType.TORCH : CirrusItemType.REDSTONE_TORCH,
@@ -282,7 +245,6 @@ public class PunishSeverityMenu extends BaseInspectMenu {
             ).slot(MenuSlots.SEVERITY_ALT_BLOCK).actionHandler("toggleAltBlock"));
         }
 
-        // Slot 43: Stat-Wipe toggle (if punishment type allows it)
         if (punishmentType.getCanBeStatWiping() != null && punishmentType.getCanBeStatWiping()) {
             set(CirrusItem.of(
                     statWipe ? CirrusItemType.EXPERIENCE_BOTTLE : CirrusItemType.GLASS_BOTTLE,
@@ -316,7 +278,6 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Severity handlers
         registerActionHandler("issueSingle", (ActionHandler) click -> {
             issuePunishment(click, 1); // Regular severity for single
             return CallResult.DENY_GRABBING;
@@ -346,20 +307,9 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         });
 
         // Override header navigation - pass rootBackAction to preserve the back button on primary tabs
-        registerActionHandler("openNotes", ActionHandlers.openMenu(
-                new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
-
-        registerActionHandler("openAlts", ActionHandlers.openMenu(
-                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
-
-        registerActionHandler("openHistory", ActionHandlers.openMenu(
-                new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
-
-        registerActionHandler("openReports", ActionHandlers.openMenu(
-                new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
-
-        registerActionHandler("openPunish", ActionHandlers.openMenu(
-                new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction)));
+        InspectNavigationHandlers.registerAll(
+                (name, handler) -> registerActionHandler(name, handler),
+                platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction);
     }
 
     private void issuePunishment(Click click, int severityLevel) {
@@ -372,16 +322,10 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                     String severityStr = severityLevel == 0 ? "lenient" : severityLevel == 1 ? "regular" : "aggravated";
 
                     // Build data map with optional flags
-                    java.util.Map<String, Object> data = new java.util.HashMap<>();
-                    if (altBlocking) {
-                        data.put("altBlocking", true);
-                    }
-                    if (statWipe) {
-                        data.put("statWipe", true);
-                    }
-                    if (silentMode) {
-                        data.put("silent", true);
-                    }
+                    Map<String, Object> data = new HashMap<>();
+                    if (altBlocking) data.put("altBlocking", true);
+                    if (statWipe) data.put("statWipe", true);
+                    if (silentMode) data.put("silent", true);
                     data.put("issuedServer", platform.getPlayerServer(viewerUuid));
 
                     PunishmentCreateRequest request = new PunishmentCreateRequest(

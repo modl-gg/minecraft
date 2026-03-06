@@ -2,7 +2,10 @@ package gg.modl.minecraft.core.impl.commands;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.*;
+import co.aikar.commands.annotation.CommandAlias;
+import co.aikar.commands.annotation.Conditions;
+import co.aikar.commands.annotation.Default;
+import co.aikar.commands.annotation.Description;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
@@ -11,15 +14,16 @@ import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.service.VanishService;
 import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
+import java.util.UUID;
 
 @CommandAlias("%cmd_staffmode")
 @Conditions("staff|player")
 @RequiredArgsConstructor
 public class StaffModeCommand extends BaseCommand {
-
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
@@ -34,37 +38,42 @@ public class StaffModeCommand extends BaseCommand {
             sender.sendMessage(localeManager.getMessage("general.players_only"));
             return;
         }
-        if (!PermissionUtil.hasPermission(sender, cache, "staff.staffmode")) {
+        if (!PermissionUtil.hasPermission(sender, cache, Permissions.MOD_ACTIONS)) {
             sender.sendMessage(localeManager.getMessage("general.no_permission"));
             return;
         }
 
-        java.util.UUID uuid = sender.getUniqueId();
-
+        UUID uuid = sender.getUniqueId();
         String inGameName = getInGameName(sender);
         String panelName = getPanelName(sender, inGameName);
 
         if (staffModeService.isInStaffMode(uuid)) {
-            // Disable staff mode
-            staffModeService.disable(uuid);
-            vanishService.unvanish(uuid);
-            sender.sendMessage(localeManager.getMessage("staff_mode.disabled"));
-            platform.staffBroadcast(localeManager.getMessage("staff_mode.disabled_broadcast", Map.of(
-                    "staff", panelName,
-                    "in-game-name", inGameName
-            )));
-            bridgeService.sendStaffModeExit(uuid.toString(), inGameName, panelName);
-            bridgeService.sendVanishExit(uuid.toString(), inGameName, panelName);
+            disableStaffMode(uuid, inGameName, panelName, sender);
         } else {
-            // Enable staff mode
-            staffModeService.enable(uuid);
-            sender.sendMessage(localeManager.getMessage("staff_mode.enabled"));
-            platform.staffBroadcast(localeManager.getMessage("staff_mode.enabled_broadcast", Map.of(
-                    "staff", panelName,
-                    "in-game-name", inGameName
-            )));
-            bridgeService.sendStaffModeEnter(uuid.toString(), inGameName, panelName);
+            enableStaffMode(uuid, inGameName, panelName, sender);
         }
+    }
+
+    private void disableStaffMode(UUID uuid, String inGameName, String panelName, CommandIssuer sender) {
+        staffModeService.disable(uuid);
+        vanishService.unvanish(uuid);
+        sender.sendMessage(localeManager.getMessage("staff_mode.disabled"));
+        platform.staffBroadcast(localeManager.getMessage("staff_mode.disabled_broadcast", Map.of(
+                "staff", panelName,
+                "in-game-name", inGameName
+        )));
+        bridgeService.sendStaffModeExit(uuid.toString(), inGameName, panelName);
+        bridgeService.sendVanishExit(uuid.toString(), inGameName, panelName);
+    }
+
+    private void enableStaffMode(UUID uuid, String inGameName, String panelName, CommandIssuer sender) {
+        staffModeService.enable(uuid);
+        sender.sendMessage(localeManager.getMessage("staff_mode.enabled"));
+        platform.staffBroadcast(localeManager.getMessage("staff_mode.enabled_broadcast", Map.of(
+                "staff", panelName,
+                "in-game-name", inGameName
+        )));
+        bridgeService.sendStaffModeEnter(uuid.toString(), inGameName, panelName);
     }
 
     private String getInGameName(CommandIssuer sender) {

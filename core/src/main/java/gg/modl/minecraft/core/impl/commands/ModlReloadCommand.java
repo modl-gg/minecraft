@@ -2,42 +2,38 @@ package gg.modl.minecraft.core.impl.commands;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.*;
-import gg.modl.minecraft.core.Platform;
+import co.aikar.commands.annotation.CommandAlias;
+import co.aikar.commands.annotation.Conditions;
+import co.aikar.commands.annotation.Default;
+import co.aikar.commands.annotation.Description;
+import co.aikar.commands.annotation.Subcommand;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.plugin.PluginInfo;
+import gg.modl.minecraft.core.util.Permissions;
+import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@RequiredArgsConstructor
 @CommandAlias("%cmd_modl")
 public class ModlReloadCommand extends BaseCommand {
-    private final Platform platform;
+    private static final int ENTRIES_PER_PAGE = 8;
+    private static final String VERSION_HEADER = "\u00A7a\u00A7lmodl.gg\u00A7a v%s\u00A7f - \u00A7eModeration and Support Management System";
+    private static final String VERSION_FOOTER = "\u00A77GNU AGPLv3 Free Software. Use /modl help for command information.";
+
     private final Cache cache;
     private final LocaleManager localeManager;
     private final Runnable reloadHook;
 
-    public ModlReloadCommand(Platform platform, Cache cache, LocaleManager localeManager) {
-        this(platform, cache, localeManager, () -> {});
-    }
-
-    public ModlReloadCommand(Platform platform, Cache cache, LocaleManager localeManager, Runnable reloadHook) {
-        this.platform = platform;
-        this.cache = cache;
-        this.localeManager = localeManager;
-        this.reloadHook = reloadHook != null ? reloadHook : () -> {};
-    }
-
     @Default
     @Description("")
     public void showHelp(CommandIssuer sender) {
-        sender.sendMessage("§a§lmodl.gg§a v" + PluginInfo.VERSION + "§f - §eModeration and Support Management System");
-        sender.sendMessage("§7GNU AGPLv3 Free Software. Use /modl help for command information.");
+        sender.sendMessage(String.format(VERSION_HEADER, PluginInfo.VERSION));
+        sender.sendMessage(VERSION_FOOTER);
     }
-
-    private static final int ENTRIES_PER_PAGE = 8;
 
     @Subcommand("help")
     @Description("Show available modl.gg commands")
@@ -56,12 +52,10 @@ public class ModlReloadCommand extends BaseCommand {
     private void displayHelp(CommandIssuer sender, int page) {
         java.util.UUID senderUuid = sender.isPlayer() ? sender.getUniqueId() : null;
         boolean isStaff = senderUuid != null && cache.isStaffMember(senderUuid);
-        boolean isAdmin = senderUuid != null && cache.hasPermission(senderUuid, "modl.admin");
+        boolean isAdmin = senderUuid != null && cache.hasPermission(senderUuid, Permissions.ADMIN);
 
-        // Build command list: player commands first, then staff commands for staff members
         List<HelpEntry> entries = new ArrayList<>();
 
-        // Player commands - everyone sees these
         addEntry(entries, "player_commands.iammuted");
         addEntry(entries, "player_commands.standing");
         addEntry(entries, "player_commands.report");
@@ -71,7 +65,6 @@ public class ModlReloadCommand extends BaseCommand {
         addEntry(entries, "player_commands.bugreport");
         addEntry(entries, "player_commands.support");
 
-        // Staff commands - only staff see these, appended after player commands
         if (isStaff || !sender.isPlayer()) {
             addEntry(entries, "staff_commands.staffmenu");
             addEntry(entries, "staff_commands.inspect");
@@ -81,27 +74,22 @@ public class ModlReloadCommand extends BaseCommand {
             addEntry(entries, "staff_commands.reports");
             addEntry(entries, "staff_commands.punish");
 
-            if (!sender.isPlayer() || cache.hasPermission(senderUuid, "punishment.apply.manual-ban")) {
+            if (!sender.isPlayer() || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_MANUAL_BAN))
                 addEntry(entries, "staff_commands.ban");
-            }
-            if (!sender.isPlayer() || cache.hasPermission(senderUuid, "punishment.apply.manual-mute")) {
+            if (!sender.isPlayer() || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_MANUAL_MUTE))
                 addEntry(entries, "staff_commands.mute");
-            }
-            if (!sender.isPlayer() || cache.hasPermission(senderUuid, "punishment.apply.kick")) {
+            if (!sender.isPlayer() || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_KICK))
                 addEntry(entries, "staff_commands.kick");
-            }
-            if (!sender.isPlayer() || cache.hasPermission(senderUuid, "punishment.apply.blacklist")) {
+            if (!sender.isPlayer() || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_BLACKLIST))
                 addEntry(entries, "staff_commands.blacklist");
-            }
-            if (!sender.isPlayer() || cache.hasPermission(senderUuid, "punishment.modify")) {
+            if (!sender.isPlayer() || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_MODIFY)) {
                 addEntry(entries, "staff_commands.pardon");
                 addEntry(entries, "staff_commands.unban");
                 addEntry(entries, "staff_commands.unmute");
             }
 
-            if (isAdmin || !sender.isPlayer()) {
+            if (isAdmin || !sender.isPlayer())
                 addEntry(entries, "staff_commands.modl_reload");
-            }
         }
 
         int totalPages = Math.max(1, (int) Math.ceil((double) entries.size() / ENTRIES_PER_PAGE));
@@ -110,7 +98,6 @@ public class ModlReloadCommand extends BaseCommand {
             return;
         }
 
-        // Header
         sender.sendMessage("");
         sender.sendMessage(localeManager.getMessage("help.header", Map.of(
                 "version", PluginInfo.VERSION,
@@ -124,39 +111,28 @@ public class ModlReloadCommand extends BaseCommand {
         for (int i = start; i < end; i++) {
             HelpEntry entry = entries.get(i);
             sender.sendMessage(localeManager.getMessage("help.entry", Map.of(
-                    "command", entry.command,
-                    "description", entry.description
+                    "command", entry.command(),
+                    "description", entry.description()
             )));
         }
 
-        // Footer
-        if (page < totalPages) {
+        if (page < totalPages)
             sender.sendMessage(localeManager.getMessage("help.footer", Map.of(
                     "page", String.valueOf(page),
                     "total_pages", String.valueOf(totalPages),
                     "next_page", String.valueOf(page + 1)
             )));
-        }
         sender.sendMessage("");
     }
 
     private void addEntry(List<HelpEntry> entries, String localeKey) {
         String usage = localeManager.getMessage("help." + localeKey + ".usage");
-        // Skip entries with blank usage (command disabled via empty alias)
-        if (usage == null || usage.isEmpty() || usage.startsWith("§cMissing")) return;
+        if (usage == null || usage.isEmpty() || usage.startsWith("\u00A7cMissing")) return;
         String description = localeManager.getMessage("help." + localeKey + ".description");
         entries.add(new HelpEntry(usage, description));
     }
 
-    private static class HelpEntry {
-        final String command;
-        final String description;
-
-        HelpEntry(String command, String description) {
-            this.command = command;
-            this.description = description;
-        }
-    }
+    private record HelpEntry(String command, String description) {}
 
     @Subcommand("reload")
     @Description("Reload modl.gg configuration and locale files")

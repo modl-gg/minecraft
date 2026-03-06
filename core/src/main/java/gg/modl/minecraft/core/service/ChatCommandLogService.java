@@ -1,8 +1,6 @@
 package gg.modl.minecraft.core.service;
 
 import gg.modl.minecraft.api.http.request.SyncRequest;
-import gg.modl.minecraft.api.http.response.ChatLogsResponse;
-import gg.modl.minecraft.api.http.response.CommandLogsResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,35 +11,24 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
- * Service that buffers chat messages and commands for submission
- * as part of the sync request. Buffers are drained each sync cycle.
+ * Buffers chat messages and commands for submission each sync cycle.
  */
 public class ChatCommandLogService {
-
     private final List<ChatLogEntry> chatBuffer = new ArrayList<>();
     private final List<CommandLogEntry> commandBuffer = new ArrayList<>();
 
-    /**
-     * Add a chat message to the buffer.
-     */
     public void addChatMessage(String uuid, String username, String message, String server) {
         synchronized (chatBuffer) {
             chatBuffer.add(new ChatLogEntry(uuid, username, message, System.currentTimeMillis(), server));
         }
     }
 
-    /**
-     * Add a command to the buffer.
-     */
     public void addCommand(String uuid, String username, String command, String server) {
         synchronized (commandBuffer) {
             commandBuffer.add(new CommandLogEntry(uuid, username, command, System.currentTimeMillis(), server));
         }
     }
 
-    /**
-     * Drain the chat buffer and return entries for inclusion in a sync request.
-     */
     public List<SyncRequest.ChatLogEntry> drainChatBuffer() {
         List<ChatLogEntry> entries;
         synchronized (chatBuffer) {
@@ -54,9 +41,6 @@ public class ChatCommandLogService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Drain the command buffer and return entries for inclusion in a sync request.
-     */
     public List<SyncRequest.CommandLogEntry> drainCommandBuffer() {
         List<CommandLogEntry> entries;
         synchronized (commandBuffer) {
@@ -69,9 +53,6 @@ public class ChatCommandLogService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Fetch chat logs for a player from the backend.
-     */
     public CompletableFuture<List<ChatLogEntry>> getChatLogs(HttpClientHolder httpClientHolder, String uuid, int limit) {
         return httpClientHolder.getClient().getChatLogs(uuid, limit).thenApply(response -> {
             if (response.getEntries() == null) return List.of();
@@ -81,9 +62,6 @@ public class ChatCommandLogService {
         });
     }
 
-    /**
-     * Fetch command logs for a player from the backend.
-     */
     public CompletableFuture<List<CommandLogEntry>> getCommandLogs(HttpClientHolder httpClientHolder, String uuid, int limit) {
         return httpClientHolder.getClient().getCommandLogs(uuid, limit).thenApply(response -> {
             if (response.getEntries() == null) return List.of();

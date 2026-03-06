@@ -5,20 +5,10 @@ import gg.modl.minecraft.api.LibraryRecord;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Defines libraries to be loaded at runtime via libby.
- * These libraries are downloaded and loaded dynamically instead of being shaded into the JAR.
- *
- * Note: Libraries loaded without relocation use their original package names.
- * Libraries that may conflict with server installations should use relocation.
- */
 public final class Libraries {
 
-    private Libraries() {
-        // Utility class
-    }
+    private Libraries() {}
 
-    // SnakeYAML - YAML parsing library (no relocation - uses org.yaml.snakeyaml)
     public static final LibraryRecord SNAKEYAML = LibraryRecord.of(
             "org{}yaml",
             "snakeyaml",
@@ -27,7 +17,6 @@ public final class Libraries {
             "Y6dv5mtlI2C9TCwQfm8CWNqn1LtJIAi6jCb80jD/kUY="
     );
 
-    // Gson - JSON serialization library (no relocation - uses com.google.gson)
     public static final LibraryRecord GSON = LibraryRecord.of(
             "com{}google{}code{}gson",
             "gson",
@@ -36,7 +25,6 @@ public final class Libraries {
             "6+4T1ft0d81/HMAQ4MNW34yoBwlxUkjal/eeNcy0++w="
     );
 
-    // Apache HttpClient5 - HTTP client library
     public static final LibraryRecord HTTPCLIENT5 = LibraryRecord.of(
             "org{}apache{}httpcomponents{}client5",
             "httpclient5",
@@ -45,7 +33,6 @@ public final class Libraries {
             "k1Xzh2uvgv7BPO0iwSti1XU2Iwg2QG01lFkSjk9z7VE="
     );
 
-    // Apache HttpCore5 - Required by HttpClient5
     public static final LibraryRecord HTTPCORE5 = LibraryRecord.of(
             "org{}apache{}httpcomponents{}core5",
             "httpcore5",
@@ -54,7 +41,6 @@ public final class Libraries {
             "p/YklhE/ZvnifCa4TET1zkVVxicAg83y1F8lUzbNUq8="
     );
 
-    // Apache HttpCore5 H2 - HTTP/2 support
     public static final LibraryRecord HTTPCORE5_H2 = LibraryRecord.of(
             "org{}apache{}httpcomponents{}core5",
             "httpcore5-h2",
@@ -63,7 +49,6 @@ public final class Libraries {
             "3BqV5z6wTbk0UVM9OQzgLFOzAaENw0PQjIYvKTSz0w4="
     );
 
-    // PacketEvents API (must be loaded before platform-specific implementations)
     public static final LibraryRecord PACKETEVENTS_API = LibraryRecord.of(
             "com{}github{}retrooper",
             "packetevents-api",
@@ -72,7 +57,6 @@ public final class Libraries {
             "3iUlwXnzZ8UYPrcUG5inerI6qdtMmpvZ3M9KBvon8OM="
     );
 
-    // PacketEvents Netty (required by platform implementations)
     public static final LibraryRecord PACKETEVENTS_NETTY = LibraryRecord.of(
             "com{}github{}retrooper",
             "packetevents-netty-common",
@@ -81,7 +65,6 @@ public final class Libraries {
             "iFUyY8j/9ZIJGQI9KNkvS8TBuLIBLqpvt+RQALSipCM="
     );
 
-    // PacketEvents Spigot
     public static final LibraryRecord PACKETEVENTS_SPIGOT = LibraryRecord.of(
             "com{}github{}retrooper",
             "packetevents-spigot",
@@ -90,7 +73,6 @@ public final class Libraries {
             "DNgWUMmOnz3rH65hM9MeSFYWWPwrXIU33FvsBxYD/+E="
     );
 
-    // PacketEvents BungeeCord
     public static final LibraryRecord PACKETEVENTS_BUNGEE = LibraryRecord.of(
             "com{}github{}retrooper",
             "packetevents-bungeecord",
@@ -99,7 +81,6 @@ public final class Libraries {
             "uqfNJPYZEG8ZpvC9VXGKorGs/9e+rDd8RBsLSxOyAGc="
     );
 
-    // PacketEvents Velocity
     public static final LibraryRecord PACKETEVENTS_VELOCITY = LibraryRecord.of(
             "com{}github{}retrooper",
             "packetevents-velocity",
@@ -116,9 +97,7 @@ public final class Libraries {
         "jubaYh9JbxbGGd5uxcC5wUDOrJuJwqWzN3k429VaFi4="
     );
 
-    // ACF - Annotation Command Framework (pinned snapshot build, loaded via direct URL)
-    // Version uses timestamp instead of "-SNAPSHOT" to prevent libby from re-downloading every startup
-    // (libby 1.3.1 always deletes and re-downloads any library whose version ends with "-SNAPSHOT")
+    // Version uses timestamp instead of "-SNAPSHOT" because libby 1.3.1 re-downloads SNAPSHOT versions every startup
     public static final LibraryRecord ACF_CORE = LibraryRecord.ofUrl(
             "co{}aikar",
             "acf-core",
@@ -155,7 +134,6 @@ public final class Libraries {
             "QC6rQuPHfRNWa/qqcM1ly9L3eKhZdGB41f0jYLBkP/s="
     );
 
-    // Cirrus - Inventory GUI framework (pinned snapshot build, loaded via direct URL)
     public static final LibraryRecord CIRRUS_SPIGOT = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-spigot",
@@ -183,7 +161,6 @@ public final class Libraries {
             "2FWz88Iji1BJ74Qr5elfrW5F7sjiOZJHzlBco8IwIPo="
     );
 
-    // Adventure - UI library for Minecraft (adventure-api requires adventure-key and examination libs)
     public static final LibraryRecord ADVENTURE_KEY = LibraryRecord.of(
             "net{}kyori",
             "adventure-key",
@@ -248,10 +225,6 @@ public final class Libraries {
             "5KkI3txKy0MFCD2RbTYt3Csh7PRS1XegvmZSgL3a6fw="
     );
 
-    /**
-     * Common libraries loaded by all platforms.
-     * These are the core dependencies needed for the plugin to function.
-     */
     public static final List<LibraryRecord> COMMON = Arrays.asList(
             SNAKEYAML,
             GSON,

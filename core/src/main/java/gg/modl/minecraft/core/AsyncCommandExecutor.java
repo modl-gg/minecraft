@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.SynchronousQueue;
@@ -60,13 +59,6 @@ public class AsyncCommandExecutor {
     }
 
     /**
-     * Get an unmodifiable view of the registered async command aliases.
-     */
-    public Set<String> getAsyncAliases() {
-        return Collections.unmodifiableSet(asyncCommandAliases);
-    }
-
-    /**
      * Submit a command for async execution.
      */
     public void execute(Runnable task) {
@@ -79,9 +71,7 @@ public class AsyncCommandExecutor {
     public void shutdown() {
         executor.shutdown();
         try {
-            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
-                executor.shutdownNow();
-            }
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) executor.shutdownNow();
         } catch (InterruptedException e) {
             executor.shutdownNow();
             Thread.currentThread().interrupt();

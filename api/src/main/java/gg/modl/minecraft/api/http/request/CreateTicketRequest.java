@@ -1,6 +1,5 @@
 package gg.modl.minecraft.api.http.request;
 
-import com.google.gson.JsonObject;
 import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

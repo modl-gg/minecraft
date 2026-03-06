@@ -16,28 +16,19 @@ import gg.modl.minecraft.core.impl.menus.base.BaseListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-/**
- * Player-facing menu showing their own social/gameplay standing and punishment history.
- * Extends BaseListMenu for proper AbstractBrowser pagination.
- *
- * Layout (6 rows):
- * <pre>
- * Row 0: blank
- * Row 1: * * S * * * G * *   (social at 11, gameplay at 15)
- * Row 2: blank
- * Row 3: * [punishment items 28-34]  *
- * Row 4: * * < * * * > * *   (pagination)
- * Row 5: blank
- * </pre>
- */
 public class StandingMenu extends BaseListMenu<Punishment> {
 
     private static final int SOCIAL_SLOT = 11;
     private static final int GAMEPLAY_SLOT = 15;
 
-    private final Account account;
     private final PunishmentPreviewResponse previewData;
     private final StandingGuiConfig guiConfig;
     private final LocaleManager localeManager;
@@ -50,19 +41,15 @@ public class StandingMenu extends BaseListMenu<Punishment> {
                         Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal) {
         super(MenuItems.translateColorCodes(localeManager.getMessage("standing_gui.title")), platform, httpClient,
                 viewerUuid, viewerName, null);
-        this.account = account;
         this.previewData = previewData;
         this.guiConfig = guiConfig;
         this.localeManager = localeManager;
         this.typesByOrdinal = typesByOrdinal;
 
-        // Filter out kicks and sort newest first
         this.punishments = new ArrayList<>();
-        for (Punishment p : account.getPunishments()) {
-            if (!p.isKickType()) {
+        for (Punishment p : account.getPunishments())
+            if (!p.isKickType())
                 punishments.add(p);
-            }
-        }
         punishments.sort((a, b) -> b.getIssued().compareTo(a.getIssued()));
     }
 
@@ -75,14 +62,12 @@ public class StandingMenu extends BaseListMenu<Punishment> {
         int socialPoints = previewData != null ? previewData.getSocialPoints() : 0;
         int gameplayPoints = previewData != null ? previewData.getGameplayPoints() : 0;
 
-        // Social status item in header row
         items.put(SOCIAL_SLOT, buildStatusItem(
                 guiConfig.getSocialItem(),
                 "standing_gui.social_status",
                 socialStatus, socialPoints
         ));
 
-        // Gameplay status item in header row
         items.put(GAMEPLAY_SLOT, buildStatusItem(
                 guiConfig.getGameplayItem(),
                 "standing_gui.gameplay_status",
@@ -94,15 +79,13 @@ public class StandingMenu extends BaseListMenu<Punishment> {
 
     @Override
     protected Collection<Punishment> elements() {
-        if (punishments.isEmpty()) {
+        if (punishments.isEmpty())
             return Collections.singletonList(new Punishment());
-        }
         return punishments;
     }
 
     @Override
     protected CirrusItem map(Punishment punishment) {
-        // Handle placeholder for empty list
         if (punishment.getId() == null || punishment.getId().isEmpty()) {
             return createEmptyPlaceholder("No punishments");
         }
@@ -111,32 +94,24 @@ public class StandingMenu extends BaseListMenu<Punishment> {
         String date = MenuItems.formatDate(punishment.getIssued());
         String typeName = getTypeName(punishment);
 
-        // Duration
         Long effectiveDuration = getEffectiveDuration(punishment);
         String duration;
-        if (effectiveDuration == null || effectiveDuration <= 0) {
+        if (effectiveDuration == null || effectiveDuration <= 0)
             duration = "Permanent";
-        } else {
+        else
             duration = MenuItems.formatDuration(effectiveDuration);
-        }
 
-        // Type category (Ban/Mute) using registry-based detection
         String typeCategory;
-        if (punishment.isBanType()) {
+        if (punishment.isBanType())
             typeCategory = "ban";
-        } else if (punishment.isMuteType()) {
+        else if (punishment.isMuteType())
             typeCategory = "mute";
-        } else {
+        else
             typeCategory = punishment.getTypeCategory();
-        }
 
-        // Status string
         String status = buildStatusString(punishment, effectiveDuration);
-
-        // Reason - use player description from punishment type (same as ban/mute screen)
         String reason = getPlayerDescription(punishment);
 
-        // Build title and lore from locale template
         Map<String, String> vars = Map.of(
                 "id", id,
                 "date", date,
@@ -150,13 +125,11 @@ public class StandingMenu extends BaseListMenu<Punishment> {
         String title = localeManager.getMessage("standing_gui.punishment_item.title", vars);
         List<String> lore = localeManager.getMessageList("standing_gui.punishment_item.lore", vars);
 
-        // Item type: sword for ban, paper for mute
         CirrusItemType itemType;
-        if (punishment.isBanType()) {
+        if (punishment.isBanType())
             itemType = CirrusItemType.DIAMOND_SWORD;
-        } else {
+        else
             itemType = CirrusItemType.PAPER;
-        }
 
         return CirrusItem.of(itemType, CirrusChatElement.ofLegacyText(MenuItems.translateColorCodes(title)),
                 MenuItems.lore(lore));
@@ -164,12 +137,10 @@ public class StandingMenu extends BaseListMenu<Punishment> {
 
     @Override
     protected void handleClick(Click click, Punishment punishment) {
-        // Player-facing menu - no action on click
     }
 
     private CirrusItem buildStatusItem(String itemId, String localeBasePath, String status, int points) {
         String displayStatus = localeManager.getMessage("standing_gui.status_display." + status);
-        // If locale returned the "missing" fallback, use raw status
         if (displayStatus.startsWith("§cMissing")) {
             displayStatus = status;
         }
@@ -181,12 +152,9 @@ public class StandingMenu extends BaseListMenu<Punishment> {
 
         String title = localeManager.getMessage(localeBasePath + ".title", placeholders);
 
-        // Find matching description from locale
         List<String> desc = localeManager.getMessageList(localeBasePath + ".description." + status, placeholders);
-        // If locale returned missing message, try case-insensitive
         if (desc.size() == 1 && desc.get(0).contains("Missing locale list")) {
-            // Try capitalized
-            String capitalized = status.substring(0, 1).toUpperCase() + status.substring(1).toLowerCase();
+            String capitalized = status.isEmpty() ? status : status.substring(0, 1).toUpperCase() + status.substring(1).toLowerCase();
             desc = localeManager.getMessageList(localeBasePath + ".description." + capitalized, placeholders);
             if (desc.size() == 1 && desc.get(0).contains("Missing locale list")) {
                 desc = List.of();
@@ -240,17 +208,12 @@ public class StandingMenu extends BaseListMenu<Punishment> {
         return punishment.getTypeCategory();
     }
 
-    /**
-     * Get the player-facing description for the punishment type.
-     * This is the same message shown on ban/mute screens.
-     */
     private String getPlayerDescription(Punishment punishment) {
         int ordinal = punishment.getTypeOrdinal();
         PunishmentTypesResponse.PunishmentTypeData typeData = typesByOrdinal.get(ordinal);
         if (typeData != null && typeData.getPlayerDescription() != null && !typeData.getPlayerDescription().isEmpty()) {
             return typeData.getPlayerDescription();
         }
-        // Fallback to reason from punishment data
         return punishment.getReason();
     }
 

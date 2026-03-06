@@ -13,6 +13,10 @@ import java.util.Date;
 @AllArgsConstructor
 @Getter
 public final class Evidence {
+    private static final String DEFAULT_TYPE = "link";
+    private static final String DEFAULT_UPLOADER = "Unknown";
+    private static final String DEFAULT_DISPLAY_TEXT = "Evidence";
+
     @SerializedName("text")
     private String text;
 
@@ -49,12 +53,12 @@ public final class Evidence {
 
     @NotNull
     public String getType() {
-        return type != null ? type : "link";
+        return type != null ? type : DEFAULT_TYPE;
     }
 
     @NotNull
     public String getUploadedBy() {
-        return uploadedBy != null ? uploadedBy : "Unknown";
+        return uploadedBy != null ? uploadedBy : DEFAULT_UPLOADER;
     }
 
     @NotNull
@@ -77,19 +81,10 @@ public final class Evidence {
         return fileSize;
     }
 
-    /**
-     * Get a display-friendly representation of this evidence.
-     */
     public String getDisplayText() {
-        if (url != null && !url.isEmpty()) {
-            return url;
-        }
-        if (text != null && !text.isEmpty()) {
-            return text;
-        }
-        if (fileName != null && !fileName.isEmpty()) {
-            return fileName;
-        }
-        return "Evidence";
+        if (url != null && !url.isEmpty()) return url;
+        if (text != null && !text.isEmpty()) return text;
+        if (fileName != null && !fileName.isEmpty()) return fileName;
+        return DEFAULT_DISPLAY_TEXT;
     }
 }

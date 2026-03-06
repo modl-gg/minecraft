@@ -1,86 +1,86 @@
 package gg.modl.minecraft.core.sync;
 
 import gg.modl.minecraft.api.AbstractPlayer;
-import gg.modl.minecraft.api.Modification;
-import gg.modl.minecraft.api.SimplePunishment;
+import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.NotificationAcknowledgeRequest;
-import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
+import gg.modl.minecraft.api.http.request.StatWipeAcknowledgeRequest;
 import gg.modl.minecraft.api.http.request.SyncRequest;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
-import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.service.database.DatabaseConfig;
-import gg.modl.minecraft.core.service.database.JdbcDatabaseProvider;
 import gg.modl.minecraft.core.service.ChatCommandLogService;
 import gg.modl.minecraft.core.service.MigrationService;
 import gg.modl.minecraft.core.service.Staff2faService;
-import gg.modl.minecraft.core.util.PunishmentMessages;
-
-import java.io.File;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
+import gg.modl.minecraft.core.service.database.DatabaseConfig;
+import gg.modl.minecraft.core.service.database.JdbcDatabaseProvider;
+import gg.modl.minecraft.core.util.StaffPermissionLoader;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class SyncService {
-    @NotNull
+    private static final int MAX_HOVER_TEXT_LENGTH = 200;
+    private static final long NOTIFICATION_INITIAL_DELAY_MS = 2000;
+    private static final long NOTIFICATION_INTER_DELAY_MS = 1500;
+    private static final int MIN_POLLING_RATE_SECONDS = 1;
+    private static final int INITIAL_SYNC_DELAY_SECONDS = 5;
+    private static final long SYNC_HTTP_TIMEOUT_SECONDS = 5;
+    private static final long SYNC_TASK_TIMEOUT_SECONDS = 10;
+    private static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5;
+    private static final int MAINTENANCE_CYCLE_INTERVAL = 60;
+    private static final String TICKET_CREATED_TYPE = "TICKET_CREATED";
+    private static final String TICKET_TYPE_REPORT = "REPORT";
+
     private final Platform platform;
-    @NotNull
-    private final HttpClientHolder httpClientHolder; // Shared holder for dynamic V1->V2 upgrade
-    @NotNull
+    private final HttpClientHolder httpClientHolder;
     private final Cache cache;
-    @NotNull
     private final Logger logger;
-    @NotNull
     private final LocaleManager localeManager;
-    @NotNull
     private final String apiUrl;
-    @NotNull
     private final String apiKey;
     private final int pollingRateSeconds;
-    @NotNull
     private final File dataFolder;
     private final DatabaseConfig databaseConfig;
     private final boolean debugMode;
+    private final PunishmentExecutor punishmentExecutor;
+    private final List<PunishmentTypesRefreshListener> punishmentTypesListeners = new CopyOnWriteArrayList<>();
 
-    private String lastSyncTimestamp;
-
-    private ScheduledExecutorService syncExecutor;
-    private ExecutorService taskExecutor;
-
-    private boolean isRunning = false;
-    private MigrationService migrationService;
-
-    private Long lastKnownStaffPermissionsTimestamp = null;
-    private Long lastKnownPunishmentTypesTimestamp = null;
-    private final List<PunishmentTypesRefreshListener> punishmentTypesListeners = new ArrayList<>();
+    private volatile String lastSyncTimestamp;
+    private volatile ScheduledExecutorService syncExecutor;
+    private volatile ExecutorService taskExecutor;
+    private volatile boolean isRunning = false;
+    private volatile MigrationService migrationService;
+    private volatile Long lastKnownStaffPermissionsTimestamp = null;
+    private volatile Long lastKnownPunishmentTypesTimestamp = null;
+    private int syncCycleCount = 0;
     private StatWipeExecutor statWipeExecutor;
     private Staff2faService staff2faService;
     private ChatCommandLogService chatCommandLogService;
 
-    /**
-     * Create a new SyncService.
-     */
     public SyncService(@NotNull Platform platform, @NotNull HttpClientHolder httpClientHolder, @NotNull Cache cache,
                        @NotNull Logger logger, @NotNull LocaleManager localeManager, @NotNull String apiUrl,
                        @NotNull String apiKey, int pollingRateSeconds, @NotNull File dataFolder,
@@ -99,6 +99,7 @@ public class SyncService {
         this.debugMode = debugMode;
         this.staff2faService = staff2faService;
         this.chatCommandLogService = chatCommandLogService;
+        this.punishmentExecutor = new PunishmentExecutor(platform, httpClientHolder, cache, logger, localeManager, debugMode);
     }
 
     public interface PunishmentTypesRefreshListener {
@@ -112,22 +113,18 @@ public class SyncService {
     public void setStatWipeExecutor(StatWipeExecutor executor) {
         this.statWipeExecutor = executor;
     }
-    
-    /**
-     * Start the sync service with configurable polling interval
-     */
+
     public void start() {
         if (isRunning) {
             logger.warning("Sync service is already running");
             return;
         }
-        
-        // Validate polling rate (minimum 1 second)
-        int actualPollingRate = Math.max(1, pollingRateSeconds);
+
+        int actualPollingRate = Math.max(MIN_POLLING_RATE_SECONDS, pollingRateSeconds);
         if (actualPollingRate != pollingRateSeconds) {
-            logger.warning("Polling rate adjusted from " + pollingRateSeconds + " to " + actualPollingRate + " seconds (minimum is 1 second)");
+            logger.warning("Polling rate adjusted from " + pollingRateSeconds + " to " + actualPollingRate + " seconds (minimum is " + MIN_POLLING_RATE_SECONDS + ")");
         }
-        
+
         this.lastSyncTimestamp = Instant.now().toString();
         this.syncExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "modl-sync");
@@ -136,97 +133,54 @@ public class SyncService {
         });
         this.taskExecutor = Executors.newCachedThreadPool();
 
-        // dont run next sync until last one finishes. we have timeouts on sync so it wont freeze thread
-        syncExecutor.scheduleWithFixedDelay(this::performSync, 5, actualPollingRate, TimeUnit.SECONDS);
+        // Next sync waits until previous finishes; timeouts prevent thread stalls
+        syncExecutor.scheduleWithFixedDelay(this::performSync, INITIAL_SYNC_DELAY_SECONDS, actualPollingRate, TimeUnit.SECONDS);
         isRunning = true;
-        
-        if (debugMode) {
-            logger.info("modl.gg Sync service started - syncing every " + actualPollingRate + " seconds");
-        }
+        if (debugMode) logger.info("modl.gg Sync service started - syncing every " + actualPollingRate + " seconds");
     }
-    
-    /**
-     * Stop the sync service
-     */
+
     public void stop() {
-        if (!isRunning) {
-            return;
-        }
-        
+        if (!isRunning) return;
+
         if (syncExecutor != null) {
             syncExecutor.shutdown();
             try {
-                if (!syncExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-                    syncExecutor.shutdownNow();
-                }
+                if (!syncExecutor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) syncExecutor.shutdownNow();
             } catch (InterruptedException e) {
                 syncExecutor.shutdownNow();
                 Thread.currentThread().interrupt();
             }
         }
+        if (taskExecutor != null) taskExecutor.shutdownNow();
+        if (migrationService != null) migrationService.shutdown();
 
-        if (taskExecutor != null) {
-            taskExecutor.shutdownNow();
-        }
-
-        // Shutdown migration service if active
-        if (migrationService != null) {
-            migrationService.shutdown();
-        }
-        
         isRunning = false;
-        if (debugMode) {
-            logger.info("modl.gg Sync service stopped");
-        }
+        if (debugMode) logger.info("modl.gg Sync service stopped");
     }
-    
-    /**
-     * Perform a sync operation
-     */
+
     private void performSync() {
         final Callable<Void> work = () -> {
             try {
-                // Get online players
                 Collection<AbstractPlayer> onlinePlayers = platform.getOnlinePlayers();
-
-                // Build sync request
-                SyncRequest request = new SyncRequest();
-                request.setLastSyncTimestamp(lastSyncTimestamp);
-                request.setOnlinePlayers(buildOnlinePlayersList(onlinePlayers));
-                request.setServerStatus(buildServerStatus(onlinePlayers));
-                request.setServerName(platform.getServerName());
-
-                // Include buffered chat/command logs
-                if (chatCommandLogService != null) {
-                    request.setChatLogs(chatCommandLogService.drainChatBuffer());
-                    request.setCommandLogs(chatCommandLogService.drainCommandBuffer());
-                }
+                SyncRequest request = buildSyncRequest(onlinePlayers);
 
                 SyncResponse response = httpClientHolder.getClient().sync(request)
-                    .orTimeout(5, TimeUnit.SECONDS)
+                    .orTimeout(SYNC_HTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                     .join();
                 handleSyncResponse(response);
             } catch (CompletionException e) {
-                Throwable cause = e.getCause() != null ? e.getCause() : e;
-                if (cause instanceof PanelUnavailableException) {
-                    // dont log so no error spam when backend goes out for whatever reason
-                } else if (cause instanceof TimeoutException) {
-                    logger.warning("Sync request timed out");
-                } else {
-                    logger.warning("Sync request failed: " + cause.getMessage());
-                }
+                handleSyncException(e);
             } catch (Exception e) {
-                logger.warning("Sync request failed: " + e.getMessage());
+                logger.log(Level.WARNING, "Sync request failed", e);
             } catch (Throwable t) {
                 logger.log(Level.SEVERE, "Error during sync: " + t.getMessage(), t);
             }
-
             return null;
         };
 
         final Future<Void> future = taskExecutor.submit(work);
         try {
-            future.get(10, TimeUnit.SECONDS);
+            future.get(SYNC_TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
             logger.warning("Sync task timed out, cancelling...");
             future.cancel(true);
@@ -235,9 +189,27 @@ public class SyncService {
         }
     }
 
-    /**
-     * Build online players list for sync request
-     */
+    private SyncRequest buildSyncRequest(Collection<AbstractPlayer> onlinePlayers) {
+        SyncRequest request = new SyncRequest();
+        request.setLastSyncTimestamp(lastSyncTimestamp);
+        request.setOnlinePlayers(buildOnlinePlayersList(onlinePlayers));
+        request.setServerStatus(buildServerStatus(onlinePlayers));
+        request.setServerName(platform.getServerName());
+        if (chatCommandLogService != null) {
+            request.setChatLogs(chatCommandLogService.drainChatBuffer());
+            request.setCommandLogs(chatCommandLogService.drainCommandBuffer());
+        }
+        return request;
+    }
+
+    private void handleSyncException(CompletionException e) {
+        Throwable cause = e.getCause() != null ? e.getCause() : e;
+        // Silently ignore PanelUnavailableException to avoid log spam during backend outages
+        if (cause instanceof PanelUnavailableException) return;
+        if (cause instanceof TimeoutException) logger.warning("Sync request timed out");
+        else logger.warning("Sync request failed: " + cause.getMessage());
+    }
+
     private List<SyncRequest.OnlinePlayer> buildOnlinePlayersList(Collection<AbstractPlayer> onlinePlayers) {
         return onlinePlayers.stream()
                 .map(player -> new SyncRequest.OnlinePlayer(
@@ -248,10 +220,7 @@ public class SyncService {
                 ))
                 .collect(Collectors.toList());
     }
-    
-    /**
-     * Build server status for sync request
-     */
+
     private SyncRequest.ServerStatus buildServerStatus(Collection<AbstractPlayer> onlinePlayers) {
         return new SyncRequest.ServerStatus(
                 onlinePlayers.size(),
@@ -260,660 +229,254 @@ public class SyncService {
                 Instant.now().toString()
         );
     }
-    
-    /**
-     * Handle sync response from the panel
-     */
+
     private void handleSyncResponse(SyncResponse response) {
-        // Update last sync timestamp
         this.lastSyncTimestamp = response.getTimestamp();
-        
         SyncResponse.SyncData data = response.getData();
 
-        // Process modified punishments FIRST (pardons, duration changes) so the cache
-        // is cleared before new/promoted punishments are added
-        for (SyncResponse.ModifiedPunishment modified : data.getRecentlyModifiedPunishments()) {
-            processModifiedPunishment(modified);
-        }
+        // Modifications first (pardons, duration changes) so cache is cleared before new punishments
+        for (SyncResponse.ModifiedPunishment modified : data.getRecentlyModifiedPunishments()) punishmentExecutor.processModifiedPunishment(modified);
+        for (SyncResponse.PendingPunishment pending : data.getPendingPunishments()) punishmentExecutor.processPendingPunishment(pending);
 
-        // Process pending punishments AFTER modifications
-        for (SyncResponse.PendingPunishment pending : data.getPendingPunishments()) {
-            processPendingPunishment(pending);
-        }
-        
-        // Process active staff members (only if present - removed from sync in favor of startup loading)
         if (data.getActiveStaffMembers() != null) {
-            for (SyncResponse.ActiveStaffMember staffMember : data.getActiveStaffMembers()) {
-                processActiveStaffMember(staffMember);
-            }
-        }
-        
-        // Process player notifications
-        for (SyncResponse.PlayerNotification notification : data.getPlayerNotifications()) {
-            processPlayerNotification(notification);
+            for (SyncResponse.ActiveStaffMember staffMember : data.getActiveStaffMembers()) processActiveStaffMember(staffMember);
         }
 
-        // Process staff notifications
+        for (SyncResponse.PlayerNotification notification : data.getPlayerNotifications()) processPlayerNotification(notification);
+
         if (data.getStaffNotifications() != null) {
-            for (SyncResponse.StaffNotification staffNotif : data.getStaffNotifications()) {
-                processStaffNotification(staffNotif);
-            }
-        }
-        
-        // Process migration task if present
-        if (data.getMigrationTask() != null) {
-            processMigrationTask(data.getMigrationTask());
+            for (SyncResponse.StaffNotification staffNotif : data.getStaffNotifications()) processStaffNotification(staffNotif);
         }
 
-        // Check for staff permissions updates
-        Long newStaffTimestamp = data.getStaffPermissionsUpdatedAt();
-        if (newStaffTimestamp != null && !newStaffTimestamp.equals(lastKnownStaffPermissionsTimestamp)) {
-            if (debugMode) {
-                logger.info("Staff permissions changed (timestamp: " + newStaffTimestamp + "), refreshing...");
-            }
-            refreshStaffPermissions();
-            lastKnownStaffPermissionsTimestamp = newStaffTimestamp;
+        if (data.getMigrationTask() != null) processMigrationTask(data.getMigrationTask());
+
+        refreshIfTimestampChanged(data.getStaffPermissionsUpdatedAt(), lastKnownStaffPermissionsTimestamp,
+                "Staff permissions", this::refreshStaffPermissions, ts -> lastKnownStaffPermissionsTimestamp = ts);
+
+        refreshIfTimestampChanged(data.getPunishmentTypesUpdatedAt(), lastKnownPunishmentTypesTimestamp,
+                "Punishment types", this::refreshPunishmentTypes, ts -> lastKnownPunishmentTypesTimestamp = ts);
+
+        if (++syncCycleCount % MAINTENANCE_CYCLE_INTERVAL == 0) {
+            cache.cleanupExpiredNotifications();
+            ChatInputManager.cleanupExpired();
         }
 
-        // Check for punishment types updates
-        Long newPunishmentTypesTimestamp = data.getPunishmentTypesUpdatedAt();
-        if (newPunishmentTypesTimestamp != null && !newPunishmentTypesTimestamp.equals(lastKnownPunishmentTypesTimestamp)) {
-            if (debugMode) {
-                logger.info("Punishment types changed (timestamp: " + newPunishmentTypesTimestamp + "), refreshing...");
-            }
-            refreshPunishmentTypes();
-            lastKnownPunishmentTypesTimestamp = newPunishmentTypesTimestamp;
-        }
+        processStaff2faVerifications(data.getStaff2faVerifications());
+    }
 
-        // Process staff 2FA verifications (newly verified via link click)
-        if (data.getStaff2faVerifications() != null) {
-            for (SyncResponse.Staff2faVerification verification : data.getStaff2faVerifications()) {
-                try {
-                    UUID uuid = UUID.fromString(verification.getMinecraftUuid());
-                    staff2faService.handleVerification(uuid);
-                    logger.info("[Sync] Staff 2FA verified for " + verification.getMinecraftUuid());
+    private void refreshIfTimestampChanged(Long newTimestamp, Long lastKnown, String label,
+                                            Runnable refreshAction, Consumer<Long> updateLastKnown) {
+        if (newTimestamp == null || newTimestamp.equals(lastKnown)) return;
+        if (debugMode) logger.info(label + " changed (timestamp: " + newTimestamp + "), refreshing...");
+        refreshAction.run();
+        updateLastKnown.accept(newTimestamp);
+    }
 
-                    // Send the staff verified notification now that they're verified
-                    AbstractPlayer player = platform.getPlayer(uuid);
-                    if (player != null) {
-                        // Notify the verified staff member
-                        platform.sendMessage(uuid, localeManager.getMessage("staff_2fa.verify_success"));
-
-                        String inGameName = player.username();
-                        String panelName = cache.getStaffDisplayName(uuid);
-                        if (panelName == null) panelName = inGameName;
-                        platform.staffBroadcast(localeManager.getMessage("staff_notifications.verified", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
-                    }
-                } catch (Exception e) {
-                    logger.warning("[Sync] Failed to process staff 2FA verification: " + e.getMessage());
-                }
+    private void processStaff2faVerifications(List<SyncResponse.Staff2faVerification> verifications) {
+        if (verifications == null) return;
+        for (SyncResponse.Staff2faVerification verification : verifications) {
+            try {
+                UUID uuid = UUID.fromString(verification.getMinecraftUuid());
+                staff2faService.handleVerification(uuid);
+                logger.info("[Sync] Staff 2FA verified for " + verification.getMinecraftUuid());
+                notifyStaff2faVerified(uuid);
+            } catch (Exception e) {
+                logger.log(Level.WARNING, "[Sync] Failed to process staff 2FA verification", e);
             }
         }
     }
 
+    private void notifyStaff2faVerified(UUID uuid) {
+        AbstractPlayer player = platform.getPlayer(uuid);
+        if (player == null) return;
+        platform.sendMessage(uuid, localeManager.getMessage("staff_2fa.verify_success"));
+        String inGameName = player.username();
+        String panelName = cache.getStaffDisplayName(uuid);
+        if (panelName == null) panelName = inGameName;
+        platform.staffBroadcast(localeManager.getMessage("staff_notifications.verified",
+                Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
+    }
+
     private void refreshStaffPermissions() {
-        httpClientHolder.getClient().getStaffPermissions().thenAccept(response -> {
-            cache.clearStaffPermissions();
-            int loadedCount = 0;
-            for (var staffMember : response.getData().getStaff()) {
-                if (staffMember.getMinecraftUuid() != null) {
-                    try {
-                        UUID uuid = UUID.fromString(staffMember.getMinecraftUuid());
-                        cache.cacheStaffPermissions(uuid, staffMember.getStaffUsername(), staffMember.getStaffRole(), staffMember.getPermissions());
-                        loadedCount++;
-                    } catch (IllegalArgumentException e) {
-                        logger.warning("Invalid UUID for staff member: " + staffMember.getMinecraftUuid());
-                    }
-                }
-            }
-            if (debugMode) {
-                logger.info("Staff permissions refreshed: " + loadedCount + " staff members");
-            }
-        }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) {
-                logger.warning("Failed to refresh staff permissions: Panel temporarily unavailable");
-            } else {
-                logger.warning("Failed to refresh staff permissions: " + throwable.getMessage());
-            }
-            return null;
-        }).orTimeout(5, TimeUnit.SECONDS);
+        StaffPermissionLoader.load(httpClientHolder.getClient(), cache, logger, debugMode, true)
+            .orTimeout(SYNC_HTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
     private void refreshPunishmentTypes() {
         httpClientHolder.getClient().getPunishmentTypes().thenAccept(response -> {
-            if (response.isSuccess()) {
-                for (PunishmentTypesRefreshListener listener : punishmentTypesListeners) {
-                    try {
-                        listener.onPunishmentTypesRefreshed(response.getData());
-                    } catch (Exception e) {
-                        logger.warning("Error notifying punishment types listener: " + e.getMessage());
-                    }
-                }
-                if (debugMode) {
-                    logger.info("Punishment types refreshed: " + response.getData().size() + " types");
+            if (!response.isSuccess()) return;
+            for (PunishmentTypesRefreshListener listener : punishmentTypesListeners) {
+                try {
+                    listener.onPunishmentTypesRefreshed(response.getData());
+                } catch (Exception e) {
+                    logger.log(Level.WARNING, "Error notifying punishment types listener", e);
                 }
             }
+            if (debugMode) logger.info("Punishment types refreshed: " + response.getData().size() + " types");
         }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) {
-                logger.warning("Failed to refresh punishment types: Panel temporarily unavailable");
-            } else {
-                logger.warning("Failed to refresh punishment types: " + throwable.getMessage());
-            }
+            Throwable cause = throwable.getCause();
+            if (cause instanceof PanelUnavailableException) logger.warning("Failed to refresh punishment types: Panel temporarily unavailable");
+            else logger.warning("Failed to refresh punishment types: " + throwable.getMessage());
             return null;
-        }).orTimeout(5, TimeUnit.SECONDS);
+        }).orTimeout(SYNC_HTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
-    /**
-     * Process migration task from sync response
-     */
     private void processMigrationTask(SyncResponse.MigrationTask migrationTask) {
         try {
-            if (debugMode) {
-                logger.info(String.format("Processing migration task %s (type: %s)",
-                        migrationTask.getTaskId(), migrationTask.getType()));
-            }
-            
-            // Initialize migration service if not already done
-            if (migrationService == null) {
-                try {
-                    // Try to get LiteBans database provider from platform first
-                    DatabaseProvider databaseProvider = platform.createLiteBansDatabaseProvider();
-                    
-                    if (databaseProvider == null) {
-                        // LiteBans not available, use JDBC
-                        if (debugMode) {
-                            logger.info("[Migration] LiteBans not available, using JDBC connection");
-                        }
-                        databaseProvider = new JdbcDatabaseProvider(databaseConfig, logger);
-                    }
-                    
-                    migrationService = new MigrationService(logger, httpClientHolder.getClient(), apiUrl, apiKey, dataFolder, databaseProvider);
-                } catch (Exception e) {
-                    logger.log(Level.SEVERE, "[Migration] Failed to initialize migration service: " + e.getMessage(), e);
-                    return;
-                }
-            }
-            
-            // Start migration based on type
+            if (debugMode) logger.info("Processing migration task " + migrationTask.getTaskId() + " (type: " + migrationTask.getType() + ")");
+
+            if (!ensureMigrationServiceInitialized()) return;
+
             String taskId = migrationTask.getTaskId();
             String type = migrationTask.getType();
-            
-            if ("litebans".equalsIgnoreCase(type)) {
-                // Export LiteBans data asynchronously
-                migrationService.exportLiteBansData(taskId).thenAccept(jsonFile -> {
-                    if (jsonFile != null && jsonFile.exists()) {
-                        // Upload the file to panel
-                        migrationService.uploadMigrationFile(jsonFile, taskId).thenAccept(success -> {
-                            if (success) {
-                                if (debugMode) {
-                                    logger.info("[Migration] Migration task " + taskId + " completed successfully");
-                                }
-                            } else {
-                                logger.warning("[Migration] Migration task " + taskId + " upload failed");
-                            }
-                        });
-                    } else {
-                        logger.warning("[Migration] Migration task " + taskId + " export failed - no file generated");
-                    }
-                }).exceptionally(throwable -> {
-                    logger.log(Level.SEVERE, "[Migration] Migration task " + taskId + " failed: " + throwable.getMessage(), throwable);
-                    return null;
-                });
-            } else {
+
+            if (!"litebans".equalsIgnoreCase(type)) {
                 logger.warning("[Migration] Unknown migration type: " + type);
+                return;
             }
-            
+
+            migrationService.exportLiteBansData(taskId).thenAccept(jsonFile -> {
+                if (jsonFile == null || !jsonFile.exists()) {
+                    logger.warning("[Migration] Task " + taskId + " export failed - no file generated");
+                    return;
+                }
+                migrationService.uploadMigrationFile(jsonFile, taskId).thenAccept(success -> {
+                    if (success && debugMode) logger.info("[Migration] Task " + taskId + " completed successfully");
+                    else if (!success) logger.warning("[Migration] Task " + taskId + " upload failed");
+                });
+            }).exceptionally(throwable -> {
+                logger.log(Level.SEVERE, "[Migration] Task " + taskId + " failed: " + throwable.getMessage(), throwable);
+                return null;
+            });
         } catch (Exception e) {
             logger.log(Level.SEVERE, "[Migration] Error processing migration task: " + e.getMessage(), e);
         }
     }
-    
-    /**
-     * Check if the stat wipe executor is available (bridge plugin detected).
-     */
+
+    private boolean ensureMigrationServiceInitialized() {
+        if (migrationService != null) return true;
+        try {
+            DatabaseProvider databaseProvider = platform.createLiteBansDatabaseProvider();
+            if (databaseProvider == null) {
+                if (debugMode) logger.info("[Migration] LiteBans not available, using JDBC connection");
+                databaseProvider = new JdbcDatabaseProvider(databaseConfig, logger);
+            }
+            migrationService = new MigrationService(logger, httpClientHolder.getClient(), apiUrl, apiKey, dataFolder, databaseProvider);
+            return true;
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "[Migration] Failed to initialize migration service: " + e.getMessage(), e);
+            return false;
+        }
+    }
+
     public boolean isStatWipeAvailable() {
         return statWipeExecutor != null;
     }
 
-    /**
-     * Execute a stat wipe triggered by a player login and acknowledge on success.
-     */
     public void executeStatWipeFromLogin(SyncResponse.PendingStatWipe statWipe) {
         if (statWipeExecutor == null) return;
-
-        logger.info(String.format("[StatWipe] Executing stat wipe for %s (punishment: %s)",
-                statWipe.getUsername(), statWipe.getPunishmentId()));
+        logger.info("[StatWipe] Executing for " + statWipe.getUsername() + " (punishment: " + statWipe.getPunishmentId() + ")");
 
         statWipeExecutor.executeStatWipe(
-                statWipe.getUsername(),
-                statWipe.getMinecraftUuid(),
-                statWipe.getPunishmentId(),
-                (success, serverName) -> {
-                    if (success) {
-                        logger.info("[StatWipe] Completed for " + statWipe.getUsername() +
-                                " on server " + serverName + " — acknowledging to backend");
-                        gg.modl.minecraft.api.http.request.StatWipeAcknowledgeRequest request =
-                                new gg.modl.minecraft.api.http.request.StatWipeAcknowledgeRequest(
-                                        statWipe.getPunishmentId(), serverName, true);
-                        httpClientHolder.getClient().acknowledgeStatWipe(request)
-                                .exceptionally(throwable -> {
-                                    logger.warning("[StatWipe] Failed to acknowledge for punishment " +
-                                            statWipe.getPunishmentId() + ": " + throwable.getMessage());
-                                    return null;
-                                });
-                    } else {
-                        logger.warning("[StatWipe] Failed for " + statWipe.getUsername() +
-                                " — will retry on next sync");
-                    }
-                }
+                statWipe.getUsername(), statWipe.getMinecraftUuid(), statWipe.getPunishmentId(),
+                (success, serverName) -> handleStatWipeResult(statWipe, success, serverName)
         );
     }
 
-    /**
-     * Process a pending punishment that needs to be executed
-     */
-    private void processPendingPunishment(SyncResponse.PendingPunishment pending) {
-        String playerUuid = pending.getMinecraftUuid();
-        String username = pending.getUsername();
-        SimplePunishment punishment = pending.getPunishment();
-        
-        if (debugMode) {
-            logger.info(String.format("Processing pending punishment %s for %s - Type: '%s', Ordinal: %d, isBan: %s, isMute: %s, isKick: %s",
-                    punishment.getId(), username, punishment.getType(), punishment.getOrdinal(),
-                    punishment.isBan(), punishment.isMute(), punishment.isKick()));
+    private void handleStatWipeResult(SyncResponse.PendingStatWipe statWipe, boolean success, String serverName) {
+        if (!success) {
+            logger.warning("[StatWipe] Failed for " + statWipe.getUsername() + " — will retry on next sync");
+            return;
         }
-        
-        // Execute on game thread — executePunishment may kick players, which requires
-        // the Bukkit main thread on Spigot/Paper (AsyncCatcher blocks async kicks)
-        platform.runOnGameThread(() -> {
-            boolean success = executePunishment(playerUuid, username, punishment);
-
-            // Acknowledge the punishment execution (this will start the punishment)
-            acknowledgePunishment(punishment.getId(), playerUuid, success, null);
-        });
-    }
-    
-    
-    /**
-     * Process a modified punishment (pardon, duration change)
-     */
-    private void processModifiedPunishment(SyncResponse.ModifiedPunishment modified) {
-        String playerUuid = modified.getMinecraftUuid();
-        String username = modified.getUsername();
-        SyncResponse.PunishmentWithModifications punishment = modified.getPunishment();
-
-        platform.runOnMainThread(() -> {
-            for (SyncResponse.PunishmentModification modification : punishment.getModifications()) {
-                handlePunishmentModification(playerUuid, username, punishment.getId(), modification);
-            }
-        });
-    }
-
-    
-    /**
-     * Execute a punishment on the server
-     */
-    private boolean executePunishment(String playerUuid, String username, SimplePunishment punishment) {
-        try {
-            UUID uuid = UUID.fromString(playerUuid);
-            AbstractPlayer player = platform.getPlayer(uuid);
-            
-            if (punishment.isBan()) {
-                if (debugMode) {
-                    logger.info(String.format("Executing BAN for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
-                }
-                return executeBan(uuid, username, punishment);
-            } else if (punishment.isMute()) {
-                if (debugMode) {
-                    logger.info(String.format("Executing MUTE for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
-                }
-                return executeMute(uuid, username, punishment);
-            } else if (punishment.isKick()) {
-                if (debugMode) {
-                    logger.info(String.format("Executing KICK for %s (type: %s, ordinal: %d)", username, punishment.getType(), punishment.getOrdinal()));
-                }
-                return executeKick(uuid, username, punishment);
-            } else {
-                logger.warning(String.format("Unknown punishment type for %s - Type: '%s', Ordinal: %d, isBan: %s, isMute: %s, isKick: %s", 
-                        username, punishment.getType(), punishment.getOrdinal(), 
-                        punishment.isBan(), punishment.isMute(), punishment.isKick()));
-                return false;
-            }
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error executing punishment: " + e.getMessage(), e);
-            return false;
-        }
-    }
-    
-    /**
-     * Execute a mute punishment
-     */
-    private boolean executeMute(UUID uuid, String username, SimplePunishment punishment) {
-        try {
-            // Add to cache for immediate effect
-            cache.cacheMute(uuid, punishment);
-            
-            // Broadcast punishment
-            String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "muted", localeManager);
-            platform.broadcast(broadcastMessage);
-            
-            if (debugMode) {
-                logger.info(String.format("Successfully executed mute for %s: %s", username, punishment.getDescription()));
-            }
-            return true;
-        } catch (Exception e) {
-            logger.severe("Error executing mute: " + e.getMessage());
-            return false;
-        }
-    }
-    
-    /**
-     * Execute a ban punishment
-     */
-    private boolean executeBan(UUID uuid, String username, SimplePunishment punishment) {
-        try {
-            // Kick player if online
-            AbstractPlayer player = platform.getPlayer(uuid);
-            if (player != null && player.isOnline()) {
-                // Use proper ban message formatting with SYNC context for dynamic variables
-                String kickMsg = PunishmentMessages.formatBanMessage(punishment, localeManager, PunishmentMessages.MessageContext.SYNC);
-                platform.kickPlayer(player, kickMsg);
-            }
-            
-            // Broadcast punishment
-            String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "banned", localeManager);
-            platform.broadcast(broadcastMessage);
-            
-            if (debugMode) {
-                logger.info(String.format("Successfully executed ban for %s: %s", username, punishment.getDescription()));
-            }
-            return true;
-        } catch (Exception e) {
-            logger.severe("Error executing ban: " + e.getMessage());
-            return false;
-        }
-    }
-    
-    /**
-     * Execute a kick punishment
-     */
-    private boolean executeKick(UUID uuid, String username, SimplePunishment punishment) {
-        try {
-            // Kick player if online
-            AbstractPlayer player = platform.getPlayer(uuid);
-            if (player != null && player.isOnline()) {
-                // Use proper kick message formatting with SYNC context for dynamic variables
-                String kickMsg = PunishmentMessages.formatKickMessage(punishment, localeManager, PunishmentMessages.MessageContext.SYNC);
-                platform.kickPlayer(player, kickMsg);
-
-                // Broadcast punishment
-                String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "kicked", localeManager);
-                platform.broadcast(broadcastMessage);
-                
-                if (debugMode) {
-                    logger.info(String.format("Successfully executed kick for %s: %s", username, punishment.getDescription()));
-                }
-                return true;
-            } else {
-                if (debugMode) {
-                    logger.info(String.format("Player %s is not online, kick punishment ignored", username));
-                }
-                return true; // Still considered successful since player is offline
-            }
-        } catch (Exception e) {
-            logger.severe("Error executing kick: " + e.getMessage());
-            return false;
-        }
-    }
-    
-    /**
-     * Handle punishment modifications (pardons, duration changes)
-     */
-    private void handlePunishmentModification(String playerUuid, String username, String punishmentId, 
-                                               SyncResponse.PunishmentModification modification) {
-        try {
-            UUID uuid = UUID.fromString(playerUuid);
-
-            Modification.Type modType;
-            try {
-                modType = Modification.Type.valueOf(modification.getType());
-            } catch (IllegalArgumentException e) {
-                logger.warning("Unknown modification type: " + modification.getType());
-                return;
-            }
-
-            switch (modType) {
-                case MANUAL_PARDON:
-                case SYSTEM_PARDON:
-                case APPEAL_ACCEPT:
-                    handlePardon(uuid, username, punishmentId);
-                    break;
-                case MANUAL_DURATION_CHANGE:
-                case APPEAL_DURATION_CHANGE:
-                    handleDurationChange(uuid, username, punishmentId, modification.getEffectiveDuration(), modification.getTimestamp());
-                    break;
-                default:
-                    break;
-            }
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error handling punishment modification: " + e.getMessage(), e);
-        }
-    }
-    
-    /**
-     * Handle punishment pardon
-     */
-    private void handlePardon(UUID uuid, String username, String punishmentId) {
-        // Check if this punishment matches the cached mute or ban
-        boolean wasMute = false;
-        boolean wasBan = false;
-
-        // Check cached mute
-        SimplePunishment cachedMute = cache.getSimpleMute(uuid);
-        if (cachedMute != null && cachedMute.getId().equals(punishmentId)) {
-            cache.removeMute(uuid);
-            wasMute = true;
-            if (debugMode) {
-                logger.info(String.format("Removed cached mute for %s (punishment %s)", username, punishmentId));
-            }
-        }
-
-        // Check cached ban (in case player was banned while online)
-        SimplePunishment cachedBan = cache.getSimpleBan(uuid);
-        if (cachedBan != null && cachedBan.getId().equals(punishmentId)) {
-            cache.removeBan(uuid);
-            wasBan = true;
-            if (debugMode) {
-                logger.info(String.format("Removed cached ban for %s (punishment %s)", username, punishmentId));
-            }
-        }
-
-        // If neither matched by ID, try removing both (fallback for older data)
-        if (!wasMute && !wasBan) {
-            // Remove any cached punishment data for safety
-            cache.removeMute(uuid);
-            cache.removeBan(uuid);
-            if (debugMode) {
-                logger.info(String.format("Cleared all cached punishments for %s (punishment %s not found in cache)", username, punishmentId));
-            }
-        }
-
-        if (debugMode) {
-            logger.info(String.format("Pardoned punishment %s for %s", punishmentId, username));
-        }
-        // Staff notification is sent by backend via staffNotifications — don't broadcast here
-    }
-    
-    /**
-     * Handle punishment duration change - update cached expiry so enforcement uses the new duration
-     */
-    private void handleDurationChange(UUID uuid, String username, String punishmentId, Long newDuration, Long modificationTimestamp) {
-        // Calculate new expiration: expiry = modification time + newDuration
-        long baseTime = (modificationTimestamp != null) ? modificationTimestamp : System.currentTimeMillis();
-        Long newExpiration = (newDuration != null && newDuration > 0)
-                ? baseTime + newDuration
-                : null; // permanent
-
-        // Update cached mute if it matches
-        SimplePunishment cachedMute = cache.getSimpleMute(uuid);
-        if (cachedMute != null && cachedMute.getId().equals(punishmentId)) {
-            cachedMute.setExpiration(newExpiration);
-            if (debugMode) {
-                logger.info(String.format("Updated cached mute expiration for %s (punishment %s)", username, punishmentId));
-            }
-        }
-
-        // Update cached ban if it matches
-        SimplePunishment cachedBan = cache.getSimpleBan(uuid);
-        if (cachedBan != null && cachedBan.getId().equals(punishmentId)) {
-            cachedBan.setExpiration(newExpiration);
-            if (debugMode) {
-                logger.info(String.format("Updated cached ban expiration for %s (punishment %s)", username, punishmentId));
-            }
-        }
-
-        if (debugMode) {
-            logger.info(String.format("Updated punishment %s duration for %s to %s",
-                    punishmentId, username, newDuration != null ? newDuration + " ms" : "permanent"));
-        }
-    }
-    
-    /**
-     * Acknowledge punishment execution to the panel
-     */
-    private void acknowledgePunishment(String punishmentId, String playerUuid, boolean success, String errorMessage) {
-        PunishmentAcknowledgeRequest request = new PunishmentAcknowledgeRequest(
-                punishmentId,
-                playerUuid,
-                Instant.now().toString(),
-                success,
-                errorMessage
-        );
-        
-        httpClientHolder.getClient().acknowledgePunishment(request)
-                .thenAccept(response -> {
-                    if (debugMode) {
-                        logger.info(String.format("Acknowledged punishment %s execution: %s",
-                                punishmentId, success ? "SUCCESS" : "FAILED"));
-                    }
-                })
+        logger.info("[StatWipe] Completed for " + statWipe.getUsername() + " on " + serverName + " — acknowledging");
+        httpClientHolder.getClient().acknowledgeStatWipe(
+                new StatWipeAcknowledgeRequest(statWipe.getPunishmentId(), serverName, true))
                 .exceptionally(throwable -> {
-                    if (throwable.getCause() instanceof PanelUnavailableException) {
-                        logger.warning("Failed to acknowledge punishment " + punishmentId + ": Panel temporarily unavailable");
-                    } else {
-                        logger.warning("Failed to acknowledge punishment " + punishmentId + ": " + throwable.getMessage());
-                    }
+                    logger.warning("[StatWipe] Failed to acknowledge for " + statWipe.getPunishmentId() + ": " + throwable.getMessage());
                     return null;
-                })
-                .orTimeout(5, TimeUnit.SECONDS);
+                });
     }
-    
-    /**
-     * Process active staff member information
-     */
+
     private void processActiveStaffMember(SyncResponse.ActiveStaffMember staffMember) {
         try {
             UUID uuid = UUID.fromString(staffMember.getMinecraftUuid());
             AbstractPlayer player = platform.getPlayer(uuid);
 
-            // Check 2FA session validity from backend and update auth state
-            if (staff2faService != null && staff2faService.isEnabled() && player != null && player.isOnline()) {
-                Boolean sessionValid = staffMember.getTwoFactorSessionValid();
-                if (Boolean.TRUE.equals(sessionValid)) {
-                    // Backend says session is valid — auto-authenticate if still pending
-                    if (staff2faService.getAuthState(uuid) == Staff2faService.AuthState.PENDING) {
-                        staff2faService.handleVerification(uuid);
-                        platform.sendMessage(uuid, localeManager.getMessage("staff_2fa.auto_verified"));
-
-                        String inGameName = player.username();
-                        String panelName = cache.getStaffDisplayName(uuid);
-                        if (panelName == null) panelName = inGameName;
-                        platform.staffBroadcast(localeManager.getMessage("staff_notifications.join", java.util.Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
-                    }
-                } else {
-                    // No valid session — notify once that verification is needed
-                    if (staff2faService.getAuthState(uuid) == Staff2faService.AuthState.PENDING) {
-                        if (staff2faService.markNotified(uuid)) {
-                            platform.sendMessage(uuid, localeManager.getMessage("staff_2fa.not_verified"));
-                        }
-                    }
-                }
-            }
-
             if (player != null && player.isOnline()) {
-                // Check if this is a new staff member or permissions changed
-                SyncResponse.ActiveStaffMember existing = cache.getStaffMember(uuid);
-                boolean isNew = existing == null;
-                boolean permissionsChanged = existing != null &&
-                    !existing.getPermissions().equals(staffMember.getPermissions());
-
-                // Cache staff member information for easy access
-                cache.cacheStaffMember(uuid, staffMember);
-
-                // Only log when data is new or changed
-                if (debugMode && (isNew || permissionsChanged)) {
-                    logger.info(String.format("Staff member data %s for %s (%s) - Role: %s, Permissions: %s",
-                            isNew ? "loaded" : "updated",
-                            staffMember.getMinecraftUsername(),
-                            staffMember.getStaffUsername(),
-                            staffMember.getStaffRole(),
-                            staffMember.getPermissions()));
-                }
+                handle2faForStaffMember(uuid, player, staffMember);
+                updateStaffMemberCache(uuid, staffMember);
             }
         } catch (Exception e) {
-            logger.warning("Error processing staff member data: " + e.getMessage());
+            logger.log(Level.WARNING, "Error processing staff member data", e);
         }
     }
-    
-    /**
-     * Process a staff notification - broadcast to staff using the standard staff notification format
-     */
+
+    private void handle2faForStaffMember(UUID uuid, AbstractPlayer player, SyncResponse.ActiveStaffMember staffMember) {
+        if (staff2faService == null || !staff2faService.isEnabled()) return;
+        if (staff2faService.getAuthState(uuid) != Staff2faService.AuthState.PENDING) return;
+
+        if (Boolean.TRUE.equals(staffMember.getTwoFactorSessionValid())) {
+            // Backend says session is valid — auto-authenticate
+            staff2faService.handleVerification(uuid);
+            platform.sendMessage(uuid, localeManager.getMessage("staff_2fa.auto_verified"));
+            broadcastStaffJoin(uuid, player);
+        } else {
+            if (staff2faService.markNotified(uuid)) {
+                platform.sendMessage(uuid, localeManager.getMessage("staff_2fa.not_verified"));
+            }
+        }
+    }
+
+    private void broadcastStaffJoin(UUID uuid, AbstractPlayer player) {
+        String inGameName = player.username();
+        String panelName = cache.getStaffDisplayName(uuid);
+        if (panelName == null) panelName = inGameName;
+        platform.staffBroadcast(localeManager.getMessage("staff_notifications.join",
+                Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
+    }
+
+    private void updateStaffMemberCache(UUID uuid, SyncResponse.ActiveStaffMember staffMember) {
+        SyncResponse.ActiveStaffMember existing = cache.getStaffMember(uuid);
+        boolean isNew = existing == null;
+        boolean permissionsChanged = existing != null && !existing.getPermissions().equals(staffMember.getPermissions());
+
+        cache.cacheStaffMember(uuid, staffMember);
+
+        if (debugMode && (isNew || permissionsChanged)) {
+            logger.info(String.format("Staff member data %s for %s (%s) - Role: %s, Permissions: %s",
+                    isNew ? "loaded" : "updated",
+                    staffMember.getMinecraftUsername(), staffMember.getStaffUsername(),
+                    staffMember.getStaffRole(), staffMember.getPermissions()));
+        }
+    }
+
     private void processStaffNotification(SyncResponse.StaffNotification notification) {
         try {
-            if ("TICKET_CREATED".equals(notification.getType()) && notification.getData() != null) {
+            if (TICKET_CREATED_TYPE.equals(notification.getType()) && notification.getData() != null) {
                 processTicketCreatedNotification(notification);
             } else {
-                String message = "&7&o[" + notification.getMessage() + "&7&o]";
-                platform.staffBroadcast(message);
+                platform.staffBroadcast("&7&o[" + notification.getMessage() + "&7&o]");
             }
-
-            if (debugMode) {
-                logger.info(String.format("Processed staff notification: %s", notification.getMessage()));
-            }
+            if (debugMode) logger.info("Processed staff notification: " + notification.getMessage());
         } catch (Exception e) {
-            logger.warning("Error processing staff notification: " + e.getMessage());
+            logger.log(Level.WARNING, "Error processing staff notification", e);
         }
     }
 
     /**
-     * Process a TICKET_CREATED staff notification with hover text and clickable link.
      * Gameplay/player reports use /target click action; other types open the ticket URL.
      */
     private void processTicketCreatedNotification(SyncResponse.StaffNotification notification) {
         Map<String, Object> data = notification.getData();
-        String ticketUrl = data.get("ticketUrl") != null ? (String) data.get("ticketUrl") : "";
-        String subject = data.get("subject") != null ? (String) data.get("subject") : "";
-        String firstReply = data.get("firstReplyContent") != null ? (String) data.get("firstReplyContent") : "";
-        String ticketType = data.get("ticketType") != null ? (String) data.get("ticketType") : "";
-        String category = data.get("category") != null ? (String) data.get("category") : "";
-        String reportedPlayer = data.get("reportedPlayer") != null ? (String) data.get("reportedPlayer") : "";
+        String ticketUrl = extractString(data, "ticketUrl");
+        String subject = extractString(data, "subject");
+        String firstReply = extractString(data, "firstReplyContent");
+        String ticketType = extractString(data, "ticketType");
+        String category = extractString(data, "category");
+        String reportedPlayer = extractString(data, "reportedPlayer");
 
-        // Build hover text: subject + reply #0
-        StringBuilder hoverText = new StringBuilder();
-        if (!subject.isEmpty()) {
-            hoverText.append(subject);
-        }
-        if (!firstReply.isEmpty()) {
-            if (hoverText.length() > 0) hoverText.append("\n\n");
-            String truncated = firstReply.length() > 200 ? firstReply.substring(0, 200) + "..." : firstReply;
-            hoverText.append(truncated);
-        }
-
-        String escapedMessage = escapeJson(notification.getMessage());
-        String escapedHover = escapeJson(hoverText.toString());
-
-        // Gameplay/player reports: click to target the reported player
-        boolean isGameplayReport = "REPORT".equalsIgnoreCase(ticketType)
+        String hoverText = buildTicketHoverText(subject, firstReply);
+        boolean isGameplayReport = TICKET_TYPE_REPORT.equalsIgnoreCase(ticketType)
                 && !category.toLowerCase().contains("chat")
                 && !reportedPlayer.isEmpty();
 
@@ -922,9 +485,7 @@ public class SyncService {
         if (isGameplayReport) {
             clickAction = "run_command";
             clickValue = "/target " + escapeJson(reportedPlayer);
-            if (hoverText.length() > 0) hoverText.append("\n\n");
-            hoverText.append("Click to target " + reportedPlayer);
-            escapedHover = escapeJson(hoverText.toString());
+            hoverText += (hoverText.isEmpty() ? "" : "\n\n") + "Click to target " + reportedPlayer;
         } else {
             clickAction = "open_url";
             clickValue = ticketUrl;
@@ -935,10 +496,25 @@ public class SyncService {
             "{\"text\":\"[%s]\",\"color\":\"gray\",\"italic\":true," +
             "\"clickEvent\":{\"action\":\"%s\",\"value\":\"%s\"}," +
             "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"%s\"}}]}",
-            escapedMessage, clickAction, clickValue, escapedHover
+            escapeJson(notification.getMessage()), clickAction, clickValue, escapeJson(hoverText)
         );
-
         platform.staffJsonBroadcast(json);
+    }
+
+    private String buildTicketHoverText(String subject, String firstReply) {
+        StringBuilder hover = new StringBuilder();
+        if (!subject.isEmpty()) hover.append(subject);
+        if (!firstReply.isEmpty()) {
+            if (hover.length() > 0) hover.append("\n\n");
+            hover.append(firstReply.length() > MAX_HOVER_TEXT_LENGTH
+                    ? firstReply.substring(0, MAX_HOVER_TEXT_LENGTH) + "..."
+                    : firstReply);
+        }
+        return hover.toString();
+    }
+
+    private static String extractString(Map<String, Object> data, String key) {
+        return data.get(key) instanceof String s ? s : "";
     }
 
     private String escapeJson(String text) {
@@ -949,356 +525,199 @@ public class SyncService {
                    .replace("\t", "\\t");
     }
 
-    /**
-     * Process a player notification
-     */
     private void processPlayerNotification(SyncResponse.PlayerNotification notification) {
         try {
-            if (debugMode) {
-                logger.info(String.format("Processing notification %s (type: %s): %s",
-                        notification.getId(), notification.getType(), notification.getMessage()));
-            }
+            if (debugMode) logger.info("Processing notification " + notification.getId() + " (type: " + notification.getType() + "): " + notification.getMessage());
 
-            // Check if this notification has a target player UUID
             String targetPlayerUuid = notification.getTargetPlayerUuid();
-            if (targetPlayerUuid != null && !targetPlayerUuid.isEmpty()) {
-                try {
-                    UUID playerUuid = UUID.fromString(targetPlayerUuid);
-                    boolean delivered = deliverNotificationToPlayerAndCheck(playerUuid, notification);
-
-                    // Acknowledge the notification immediately after delivery to prevent re-sending
-                    if (delivered) {
-                        acknowledgeNotification(playerUuid, notification.getId());
-                    }
-                } catch (IllegalArgumentException e) {
-                    logger.warning("Invalid UUID format in notification: " + targetPlayerUuid);
-                }
-            } else {
-                // Fallback for old format - deliver to all online players (deprecated)
+            if (targetPlayerUuid == null || targetPlayerUuid.isEmpty()) {
                 handleNotificationForAllOnlinePlayers(notification);
+                return;
             }
 
+            UUID playerUuid;
+            try {
+                playerUuid = UUID.fromString(targetPlayerUuid);
+            } catch (IllegalArgumentException e) {
+                logger.warning("Invalid UUID format in notification: " + targetPlayerUuid);
+                return;
+            }
+
+            if (deliverNotificationToPlayerAndCheck(playerUuid, notification)) {
+                acknowledgeNotification(playerUuid, notification.getId());
+            }
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error processing player notification: " + e.getMessage(), e);
         }
     }
-    
-    /**
-     * Deliver a notification to a specific player and return whether it was delivered
-     * @return true if the notification was delivered to an online player, false if cached for later
-     */
+
+    /** @return true if the notification was delivered to an online player */
     private boolean deliverNotificationToPlayerAndCheck(UUID playerUuid, SyncResponse.PlayerNotification notification) {
         AbstractPlayer player = platform.getPlayer(playerUuid);
-
-        if (player != null && player.isOnline()) {
-            // Player is online - deliver immediately
-            String message;
-            Map<String, Object> data = notification.getData();
-
-            // Check if we have a ticket URL for clickable messages
-            if (data != null && data.containsKey("ticketUrl")) {
-                String ticketUrl = (String) data.get("ticketUrl");
-                String ticketId = (String) data.get("ticketId");
-
-                // Create a simpler clickable message format that works across platforms
-                message = String.format(
-                    "{\"text\":\"\",\"extra\":[" +
-                    "{\"text\":\"[Ticket] \",\"color\":\"gold\"}," +
-                    "{\"text\":\"%s \",\"color\":\"white\"}," +
-                    "{\"text\":\"[Click to view]\",\"color\":\"aqua\",\"underlined\":true," +
-                    "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                    "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket %s\"}}]}",
-                    notification.getMessage().replace("\"", "\\\""), ticketUrl, ticketId
-                );
-
-                if (debugMode) {
-                    logger.info("Sending clickable notification JSON: " + message);
-                }
-
-                platform.runOnMainThread(() -> {
-                    platform.sendJsonMessage(playerUuid, message);
-                });
-            } else {
-                // Fallback to regular message format
-                message = localeManager.getMessage("notification.ticket_reply", Map.of(
-                    "message", notification.getMessage()
-                ));
-
-                platform.runOnMainThread(() -> {
-                    platform.sendMessage(playerUuid, message);
-                });
-            }
-
-            if (debugMode) {
-                logger.info(String.format("Delivered notification %s to online player %s",
-                        notification.getId(), player.getName()));
-            }
-            return true;
-        } else {
-            // Player is offline - don't cache here, the notification stays in backend pending list
-            // It will be delivered when the player comes online and triggers a sync
-            if (debugMode) {
-                logger.info(String.format("Player %s is offline, notification %s will be delivered on next login",
-                        playerUuid, notification.getId()));
-            }
+        if (player == null || !player.isOnline()) {
+            if (debugMode) logger.info("Player " + playerUuid + " is offline, notification " + notification.getId() + " deferred");
             return false;
         }
-    }
-    
-    /**
-     * Deliver a notification immediately for a player who just logged in
-     */
-    public void deliverLoginNotification(UUID playerUuid, SyncResponse.PlayerNotification notification) {
-        if (debugMode) {
-            logger.info(String.format("Delivering login notification %s to player %s",
-                    notification.getId(), playerUuid));
+
+        Map<String, Object> data = notification.getData();
+        if (data != null && data.containsKey("ticketUrl")) {
+            sendClickableTicketNotification(playerUuid, notification, data);
+        } else {
+            String message = localeManager.getMessage("notification.ticket_reply", Map.of("message", notification.getMessage()));
+            platform.runOnMainThread(() -> platform.sendMessage(playerUuid, message));
         }
+
+        if (debugMode) logger.info("Delivered notification " + notification.getId() + " to " + player.getName());
+        return true;
+    }
+
+    private void sendClickableTicketNotification(UUID playerUuid, SyncResponse.PlayerNotification notification, Map<String, Object> data) {
+        String json = buildClickableTicketJson(notification.getMessage(), extractString(data, "ticketUrl"), extractString(data, "ticketId"));
+        if (debugMode) logger.info("Sending clickable notification JSON: " + json);
+        platform.runOnMainThread(() -> platform.sendJsonMessage(playerUuid, json));
+    }
+
+    public void deliverLoginNotification(UUID playerUuid, SyncResponse.PlayerNotification notification) {
+        if (debugMode) logger.info("Delivering login notification " + notification.getId() + " to " + playerUuid);
         deliverNotificationToPlayerAndCheck(playerUuid, notification);
     }
-    
-    /**
-     * Handle notification delivery for online players
-     * This is a temporary solution until we have proper player UUID targeting
-     */
+
+    /** Temporary: broadcasts untargeted notifications to all online players. */
     private void handleNotificationForAllOnlinePlayers(SyncResponse.PlayerNotification notification) {
-        Collection<AbstractPlayer> onlinePlayers = platform.getOnlinePlayers();
-        
-        for (AbstractPlayer player : onlinePlayers) {
+        for (AbstractPlayer player : platform.getOnlinePlayers()) {
             try {
                 UUID playerUuid = player.getUuid();
-                
-                // Check if this notification is relevant to this player
-                // For ticket notifications, we might check if they created recent tickets
-                // For now, we'll cache it for all players and let them see it on login
-                
-                // Cache the notification
                 cache.cacheNotification(playerUuid, notification);
-                
-                // Deliver immediately if player is online
                 deliverNotificationToPlayerAndCheck(playerUuid, notification);
-                
             } catch (Exception e) {
-                logger.warning("Error handling notification for player " + player.getName() + ": " + e.getMessage());
+                logger.log(Level.WARNING, "Error handling notification for player " + player.getName(), e);
             }
         }
     }
-    
-    
-    /**
-     * Deliver all pending notifications to a player (called on login)
-     */
+
     public void deliverPendingNotifications(UUID playerUuid) {
         try {
-            List<Cache.PendingNotification> pendingNotifications = cache.getPendingNotifications(playerUuid);
-            
-            if (pendingNotifications.isEmpty()) {
-                return;
-            }
-            
-            // Create a copy of the list to avoid ConcurrentModificationException
-            List<Cache.PendingNotification> notificationsToProcess = new ArrayList<>(pendingNotifications);
-            
-            if (debugMode) {
-                logger.info(String.format("Delivering %d pending notifications to player %s",
-                        notificationsToProcess.size(), playerUuid));
-            }
-            
-            List<String> deliveredNotificationIds = new ArrayList<>();
-            List<String> expiredNotificationIds = new ArrayList<>();
-            
-            // Deliver notifications with delays and sound effects
-            deliverNotificationsWithDelay(playerUuid, notificationsToProcess, deliveredNotificationIds, expiredNotificationIds);
-            
-            // Remove all expired notifications in batch
-            for (String expiredId : expiredNotificationIds) {
-                cache.removeNotification(playerUuid, expiredId);
-            }
-            
-            // Remove all delivered notifications in batch
-            for (String deliveredId : deliveredNotificationIds) {
-                cache.removeNotification(playerUuid, deliveredId);
-            }
-            
-            // Acknowledge all delivered notifications
-            if (!deliveredNotificationIds.isEmpty()) {
-                acknowledgeNotifications(playerUuid, deliveredNotificationIds);
-            }
-            
+            List<Cache.PendingNotification> pending = cache.getPendingNotifications(playerUuid);
+            if (pending.isEmpty()) return;
+
+            List<Cache.PendingNotification> toProcess = new ArrayList<>(pending);
+            if (debugMode) logger.info("Delivering " + toProcess.size() + " pending notifications to " + playerUuid);
+
+            List<String> deliveredIds = new ArrayList<>();
+            List<String> expiredIds = new ArrayList<>();
+            deliverNotificationsWithDelay(playerUuid, toProcess, deliveredIds, expiredIds);
+
+            for (String id : expiredIds) cache.removeNotification(playerUuid, id);
+            for (String id : deliveredIds) cache.removeNotification(playerUuid, id);
+            if (!deliveredIds.isEmpty()) acknowledgeNotifications(playerUuid, deliveredIds);
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error delivering pending notifications: " + e.getMessage(), e);
         }
     }
-    
-    /**
-     * Deliver a pending notification to a player with clickable links for ticket notifications
-     */
+
     private void deliverPendingNotificationToPlayer(UUID playerUuid, Cache.PendingNotification pending) {
         AbstractPlayer player = platform.getPlayer(playerUuid);
-        
-        if (player != null && player.isOnline()) {
-            // Check if we have ticket data for clickable messages
-            Map<String, Object> data = pending.getData();
-            if (data != null && data.containsKey("ticketUrl")) {
-                String ticketUrl = (String) data.get("ticketUrl");
-                String ticketId = (String) data.get("ticketId");
-                
-                // Create a clickable message format similar to sync notifications
-                String message = String.format(
-                    "{\"text\":\"\",\"extra\":[" +
-                    "{\"text\":\"[Ticket] \",\"color\":\"gold\"}," +
-                    "{\"text\":\"%s \",\"color\":\"white\"}," +
-                    "{\"text\":\"[Click to view]\",\"color\":\"aqua\",\"underlined\":true," +
-                    "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                    "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket %s\"}}]}",
-                    pending.getMessage().replace("\"", "\\\""), ticketUrl, ticketId
-                );
-                
-                platform.runOnMainThread(() -> {
-                    platform.sendJsonMessage(playerUuid, message);
-                });
-            } else {
-                // Fallback to regular message format
-                String message = pending.getMessage();
-                platform.runOnMainThread(() -> {
-                    platform.sendMessage(playerUuid, message);
-                });
-            }
+        if (player == null || !player.isOnline()) return;
+
+        Map<String, Object> data = pending.getData();
+        if (data != null && data.containsKey("ticketUrl")) {
+            String ticketUrl = extractString(data, "ticketUrl");
+            String ticketId = extractString(data, "ticketId");
+            String json = buildClickableTicketJson(pending.getMessage(), ticketUrl, ticketId);
+            platform.runOnMainThread(() -> platform.sendJsonMessage(playerUuid, json));
+        } else {
+            String message = pending.getMessage();
+            platform.runOnMainThread(() -> platform.sendMessage(playerUuid, message));
         }
     }
-    
-    /**
-     * Deliver notifications with delays and sound effects for login
-     */
-    private void deliverNotificationsWithDelay(UUID playerUuid, List<Cache.PendingNotification> notifications, 
+
+    private String buildClickableTicketJson(String message, String ticketUrl, String ticketId) {
+        return String.format(
+            "{\"text\":\"\",\"extra\":[" +
+            "{\"text\":\"[Ticket] \",\"color\":\"gold\"}," +
+            "{\"text\":\"%s \",\"color\":\"white\"}," +
+            "{\"text\":\"[Click to view]\",\"color\":\"aqua\",\"underlined\":true," +
+            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket %s\"}}]}",
+            message.replace("\"", "\\\""), ticketUrl, ticketId
+        );
+    }
+
+    private void deliverNotificationsWithDelay(UUID playerUuid, List<Cache.PendingNotification> notifications,
                                              List<String> deliveredIds, List<String> expiredIds) {
-        if (notifications.isEmpty()) {
-            return;
-        }
-        
-        // Start delivery after initial delay (2 seconds after login)
-        syncExecutor.schedule(() -> {
-            platform.runOnMainThread(() -> {
-                deliverNotificationAtIndex(playerUuid, notifications, 0, deliveredIds, expiredIds);
-            });
-        }, 2000, TimeUnit.MILLISECONDS);
+        if (notifications.isEmpty()) return;
+        syncExecutor.schedule(() ->
+            platform.runOnMainThread(() ->
+                deliverNotificationAtIndex(playerUuid, notifications, 0, deliveredIds, expiredIds)),
+            NOTIFICATION_INITIAL_DELAY_MS, TimeUnit.MILLISECONDS);
     }
-    
-    /**
-     * Recursively deliver notifications with delays between each one
-     */
-    private void deliverNotificationAtIndex(UUID playerUuid, List<Cache.PendingNotification> notifications, 
+
+    /** Recursively delivers notifications with delays between each one. */
+    private void deliverNotificationAtIndex(UUID playerUuid, List<Cache.PendingNotification> notifications,
                                           int index, List<String> deliveredIds, List<String> expiredIds) {
         if (index >= notifications.size()) {
-            // All notifications processed, clean up
             finalizePendingNotificationDelivery(playerUuid, deliveredIds, expiredIds);
             return;
         }
-        
+
         Cache.PendingNotification pending = notifications.get(index);
-        
         try {
-            // Skip expired notifications
             if (pending.isExpired()) {
                 expiredIds.add(pending.getId());
             } else {
-                // Check if player is still online before delivering
                 AbstractPlayer player = platform.getPlayer(playerUuid);
-                if (player != null && player.isOnline()) {
-                    // Format and send the notification (with clickable links for ticket notifications)
-                    deliverPendingNotificationToPlayer(playerUuid, pending);
-                    
-                    // Track for acknowledgment and removal
-                    deliveredIds.add(pending.getId());
-                    
-                    if (debugMode) {
-                        logger.info(String.format("Delivered pending notification %s to player %s",
-                                pending.getId(), playerUuid));
-                    }
-                } else {
-                    // Player disconnected, stop delivery
-                    if (debugMode) {
-                        logger.info(String.format("Player %s disconnected during notification delivery", playerUuid));
-                    }
+                if (player == null || !player.isOnline()) {
+                    if (debugMode) logger.info("Player " + playerUuid + " disconnected during notification delivery");
                     return;
                 }
+                deliverPendingNotificationToPlayer(playerUuid, pending);
+                deliveredIds.add(pending.getId());
+                if (debugMode) logger.info("Delivered pending notification " + pending.getId() + " to " + playerUuid);
             }
         } catch (Exception e) {
-            logger.warning("Error delivering pending notification " + pending.getId() + ": " + e.getMessage());
+            logger.log(Level.WARNING, "Error delivering pending notification " + pending.getId(), e);
         }
-        
-        // Schedule next notification delivery with delay (1.5 seconds between notifications)
-        syncExecutor.schedule(() -> {
-            platform.runOnMainThread(() -> {
-                deliverNotificationAtIndex(playerUuid, notifications, index + 1, deliveredIds, expiredIds);
-            });
-        }, 1500, TimeUnit.MILLISECONDS);
+
+        syncExecutor.schedule(() ->
+            platform.runOnMainThread(() ->
+                deliverNotificationAtIndex(playerUuid, notifications, index + 1, deliveredIds, expiredIds)),
+            NOTIFICATION_INTER_DELAY_MS, TimeUnit.MILLISECONDS);
     }
-    
-    /**
-     * Finalize the pending notification delivery by cleaning up and acknowledging
-     */
+
     private void finalizePendingNotificationDelivery(UUID playerUuid, List<String> deliveredIds, List<String> expiredIds) {
         try {
-            // Remove all expired notifications in batch
-            for (String expiredId : expiredIds) {
-                cache.removeNotification(playerUuid, expiredId);
-            }
-            
-            // Remove all delivered notifications in batch
-            for (String deliveredId : deliveredIds) {
-                cache.removeNotification(playerUuid, deliveredId);
-            }
-            
-            // Acknowledge all delivered notifications
-            if (!deliveredIds.isEmpty()) {
-                acknowledgeNotifications(playerUuid, deliveredIds);
-            }
-            
-            if (debugMode) {
-                logger.info(String.format("Completed pending notification delivery for player %s. " +
-                        "Delivered: %d, Expired: %d", playerUuid, deliveredIds.size(), expiredIds.size()));
-            }
-                    
+            for (String id : expiredIds) cache.removeNotification(playerUuid, id);
+            for (String id : deliveredIds) cache.removeNotification(playerUuid, id);
+            if (!deliveredIds.isEmpty()) acknowledgeNotifications(playerUuid, deliveredIds);
+            if (debugMode) logger.info("Notification delivery complete for " + playerUuid + ". Delivered: " + deliveredIds.size() + ", Expired: " + expiredIds.size());
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error finalizing pending notification delivery: " + e.getMessage(), e);
         }
     }
-    
-    /**
-     * Acknowledge a single notification to the panel
-     */
+
     private void acknowledgeNotification(UUID playerUuid, String notificationId) {
         acknowledgeNotifications(playerUuid, List.of(notificationId));
     }
-    
-    /**
-     * Acknowledge multiple notifications to the panel
-     */
+
     private void acknowledgeNotifications(UUID playerUuid, List<String> notificationIds) {
         try {
             NotificationAcknowledgeRequest request = new NotificationAcknowledgeRequest(
-                    playerUuid.toString(),
-                    notificationIds,
-                    Instant.now().toString()
-            );
-            
+                    playerUuid.toString(), notificationIds, Instant.now().toString());
+
             httpClientHolder.getClient().acknowledgeNotifications(request)
                     .thenAccept(response -> {
-                        if (debugMode) {
-                            logger.info(String.format("Acknowledged %d notifications for player %s",
-                                    notificationIds.size(), playerUuid));
-                        }
+                        if (debugMode) logger.info("Acknowledged " + notificationIds.size() + " notifications for " + playerUuid);
                     })
                     .exceptionally(throwable -> {
-                        if (throwable.getCause() instanceof PanelUnavailableException) {
-                            logger.warning("Failed to acknowledge notifications for player " + playerUuid + ": Panel temporarily unavailable");
+                        Throwable cause = throwable.getCause();
+                        if (cause instanceof PanelUnavailableException) {
+                            logger.warning("Failed to acknowledge notifications for " + playerUuid + ": Panel temporarily unavailable");
                         } else {
-                            logger.warning("Failed to acknowledge notifications for player " + playerUuid + ": " + throwable.getMessage());
+                            logger.warning("Failed to acknowledge notifications for " + playerUuid + ": " + throwable.getMessage());
                         }
                         return null;
                     })
-                    .orTimeout(5, TimeUnit.SECONDS);
-                    
+                    .orTimeout(SYNC_HTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error acknowledging notifications: " + e.getMessage(), e);
         }

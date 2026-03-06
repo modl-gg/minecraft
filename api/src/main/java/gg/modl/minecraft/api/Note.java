@@ -12,6 +12,8 @@ import java.util.Date;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Note {
+    private static final String UNKNOWN_ISSUER = "Unknown";
+
     @SerializedName("text")
     private String text;
 
@@ -36,7 +38,7 @@ public class Note {
 
     @NotNull
     public String getIssuerName() {
-        return issuerName != null ? issuerName : "Unknown";
+        return issuerName != null ? issuerName : UNKNOWN_ISSUER;
     }
 
     @NotNull

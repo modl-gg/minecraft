@@ -13,5 +13,5 @@ public class PardonPunishmentRequest {
     @Nullable
     private final String reason;
     @Nullable
-    private final String expectedType; // "ban", "mute", or null for no type checking
+    private final String expectedType;
 }

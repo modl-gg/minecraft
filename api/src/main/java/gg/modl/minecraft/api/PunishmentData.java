@@ -3,7 +3,10 @@ package gg.modl.minecraft.api;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public record PunishmentData(
@@ -16,57 +19,30 @@ public record PunishmentData(
         boolean altBlocking,
         boolean wipeAfterExpiry
 ) {
+    private static final long NO_DURATION = -1L;
 
-    public Map<String, Object> export() {
-        Map<String, Object> map = new HashMap<>();
-
-        if (blockedName != null) map.put("blockedName", blockedName);
-        if (blockedSkin != null) map.put("blockedSkin", blockedSkin);
-        if (linkedBanId != null) map.put("linkedBanId", linkedBanId);
-        if (linkedBanExpiry.get() != null) map.put("linkedBanExpiry", linkedBanExpiry.get().getTime());
-        if (chatLog != null) map.put("chatLog", chatLog);
-        if (duration != -1L) map.put("duration", duration);
-        if (altBlocking) map.put("altBlocking", true);
-        if (wipeAfterExpiry) map.put("wipeAfterExpiry", true);
-
-        return map;
-    }
+    private static final String KEY_BLOCKED_NAME = "blockedName";
+    private static final String KEY_BLOCKED_SKIN = "blockedSkin";
+    private static final String KEY_LINKED_BAN_ID = "linkedBanId";
+    private static final String KEY_LINKED_BAN_EXPIRY = "linkedBanExpiry";
+    private static final String KEY_CHAT_LOG = "chatLog";
+    private static final String KEY_DURATION = "duration";
+    private static final String KEY_ALT_BLOCKING = "altBlocking";
+    private static final String KEY_WIPE_AFTER_EXPIRY = "wipeAfterExpiry";
 
     public static PunishmentData fromMap(Map<String, Object> map) {
-        String blockedName = (String) map.get("blockedName");
-        String blockedSkin = (String) map.get("blockedSkin");
-        String linkedBanId = (String) map.get("linkedBanId");
+        String blockedName = (String) map.get(KEY_BLOCKED_NAME);
+        String blockedSkin = (String) map.get(KEY_BLOCKED_SKIN);
+        String linkedBanId = (String) map.get(KEY_LINKED_BAN_ID);
 
         AtomicReference<Date> linkedBanExpiry = new AtomicReference<>();
-        if (map.containsKey("linkedBanExpiry")) {
-            Object expiry = map.get("linkedBanExpiry");
-            if (expiry instanceof Long) {
-                linkedBanExpiry.set(new Date((Long) expiry));
-            } else if (expiry instanceof Date) {
-                linkedBanExpiry.set((Date) expiry);
-            }
-        }
+        Object expiry = map.get(KEY_LINKED_BAN_EXPIRY);
+        if (expiry instanceof Long l) linkedBanExpiry.set(new Date(l));
+        else if (expiry instanceof Date d) linkedBanExpiry.set(d);
 
-        List<String> chatLog = null;
-        if (map.containsKey("chatLog")) {
-            Object chatLogObj = map.get("chatLog");
-            if (chatLogObj instanceof List) {
-                chatLog = new ArrayList<>((List<String>) chatLogObj);
-            }
-        }
+        List<String> chatLog = parseChatLog(map.get(KEY_CHAT_LOG));
 
-        long duration = -1L;
-        if (map.containsKey("duration")) {
-            Object durationObj = map.get("duration");
-            if (durationObj instanceof Long) {
-                duration = (Long) durationObj;
-            } else if (durationObj instanceof Integer) {
-                duration = ((Integer) durationObj).longValue();
-            }
-        }
-
-        boolean altBlocking = map.containsKey("altBlocking");
-        boolean wipeAfterExpiry = map.containsKey("wipeAfterExpiry");
+        long duration = parseDuration(map.get(KEY_DURATION));
 
         return new PunishmentData(
                 blockedName,
@@ -75,8 +51,23 @@ public record PunishmentData(
                 linkedBanExpiry,
                 chatLog,
                 duration,
-                altBlocking,
-                wipeAfterExpiry
+                map.containsKey(KEY_ALT_BLOCKING),
+                map.containsKey(KEY_WIPE_AFTER_EXPIRY)
         );
+    }
+
+    private static List<String> parseChatLog(Object chatLogObj) {
+        if (chatLogObj instanceof List<?> list) {
+            @SuppressWarnings("unchecked")
+            List<String> typedList = (List<String>) list;
+            return new ArrayList<>(typedList);
+        }
+        return null;
+    }
+
+    private static long parseDuration(Object durationObj) {
+        if (durationObj instanceof Long l) return l;
+        if (durationObj instanceof Integer i) return i.longValue();
+        return NO_DURATION;
     }
 }

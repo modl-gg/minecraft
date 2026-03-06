@@ -12,6 +12,9 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
+import gg.modl.minecraft.core.util.Permissions;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -20,10 +23,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Role List Menu - displays all roles for editing.
- * Secondary menu accessed from Settings.
- */
 public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
 
     public static class Role {
@@ -47,25 +46,19 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
 
     private List<Role> roles = new ArrayList<>();
     private final String panelUrl;
-    private final Consumer<CirrusPlayerWrapper> parentBackAction;
     private final boolean hasPermission;
 
-    /**
-     * Create a new role list menu.
-     */
     public RoleListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                         boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
         super("Edit Roles", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
         this.panelUrl = panelUrl;
-        this.parentBackAction = backAction;
         activeTab = StaffTab.SETTINGS;
 
         Cache cache = platform.getCache();
-        this.hasPermission = cache != null && cache.hasPermission(viewerUuid, "admin.settings.modify");
+        this.hasPermission = cache != null && cache.hasPermission(viewerUuid, Permissions.SETTINGS_MODIFY);
 
-        if (hasPermission) {
+        if (hasPermission)
             fetchRoles();
-        }
     }
 
     private void fetchRoles() {
@@ -73,7 +66,6 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
             if (response != null && response.getRoles() != null) {
                 roles.clear();
                 for (RolesListResponse.RoleEntry entry : response.getRoles()) {
-                    // Hide Super Admin role from the list
                     if ("Super Admin".equals(entry.getName())) {
                         continue;
                     }
@@ -90,12 +82,10 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
 
     @Override
     protected Collection<Role> elements() {
-        if (!hasPermission) {
+        if (!hasPermission)
             return Collections.singletonList(new Role("no_permission", null, null, Collections.emptyList()));
-        }
-        if (roles.isEmpty()) {
+        if (roles.isEmpty())
             return Collections.singletonList(new Role(null, null, null, Collections.emptyList()));
-        }
         return roles;
     }
 
@@ -111,9 +101,7 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
                     )
             );
         }
-        if (role.getId() == null) {
-            return createEmptyPlaceholder("No roles");
-        }
+        if (role.getId() == null) return createEmptyPlaceholder("No roles");
 
         List<String> lore = new ArrayList<>();
 
@@ -123,13 +111,11 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
         }
 
         lore.add(MenuItems.COLOR_GRAY + "Permissions:");
-        if (role.getPermissions().isEmpty()) {
+        if (role.getPermissions().isEmpty())
             lore.add(MenuItems.COLOR_DARK_GRAY + "  (No permissions)");
-        } else {
-            for (String perm : role.getPermissions()) {
+        else
+            for (String perm : role.getPermissions())
                 lore.add(MenuItems.COLOR_WHITE + "  - " + perm);
-            }
-        }
         lore.add("");
         lore.add(MenuItems.COLOR_YELLOW + "Click to edit permissions");
 
@@ -146,7 +132,6 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
             return;
         }
 
-        // Prevent editing own role
         Cache cache = platform.getCache();
         if (cache != null) {
             String viewerRole = cache.getStaffRole(viewerUuid);
@@ -156,7 +141,6 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
             }
         }
 
-        // Open role permission edit menu - back action re-fetches roles
         ActionHandlers.openMenu(
                 new RolePermissionEditMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, role,
                         player -> new RoleListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction).display(player)))
@@ -167,33 +151,8 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
-                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openReports", ActionHandlers.openMenu(
-                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPunishments", ActionHandlers.openMenu(
-                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openTickets", ActionHandlers.openMenu(
-                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPanel", click -> {
-            click.clickedMenu().close();
-            String escapedUrl = panelUrl.replace("\"", "\\\"");
-            String panelJson = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"Staff Panel: \",\"color\":\"gold\"}," +
-                "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-                escapedUrl, panelUrl
-            );
-            platform.sendJsonMessage(viewerUuid, panelJson);
-        });
-
-        registerActionHandler("openSettings", ActionHandlers.openMenu(
-                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+        StaffNavigationHandlers.registerAll(
+                (name, handler) -> registerActionHandler(name, handler),
+                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 }

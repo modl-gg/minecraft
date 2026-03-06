@@ -2,21 +2,35 @@ package gg.modl.minecraft.core.query;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
+import lombok.RequiredArgsConstructor;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.logging.Logger;
 
+@RequiredArgsConstructor
 public class QueryClient {
     private static final byte[] MAGIC = "modl".getBytes(StandardCharsets.US_ASCII);
     private static final long[] BACKOFF_DELAYS = {5, 10, 20, 40, 60};
+    private static final int CONNECT_TIMEOUT_MS = 5000;
+    private static final int MAX_FRAME_LENGTH = 65536;
 
     private final String serverName;
     private final String host;
@@ -31,18 +45,6 @@ public class QueryClient {
     private volatile boolean shuttingDown = false;
     private int reconnectAttempt = 0;
 
-    public QueryClient(String serverName, String host, int port, String secret,
-                       Logger logger, BiConsumer<String, QueryMessage> messageHandler,
-                       EventLoopGroup group) {
-        this.serverName = serverName;
-        this.host = host;
-        this.port = port;
-        this.secret = secret;
-        this.logger = logger;
-        this.messageHandler = messageHandler;
-        this.group = group;
-    }
-
     public void connect() {
         shuttingDown = false;
         doConnect();
@@ -54,12 +56,12 @@ public class QueryClient {
         Bootstrap bootstrap = new Bootstrap();
         bootstrap.group(group)
                 .channel(NioSocketChannel.class)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, CONNECT_TIMEOUT_MS)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
                         ch.pipeline().addLast(
-                                new LengthFieldBasedFrameDecoder(65536, 0, 4, 0, 4),
+                                new LengthFieldBasedFrameDecoder(MAX_FRAME_LENGTH, 0, 4, 0, 4),
                                 new LengthFieldPrepender(4),
                                 new QueryClientHandler()
                         );
@@ -71,9 +73,7 @@ public class QueryClient {
                 channel = future.channel();
                 reconnectAttempt = 0;
                 sendHandshake();
-            } else {
-                scheduleReconnect();
-            }
+            } else scheduleReconnect();
         });
     }
 
@@ -119,50 +119,12 @@ public class QueryClient {
         return serverName;
     }
 
-    public void sendFreezePlayer(String targetUuid, String staffUuid) {
-        sendTypedMessage("FREEZE_PLAYER", targetUuid, staffUuid);
-    }
-
-    public void sendUnfreezePlayer(String targetUuid) {
-        sendTypedMessage("UNFREEZE_PLAYER", targetUuid);
-    }
-
-    public void sendFreezeLogout(String playerUuid, String playerName) {
-        sendTypedMessage("FREEZE_LOGOUT", playerUuid, playerName);
-    }
-
-    public void sendStaffModeEnter(String staffUuid, String inGameName, String panelName) {
-        sendTypedMessage("STAFF_MODE_ENTER", staffUuid, inGameName, panelName);
-    }
-
-    public void sendStaffModeExit(String staffUuid, String inGameName, String panelName) {
-        sendTypedMessage("STAFF_MODE_EXIT", staffUuid, inGameName, panelName);
-    }
-
-    public void sendTargetRequest(String staffUuid, String targetUuid) {
-        sendTypedMessage("TARGET_REQUEST", staffUuid, targetUuid);
-    }
-
-    public void sendVanishEnter(String staffUuid, String inGameName, String panelName) {
-        sendTypedMessage("VANISH_ENTER", staffUuid, inGameName, panelName);
-    }
-
-    public void sendVanishExit(String staffUuid, String inGameName, String panelName) {
-        sendTypedMessage("VANISH_EXIT", staffUuid, inGameName, panelName);
-    }
-
-    public void sendConnectServer(String playerUuid, String serverName) {
-        sendTypedMessage("CONNECT_SERVER", playerUuid, serverName);
-    }
-
     void sendTypedMessage(String action, String... args) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             DataOutputStream dos = new DataOutputStream(baos);
             dos.writeUTF(action);
-            for (String arg : args) {
-                dos.writeUTF(arg);
-            }
+            for (String arg : args) dos.writeUTF(arg);
             dos.flush();
             sendMessage(baos.toByteArray());
         } catch (IOException e) {
@@ -173,10 +135,8 @@ public class QueryClient {
     public void shutdown() {
         shuttingDown = true;
         connected = false;
-        if (channel != null) {
-            channel.close();
-        }
-        // Don't shutdown the shared EventLoopGroup — owned by QueryStatWipeExecutor
+        if (channel != null) channel.close();
+        // EventLoopGroup is shared and owned by QueryStatWipeExecutor
     }
 
     private class QueryClientHandler extends ChannelInboundHandlerAdapter {
@@ -185,7 +145,6 @@ public class QueryClient {
             ByteBuf buf = (ByteBuf) msg;
             try {
                 if (!connected) {
-                    // Expecting handshake response: 1 byte status
                     if (buf.readableBytes() >= 1) {
                         byte status = buf.readByte();
                         if (status == 0x01) {
@@ -218,9 +177,7 @@ public class QueryClient {
         public void channelInactive(ChannelHandlerContext ctx) {
             boolean wasConnected = connected;
             connected = false;
-            if (wasConnected) {
-                logger.info("[modl] Disconnected from bridge on " + serverName);
-            }
+            if (wasConnected) logger.info("[modl] Disconnected from bridge on " + serverName);
             scheduleReconnect();
         }
 
@@ -231,21 +188,10 @@ public class QueryClient {
         }
     }
 
+    @lombok.AllArgsConstructor
+    @lombok.Getter
     public static class QueryMessage {
         private final String action;
         private final DataInputStream data;
-
-        public QueryMessage(String action, DataInputStream data) {
-            this.action = action;
-            this.data = data;
-        }
-
-        public String getAction() {
-            return action;
-        }
-
-        public DataInputStream getData() {
-            return data;
-        }
     }
 }

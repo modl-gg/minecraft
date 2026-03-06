@@ -24,19 +24,12 @@ public class RecentPunishmentsResponse {
         return status >= 200 && status < 300;
     }
 
-    /**
-     * Recent punishment with full punishment data plus player info.
-     * Uses same format as Punishment class from player profile.
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     public static class RecentPunishment {
-        // Player info (additional fields for recent punishments)
         private String playerName;
         private String playerUuid;
-
-        // Full punishment data (same as Punishment class)
         private String id;
         private String issuerName;
         private Date issued;

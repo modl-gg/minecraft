@@ -20,18 +20,6 @@ import lombok.RequiredArgsConstructor;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Unified chat management command with subcommands for staff chat toggle,
- * chat enable/disable, chat clear, and slow mode.
- * <p>
- * Usage:
- * <ul>
- *   <li>{@code /chat staff} - Toggle staff chat mode</li>
- *   <li>{@code /chat toggle} - Enable/disable public chat</li>
- *   <li>{@code /chat clear [count]} - Clear chat with empty lines</li>
- *   <li>{@code /chat slow <seconds|off>} - Set or disable slow mode</li>
- * </ul>
- */
 @RequiredArgsConstructor
 @CommandAlias("%cmd_chat")
 @Conditions("staff")
@@ -54,8 +42,6 @@ public class ChatCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("chat_management.help.slow"));
     }
 
-    // ==================== STAFF CHAT TOGGLE ====================
-
     @Subcommand("staff")
     @Description("Toggle staff chat mode")
     public void staff(CommandIssuer sender) {
@@ -72,14 +58,9 @@ public class ChatCommand extends BaseCommand {
         UUID senderUuid = sender.getUniqueId();
         ChatMode newMode = staffChatService.toggleStaffChat(senderUuid);
 
-        if (newMode == ChatMode.STAFF) {
-            sender.sendMessage(localeManager.getMessage("staff_chat.enabled"));
-        } else {
-            sender.sendMessage(localeManager.getMessage("staff_chat.disabled"));
-        }
+        if (newMode == ChatMode.STAFF) sender.sendMessage(localeManager.getMessage("staff_chat.enabled"));
+        else sender.sendMessage(localeManager.getMessage("staff_chat.disabled"));
     }
-
-    // ==================== CHAT TOGGLE ====================
 
     @Subcommand("toggle")
     @Description("Toggle public chat on or off")
@@ -90,48 +71,23 @@ public class ChatCommand extends BaseCommand {
         String inGameName = getInGameName(sender);
         String panelName = getPanelName(sender, inGameName);
 
-        if (newState) {
-            // Chat enabled
-            platform.broadcast(localeManager.getMessage("chat_management.chat_toggled_on", Map.of(
+        String messageKey = newState ? "chat_management.chat_toggled_on" : "chat_management.chat_toggled_off";
+        platform.broadcast(localeManager.getMessage(messageKey, Map.of(
                     "staff", panelName,
                     "in-game-name", inGameName
             )));
-        } else {
-            // Chat disabled
-            platform.broadcast(localeManager.getMessage("chat_management.chat_toggled_off", Map.of(
-                    "staff", panelName,
-                    "in-game-name", inGameName
-            )));
-        }
     }
-
-    // ==================== CHAT CLEAR ====================
 
     @Subcommand("clear")
     @Description("Clear the chat")
     @Conditions("permission:value=staff.chat.clear")
     public void clear(CommandIssuer sender, @Default("") String countArg) {
-        int lines;
+        int lines = parseClearLineCount(countArg);
 
-        if (countArg.isEmpty()) {
-            lines = chatManagementConfig.getClearLines();
-        } else {
-            try {
-                lines = Integer.parseInt(countArg);
-                if (lines < 1) lines = chatManagementConfig.getClearLines();
-            } catch (NumberFormatException e) {
-                lines = chatManagementConfig.getClearLines();
-            }
-        }
-
-        // Broadcast empty lines to clear chat
         StringBuilder clearMessage = new StringBuilder();
-        for (int i = 0; i < lines; i++) {
-            clearMessage.append("\n");
-        }
+        for (int i = 0; i < lines; i++) clearMessage.append("\n");
         platform.broadcast(clearMessage.toString());
 
-        // Announce who cleared the chat
         String inGameName = getInGameName(sender);
         String panelName = getPanelName(sender, inGameName);
         platform.broadcast(localeManager.getMessage("chat_management.chat_cleared", Map.of(
@@ -139,8 +95,6 @@ public class ChatCommand extends BaseCommand {
                 "in-game-name", inGameName
         )));
     }
-
-    // ==================== SLOW MODE ====================
 
     @Subcommand("slow")
     @Description("Set or disable slow mode")
@@ -181,7 +135,15 @@ public class ChatCommand extends BaseCommand {
         }
     }
 
-    // ==================== HELPERS ====================
+    private int parseClearLineCount(String countArg) {
+        if (countArg.isEmpty()) return chatManagementConfig.getClearLines();
+        try {
+            int parsed = Integer.parseInt(countArg);
+            return parsed >= 1 ? parsed : chatManagementConfig.getClearLines();
+        } catch (NumberFormatException e) {
+            return chatManagementConfig.getClearLines();
+        }
+    }
 
     private String getInGameName(CommandIssuer sender) {
         if (!sender.isPlayer()) return "Console";

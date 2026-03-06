@@ -11,9 +11,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
 
-/**
- * Routes incoming bridge messages to the appropriate service.
- */
 public class BridgeMessageDispatcher {
 
     private final Platform platform;
@@ -136,7 +133,6 @@ public class BridgeMessageDispatcher {
         UUID staffUuid = UUID.fromString(data.readUTF());
         UUID targetUuid = UUID.fromString(data.readUTF());
         String targetServer = data.readUTF();
-        // Target response received - the service will handle connecting
         staffModeService.setTarget(staffUuid, targetUuid);
         platform.connectToServer(staffUuid, targetServer);
         logger.info("[Bridge] Target response: staff " + staffUuid + " -> target " + targetUuid + " on " + targetServer);

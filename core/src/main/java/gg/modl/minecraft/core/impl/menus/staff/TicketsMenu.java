@@ -12,22 +12,21 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Tickets Menu - displays support tickets.
- */
 public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
 
     // Placeholder Ticket class since no endpoint exists yet
@@ -61,27 +60,13 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
     private String currentStatusFilter = "open";
     private final List<String> filterOptions = Arrays.asList("all", "open", "unfinished", "closed");
     private final String panelUrl;
-    private final Consumer<CirrusPlayerWrapper> parentBackAction;
 
-    /**
-     * Create a new tickets menu.
-     *
-     * @param platform The platform instance
-     * @param httpClient The HTTP client for API calls
-     * @param viewerUuid The UUID of the staff viewing the menu
-     * @param viewerName The name of the staff viewing the menu
-     * @param isAdmin Whether the viewer has admin permissions
-     * @param panelUrl The panel URL
-     * @param backAction Action to return to parent menu
-     */
     public TicketsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                        boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
         super("Support Tickets", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
         this.panelUrl = panelUrl;
-        this.parentBackAction = backAction;
         activeTab = StaffTab.TICKETS;
 
-        // Fetch tickets from API
         fetchTickets();
     }
 
@@ -90,7 +75,6 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
             if (response.isSuccess() && response.getTickets() != null) {
                 tickets.clear();
                 for (var ticket : response.getTickets()) {
-                    // Skip unfinished/draft tickets
                     if ("Unfinished".equalsIgnoreCase(ticket.getStatus())) {
                         continue;
                     }
@@ -110,17 +94,11 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         });
     }
 
-    /**
-     * Set the current filter (used when cycling filters).
-     */
     public TicketsMenu withFilter(String filter) {
         this.currentFilter = filter;
         return this;
     }
 
-    /**
-     * Set the current status filter (open/closed).
-     */
     public TicketsMenu withStatusFilter(String statusFilter) {
         this.currentStatusFilter = statusFilter;
         return this;
@@ -130,8 +108,6 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
-        // Add filter button at slot 40 (y position in navigation row)
-        // Note: actionHandler("filter") is already set in MenuItems.filterButton()
         items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions, currentStatusFilter, "tickets"));
 
         return items;
@@ -139,12 +115,9 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
 
     @Override
     protected Collection<Ticket> elements() {
-        // Return placeholder if empty to prevent Cirrus from shrinking inventory
-        if (tickets.isEmpty()) {
+        if (tickets.isEmpty())
             return Collections.singletonList(new Ticket(null, null, null, null, null, false));
-        }
 
-        // Filter and sort tickets (newest first)
         List<Ticket> filtered = new ArrayList<>();
 
         for (Ticket ticket : tickets) {
@@ -152,15 +125,12 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
             boolean statusMatch = "open".equalsIgnoreCase(currentStatusFilter)
                     ? !"closed".equalsIgnoreCase(ticket.getStatus())
                     : "closed".equalsIgnoreCase(ticket.getStatus());
-            if (typeMatch && statusMatch) {
+            if (typeMatch && statusMatch)
                 filtered.add(ticket);
-            }
         }
 
-        // If filtering results in empty list, return placeholder
-        if (filtered.isEmpty()) {
+        if (filtered.isEmpty())
             return Collections.singletonList(new Ticket(null, null, null, null, null, false));
-        }
 
         filtered.sort((t1, t2) -> t2.getCreated().compareTo(t1.getCreated()));
         return filtered;
@@ -170,12 +140,8 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
     protected CirrusItem map(Ticket ticket) {
         LocaleManager locale = platform.getLocaleManager();
 
-        // Handle placeholder for empty list
-        if (ticket.getId() == null) {
-            return createEmptyPlaceholder(locale.getMessage("menus.empty.tickets"));
-        }
+        if (ticket.getId() == null) return createEmptyPlaceholder(locale.getMessage("menus.empty.tickets"));
 
-        // Build variables map
         Map<String, String> vars = new HashMap<>();
         vars.put("id", ticket.getId());
         vars.put("player", ticket.getPlayerName() != null ? ticket.getPlayerName() : "Unknown");
@@ -183,7 +149,6 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         vars.put("date", MenuItems.formatDate(ticket.getCreated()));
         vars.put("status", getStatusColor(ticket.getStatus()) + ticket.getStatus());
 
-        // Get lore from locale
         List<String> lore = new ArrayList<>();
         for (String line : locale.getMessageList("menus.ticket_item.lore")) {
             String processed = line;
@@ -193,10 +158,8 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
             lore.add(processed);
         }
 
-        // Get title from locale
         String title = locale.getMessage("menus.ticket_item.title", vars);
 
-        // Use book if no staff response, writable book if has response
         CirrusItemType itemType = ticket.hasStaffResponse() ? CirrusItemType.WRITABLE_BOOK : CirrusItemType.BOOK;
 
         return CirrusItem.of(
@@ -222,14 +185,10 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
 
     @Override
     protected void handleClick(Click click, Ticket ticket) {
-        // Handle placeholder - do nothing
-        if (ticket.getId() == null) {
-            return;
-        }
+        if (ticket.getId() == null) return;
 
         click.clickedMenu().close();
 
-        // Send clickable ticket link
         String ticketUrl = panelUrl + "/ticket/" + ticket.getId();
         String escapedUrl = ticketUrl.replace("\"", "\\\"");
         String json = String.format(
@@ -247,44 +206,17 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Filter handler
         registerActionHandler("filter", this::handleFilter);
 
-        // Override header navigation - primary tabs should NOT pass backAction
-        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
-                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+        StaffNavigationHandlers.registerAll(
+                (name, handler) -> registerActionHandler(name, handler),
+                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
-        registerActionHandler("openReports", ActionHandlers.openMenu(
-                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPunishments", ActionHandlers.openMenu(
-                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openTickets", click -> {
-            // Already here, do nothing
-        });
-
-        registerActionHandler("openPanel", click -> {
-            click.clickedMenu().close();
-            String escapedUrl = panelUrl.replace("\"", "\\\"");
-            String panelJson = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"Staff Panel: \",\"color\":\"gold\"}," +
-                "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-                escapedUrl, panelUrl
-            );
-            platform.sendJsonMessage(viewerUuid, panelJson);
-        });
-
-        registerActionHandler("openSettings", ActionHandlers.openMenu(
-                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+        registerActionHandler("openTickets", click -> {});
     }
 
     private void handleFilter(Click click) {
         if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
-            // Toggle status filter between open and closed
             String newStatus = "open".equalsIgnoreCase(currentStatusFilter) ? "closed" : "open";
             ActionHandlers.openMenu(
                     new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
@@ -292,7 +224,6 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
                             .withStatusFilter(newStatus))
                     .handle(click);
         } else {
-            // Cycle through type filter options
             int currentIndex = filterOptions.indexOf(currentFilter);
             int nextIndex = (currentIndex + 1) % filterOptions.size();
             String newFilter = filterOptions.get(nextIndex);

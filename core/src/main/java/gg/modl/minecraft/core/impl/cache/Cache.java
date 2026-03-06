@@ -4,14 +4,22 @@ import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
+import gg.modl.minecraft.core.config.PunishGuiConfig;
+import gg.modl.minecraft.core.config.ReportGuiConfig;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Cache {
+    private static final long NOTIFICATION_EXPIRY_MS = 24 * 60 * 60 * 1000L; // 24 hours
 
     private final Map<UUID, CachedPlayerData> cache = new ConcurrentHashMap<>();
     private final Map<UUID, StaffPermissions> staffPermissionsCache = new ConcurrentHashMap<>();
@@ -27,28 +35,14 @@ public class Cache {
     @Getter @Setter
     private boolean queryMojang;
     
-    public void cacheMute(UUID playerUuid, Punishment mute) {
-        cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData()).setMute(mute);
-    }
-    
     public void cacheMute(UUID playerUuid, SimplePunishment mute) {
         cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData()).setSimpleMute(mute);
     }
     
-    public void cacheBan(UUID playerUuid, Punishment ban) {
-        cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData()).setBan(ban);
-    }
-    
-    public void cacheBan(UUID playerUuid, SimplePunishment ban) {
-        cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData()).setSimpleBan(ban);
-    }
-
     public boolean isMuted(UUID playerUuid) {
         CachedPlayerData data = cache.get(playerUuid);
-        if (data == null) {
-            return false;
-        }
-        
+        if (data == null) return false;
+
         // Check SimplePunishment first (new format)
         if (data.getSimpleMute() != null) {
             SimplePunishment mute = data.getSimpleMute();
@@ -58,23 +52,18 @@ public class Cache {
             }
             return true;
         }
-        
+
         // Fallback to old Punishment format
         if (data.getMute() != null) {
             Punishment mute = data.getMute();
-            if (mute.getExpires() != null && mute.getExpires().before(new java.util.Date())) {
+            if (mute.getExpires() != null && mute.getExpires().getTime() < System.currentTimeMillis()) {
                 removeMute(playerUuid);
                 return false;
             }
             return true;
         }
-        
+
         return false;
-    }
-    
-    public Punishment getMute(UUID playerUuid) {
-        CachedPlayerData data = cache.get(playerUuid);
-        return data != null ? data.getMute() : null;
     }
 
     public SimplePunishment getSimpleMute(UUID playerUuid) {
@@ -87,18 +76,14 @@ public class Cache {
         if (data != null) {
             data.setMute(null);
             data.setSimpleMute(null);
-            if (data.isEmpty()) {
-                cache.remove(playerUuid);
-            }
+            if (data.isEmpty()) cache.remove(playerUuid);
         }
     }
     
     public boolean isBanned(UUID playerUuid) {
         CachedPlayerData data = cache.get(playerUuid);
-        if (data == null) {
-            return false;
-        }
-        
+        if (data == null) return false;
+
         // Check SimplePunishment first (new format)
         if (data.getSimpleBan() != null) {
             SimplePunishment ban = data.getSimpleBan();
@@ -108,25 +93,20 @@ public class Cache {
             }
             return true;
         }
-        
+
         // Fallback to old Punishment format
         if (data.getBan() != null) {
             Punishment ban = data.getBan();
-            if (ban.getExpires() != null && ban.getExpires().before(new java.util.Date())) {
+            if (ban.getExpires() != null && ban.getExpires().getTime() < System.currentTimeMillis()) {
                 removeBan(playerUuid);
                 return false;
             }
             return true;
         }
-        
+
         return false;
     }
     
-    public Punishment getBan(UUID playerUuid) {
-        CachedPlayerData data = cache.get(playerUuid);
-        return data != null ? data.getBan() : null;
-    }
-
     public SimplePunishment getSimpleBan(UUID playerUuid) {
         CachedPlayerData data = cache.get(playerUuid);
         return data != null ? data.getSimpleBan() : null;
@@ -137,9 +117,7 @@ public class Cache {
         if (data != null) {
             data.setBan(null);
             data.setSimpleBan(null);
-            if (data.isEmpty()) {
-                cache.remove(playerUuid);
-            }
+            if (data.isEmpty()) cache.remove(playerUuid);
         }
     }
     
@@ -179,14 +157,6 @@ public class Cache {
     }
 
     /**
-     * Get the join time for a player (when they came online)
-     * @return Join time in milliseconds, or null if not online
-     */
-    public Long getJoinTime(UUID playerUuid) {
-        return joinTimes.get(playerUuid);
-    }
-
-    /**
      * Get session duration for an online player
      * @return Session duration in milliseconds, or 0 if not online
      */
@@ -211,17 +181,21 @@ public class Cache {
      * @param playerUuid The player's UUID
      * @param textureValue The base64 encoded texture value
      */
-    public void cacheSkinTexture(UUID playerUuid, String textureValue) {
+    public synchronized void cacheSkinTexture(UUID playerUuid, String textureValue) {
         if (textureValue == null) return;
         // Evict expired entries if we're at capacity
-        if (skinTextureCache.size() >= TEXTURE_CACHE_MAX_SIZE) {
-            evictExpiredTextures();
-        }
+        if (skinTextureCache.size() >= TEXTURE_CACHE_MAX_SIZE) evictExpiredTextures();
         // If still at capacity after eviction, remove oldest entry
         if (skinTextureCache.size() >= TEXTURE_CACHE_MAX_SIZE) {
-            skinTextureCache.entrySet().stream()
-                    .min(java.util.Comparator.comparingLong(e -> e.getValue().cachedAt))
-                    .ifPresent(e -> skinTextureCache.remove(e.getKey()));
+            long oldestTime = Long.MAX_VALUE;
+            UUID oldestUuid = null;
+            for (Map.Entry<UUID, CachedTexture> entry : skinTextureCache.entrySet()) {
+                if (entry.getValue().cachedAt < oldestTime) {
+                    oldestTime = entry.getValue().cachedAt;
+                    oldestUuid = entry.getKey();
+                }
+            }
+            if (oldestUuid != null) skinTextureCache.remove(oldestUuid);
         }
         skinTextureCache.put(playerUuid, new CachedTexture(textureValue, System.currentTimeMillis()));
     }
@@ -250,14 +224,10 @@ public class Cache {
         skinTextureCache.entrySet().removeIf(e -> now - e.getValue().cachedAt > TEXTURE_TTL_MS);
     }
 
+    @lombok.AllArgsConstructor
     private static class CachedTexture {
         final String value;
         final long cachedAt;
-
-        CachedTexture(String value, long cachedAt) {
-            this.value = value;
-            this.cachedAt = cachedAt;
-        }
     }
 
     public void cacheStaffMember(UUID playerUuid, SyncResponse.ActiveStaffMember staffMember) {
@@ -281,14 +251,10 @@ public class Cache {
      */
     public String getStaffDisplayName(UUID playerUuid) {
         SyncResponse.ActiveStaffMember staff = getStaffMember(playerUuid);
-        if (staff != null && staff.getStaffUsername() != null && !staff.getStaffUsername().isEmpty()) {
-            return staff.getStaffUsername();
-        }
+        if (staff != null && staff.getStaffUsername() != null && !staff.getStaffUsername().isEmpty()) return staff.getStaffUsername();
         // Fallback to staff permissions cache (available from initial staff sync, before player joins)
         StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
-        if (staffPerms != null && staffPerms.getStaffUsername() != null && !staffPerms.getStaffUsername().isEmpty()) {
-            return staffPerms.getStaffUsername();
-        }
+        if (staffPerms != null && staffPerms.getStaffUsername() != null && !staffPerms.getStaffUsername().isEmpty()) return staffPerms.getStaffUsername();
         return null;
     }
 
@@ -304,19 +270,14 @@ public class Cache {
         // Check new staff permissions cache first
         StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
         if (staffPerms != null) {
-            // Super Admin has all permissions (consistent with backend behavior)
-            if ("Super Admin".equalsIgnoreCase(staffPerms.getStaffRole())) {
-                return true;
-            }
+            if ("Super Admin".equalsIgnoreCase(staffPerms.getStaffRole())) return true;
             return matchesPermission(staffPerms.getPermissions(), permission);
         }
 
         // Fallback to old sync-based staff member (for backward compatibility)
         SyncResponse.ActiveStaffMember staffMember = getStaffMember(playerUuid);
         if (staffMember != null) {
-            if ("Super Admin".equalsIgnoreCase(staffMember.getStaffRole())) {
-                return true;
-            }
+            if ("Super Admin".equalsIgnoreCase(staffMember.getStaffRole())) return true;
             return matchesPermission(staffMember.getPermissions(), permission);
         }
         return false;
@@ -329,28 +290,10 @@ public class Cache {
     private boolean matchesPermission(List<String> permissions, String requested) {
         for (String perm : permissions) {
             if (perm.equals(requested)) return true;
-            // Parent permission grants all children (e.g. "punishment.modify" grants "punishment.modify.note")
-            if (requested.startsWith(perm + ".")) return true;
+            if (requested.length() > perm.length()
+                    && requested.charAt(perm.length()) == '.'
+                    && requested.startsWith(perm)) return true;
         }
-        return false;
-    }
-
-    /**
-     * Check if a player has any punishment.apply permission
-     */
-    public boolean hasAnyPunishmentPermission(UUID playerUuid) {
-        StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
-        if (staffPerms != null) {
-            return staffPerms.getPermissions().stream()
-                    .anyMatch(p -> p.startsWith("punishment.apply."));
-        }
-
-        SyncResponse.ActiveStaffMember staffMember = getStaffMember(playerUuid);
-        if (staffMember != null) {
-            return staffMember.getPermissions().stream()
-                    .anyMatch(p -> p.startsWith("punishment.apply."));
-        }
-
         return false;
     }
 
@@ -400,9 +343,7 @@ public class Cache {
         List<PendingNotification> notifications = pendingNotificationsCache.get(playerUuid);
         if (notifications == null) return new ArrayList<>();
         notifications.removeIf(PendingNotification::isExpired);
-        if (notifications.isEmpty()) {
-            pendingNotificationsCache.remove(playerUuid);
-        }
+        if (notifications.isEmpty()) pendingNotificationsCache.remove(playerUuid);
         return notifications;
     }
     
@@ -413,36 +354,22 @@ public class Cache {
         List<PendingNotification> notifications = pendingNotificationsCache.get(playerUuid);
         if (notifications != null) {
             boolean removed = notifications.removeIf(n -> n.getId().equals(notificationId));
-            if (notifications.isEmpty()) {
-                pendingNotificationsCache.remove(playerUuid);
-            }
+            if (notifications.isEmpty()) pendingNotificationsCache.remove(playerUuid);
             return removed;
         }
         return false;
     }
     
     /**
-     * Remove all notifications for a player
+     * Remove expired notifications for offline players to prevent unbounded growth.
      */
-    public List<PendingNotification> clearNotifications(UUID playerUuid) {
-        return pendingNotificationsCache.remove(playerUuid);
+    public void cleanupExpiredNotifications() {
+        pendingNotificationsCache.entrySet().removeIf(entry -> {
+            entry.getValue().removeIf(PendingNotification::isExpired);
+            return entry.getValue().isEmpty();
+        });
     }
-    
-    /**
-     * Get notification count for a player
-     */
-    public int getNotificationCount(UUID playerUuid) {
-        List<PendingNotification> notifications = pendingNotificationsCache.get(playerUuid);
-        return notifications != null ? notifications.size() : 0;
-    }
-    
-    /**
-     * Check if player has any pending notifications
-     */
-    public boolean hasPendingNotifications(UUID playerUuid) {
-        return getNotificationCount(playerUuid) > 0;
-    }
-    
+
     public void clear() {
         cache.clear();
         pendingNotificationsCache.clear();
@@ -455,17 +382,6 @@ public class Cache {
         cachedPunishGuiConfig = null;
     }
     
-    public int size() {
-        return cache.size();
-    }
-    
-    /**
-     * Get the internal cache map (for platform-specific access)
-     */
-    public Map<UUID, CachedPlayerData> getCache() {
-        return cache;
-    }
-
     /**
      * Get cached player data for a specific player.
      */
@@ -556,7 +472,7 @@ public class Cache {
          * Check if this notification has expired (older than 24 hours)
          */
         public boolean isExpired() {
-            return (System.currentTimeMillis() - cachedTime) > 24 * 60 * 60 * 1000; // 24 hours
+            return (System.currentTimeMillis() - cachedTime) > NOTIFICATION_EXPIRY_MS;
         }
     }
     
@@ -587,19 +503,19 @@ public class Cache {
 
     // ==================== PUNISH GUI CONFIG CACHE ====================
 
-    private volatile gg.modl.minecraft.core.config.PunishGuiConfig cachedPunishGuiConfig;
+    private volatile PunishGuiConfig cachedPunishGuiConfig;
 
     /**
      * Cache the punish GUI config.
      */
-    public void cachePunishGuiConfig(gg.modl.minecraft.core.config.PunishGuiConfig config) {
+    public void cachePunishGuiConfig(PunishGuiConfig config) {
         this.cachedPunishGuiConfig = config;
     }
 
     /**
      * Get cached punish GUI config, or null if not cached.
      */
-    public gg.modl.minecraft.core.config.PunishGuiConfig getCachedPunishGuiConfig() {
+    public PunishGuiConfig getCachedPunishGuiConfig() {
         return cachedPunishGuiConfig;
     }
 
@@ -612,50 +528,20 @@ public class Cache {
 
     // ==================== REPORT GUI CONFIG CACHE ====================
 
-    private volatile gg.modl.minecraft.core.config.ReportGuiConfig cachedReportGuiConfig;
+    private volatile ReportGuiConfig cachedReportGuiConfig;
 
     /**
      * Cache the report GUI config.
      */
-    public void cacheReportGuiConfig(gg.modl.minecraft.core.config.ReportGuiConfig config) {
+    public void cacheReportGuiConfig(ReportGuiConfig config) {
         this.cachedReportGuiConfig = config;
     }
 
     /**
      * Get cached report GUI config, or null if not cached.
      */
-    public gg.modl.minecraft.core.config.ReportGuiConfig getCachedReportGuiConfig() {
+    public ReportGuiConfig getCachedReportGuiConfig() {
         return cachedReportGuiConfig;
     }
 
-    /**
-     * Clear the cached report GUI config (e.g., on reload).
-     */
-    public void clearReportGuiConfig() {
-        this.cachedReportGuiConfig = null;
-    }
-
-    // ==================== STAFF PERMISSIONS CACHE ACCESS ====================
-
-    /**
-     * Get the staff permissions cache for enumeration (e.g., staff list).
-     * Returns unmodifiable view.
-     */
-    public Map<UUID, StaffPermissions> getStaffPermissionsCache() {
-        return Collections.unmodifiableMap(staffPermissionsCache);
-    }
-
-    /**
-     * Get the number of staff members with cached permissions
-     */
-    public int getStaffCount() {
-        return staffPermissionsCache.size();
-    }
-    
-    /**
-     * Get the number of players with cached punishment data
-     */
-    public int getCachedPlayerCount() {
-        return cache.size();
-    }
 }

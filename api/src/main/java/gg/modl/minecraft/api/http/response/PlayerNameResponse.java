@@ -7,7 +7,7 @@ import lombok.Data;
 public class PlayerNameResponse {
     private final int status;
     private final String message;
-    private final Account player; // This would be a proper Player DTO in a real implementation
+    private final Account player;
     
     public boolean isSuccess() {
         return status >= 200 && status < 300;

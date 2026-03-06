@@ -12,23 +12,24 @@ import gg.modl.minecraft.api.Note;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.config.PunishGuiConfig;
+import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Recent Punishments Menu - displays recently issued punishments.
- */
 public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMenu.PunishmentWithPlayer> {
 
     // Wrapper class to hold punishment with player info
@@ -53,49 +54,22 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
     private final List<PunishmentWithPlayer> recentPunishments;
     private final String panelUrl;
-    private final Consumer<CirrusPlayerWrapper> parentBackAction;
 
-    /**
-     * Create a new recent punishments menu (fetches data from API).
-     *
-     * @param platform The platform instance
-     * @param httpClient The HTTP client for API calls
-     * @param viewerUuid The UUID of the staff viewing the menu
-     * @param viewerName The name of the staff viewing the menu
-     * @param isAdmin Whether the viewer has admin permissions
-     * @param panelUrl The panel URL
-     * @param backAction Action to return to parent menu
-     */
     public RecentPunishmentsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                   boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
         this(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction, null);
     }
 
-    /**
-     * Create a new recent punishments menu with pre-loaded data.
-     *
-     * @param platform The platform instance
-     * @param httpClient The HTTP client for API calls
-     * @param viewerUuid The UUID of the staff viewing the menu
-     * @param viewerName The name of the staff viewing the menu
-     * @param isAdmin Whether the viewer has admin permissions
-     * @param panelUrl The panel URL
-     * @param backAction Action to return to parent menu
-     * @param preloadedData Pre-loaded punishment data (null to fetch from API)
-     */
     public RecentPunishmentsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                   boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction,
                                   List<PunishmentWithPlayer> preloadedData) {
         super("Recent Punishments", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
         this.panelUrl = panelUrl;
-        this.parentBackAction = backAction;
         this.recentPunishments = preloadedData != null ? new ArrayList<>(preloadedData) : new ArrayList<>();
         activeTab = StaffTab.PUNISHMENTS;
 
-        // Only fetch if no preloaded data
-        if (preloadedData == null) {
+        if (preloadedData == null)
             fetchRecentPunishments();
-        }
     }
 
     private void fetchRecentPunishments() {
@@ -110,7 +84,6 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
                         }
                     } catch (Exception ignored) {}
 
-                    // Create a full Punishment object from the response data
                     Punishment punishment = new Punishment();
                     punishment.setId(p.getId());
                     punishment.setIssuerName(p.getIssuerName());
@@ -123,7 +96,6 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
                     punishment.setDataMap(new HashMap<>(p.getData()));
                     punishment.setAttachedTicketIds(p.getAttachedTicketIds() != null ? new ArrayList<>(p.getAttachedTicketIds()) : null);
 
-                    // Set the legacy type enum from the type string
                     if (p.getType() != null) {
                         try {
                             punishment.setType(Punishment.Type.valueOf(p.getType()));
@@ -139,21 +111,11 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         });
     }
 
-    /**
-     * Get the current list of punishments (for passing to back actions).
-     */
-    public List<PunishmentWithPlayer> getPunishments() {
-        return recentPunishments;
-    }
-
     @Override
     protected Collection<PunishmentWithPlayer> elements() {
-        // Return placeholder if empty to prevent Cirrus from shrinking inventory
-        if (recentPunishments.isEmpty()) {
+        if (recentPunishments.isEmpty())
             return Collections.singletonList(new PunishmentWithPlayer(null, null, null, null));
-        }
 
-        // Sort by date, newest first
         List<PunishmentWithPlayer> sorted = new ArrayList<>(recentPunishments);
         sorted.sort((p1, p2) -> p2.getPunishment().getIssued().compareTo(p1.getPunishment().getIssued()));
         return sorted;
@@ -163,29 +125,21 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
     protected CirrusItem map(PunishmentWithPlayer pwp) {
         LocaleManager locale = platform.getLocaleManager();
 
-        // Handle placeholder for empty list
-        if (pwp.getPunishment() == null) {
-            return createEmptyPlaceholder(locale.getMessage("menus.empty.history"));
-        }
+        if (pwp.getPunishment() == null) return createEmptyPlaceholder(locale.getMessage("menus.empty.history"));
 
         Punishment punishment = pwp.getPunishment();
 
-        // Type and status - get from dataMap or fall back to registry
         Object typeNameObj = punishment.getDataMap().get("typeName");
         String typeName = typeNameObj != null ? typeNameObj.toString() : punishment.getTypeCategory();
 
-        // Check if this is a kick (kicks don't have duration or active status)
         boolean isKick = typeName != null && typeName.toLowerCase().contains("kick");
         boolean isBan = typeName != null && (typeName.toLowerCase().contains("ban") || typeName.toLowerCase().contains("blacklist"));
         boolean isMute = typeName != null && typeName.toLowerCase().contains("mute");
 
-        // Get effective duration (considering modifications)
         Long effectiveDuration = getEffectiveDuration(punishment);
 
-        // Check if punishment is truly active (considering duration modifications and pardons)
         boolean isActive = !isKick && isPunishmentEffectivelyActive(punishment, effectiveDuration);
 
-        // Calculate initial duration (empty for kicks)
         String initialDuration = "";
         if (!isKick) {
             Long duration = punishment.getDuration();
@@ -196,7 +150,6 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
             }
         }
 
-        // Determine type category for title
         String spaceBanMuteOrKick = "";
         if (isKick) {
             spaceBanMuteOrKick = "Kick";
@@ -206,9 +159,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
             spaceBanMuteOrKick = " Mute";
         }
 
-        // Build status line using history_item locale keys (same logic as HistoryMenu)
         String statusLine;
-        // Check for pardon first (pardoned-but-unstarted should show "Pardoned", not "Not started")
         Date pardonDate = isKick ? null : findPardonDate(punishment);
         if (isKick) {
             statusLine = ""; // Don't show status for kicks
@@ -218,14 +169,11 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
             statusLine = locale.getMessage("menus.history_item.status_pardoned",
                     Map.of("pardoned", pardonedFormatted));
         } else if (punishment.getStarted() == null) {
-            // Punishment not yet started
             statusLine = locale.getMessage("menus.history_item.status_unstarted");
         } else if (isActive) {
             if (effectiveDuration == null || effectiveDuration <= 0) {
-                // Permanent
                 statusLine = locale.getMessage("menus.history_item.status_permanent");
             } else {
-                // Calculate remaining time using effective duration
                 long expiryTime = punishment.getStarted().getTime() + effectiveDuration;
                 long remaining = expiryTime - System.currentTimeMillis();
                 String expiryFormatted = MenuItems.formatDuration(remaining > 0 ? remaining : 0);
@@ -233,7 +181,6 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
                         Map.of("expiry", expiryFormatted));
             }
         } else {
-            // Naturally expired - calculate time since expired using effective duration
             if (effectiveDuration != null && effectiveDuration > 0 && punishment.getStarted() != null) {
                 long expiryTime = punishment.getStarted().getTime() + effectiveDuration;
                 long expiredAgo = System.currentTimeMillis() - expiryTime;
@@ -246,7 +193,6 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
             }
         }
 
-        // Build notes section - each note on a new line using note_format
         StringBuilder notesBuilder = new StringBuilder();
         List<Note> notes = punishment.getNotes();
         if (notes != null && !notes.isEmpty()) {
@@ -260,14 +206,12 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
                         .replace("{note_date}", noteDate)
                         .replace("{note_issuer}", noteIssuer)
                         .replace("{note}", noteText);
-                if (i > 0) {
+                if (i > 0)
                     notesBuilder.append("\n");
-                }
                 notesBuilder.append(formattedNote);
             }
         }
 
-        // Build variables map using HashMap to allow more than 10 entries
         Map<String, String> vars = new HashMap<>();
         vars.put("punishment_id", punishment.getId() != null ? punishment.getId() : "Unknown");
         vars.put("punishment_type", typeName);
@@ -280,31 +224,24 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         vars.put("issued_date", MenuItems.formatDate(punishment.getIssued()));
         Object issuedServerObj = punishment.getDataMap().get("issuedServer");
         vars.put("issued_server", issuedServerObj instanceof String ? (String) issuedServerObj : "");
-        // Additional variable for recent punishments - player name
         vars.put("player", pwp.getPlayerName() != null ? pwp.getPlayerName() : "Unknown");
 
-        // Get lore from locale - use history_item format
         List<String> lore = new ArrayList<>();
         for (String line : locale.getMessageList("menus.history_item.lore")) {
             String processed = line;
             for (Map.Entry<String, String> entry : vars.entrySet()) {
                 processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
             }
-            // Handle {notes} which may contain newlines - split into multiple lore lines
-            if (processed.contains("\n")) {
-                for (String subLine : processed.split("\n")) {
+            if (processed.contains("\n"))
+                for (String subLine : processed.split("\n"))
                     lore.add(subLine);
-                }
-            } else if (!processed.isEmpty()) {
+            else if (!processed.isEmpty())
                 lore.add(processed);
-            }
         }
 
-        // Get title from locale - use history_item format
         String titleKey = isActive ? "menus.history_item.title_active" : "menus.history_item.title_inactive";
         String title = locale.getMessage(titleKey, vars);
 
-        // Get appropriate item type based on punishment type
         CirrusItemType itemType = getPunishmentItemType(punishment);
 
         return CirrusItem.of(
@@ -317,8 +254,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
     private CirrusItemType getPunishmentItemType(Punishment punishment) {
         int ordinal = punishment.getTypeOrdinal();
 
-        // Check config-defined item mapping first
-        gg.modl.minecraft.core.config.PunishGuiConfig guiConfig = getOrLoadGuiConfig();
+        PunishGuiConfig guiConfig = getOrLoadGuiConfig();
         if (guiConfig != null) {
             String itemId = guiConfig.getItemForOrdinal(ordinal);
             if (itemId != null) {
@@ -326,7 +262,6 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
             }
         }
 
-        // Fall back to registry-based detection
         if (punishment.isBanType()) {
             return CirrusItemType.BARRIER;
         } else if (punishment.isMuteType()) {
@@ -337,12 +272,12 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         return CirrusItemType.PAPER;
     }
 
-    private gg.modl.minecraft.core.config.PunishGuiConfig getOrLoadGuiConfig() {
-        gg.modl.minecraft.core.impl.cache.Cache cache = platform.getCache();
+    private PunishGuiConfig getOrLoadGuiConfig() {
+        Cache cache = platform.getCache();
         if (cache == null) return null;
-        gg.modl.minecraft.core.config.PunishGuiConfig config = cache.getCachedPunishGuiConfig();
+        PunishGuiConfig config = cache.getCachedPunishGuiConfig();
         if (config == null) {
-            config = gg.modl.minecraft.core.config.PunishGuiConfig.load(
+            config = PunishGuiConfig.load(
                     platform.getDataFolder().toPath(),
                     java.util.logging.Logger.getLogger("modl"));
             cache.cachePunishGuiConfig(config);
@@ -352,13 +287,8 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
     @Override
     protected void handleClick(Click click, PunishmentWithPlayer pwp) {
-        // Handle placeholder - do nothing
-        if (pwp.getPunishment() == null) {
-            return;
-        }
+        if (pwp.getPunishment() == null) return;
 
-        // Open staff modify punishment menu with staff menu header
-        // Pass current data so back button doesn't need to re-fetch
         List<PunishmentWithPlayer> currentData = new ArrayList<>(recentPunishments);
         Consumer<CirrusPlayerWrapper> returnToPunishments = p ->
                 new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null, currentData).display(p);
@@ -369,7 +299,6 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
                             pwp.getAccount(), pwp.getPunishment(), isAdmin, panelUrl, returnToPunishments))
                     .handle(click);
         } else {
-            // Fetch the account first
             click.clickedMenu().close();
             httpClient.getPlayerProfile(pwp.getPlayerUuid()).thenAccept(response -> {
                 if (response.getStatus() == 200) {
@@ -390,50 +319,18 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        // Override header navigation - primary tabs should NOT pass backAction
-        registerActionHandler("openOnlinePlayers", ActionHandlers.openMenu(
-                new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+        StaffNavigationHandlers.registerAll(
+                (name, handler) -> registerActionHandler(name, handler),
+                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
-        registerActionHandler("openReports", ActionHandlers.openMenu(
-                new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPunishments", click -> {
-            // Already here, do nothing
-        });
-
-        registerActionHandler("openTickets", ActionHandlers.openMenu(
-                new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
-
-        registerActionHandler("openPanel", click -> {
-            click.clickedMenu().close();
-            String escapedUrl = panelUrl.replace("\"", "\\\"");
-            String panelJson = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"Staff Panel: \",\"color\":\"gold\"}," +
-                "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-                escapedUrl, panelUrl
-            );
-            platform.sendJsonMessage(viewerUuid, panelJson);
-        });
-
-        registerActionHandler("openSettings", ActionHandlers.openMenu(
-                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)));
+        registerActionHandler("openPunishments", click -> {});
     }
 
-    /**
-     * Find the date when a punishment was pardoned by looking for MANUAL_PARDON or APPEAL_ACCEPT modifications.
-     * @param punishment The punishment to check
-     * @return The pardon date, or null if not pardoned
-     */
     private Date findPardonDate(Punishment punishment) {
         List<Modification> modifications = punishment.getModifications();
-        if (modifications == null || modifications.isEmpty()) {
+        if (modifications == null || modifications.isEmpty())
             return null;
-        }
 
-        // Look for pardon modifications
         for (Modification mod : modifications) {
             if (mod.getType() == Modification.Type.MANUAL_PARDON ||
                 mod.getType() == Modification.Type.APPEAL_ACCEPT) {
@@ -443,62 +340,38 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         return null;
     }
 
-    /**
-     * Get the effective duration of a punishment, considering any duration change modifications.
-     * @param punishment The punishment to check
-     * @return The effective duration in milliseconds, or null for permanent
-     */
     private Long getEffectiveDuration(Punishment punishment) {
         List<Modification> modifications = punishment.getModifications();
-        if (modifications == null || modifications.isEmpty()) {
+        if (modifications == null || modifications.isEmpty())
             return punishment.getDuration();
-        }
 
-        // Look for the most recent duration change modification
         Long effectiveDuration = punishment.getDuration();
         for (Modification mod : modifications) {
             if (mod.getType() == Modification.Type.MANUAL_DURATION_CHANGE ||
                 mod.getType() == Modification.Type.APPEAL_DURATION_CHANGE) {
-                // Get effective duration from modification (null or <= 0 means permanent)
                 Long modDuration = mod.getEffectiveDuration();
-                if (modDuration == null || modDuration <= 0) {
+                if (modDuration == null || modDuration <= 0)
                     effectiveDuration = null;
-                } else {
+                else
                     effectiveDuration = modDuration;
-                }
             }
         }
         return effectiveDuration;
     }
 
-    /**
-     * Check if a punishment is effectively active, considering duration modifications and pardons.
-     * @param punishment The punishment to check
-     * @param effectiveDuration The effective duration (from getEffectiveDuration)
-     * @return True if the punishment is effectively active
-     */
     private boolean isPunishmentEffectivelyActive(Punishment punishment, Long effectiveDuration) {
-        // First check if it was pardoned
-        if (findPardonDate(punishment) != null) {
+        if (findPardonDate(punishment) != null)
             return false;
-        }
 
-        // Check if the data.active flag is false
-        if (!punishment.isActive()) {
+        if (!punishment.isActive())
             return false;
-        }
 
-        // Check if it has a started date
-        if (punishment.getStarted() == null) {
-            return true; // Not started yet, considered active
-        }
-
-        // If permanent (null or <= 0 duration), it's active
-        if (effectiveDuration == null || effectiveDuration <= 0) {
+        if (punishment.getStarted() == null)
             return true;
-        }
 
-        // Check if the effective duration has expired
+        if (effectiveDuration == null || effectiveDuration <= 0)
+            return true;
+
         long expiryTime = punishment.getStarted().getTime() + effectiveDuration;
         return System.currentTimeMillis() < expiryTime;
     }

@@ -4,19 +4,8 @@ import gg.modl.minecraft.core.Platform;
 
 import java.util.UUID;
 
-/**
- * Utility for sending clickable punishment action buttons in chat.
- * Buttons: [Modify] [Link Evidence] [Upload Evidence]
- */
 public class PunishmentActionMessages {
 
-    /**
-     * Send punishment action buttons to a player.
-     *
-     * @param platform The platform instance
-     * @param playerUuid The player to send buttons to
-     * @param punishmentId The punishment ID for action references
-     */
     public static void sendPunishmentActions(Platform platform, UUID playerUuid, String punishmentId) {
         String json = buildActionButtonsJson(punishmentId);
         platform.sendJsonMessage(playerUuid, json);

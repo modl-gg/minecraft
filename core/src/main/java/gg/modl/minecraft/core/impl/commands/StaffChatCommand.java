@@ -14,18 +14,8 @@ import gg.modl.minecraft.core.service.StaffChatService;
 import gg.modl.minecraft.core.service.StaffChatService.ChatMode;
 import lombok.RequiredArgsConstructor;
 
-import java.util.Map;
 import java.util.UUID;
 
-/**
- * Command to toggle staff chat mode or send a one-off message to staff chat.
- * <p>
- * Usage:
- * <ul>
- *   <li>{@code /staffchat} - Toggle staff chat mode on/off</li>
- *   <li>{@code /staffchat <message>} - Send a single message to staff chat without toggling</li>
- * </ul>
- */
 @RequiredArgsConstructor
 @CommandAlias("%cmd_staffchat")
 @Conditions("staff")
@@ -44,47 +34,34 @@ public class StaffChatCommand extends BaseCommand {
             return;
         }
 
-        if (message.isEmpty()) {
-            // Toggle mode
-            if (!sender.isPlayer()) {
-                sender.sendMessage(localeManager.getMessage("general.players_only"));
-                return;
-            }
-
-            UUID senderUuid = sender.getUniqueId();
-            ChatMode newMode = staffChatService.toggleStaffChat(senderUuid);
-
-            if (newMode == ChatMode.STAFF) {
-                sender.sendMessage(localeManager.getMessage("staff_chat.enabled"));
-            } else {
-                sender.sendMessage(localeManager.getMessage("staff_chat.disabled"));
-            }
-        } else {
-            // Send a one-off message to staff chat
+        if (!message.isEmpty()) {
             sendStaffChatMessage(sender, message);
+            return;
         }
-    }
-
-    /**
-     * Format and broadcast a message to all staff members.
-     *
-     * @param sender  The command issuer sending the message
-     * @param message The message content
-     */
-    private void sendStaffChatMessage(CommandIssuer sender, String message) {
-        String inGameName;
-        String panelName;
 
         if (!sender.isPlayer()) {
-            inGameName = "Console";
-            panelName = "Console";
-        } else {
-            UUID senderUuid = sender.getUniqueId();
-            var player = platform.getPlayer(senderUuid);
-            inGameName = player != null ? player.getName() : "Staff";
-            String display = cache.getStaffDisplayName(senderUuid);
-            panelName = display != null ? display : inGameName;
+            sender.sendMessage(localeManager.getMessage("general.players_only"));
+            return;
         }
+
+        UUID senderUuid = sender.getUniqueId();
+        ChatMode newMode = staffChatService.toggleStaffChat(senderUuid);
+
+        if (newMode == ChatMode.STAFF) sender.sendMessage(localeManager.getMessage("staff_chat.enabled"));
+        else sender.sendMessage(localeManager.getMessage("staff_chat.disabled"));
+    }
+
+    private void sendStaffChatMessage(CommandIssuer sender, String message) {
+        if (!sender.isPlayer()) {
+            platform.staffBroadcast(staffChatConfig.formatMessage("Console", "Console", message));
+            return;
+        }
+
+        UUID senderUuid = sender.getUniqueId();
+        var player = platform.getPlayer(senderUuid);
+        String inGameName = player != null ? player.getName() : "Staff";
+        String display = cache.getStaffDisplayName(senderUuid);
+        String panelName = display != null ? display : inGameName;
 
         platform.staffBroadcast(staffChatConfig.formatMessage(inGameName, panelName, message));
     }

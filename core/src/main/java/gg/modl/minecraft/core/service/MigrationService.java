@@ -3,24 +3,43 @@ package gg.modl.minecraft.core.service;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.MigrationStatusUpdateRequest;
+import gg.modl.minecraft.core.util.Constants;
 import gg.modl.minecraft.core.util.StreamingJsonWriter;
 import lombok.RequiredArgsConstructor;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.sql.*;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @RequiredArgsConstructor
 public class MigrationService {
+    private static final String HEADER_API_KEY = "X-API-Key";
+    private static final int HTTP_PAYLOAD_TOO_LARGE = 413;
+    private static final int PROGRESS_LOG_INTERVAL = 100;
+    private static final String LOG_PREFIX = "[Migration] ";
+    private static final String IMPORT_SOURCE = "litebans";
+    private static final int BAN_TYPE_ORDINAL = 2;
+    private static final int MUTE_TYPE_ORDINAL = 1;
+
     private final Logger logger;
     private final ModlHttpClient httpClient;
     private final String apiUrl;
@@ -34,78 +53,56 @@ public class MigrationService {
         return t;
     });
 
-    /**
-     * Export LiteBans data to JSON file
-     */
     public CompletableFuture<File> exportLiteBansData(String taskId) {
         return CompletableFuture.supplyAsync(() -> {
             StreamingJsonWriter jsonWriter = null;
-            
             try {
-                logger.info("[Migration] Starting LiteBans data export for task " + taskId);
-                logger.info("[Migration] Using " + (databaseProvider.isUsingLiteBansApi() ? "LiteBans API" : "direct JDBC"));
+                logger.info(LOG_PREFIX + "Starting LiteBans data export for task " + taskId);
+                logger.info(LOG_PREFIX + "Using " + (databaseProvider.isUsingLiteBansApi() ? "LiteBans API" : "direct JDBC"));
                 updateMigrationProgress(taskId, "building_json", "Starting LiteBans export...", 0, null);
 
-                // Create output file
                 File migrationFile = new File(dataFolder, "litebans-migration-" + taskId + ".json");
                 jsonWriter = new StreamingJsonWriter(migrationFile);
 
-                // Get all unique player UUIDs
                 Set<String> playerUuids = getAllPlayerUuids();
                 int totalPlayers = playerUuids.size();
-                
-                logger.info("[Migration] Found " + totalPlayers + " unique players to migrate");
-                updateMigrationProgress(taskId, "building_json", 
-                    "Processing " + totalPlayers + " players...", 0, totalPlayers);
+                logger.info(LOG_PREFIX + "Found " + totalPlayers + " unique players to migrate");
+                updateMigrationProgress(taskId, "building_json", "Processing " + totalPlayers + " players...", 0, totalPlayers);
 
-                // Process players in batches
                 int processed = 0;
                 for (String uuid : playerUuids) {
                     try {
                         PlayerMigrationData playerData = extractPlayerData(uuid);
-                        if (playerData != null) {
-                            writePlayerToJson(jsonWriter, playerData);
-                        }
+                        if (playerData != null) writePlayerToJson(jsonWriter, playerData);
                         processed++;
-
-                        // Update progress every 100 players
-                        if (processed % 100 == 0 || processed == totalPlayers) {
+                        if (processed % PROGRESS_LOG_INTERVAL == 0 || processed == totalPlayers) {
                             updateMigrationProgress(taskId, "building_json",
                                 String.format("Processed %d/%d players...", processed, totalPlayers),
                                 processed, totalPlayers);
                         }
                     } catch (Exception e) {
-                        logger.warning("[Migration] Failed to process player " + uuid + ": " + e.getMessage());
+                        logger.warning(LOG_PREFIX + "Failed to process player " + uuid + ": " + e.getMessage());
                     }
                 }
 
                 jsonWriter.close();
-                logger.info("[Migration] Export completed successfully. File: " + migrationFile.getAbsolutePath());
-                
+                logger.info(LOG_PREFIX + "Export completed. File: " + migrationFile.getAbsolutePath());
                 return migrationFile;
-
             } catch (Exception e) {
-                logger.severe("[Migration] Error during LiteBans export: " + e.getMessage());
+                logger.severe(LOG_PREFIX + "Error during LiteBans export: " + e.getMessage());
                 e.printStackTrace();
-                updateMigrationProgress(taskId, "failed",
-                        "Export failed: " + e.getMessage(), 0, null);
+                updateMigrationProgress(taskId, "failed", "Export failed: " + e.getMessage(), 0, null);
                 throw new RuntimeException("Failed to export LiteBans data", e);
             } finally {
-                // Clean up resources
                 if (jsonWriter != null) {
-                    try {
-                        jsonWriter.close();
-                    } catch (IOException e) {
-                        logger.warning("[Migration] Failed to close JSON writer: " + e.getMessage());
+                    try { jsonWriter.close(); } catch (IOException e) {
+                        logger.warning(LOG_PREFIX + "Failed to close JSON writer: " + e.getMessage());
                     }
                 }
             }
         }, migrationExecutor);
     }
 
-    /**
-     * Get all unique player UUIDs from LiteBans tables
-     */
     private Set<String> getAllPlayerUuids() throws SQLException {
         Set<String> uuids = new LinkedHashSet<>();
         
@@ -115,18 +112,13 @@ public class MigrationService {
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
                 String uuid = rs.getString("UUID");
-                if (uuid != null && !uuid.isEmpty() && !uuid.equalsIgnoreCase("CONSOLE")) {
-                    uuids.add(uuid);
-                }
+                if (uuid != null && !uuid.isEmpty() && !uuid.equalsIgnoreCase("CONSOLE")) uuids.add(uuid);
             }
         }
         
         return uuids;
     }
 
-    /**
-     * Extract all data for a single player
-     */
     private PlayerMigrationData extractPlayerData(String uuid) throws SQLException {
         PlayerMigrationData data = new PlayerMigrationData();
         data.minecraftUuid = uuid;
@@ -137,9 +129,6 @@ public class MigrationService {
         return data;
     }
 
-    /**
-     * Extract usernames from history table
-     */
     private List<UsernameData> extractUsernames(String uuid) throws SQLException {
         List<UsernameData> usernames = new ArrayList<>();
         
@@ -156,11 +145,8 @@ public class MigrationService {
                     if (name != null && !name.isEmpty()) {
                         UsernameData usernameData = new UsernameData();
                         usernameData.username = name;
-                        if (date != null) {
-                            usernameData.date = formatTimestamp(date);
-                        } else {
-                            usernameData.date = formatMillisToIso(System.currentTimeMillis());
-                        }
+                        if (date != null) usernameData.date = formatTimestamp(date);
+                        else usernameData.date = formatMillisToIso(System.currentTimeMillis());
                         usernames.add(usernameData);
                     }
                 }
@@ -173,161 +159,119 @@ public class MigrationService {
     private List<IpData> extractIpAddresses(String uuid) throws SQLException {
         Map<String, IpData> ipMap = new HashMap<>();
         String query = "SELECT IP, DATE FROM {history} WHERE UUID = ? AND IP IS NOT NULL ORDER BY DATE ASC";
-        
+
         try (PreparedStatement stmt = databaseProvider.prepareStatement(query)) {
             stmt.setString(1, uuid);
-            
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String ip = rs.getString("IP");
+                    if (ip == null || ip.isEmpty()) continue;
+
                     Timestamp date = rs.getTimestamp("DATE");
-                    
-                    if (ip != null && !ip.isEmpty()) {
-                        IpData ipData = ipMap.computeIfAbsent(ip, k -> {
-                            IpData data = new IpData();
-                            data.ipAddress = ip;
-                            data.country = null;
-                            data.region = null;
-                            data.asn = null;
-                            data.proxy = false;
-                            data.hosting = false;
-                            data.logins = new ArrayList<>();
-                            data.firstLogin = null;
-                            return data;
-                        });
-                        
-                        Timestamp loginDate = date != null ? date : new Timestamp(System.currentTimeMillis());
-                        String loginTime = formatTimestamp(loginDate);
-                        
-                        if (!ipData.logins.contains(loginTime)) {
-                            ipData.logins.add(loginTime);
-                        }
-                        
-                        if (ipData.firstLogin == null) {
-                            ipData.firstLogin = loginTime;
-                        } else if (loginDate.getTime() < parseIsoToMillis(ipData.firstLogin)) {
-                            ipData.firstLogin = loginTime;
-                        }
+                    IpData ipData = ipMap.computeIfAbsent(ip, k -> createEmptyIpData(ip));
+                    Timestamp loginDate = date != null ? date : new Timestamp(System.currentTimeMillis());
+                    String loginTime = formatTimestamp(loginDate);
+
+                    if (!ipData.logins.contains(loginTime)) ipData.logins.add(loginTime);
+                    if (ipData.firstLogin == null || loginDate.getTime() < parseIsoToMillis(ipData.firstLogin)) {
+                        ipData.firstLogin = loginTime;
                     }
                 }
             }
         }
 
+        // Ensure every IP has a firstLogin value
         for (IpData ipData : ipMap.values()) {
-            if (ipData.firstLogin == null && !ipData.logins.isEmpty()) {
-                // Use first login if available
-                ipData.firstLogin = ipData.logins.get(0);
-            } else if (ipData.firstLogin == null) {
-                // Fallback to current time if no logins (shouldn't happen, but safety check)
-                ipData.firstLogin = formatMillisToIso(System.currentTimeMillis());
-            }
+            if (ipData.firstLogin != null) continue;
+            ipData.firstLogin = ipData.logins.isEmpty()
+                    ? formatMillisToIso(System.currentTimeMillis())
+                    : ipData.logins.get(0);
         }
-
         return new ArrayList<>(ipMap.values());
     }
 
-    /**
-     * Extract punishments from bans and mutes tables
-     */
+    private static IpData createEmptyIpData(String ip) {
+        IpData data = new IpData();
+        data.ipAddress = ip;
+        data.proxy = false;
+        data.hosting = false;
+        data.logins = new ArrayList<>();
+        return data;
+    }
+
     private List<PunishmentData> extractPunishments(String uuid) throws SQLException {
         List<PunishmentData> punishments = new ArrayList<>();
-        
-        // Extract bans (typeOrdinal = 2)
-        extractPunishmentsFromTable(uuid, "{bans}", 2, "BAN", punishments);
-        
-        // Extract mutes (typeOrdinal = 1)
-        extractPunishmentsFromTable(uuid, "{mutes}", 1, "MUTE", punishments);
-        
+        extractPunishmentsFromTable(uuid, "{bans}", BAN_TYPE_ORDINAL, "BAN", punishments);
+        extractPunishmentsFromTable(uuid, "{mutes}", MUTE_TYPE_ORDINAL, "MUTE", punishments);
         return punishments;
     }
 
-    private void extractPunishmentsFromTable(String uuid, String tableToken, 
+    private void extractPunishmentsFromTable(String uuid, String tableToken,
                                             int typeOrdinal, String typeName, List<PunishmentData> punishments) throws SQLException {
         String query = "SELECT ID, REASON, BANNED_BY_UUID, BANNED_BY_NAME, TIME, UNTIL, " +
-                      "ACTIVE, REMOVED_BY_UUID, REMOVED_BY_NAME FROM " + tableToken + 
+                      "ACTIVE, REMOVED_BY_UUID, REMOVED_BY_NAME FROM " + tableToken +
                       " WHERE UUID = ? ORDER BY TIME ASC";
-        
+
         try (PreparedStatement stmt = databaseProvider.prepareStatement(query)) {
             stmt.setString(1, uuid);
-            
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    PunishmentData punishment = new PunishmentData();
-                    
-                    int litebansId = rs.getInt("ID");
-                    punishment.id = "litebans-" + typeName.toLowerCase() + "-" + litebansId;
-                    punishment.type = typeName;
-                    punishment.typeOrdinal = typeOrdinal;
-                    
-                    String reason = rs.getString("REASON");
-                    punishment.reason = (reason != null && !reason.isEmpty()) ? reason : "No reason provided";
-                    
-                    long timeIssued = rs.getLong("TIME");
-                    if (timeIssued <= 0) {
-                        timeIssued = System.currentTimeMillis();
-                    }
-                    punishment.issued = formatMillisToIso(timeIssued);
-                    
-                    // Handle issuer (could be UUID or "Console")
-                    punishment.issuerName = rs.getString("BANNED_BY_NAME");
-                    if (punishment.issuerName == null || punishment.issuerName.isEmpty()) {
-                        punishment.issuerName = "Console";
-                    }
-                    
-                    // Calculate duration
-                    long until = rs.getLong("UNTIL");
-                    if (until > 0 && until != -1) {
-                        punishment.duration = until - timeIssued;
-                    } else {
-                        punishment.duration = 0L; // Permanent punishment
-                    }
-                    
-                    // Set started time (for active punishments)
-                    punishment.started = punishment.issued;
-                    
-                    // Initialize required arrays
-                    punishment.notes = new ArrayList<>();
-                    punishment.evidence = new ArrayList<>();
-                    punishment.attachedTicketIds = new ArrayList<>();
-                    
-                    // Add reason as first note (per schema requirement)
-                    // Always add a note even if reason is empty/null
-                    Map<String, Object> reasonNote = new HashMap<>();
-                    reasonNote.put("text", punishment.reason);
-                    reasonNote.put("issuerName", punishment.issuerName);
-                    reasonNote.put("date", punishment.issued);
-                    punishment.notes.add(reasonNote);
-                    
-                    // Build data object
-                    punishment.data = new HashMap<>();
-                    
-                    // Move duration to data map (per schema requirement)
-                    punishment.data.put("duration", punishment.duration);
-                    
-                    // Determine if active
-                    boolean active = rs.getBoolean("ACTIVE");
-                    String removedByUuid = rs.getString("REMOVED_BY_UUID");
-                    punishment.data.put("active", active && removedByUuid == null);
-                    
-                    // Add migration metadata
-                    punishment.data.put("importedFrom", "litebans");
-                    punishment.data.put("importDate", Instant.now().toString());
-                    punishment.data.put("litebansId", litebansId);
-                    
-                    if (removedByUuid != null) {
-                        String removedByName = rs.getString("REMOVED_BY_NAME");
-                        punishment.data.put("pardonedBy", removedByName != null ? removedByName : "Unknown");
-                    }
-                    
-                    punishments.add(punishment);
+                    punishments.add(buildPunishmentFromRow(rs, typeOrdinal, typeName));
                 }
             }
         }
     }
 
-    /**
-     * Write player data to JSON using streaming writer
-     */
+    private PunishmentData buildPunishmentFromRow(ResultSet rs, int typeOrdinal, String typeName) throws SQLException {
+        PunishmentData punishment = new PunishmentData();
+        int litebansId = rs.getInt("ID");
+        punishment.id = "litebans-" + typeName.toLowerCase() + "-" + litebansId;
+        punishment.type = typeName;
+        punishment.typeOrdinal = typeOrdinal;
+
+        String reason = rs.getString("REASON");
+        punishment.reason = (reason != null && !reason.isEmpty()) ? reason : Constants.DEFAULT_REASON;
+
+        long timeIssued = rs.getLong("TIME");
+        if (timeIssued <= 0) timeIssued = System.currentTimeMillis();
+        punishment.issued = formatMillisToIso(timeIssued);
+
+        punishment.issuerName = rs.getString("BANNED_BY_NAME");
+        if (punishment.issuerName == null || punishment.issuerName.isEmpty()) punishment.issuerName = Constants.DEFAULT_CONSOLE_NAME;
+
+        long until = rs.getLong("UNTIL");
+        punishment.duration = (until > 0 && until != -1) ? until - timeIssued : 0L;
+        punishment.started = punishment.issued;
+
+        punishment.notes = new ArrayList<>();
+        punishment.evidence = new ArrayList<>();
+        punishment.attachedTicketIds = new ArrayList<>();
+
+        // Schema requires reason as the first note
+        Map<String, Object> reasonNote = new HashMap<>();
+        reasonNote.put("text", punishment.reason);
+        reasonNote.put("issuerName", punishment.issuerName);
+        reasonNote.put("date", punishment.issued);
+        punishment.notes.add(reasonNote);
+
+        punishment.data = new HashMap<>();
+        punishment.data.put("duration", punishment.duration);
+
+        boolean active = rs.getBoolean("ACTIVE");
+        String removedByUuid = rs.getString("REMOVED_BY_UUID");
+        punishment.data.put("active", active && removedByUuid == null);
+        punishment.data.put("importedFrom", IMPORT_SOURCE);
+        punishment.data.put("importDate", Instant.now().toString());
+        punishment.data.put("litebansId", litebansId);
+
+        if (removedByUuid != null) {
+            String removedByName = rs.getString("REMOVED_BY_NAME");
+            punishment.data.put("pardonedBy", removedByName != null ? removedByName : "Unknown");
+        }
+
+        return punishment;
+    }
+
     private void writePlayerToJson(StreamingJsonWriter writer, PlayerMigrationData playerData) throws IOException {
         StreamingJsonWriter.PlayerData jsonData = new StreamingJsonWriter.PlayerData(
             playerData.minecraftUuid,
@@ -378,29 +322,19 @@ public class MigrationService {
         return result;
     }
 
-    /**
-     * Format timestamp to ISO 8601 string
-     */
     private String formatTimestamp(Timestamp timestamp) {
         if (timestamp == null) return null;
         return timestamp.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT);
     }
 
-    /**
-     * Format milliseconds to ISO 8601 string
-     */
     private String formatMillisToIso(long millis) {
         return Instant.ofEpochMilli(millis).atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT);
     }
 
-    /**
-     * Parse ISO string to milliseconds
-     */
     private long parseIsoToMillis(String isoString) {
         return Instant.parse(isoString).toEpochMilli();
     }
 
-    // Inner classes for data holding
     private static class PlayerMigrationData {
         String minecraftUuid;
         List<UsernameData> usernames;
@@ -439,125 +373,80 @@ public class MigrationService {
         List<String> attachedTicketIds;
     }
 
-    /**
-     * Upload migration file to modl.gg panel
-     */
     public CompletableFuture<Boolean> uploadMigrationFile(File jsonFile, String taskId) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 if (jsonFile == null || !jsonFile.exists()) {
-                    logger.severe("[Migration] Migration file does not exist");
+                    logger.severe(LOG_PREFIX + "Migration file does not exist");
                     return false;
                 }
 
-                // Check file size
-                long fileSize = jsonFile.length();
-                double fileSizeMB = fileSize / 1024.0 / 1024.0;
-                logger.info(String.format("[Migration] Uploading file: %s (%.2f MB, %d bytes)", 
-                    jsonFile.getName(), fileSizeMB, fileSize));
+                double fileSizeMB = jsonFile.length() / 1024.0 / 1024.0;
+                logger.info(String.format(LOG_PREFIX + "Uploading file: %s (%.2f MB, %d bytes)",
+                    jsonFile.getName(), fileSizeMB, jsonFile.length()));
+                updateMigrationProgress(taskId, "uploading_json", "Uploading migration file to panel...", 0, null);
 
-                // Update progress
-                updateMigrationProgress(taskId, "uploading_json",
-                        "Uploading migration file to panel...", 0, null);
-
-                // Upload using Apache HttpClient5
                 boolean success = uploadFileMultipart(jsonFile);
-                
-                if (success) {
-                    logger.info("[Migration] File uploaded successfully");
-                } else {
-                    logger.severe("[Migration] File upload failed");
-                }
-                
+                if (success) logger.info(LOG_PREFIX + "File uploaded successfully");
+                else logger.severe(LOG_PREFIX + "File upload failed");
                 return success;
-
             } catch (Exception e) {
-                logger.severe("[Migration] Error uploading file: " + e.getMessage());
+                logger.severe(LOG_PREFIX + "Error uploading file: " + e.getMessage());
                 e.printStackTrace();
-                updateMigrationProgress(taskId, "failed",
-                        "Upload failed: " + e.getMessage(), 0, null);
+                updateMigrationProgress(taskId, "failed", "Upload failed: " + e.getMessage(), 0, null);
                 return false;
             } finally {
-                // Clean up local file after upload attempt
                 if (jsonFile != null && jsonFile.exists()) {
                     try {
                         Files.delete(jsonFile.toPath());
-                        logger.info("[Migration] Cleaned up local migration file");
+                        logger.info(LOG_PREFIX + "Cleaned up local migration file");
                     } catch (IOException e) {
-                        logger.warning("[Migration] Failed to delete local file: " + e.getMessage());
+                        logger.warning(LOG_PREFIX + "Failed to delete local file: " + e.getMessage());
                     }
                 }
             }
         }, migrationExecutor);
     }
 
-    /**
-     * Upload file using multipart/form-data
-     */
     private boolean uploadFileMultipart(File file) throws Exception {
-        try (org.apache.hc.client5.http.impl.classic.CloseableHttpClient httpClient = 
+        try (org.apache.hc.client5.http.impl.classic.CloseableHttpClient httpClient =
                 org.apache.hc.client5.http.impl.classic.HttpClients.createDefault()) {
-            
-            // Build multipart entity
-            org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder builder = 
+
+            org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder builder =
                 org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder.create();
-            
-            builder.addBinaryBody(
-                "migrationFile",
-                file,
-                org.apache.hc.core5.http.ContentType.APPLICATION_JSON,
-                file.getName()
-            );
-            
-            org.apache.hc.core5.http.HttpEntity multipartEntity = builder.build();
-            
-            // Create POST request
+            builder.addBinaryBody("migrationFile", file,
+                org.apache.hc.core5.http.ContentType.APPLICATION_JSON, file.getName());
+
             String uploadUrl = apiUrl + "/minecraft/migration/upload";
-            org.apache.hc.client5.http.classic.methods.HttpPost httpPost = 
+            org.apache.hc.client5.http.classic.methods.HttpPost httpPost =
                 new org.apache.hc.client5.http.classic.methods.HttpPost(uploadUrl);
-            
-            httpPost.setHeader("X-API-Key", apiKey);
-            httpPost.setEntity(multipartEntity);
-            
-            logger.info("[Migration] Sending upload request to: " + uploadUrl);
-            
-            // Execute request and handle response
+            httpPost.setHeader(HEADER_API_KEY, apiKey);
+            httpPost.setEntity(builder.build());
+            logger.info(LOG_PREFIX + "Sending upload request to: " + uploadUrl);
+
             return httpClient.execute(httpPost, response -> {
                 int statusCode = response.getCode();
                 String responseBody = org.apache.hc.core5.http.io.entity.EntityUtils.toString(response.getEntity());
-                
-                logger.info("[Migration] Upload response: " + statusCode + " - " + responseBody);
-                
-                if (statusCode >= 200 && statusCode < 300) {
-                    return true;
-                } else if (statusCode == 413) {
-                    logger.severe("[Migration] File too large: " + responseBody);
-                    return false;
-                } else {
-                    logger.severe("[Migration] Upload failed with status " + statusCode + ": " + responseBody);
-                    return false;
-                }
+                logger.info(LOG_PREFIX + "Upload response: " + statusCode + " - " + responseBody);
+
+                if (statusCode >= 200 && statusCode < 300) return true;
+                if (statusCode == HTTP_PAYLOAD_TOO_LARGE) logger.severe(LOG_PREFIX + "File too large: " + responseBody);
+                else logger.severe(LOG_PREFIX + "Upload failed with status " + statusCode + ": " + responseBody);
+                return false;
             });
         }
     }
 
-    /**
-     * Update migration progress via HTTP callback to panel
-     */
     private void updateMigrationProgress(String taskId, String status, String message,
                                          Integer recordsProcessed, Integer totalRecords) {
         try {
             httpClient.updateMigrationStatus(new MigrationStatusUpdateRequest(taskId, status, message, recordsProcessed, totalRecords));
-            logger.info(String.format("[Migration] Progress update: %s - %s (records: %s/%s)",
-                    status, message, recordsProcessed, totalRecords));
+            logger.info(String.format(LOG_PREFIX + "Progress: %s - %s (%s/%s)", status, message, recordsProcessed, totalRecords));
         } catch (Exception e) {
-            logger.warning("[Migration] Failed to update progress: " + e.getMessage());
+            logger.log(Level.WARNING, LOG_PREFIX + "Failed to update progress", e);
         }
     }
 
-    /**
-     * Shutdown the migration executor
-     */
     public void shutdown() {
         migrationExecutor.shutdown();
     }

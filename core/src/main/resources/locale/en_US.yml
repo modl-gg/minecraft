@@ -591,6 +591,16 @@ menus:
       - "&7Playtime: &f{playtime}"
       - "&7Punishments Issued: &f{punishments_count}"
 
+  notes:
+    created: "&aNote created successfully!"
+    create_failed: "&cFailed to create note."
+    cancelled: "&7Note creation cancelled."
+  modify_punishment:
+    no_permission_tickets: "&cYou don't have permission to modify linked tickets."
+    no_changes: "&7No changes to linked tickets."
+    tickets_updated: "&aLinked tickets updated successfully!"
+    tickets_update_failed: "&cFailed to update linked tickets."
+
   # Online Players Menu (lore template for each player entry)
   # Placeholders: {player_name}, {session_duration}, {total_playtime}, {punishments}
   online_players:
@@ -821,6 +831,7 @@ target:
   usage: "&fUsage: &a/target&f <player>"
   connecting: "&eConnecting to &f{server} &eto target &f{player}&e..."
   cannot_target_self: "&cYou cannot target yourself."
+  not_online: "&cPlayer is not online."
 
 # Standing GUI (player-facing)
 standing_gui:
@@ -876,4 +887,14 @@ standing_gui:
       - ""
       - "&f{reason}"
 
+# Punishment Action Command
+punishment_action:
+  unknown_action: "&cUnknown action: {action}"
+  enter_evidence_url: "&7Enter the evidence URL for punishment #{id}:"
+  no_url: "&cNo URL provided."
+  evidence_linked: "&aEvidence linked to punishment #{id}"
+  evidence_link_failed: "&cFailed to link evidence: {error}"
+  evidence_cancelled: "&7Evidence linking cancelled."
+  generating_upload: "&7Generating upload link..."
+  upload_failed: "&cFailed to generate upload link."
 

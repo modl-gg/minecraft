@@ -20,48 +20,39 @@ import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
 import net.md_5.bungee.config.YamlConfiguration;
+import org.bstats.bungeecord.Metrics;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.List;
-import org.bstats.bungeecord.Metrics;
 
 @Getter
 public class BungeePlugin extends Plugin {
+
+    private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg";
+    private static final String DEFAULT_BRIDGE_NAME = "bridge";
+    private static final int DEFAULT_BRIDGE_PORT = 25590;
+    private static final int MIN_SYNC_POLLING_RATE = 1;
+    private static final int DEFAULT_SYNC_POLLING_RATE = 2;
+    private static final int BSTATS_PLUGIN_ID = 29831;
+
     private Configuration configuration;
     private PluginLoader loader;
     private QueryStatWipeExecutor queryStatWipeExecutor;
 
     @Override
     public synchronized void onEnable() {
-        // Load runtime dependencies via libby before anything else
         loadLibraries();
-
-        // Initialize PacketEvents before Cirrus
         initializePacketEvents();
-
         loadConfig();
         createLocaleFiles();
+        mergeDefaultConfigs();
 
-        // Auto-merge new keys from plugin update
-        YamlMergeUtil.mergeWithDefaults("/config.yml",
-                getDataFolder().toPath().resolve("config.yml"), getLogger());
-        YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",
-                getDataFolder().toPath().resolve("locale/en_US.yml"), getLogger());
-
-        // Validate configuration before proceeding
         String apiUrl = configuration.getString("api.url");
-        if ("https://yourserver.modl.gg".equals(apiUrl)) {
-            getLogger().severe("===============================================");
-            getLogger().severe("modl.gg CONFIGURATION ERROR");
-            getLogger().severe("===============================================");
-            getLogger().severe("You must configure your API URL in config.yml!");
-            getLogger().severe("Please set 'api.url' to your actual modl.gg panel URL.");
-            getLogger().severe("Example: https://yourserver.modl.gg");
-            getLogger().severe("Plugin will now disable itself.");
-            getLogger().severe("===============================================");
+        if (PLACEHOLDER_API_URL.equals(apiUrl)) {
+            logConfigurationError();
             return;
         }
 
@@ -78,55 +69,70 @@ public class BungeePlugin extends Plugin {
 
         BungeePlatform platform = new BungeePlatform(commandManager, getLogger(), getDataFolder(), configuration.getString("server.name", "Server 1"));
         ChatMessageCache chatMessageCache = new ChatMessageCache();
-
-        // Get sync polling rate from config (default: 2 seconds, minimum: 1 second)
-        int syncPollingRate = Math.max(1, configuration.getInt("sync.polling_rate", 2));
-
+        int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, configuration.getInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
         List<String> mutedCommands = configuration.getStringList("muted_commands");
 
         this.loader = new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
+        configureBridgeExecutor(platform, httpManager);
 
-        // Set up bridge TCP connection for stat-wipe execution
-        // Uses the API key as shared secret for bridge authentication
-        String bridgeHost = configuration.getString("bridge.host", "");
-        if (!bridgeHost.isEmpty()) {
-            int bridgePort = configuration.getInt("bridge.port", 25590);
-            String apiKey = configuration.getString("api.key");
-            queryStatWipeExecutor = new QueryStatWipeExecutor(getLogger(), httpManager.isDebugHttp());
-            queryStatWipeExecutor.addBridge("bridge", bridgeHost, bridgePort, apiKey);
-            loader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
+        getProxy().getPluginManager().registerListener(this, new BungeeListener(
+                platform, loader.getCache(), loader.getHttpClientHolder(), loader.getChatMessageCache(),
+                loader.getSyncService(), loader.getLocaleManager(),
+                loader.isDebugMode(), mutedCommands, this, loader.getStaffChatService(),
+                loader.getChatManagementService(), loader.getMaintenanceService(),
+                loader.getFreezeService(), loader.getNetworkChatInterceptService(),
+                loader.getChatCommandLogService(), loader.getStaff2faService(),
+                loader.getConfigManager().getStaffChatConfig(), loader.getLoginCache(),
+                loader.getVanishService(), loader.getStaffModeService(),
+                loader.getBridgeService()));
 
-            // Wire up bridge message dispatcher for incoming messages
-            BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
-                    platform, loader.getLocaleManager(), loader.getFreezeService(),
-                    loader.getStaffModeService(), loader.getVanishService(), getLogger());
-            queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
-
-            // Set executor on bridge service for outgoing messages
-            loader.getBridgeService().setExecutor(queryStatWipeExecutor);
-        }
-        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClientHolder(), chatMessageCache, loader.getSyncService(), loader.getLocaleManager(), httpManager.isDebugHttp(), mutedCommands, this, loader.getStaffChatService(), loader.getChatManagementService(), loader.getMaintenanceService(), loader.getFreezeService(), loader.getNetworkChatInterceptService(), loader.getChatCommandLogService(), loader.getStaff2faService(), loader.getConfigManager().getStaffChatConfig(), loader.getLoginCache()));
-
-        // Register async command interceptor — dispatches modl commands off the network thread
-        // Uses a named class (not anonymous) to avoid BungeeCord EventBus reflection issues
+        // Named class (not anonymous) to avoid BungeeCord EventBus reflection issues
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
         getProxy().getPluginManager().registerListener(this, new AsyncCommandInterceptor(asyncExecutor, getProxy()));
 
-        new Metrics(this, 29831);
+        new Metrics(this, BSTATS_PLUGIN_ID);
     }
 
     @Override
     public synchronized void onDisable() {
-        if (queryStatWipeExecutor != null) {
-            queryStatWipeExecutor.shutdown();
-        }
-        if (loader != null) {
-            loader.shutdown();
-        }
-        // Terminate PacketEvents
-        if (PacketEvents.getAPI() != null) {
-            PacketEvents.getAPI().terminate();
-        }
+        if (queryStatWipeExecutor != null) queryStatWipeExecutor.shutdown();
+        if (loader != null) loader.shutdown();
+        if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
+    }
+
+    private void mergeDefaultConfigs() {
+        YamlMergeUtil.mergeWithDefaults("/config.yml",
+                getDataFolder().toPath().resolve("config.yml"), getLogger());
+        YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",
+                getDataFolder().toPath().resolve("locale/en_US.yml"), getLogger());
+    }
+
+    private void logConfigurationError() {
+        getLogger().severe("===============================================");
+        getLogger().severe("modl.gg CONFIGURATION ERROR");
+        getLogger().severe("===============================================");
+        getLogger().severe("You must configure your API URL in config.yml!");
+        getLogger().severe("Please set 'api.url' to your actual modl.gg panel URL.");
+        getLogger().severe("Example: https://yourserver.modl.gg");
+        getLogger().severe("Plugin will now disable itself.");
+        getLogger().severe("===============================================");
+    }
+
+    private void configureBridgeExecutor(BungeePlatform platform, HttpManager httpManager) {
+        String bridgeHost = configuration.getString("bridge.host", "");
+        if (bridgeHost.isEmpty()) return;
+
+        int bridgePort = configuration.getInt("bridge.port", DEFAULT_BRIDGE_PORT);
+        String apiKey = configuration.getString("api.key");
+        queryStatWipeExecutor = new QueryStatWipeExecutor(getLogger(), httpManager.isDebugHttp());
+        queryStatWipeExecutor.addBridge(DEFAULT_BRIDGE_NAME, bridgeHost, bridgePort, apiKey);
+        loader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
+
+        BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
+                platform, loader.getLocaleManager(), loader.getFreezeService(),
+                loader.getStaffModeService(), loader.getVanishService(), getLogger());
+        queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
+        loader.getBridgeService().setExecutor(queryStatWipeExecutor);
     }
 
     private void initializePacketEvents() {
@@ -142,24 +148,13 @@ public class BungeePlugin extends Plugin {
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
 
-        // Load common libraries
-        for (LibraryRecord record : Libraries.COMMON) {
-            loadLibrary(libraryManager, record);
-        }
-
-        // Load ACF (core first, then platform-specific)
+        for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
         loadLibrary(libraryManager, Libraries.ACF_CORE);
         loadLibrary(libraryManager, Libraries.ACF_BUNGEE);
-
-        // Load Cirrus (platform-specific shadow jar includes cirrus-api + cirrus-common)
         loadLibrary(libraryManager, Libraries.CIRRUS_BUNGEECORD);
-
-        // Load PacketEvents (API first, then netty, then platform implementation)
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_BUNGEE);
-
-        // Load Adventure (transitive deps first, then API, then serializers)
         loadLibrary(libraryManager, Libraries.EXAMINATION_API);
         loadLibrary(libraryManager, Libraries.EXAMINATION_STRING);
         loadLibrary(libraryManager, Libraries.ADVENTURE_KEY);
@@ -168,7 +163,6 @@ public class BungeePlugin extends Plugin {
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_JSON);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_GSON);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_MINIMESSAGE);
-
         getLogger().info("Runtime libraries loaded successfully");
     }
 
@@ -180,35 +174,21 @@ public class BungeePlugin extends Plugin {
                 .id(record.id())
                 .isolatedLoad(false);
 
-        if (record.hasRelocation()) {
-            builder.relocate(record.oldRelocation(), record.newRelocation());
-        }
-
-        if (record.url() != null) {
-            builder.url(record.url());
-        }
-
-        if (record.hasChecksum()) {
-            builder.checksum(record.checksum());
-        }
+        if (record.hasRelocation()) builder.relocate(record.oldRelocation(), record.newRelocation());
+        if (record.url() != null) builder.url(record.url());
+        if (record.hasChecksum()) builder.checksum(record.checksum());
 
         libraryManager.loadLibrary(builder.build());
     }
 
     private void loadConfig() {
-        if (!getDataFolder().exists()) {
-            getDataFolder().mkdir();
-        }
-
+        if (!getDataFolder().exists()) getDataFolder().mkdir();
         File file = new File(getDataFolder(), "config.yml");
 
         if (!file.exists()) {
             try (InputStream defaultConfig = getResourceAsStream("config.yml")) {
-                if (defaultConfig != null) {
-                    Files.copy(defaultConfig, file.toPath());
-                } else {
-                    getLogger().warning("Default config resource not found in JAR");
-                }
+                if (defaultConfig != null) Files.copy(defaultConfig, file.toPath());
+                else getLogger().warning("Default config resource not found in JAR");
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -221,28 +201,17 @@ public class BungeePlugin extends Plugin {
         }
     }
 
-    
     private void createLocaleFiles() {
         try {
-            // Create locale directory
             File localeDir = new File(getDataFolder(), "locale");
-            if (!localeDir.exists()) {
-                localeDir.mkdirs();
-                getLogger().info("Created locale directory at: " + localeDir.getPath());
-            }
-            
-            // Create default en_US.yml if it doesn't exist
+            if (!localeDir.exists()) localeDir.mkdirs();
+
             File enUsFile = new File(localeDir, "en_US.yml");
-            if (!enUsFile.exists()) {
-                // Copy the default locale from resources
-                try (InputStream defaultLocale = getResourceAsStream("locale/en_US.yml")) {
-                    if (defaultLocale != null) {
-                        Files.copy(defaultLocale, enUsFile.toPath());
-                        getLogger().info("Created default locale file at: " + enUsFile.getPath());
-                    } else {
-                        getLogger().warning("Default locale resource not found in JAR");
-                    }
-                }
+            if (enUsFile.exists()) return;
+
+            try (InputStream defaultLocale = getResourceAsStream("locale/en_US.yml")) {
+                if (defaultLocale != null) Files.copy(defaultLocale, enUsFile.toPath());
+                else getLogger().warning("Default locale resource not found in JAR");
             }
         } catch (IOException e) {
             getLogger().severe("Failed to create locale files: " + e.getMessage());

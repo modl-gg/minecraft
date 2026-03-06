@@ -8,5 +8,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PlayerLookupRequest {
-    private String query; // Can be username or UUID
+    private String query;
 }

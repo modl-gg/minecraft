@@ -9,80 +9,73 @@ import java.sql.SQLException;
 import java.util.logging.Logger;
 
 /**
- * JDBC-based database provider for direct database access
- * Used when LiteBans API is not available
+ * Direct JDBC database provider, used when LiteBans API is not available.
+ * Replaces LiteBans table tokens ({bans}, {mutes}, etc.) with prefixed table names.
  */
 public class JdbcDatabaseProvider implements DatabaseProvider {
+    private static final String LOG_PREFIX = "[Migration] ";
+    private static final String[][] TABLE_TOKENS = {
+        {"{bans}", "bans"}, {"{mutes}", "mutes"}, {"{warnings}", "warnings"},
+        {"{kicks}", "kicks"}, {"{history}", "history"}, {"{servers}", "servers"}
+    };
+
     private final DatabaseConfig config;
     private final Logger logger;
     private Connection connection;
-    
+
     public JdbcDatabaseProvider(DatabaseConfig config, Logger logger) throws SQLException {
         this.config = config;
         this.logger = logger;
         this.connection = establishConnection();
     }
-    
+
     private Connection establishConnection() throws SQLException {
         try {
             Class.forName(config.getDriverClass());
-            
-            String jdbcUrl = config.getJdbcUrl();
-            logger.info("[Migration] Connecting to database: " + jdbcUrl);
-            
-            return DriverManager.getConnection(
-                jdbcUrl,
-                config.getUsername(),
-                config.getPassword()
-            );
+            logger.info(LOG_PREFIX + "Connecting to database: " + config.getJdbcUrl());
+            return DriverManager.getConnection(config.getJdbcUrl(), config.getUsername(), config.getPassword());
         } catch (ClassNotFoundException e) {
             throw new SQLException("Database driver not found: " + config.getDriverClass(), e);
         }
     }
-    
+
     @Override
     public PreparedStatement prepareStatement(String query) throws SQLException {
-        // Replace LiteBans table tokens with actual table names
-        String processedQuery = query
-            .replace("{bans}", config.getTablePrefix() + "bans")
-            .replace("{mutes}", config.getTablePrefix() + "mutes")
-            .replace("{warnings}", config.getTablePrefix() + "warnings")
-            .replace("{kicks}", config.getTablePrefix() + "kicks")
-            .replace("{history}", config.getTablePrefix() + "history")
-            .replace("{servers}", config.getTablePrefix() + "servers");
-        
-        // Check if connection is still valid
+        String processedQuery = replaceTableTokens(query);
         if (connection == null || connection.isClosed()) {
-            logger.warning("[Migration] Database connection was closed, reconnecting...");
+            logger.warning(LOG_PREFIX + "Database connection was closed, reconnecting...");
             connection = establishConnection();
         }
-        
         return connection.prepareStatement(processedQuery);
     }
-    
+
     @Override
     public Connection getConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) {
-            connection = establishConnection();
-        }
+        if (connection == null || connection.isClosed()) connection = establishConnection();
         return connection;
     }
-    
+
     @Override
     public void close() {
-        if (connection != null) {
-            try {
-                connection.close();
-                logger.info("[Migration] Database connection closed");
-            } catch (SQLException e) {
-                logger.warning("[Migration] Failed to close database connection: " + e.getMessage());
-            }
+        if (connection == null) return;
+        try {
+            connection.close();
+            logger.info(LOG_PREFIX + "Database connection closed");
+        } catch (SQLException e) {
+            logger.warning(LOG_PREFIX + "Failed to close database connection: " + e.getMessage());
         }
     }
-    
+
     @Override
     public boolean isUsingLiteBansApi() {
         return false;
     }
-}
 
+    private String replaceTableTokens(String query) {
+        String result = query;
+        for (String[] token : TABLE_TOKENS) {
+            result = result.replace(token[0], config.getTablePrefix() + token[1]);
+        }
+        return result;
+    }
+}

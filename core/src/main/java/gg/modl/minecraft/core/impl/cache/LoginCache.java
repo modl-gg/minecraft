@@ -1,10 +1,8 @@
 package gg.modl.minecraft.core.impl.cache;
 
-import gg.modl.minecraft.api.SimplePunishment;
-import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import com.google.gson.JsonObject;
+import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -18,7 +16,6 @@ import java.util.logging.Logger;
  * Temporary cache for login check results to prevent repeated API calls
  * and store async operation results for synchronous event handlers.
  */
-@RequiredArgsConstructor
 public class LoginCache {
     private static final Logger logger = Logger.getLogger(LoginCache.class.getName());
     
@@ -29,14 +26,8 @@ public class LoginCache {
     private final ConcurrentHashMap<UUID, PreLoginResult> preLoginResults = new ConcurrentHashMap<>();
     
     private final ScheduledExecutorService cleanupExecutor;
-    private final int cacheExpirySeconds;
-    
+
     public LoginCache() {
-        this(30); // Default 30 seconds cache
-    }
-    
-    public LoginCache(int cacheExpirySeconds) {
-        this.cacheExpirySeconds = cacheExpirySeconds;
         this.cleanupExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "modl-login-cache-cleanup");
             t.setDaemon(true);
@@ -81,9 +72,7 @@ public class LoginCache {
      */
     public PreLoginResult getAndRemovePreLoginResult(UUID playerUuid) {
         PreLoginResult result = preLoginResults.remove(playerUuid);
-        if (result != null) {
-            logger.fine("Retrieved pre-login result for " + playerUuid);
-        }
+        if (result != null) logger.fine("Retrieved pre-login result for " + playerUuid);
         return result;
     }
     
@@ -114,9 +103,7 @@ public class LoginCache {
     public void shutdown() {
         cleanupExecutor.shutdown();
         try {
-            if (!cleanupExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-                cleanupExecutor.shutdownNow();
-            }
+            if (!cleanupExecutor.awaitTermination(5, TimeUnit.SECONDS)) cleanupExecutor.shutdownNow();
         } catch (InterruptedException e) {
             cleanupExecutor.shutdownNow();
             Thread.currentThread().interrupt();

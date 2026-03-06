@@ -342,6 +342,7 @@ menus:
       - "&fOnline: {is_online} ({last_seen_or_session_time})"
       - "&fSpielzeit: {playtime}"
       - "&fEchte IP protokolliert: {real_ip_logged}"
+      - "&fRegion: {region} (Land: {country})"
       - "&fGebannt: {is_banned}"
       - "&fStummgeschaltet: {is_muted}"
   history_item:
@@ -453,6 +454,16 @@ menus:
       - "&7Spielzeit: &f{playtime}"
       - "&7Strafen ausgesprochen: &f{punishments_count}"
 
+  notes:
+    created: "&aNotiz erfolgreich erstellt!"
+    create_failed: "&cNotiz konnte nicht erstellt werden."
+    cancelled: "&7Notizerstellung abgebrochen."
+  modify_punishment:
+    no_permission_tickets: "&cDu hast keine Berechtigung, verknüpfte Tickets zu ändern."
+    no_changes: "&7Keine Änderungen an verknüpften Tickets."
+    tickets_updated: "&aVerknüpfte Tickets erfolgreich aktualisiert!"
+    tickets_update_failed: "&cVerknüpfte Tickets konnten nicht aktualisiert werden."
+
   # Online Players Menu
   online_players:
     title: "&6{player_name}"
@@ -516,4 +527,242 @@ standing_gui:
       - "&7{duration} {type} ({status})"
       - ""
       - "&f{reason}"
+
+# Strafaktion Befehl
+punishment_action:
+  unknown_action: "&cUnbekannte Aktion: {action}"
+  enter_evidence_url: "&7Gib die Beweis-URL für Strafe #{id} ein:"
+  no_url: "&cKeine URL angegeben."
+  evidence_linked: "&aBeweis mit Strafe #{id} verknüpft"
+  evidence_link_failed: "&cBeweis konnte nicht verknüpft werden: {error}"
+  evidence_cancelled: "&7Beweisverknüpfung abgebrochen."
+  generating_upload: "&7Upload-Link wird generiert..."
+  upload_failed: "&cUpload-Link konnte nicht generiert werden."
+
+# Strafen
+punishments:
+  public_notification:
+    ban_default: "&c{target} wurde gebannt."
+    mute_default: "&c{target} wurde stummgeschaltet."
+    kick_default: "&c{target} wurde gekickt."
+    default: "&c{target} wurde bestraft."
+
+# Hilfe-Befehl
+help:
+  header: "&a&lmodl.gg &av{version} &f- &eBefehlsliste (Seite {page}/{total_pages})"
+  entry: "&f/{command} &7- {description}"
+  footer: "&eSeite {page}/{total_pages}. Verwende &a/modl help {next_page}&e für die nächste Seite."
+  no_more_pages: "&7Keine weiteren Seiten."
+  player_commands:
+    iammuted:
+      usage: "iammuted <spieler>"
+      description: "Jemandem mitteilen, dass du stummgeschaltet bist"
+    standing:
+      usage: "standing"
+      description: "Deinen Strafstatus anzeigen"
+    report:
+      usage: "report <spieler> <grund>"
+      description: "Einen Spieler melden"
+    chatreport:
+      usage: "chatreport <spieler>"
+      description: "Den Chat eines Spielers melden"
+    claimticket:
+      usage: "claimticket <id>"
+      description: "Ein Ticket mit deinem Konto verknüpfen"
+    apply:
+      usage: "apply"
+      description: "Sich als Teammitglied bewerben"
+    bugreport:
+      usage: "bugreport <titel>"
+      description: "Einen Fehler melden"
+    support:
+      usage: "support <titel>"
+      description: "Support-Ticket öffnen"
+  staff_commands:
+    staffmenu:
+      usage: "staffmenu"
+      description: "Teammenü öffnen"
+    inspect:
+      usage: "inspect <spieler> [-p]"
+      description: "Spieler-Inspektionsmenü öffnen (-p für Text)"
+    history:
+      usage: "history <spieler> [-p]"
+      description: "Spielerverlauf öffnen (-p für Text)"
+    notes:
+      usage: "notes <spieler> [-p]"
+      description: "Spielernotizen öffnen (-p für Text)"
+    alts:
+      usage: "alts <spieler> [-p]"
+      description: "Spieler-Alts öffnen (-p für Text)"
+    reports:
+      usage: "reports [spieler] [-p]"
+      description: "Meldeübersicht öffnen (-p für Text)"
+    punish:
+      usage: "punish <spieler> [typ] [grund]"
+      description: "Eine Strafe verhängen"
+    ban:
+      usage: "ban <spieler> [dauer] [grund]"
+      description: "Einen Spieler bannen"
+    mute:
+      usage: "mute <spieler> [dauer] [grund]"
+      description: "Einen Spieler stummschalten"
+    kick:
+      usage: "kick <spieler> [grund]"
+      description: "Einen Spieler kicken"
+    blacklist:
+      usage: "blacklist <spieler> [grund]"
+      description: "Einen Spieler auf die schwarze Liste setzen"
+    pardon:
+      usage: "pardon <spieler>"
+      description: "ALLE aktiven Strafen begnadigen"
+    unban:
+      usage: "unban <spieler>"
+      description: "Aktiven oder ältesten ungestarteten Bann begnadigen"
+    unmute:
+      usage: "unmute <spieler>"
+      description: "Aktive oder älteste ungestartete Stummschaltung begnadigen"
+    modl_reload:
+      usage: "modl reload"
+      description: "Konfiguration neu laden"
+
+# Statistik-Zurücksetzung
+stat_wipe:
+  kick_message: "&cBitte logge dich kurz neu ein. Deine Statistiken werden aufgrund eines kürzlich abgelaufenen Banns zurückgesetzt."
+
+# Team-Chat
+staff_chat:
+  enabled: "&eTeam-Chat &aaktiviert&e. Nachrichten werden standardmäßig im Team-Chat gesendet."
+  disabled: "&eTeam-Chat &cdeaktiviert&e. Nachrichten werden standardmäßig im lokalen Chat gesendet."
+  feature_disabled: "&cTeam-Chat ist auf diesem Server nicht aktiviert."
+  already_normal: "&cDu bist bereits im lokalen Chat-Modus."
+  format: "&b[TEAM] &e{panel-name}&f: {message}"
+  local_chat_enabled: "&eTeam-Chat &cdeaktiviert&e. Nachrichten werden standardmäßig im lokalen Chat gesendet."
+
+# Chat-Verwaltung
+chat_management:
+  chat_toggled_on: "&7&o[{staff}: Chat aktiviert]"
+  chat_toggled_off: "&7&o[{staff}: Chat deaktiviert]"
+  chat_disabled: "&cDer Chat ist derzeit deaktiviert."
+  chat_cleared: "&7&o[{staff}: Chat geleert]"
+  slow_mode_enabled: "&7&o[{staff}: Chat auf {seconds}s verlangsamt]"
+  slow_mode_disabled: "&7&o[{staff}: Langsamemodus deaktiviert]"
+  slow_mode_wait: "&cBitte warte {seconds} Sekunden, bevor du erneut chattest."
+  invalid_seconds: "&cBitte gib eine gültige Anzahl von Sekunden ein."
+  usage_toggle: "&fVerwendung: &a/chat &ftoggle"
+  usage_clear: "&fVerwendung: &a/chat &fclear"
+  usage_slow: "&fVerwendung: &a/chat &fslow <sekunden|off>"
+  help:
+    header: "&eChat-Befehle:"
+    staff: "&f/chat staff &7- Team-Chat-Modus umschalten"
+    toggle: "&f/chat toggle &7- Öffentlichen Chat aktivieren/deaktivieren"
+    clear: "&f/chat clear [anzahl] &7- Chat leeren"
+    slow: "&f/chat slow <sekunden|off> &7- Langsamemodus einstellen/deaktivieren"
+
+# Team-Liste
+staff_list:
+  header: ""
+  entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &eauf &f{server}{v}"
+  vanish: " &7[V]"
+  empty: "&7Keine Teammitglieder online."
+  footer: "&eAnzahl: &f{count} &eTeammitglieder online"
+
+# Team-Benachrichtigungen
+staff_notifications:
+  join: "&7&o[{staff}: beigetreten]"
+  verified: "&7&o[{staff}: verifiziert]"
+  leave: "&7&o[{staff}: gegangen]"
+  switch: "&7&o[{staff}: verbunden mit {server}]"
+  generic: "&7&o[{message}]"
+
+# Team 2FA
+staff_2fa:
+  not_verified: "&cDu musst deine Identität bestätigen, bevor du Teambefehle verwenden kannst. Verwende &f/verify"
+  verify_prompt: "&aKlicke auf den Link zur Verifizierung: &f{url}"
+  verify_success: "&aIdentität erfolgreich verifiziert!"
+  verify_error: "&cVerifizierungslink konnte nicht generiert werden. Bitte versuche es erneut."
+  auto_verified: "&aAutomatisch über vertrauenswürdige IP verifiziert."
+
+# Verify Befehl (Team 2FA)
+verify:
+  only_players: "&cDieser Befehl kann nur von Spielern verwendet werden."
+  disabled: "&cTeam-2FA ist auf diesem Server nicht aktiviert."
+  already_verified: "&aDu bist bereits verifiziert."
+  header: ""
+  instructions: "&aKlicke auf den folgenden Link, um deine Identität zu bestätigen:"
+  click_here: "Klicke hier zur Verifizierung"
+  error: "&cVerifizierungslink konnte nicht generiert werden. Bitte versuche es erneut."
+  footer: "&eDieser Link läuft in Kürze ab."
+
+# Wartungsmodus
+maintenance:
+  enabled: "&7&o[{staff}: Wartungsmodus aktiviert]"
+  disabled: "&7&o[{staff}: Wartungsmodus deaktiviert]"
+  already_enabled: "&cWartungsmodus ist bereits aktiviert."
+  already_disabled: "&cWartungsmodus ist bereits deaktiviert."
+  status_enabled: "&eWartungsmodus ist derzeit aktiviert."
+  status_disabled: "&eWartungsmodus ist derzeit deaktiviert."
+  login_denied: "&cDer Server befindet sich derzeit in Wartung. Bitte versuche es später erneut."
+  kick_message: "&cDer Server ist jetzt im Wartungsmodus. Bitte versuche es später erneut."
+  usage: "&fVerwendung: &a/maintenance&f <on|off>"
+
+# Einfrieren
+freeze:
+  frozen_message: "&cDu wurdest eingefroren! Trenne nicht die Verbindung."
+  staff_notification_freeze: "&7&o[{staff}: hat {player} eingefroren]"
+  staff_notification_unfreeze: "&7&o[{staff}: hat {player} aufgetaut]"
+  unfrozen: "&aDu wurdest aufgetaut."
+  logout_notification: "&c&l{player} hat sich eingefroren abgemeldet!"
+  frozen_chat: "&b[EINGEFROREN] &e{player}&f: {message}"
+  command_blocked: "&cDu kannst keine Befehle verwenden, während du eingefroren bist."
+
+# Netzwerk-Chat abfangen
+intercept_chat:
+  enabled: "&aNetzwerk-Chat-Abfang aktiviert"
+  disabled: "&aNetzwerk-Chat-Abfang deaktiviert"
+  format: "&8[G-{server}] &e{player}&f: {message}"
+
+# Abfangen (Team-nur)
+intercept:
+  message: "&8[Abfang] &f{player}: &7{message}"
+
+# Chatprotokolle
+chat_logs:
+  header: ""
+  entry: "&7[{timestamp}] &8[{server}] &f{message}"
+  empty: "&7Keine Chatprotokolle für diesen Spieler gefunden."
+  footer: "&eSeite {page}/{total_pages} ({total} insgesamt)"
+  error: "&cChatprotokolle konnten nicht abgerufen werden."
+  usage: "&fVerwendung: &a/chatlogs&f <spieler>"
+
+# Befehlsprotokolle
+command_logs:
+  header: ""
+  entry: "&7[{timestamp}] &e{player}&7: &f/{command}"
+  empty: "&7Keine Befehlsprotokolle für diesen Spieler gefunden."
+  footer: "&eSeite {page}/{total_pages} ({total} insgesamt)"
+  error: "&cBefehlsprotokolle konnten nicht abgerufen werden."
+  usage: "&fVerwendung: &a/commandlogs&f <spieler>"
+
+# Teammodus
+staff_mode:
+  enabled: "&aTeammodus aktiviert"
+  disabled: "&aTeammodus deaktiviert"
+  enabled_broadcast: "&7&o[{staff}: Teammodus betreten]"
+  disabled_broadcast: "&7&o[{staff}: Teammodus verlassen]"
+
+# Unsichtbarkeit
+vanish:
+  enabled: "&aDu bist jetzt unsichtbar"
+  disabled: "&aDu bist nicht mehr unsichtbar"
+  enabled_broadcast: "&7&o[{staff}: unsichtbar]"
+  disabled_broadcast: "&7&o[{staff}: sichtbar]"
+
+# Ziel
+target:
+  targeting: "&eZiel jetzt: &f{player}"
+  cleared: "&aZiel gelöscht."
+  usage: "&fVerwendung: &a/target&f <spieler>"
+  connecting: "&eVerbinde mit &f{server} &eum &f{player}&e zu verfolgen..."
+  cannot_target_self: "&cDu kannst dich nicht selbst zum Ziel machen."
+  not_online: "&cDer Spieler ist nicht online."
 

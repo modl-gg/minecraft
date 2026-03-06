@@ -5,9 +5,9 @@ import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.menu.CirrusInventoryType;
+import dev.simplix.cirrus.menus.SimpleMenu;
 import dev.simplix.cirrus.model.CallResult;
 import dev.simplix.cirrus.text.CirrusChatElement;
-import dev.simplix.cirrus.menus.SimpleMenu;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
@@ -66,12 +66,8 @@ public class ReportConfirmMenu extends SimpleMenu {
         // C (slot 11): Confirm Report
         List<String> confirmLore = new ArrayList<>();
         confirmLore.add(MenuItems.COLOR_GRAY + "Reason: " + MenuItems.COLOR_WHITE + reportData.getReason());
-        if (reportData.getDetails() != null) {
-            confirmLore.add(MenuItems.COLOR_GRAY + "Details: " + MenuItems.COLOR_WHITE + reportData.getDetails());
-        }
-        if (reportData.getChatLog() != null) {
-            confirmLore.add(MenuItems.COLOR_GRAY + "Chat Log: " + MenuItems.COLOR_WHITE + "Attached");
-        }
+        if (reportData.getDetails() != null) confirmLore.add(MenuItems.COLOR_GRAY + "Details: " + MenuItems.COLOR_WHITE + reportData.getDetails());
+        if (reportData.getChatLog() != null) confirmLore.add(MenuItems.COLOR_GRAY + "Chat Log: " + MenuItems.COLOR_WHITE + "Attached");
         confirmLore.add("");
         confirmLore.addAll(locale.getMessageList("messages.report_confirm_lore"));
 
@@ -135,21 +131,15 @@ public class ReportConfirmMenu extends SimpleMenu {
         StringBuilder description = new StringBuilder();
         description.append("Reason: ").append(reportData.getReason());
 
-        if (reportData.getDetails() != null) {
-            description.append("\nDetails: ").append(reportData.getDetails());
-        }
+        if (reportData.getDetails() != null) description.append("\nDetails: ").append(reportData.getDetails());
 
-        if (reportData.getChatLog() != null) {
-            description.append("\n\n**Chat Log:**\n```\n").append(reportData.getChatLog()).append("\n```");
-        }
+        if (reportData.getChatLog() != null) description.append("\n\n**Chat Log:**\n```\n").append(reportData.getChatLog()).append("\n```");
 
         String ticketType = reportData.isChatReport() ? "chat" : "player";
         String subject = (reportData.isChatReport() ? "Chat Report" : "Player Report") + ": " + target.username();
 
         List<String> chatMessages = null;
-        if (reportData.getChatLog() != null) {
-            chatMessages = List.of(reportData.getChatLog().split("\n"));
-        }
+        if (reportData.getChatLog() != null) chatMessages = List.of(reportData.getChatLog().split("\n"));
 
         String createdServer = platform.getPlayerServer(reporter.uuid());
 

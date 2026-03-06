@@ -37,17 +37,13 @@ public class DatabaseConfig {
         }
 
         public String buildJdbcUrl(String host, int port, String database) {
-            if (this == H2) {
-                return String.format(urlFormat, database);
-            }
+            if (this == H2) return String.format(urlFormat, database);
             return String.format(urlFormat, host, port, database);
         }
 
         public static DatabaseType fromString(String type) {
             for (DatabaseType dbType : values()) {
-                if (dbType.name.equalsIgnoreCase(type)) {
-                    return dbType;
-                }
+                if (dbType.name.equalsIgnoreCase(type)) return dbType;
             }
             throw new IllegalArgumentException("Unknown database type: " + type);
         }

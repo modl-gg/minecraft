@@ -2,18 +2,19 @@ package gg.modl.minecraft.bungee;
 
 import co.aikar.commands.BungeeCommandManager;
 import co.aikar.commands.CommandManager;
+import dev.simplix.cirrus.bungee.wrapper.BungeePlayerWrapper;
+import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffModeService;
+import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
-import dev.simplix.cirrus.player.CirrusPlayerWrapper;
-import dev.simplix.cirrus.bungee.wrapper.BungeePlayerWrapper;
-import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import net.md_5.bungee.api.ChatColor;
@@ -26,7 +27,6 @@ import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -43,7 +43,7 @@ public class BungeePlatform implements Platform {
     @Setter
     private StaffModeService staffModeService;
     @Setter
-    private gg.modl.minecraft.core.service.BridgeService bridgeService;
+    private BridgeService bridgeService;
     @Setter
     private Staff2faService staff2faService;
 
@@ -77,9 +77,7 @@ public class BungeePlatform implements Platform {
         ProxiedPlayer pp = ProxyServer.getInstance().getPlayer(player);
         if (pp != null) {
             net.md_5.bungee.api.config.ServerInfo server = ProxyServer.getInstance().getServerInfo(serverName);
-            if (server != null) {
-                pp.connect(server);
-            }
+            if (server != null) pp.connect(server);
         }
     }
 
@@ -94,26 +92,19 @@ public class BungeePlatform implements Platform {
     @Override
     public void disconnect(UUID uuid, String message) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
-        if (player != null && player.isConnected()) {
-            player.disconnect(new TextComponent(ChatColor.translateAlternateColorCodes('&', message)));
-        }
+        if (player != null && player.isConnected()) player.disconnect(new TextComponent(ChatColor.translateAlternateColorCodes('&', message)));
     }
 
     @Override
     public void sendMessage(UUID uuid, String message) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
-        if (player != null && player.isConnected()) {
-            player.sendMessage(StringUtil.unescapeNewlines(message));
-        }
+        if (player != null && player.isConnected()) player.sendMessage(StringUtil.unescapeNewlines(message));
     }
     
     @Override
     public void sendJsonMessage(UUID uuid, String jsonMessage) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
-        if (player != null && player.isConnected()) {
-            // Parse and send JSON message using BungeeCord's ComponentSerializer
-            player.sendMessage(net.md_5.bungee.chat.ComponentSerializer.parse(jsonMessage));
-        }
+        if (player != null && player.isConnected()) player.sendMessage(net.md_5.bungee.chat.ComponentSerializer.parse(jsonMessage));
     }
 
     @Override
@@ -131,31 +122,13 @@ public class BungeePlatform implements Platform {
     @Override
     public AbstractPlayer getAbstractPlayer(UUID uuid, boolean queryMojang) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
-        if (player != null) {
-            String ipAddress = null;
-            if (player.getSocketAddress() instanceof InetSocketAddress) {
-                ipAddress = ((InetSocketAddress) player.getSocketAddress()).getAddress().getHostAddress();
-            }
-            return new AbstractPlayer(uuid, player.getName(), player.isConnected(), ipAddress);
-        }
-        
-        // BungeeCord doesn't have offline player support like Bukkit
-        return null;
+        return player != null ? toAbstractPlayer(player) : null;
     }
 
     @Override
     public AbstractPlayer getAbstractPlayer(String username, boolean queryMojang) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(username);
-        if (player != null) {
-            String ipAddress = null;
-            if (player.getSocketAddress() instanceof InetSocketAddress) {
-                ipAddress = ((InetSocketAddress) player.getSocketAddress()).getAddress().getHostAddress();
-            }
-            return new AbstractPlayer(player.getUniqueId(), player.getName(), player.isConnected(), ipAddress);
-        }
-        
-        // BungeeCord doesn't have offline player support like Bukkit
-        return null;
+        return player != null ? toAbstractPlayer(player) : null;
     }
 
     @Override
@@ -167,13 +140,7 @@ public class BungeePlatform implements Platform {
     @Override
     public Collection<AbstractPlayer> getOnlinePlayers() {
         return ProxyServer.getInstance().getPlayers().stream()
-            .map(player -> {
-                String ipAddress = null;
-                if (player.getSocketAddress() instanceof InetSocketAddress) {
-                    ipAddress = ((InetSocketAddress) player.getSocketAddress()).getAddress().getHostAddress();
-                }
-                return new AbstractPlayer(player.getUniqueId(), player.getName(), player.isConnected(), ipAddress);
-            })
+            .map(this::toAbstractPlayer)
             .collect(Collectors.toList());
     }
 
@@ -194,17 +161,14 @@ public class BungeePlatform implements Platform {
 
     @Override
     public void runOnMainThread(Runnable task) {
-        // Execute directly — menus (Cirrus/PacketEvents) and messages are thread-safe.
-        // BungeeCord has no main thread concept; all APIs are safe from any thread.
+        // BungeeCord has no main thread; all APIs are thread-safe
         task.run();
     }
 
     @Override
     public void kickPlayer(AbstractPlayer player, String reason) {
         ProxiedPlayer bungeePlayer = ProxyServer.getInstance().getPlayer(player.getUuid());
-        if (bungeePlayer != null && bungeePlayer.isConnected()) {
-            bungeePlayer.disconnect(new TextComponent(StringUtil.unescapeNewlines(reason)));
-        }
+        if (bungeePlayer != null && bungeePlayer.isConnected()) bungeePlayer.disconnect(new TextComponent(StringUtil.unescapeNewlines(reason)));
     }
 
     @Override
@@ -215,9 +179,7 @@ public class BungeePlatform implements Platform {
     @Override
     public String getPlayerServer(UUID uuid) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
-        if (player != null && player.getServer() != null) {
-            return player.getServer().getInfo().getName();
-        }
+        if (player != null && player.getServer() != null) return player.getServer().getInfo().getName();
         return getServerName();
     }
 
@@ -229,19 +191,15 @@ public class BungeePlatform implements Platform {
     @Override
     public DatabaseProvider createLiteBansDatabaseProvider() {
         try {
-            // Check if LiteBans plugin is loaded
-            if (ProxyServer.getInstance().getPluginManager().getPlugin("LiteBans") != null) {
-                // Verify LiteBans API is accessible
-                Class.forName("litebans.api.Database");
-                logger.info("[Migration] LiteBans plugin detected, using LiteBans API");
-                return new LiteBansDatabaseProvider();
-            }
+            if (ProxyServer.getInstance().getPluginManager().getPlugin("LiteBans") == null) return null;
+            Class.forName("litebans.api.Database");
+            logger.info("[Migration] LiteBans plugin detected, using LiteBans API");
+            return new LiteBansDatabaseProvider();
         } catch (ClassNotFoundException e) {
             logger.info("[Migration] LiteBans API not found in classpath");
         } catch (Exception e) {
             logger.warning("[Migration] Error checking for LiteBans: " + e.getMessage());
         }
-
         return null;
     }
 
@@ -249,12 +207,16 @@ public class BungeePlatform implements Platform {
         return logger;
     }
 
+    private AbstractPlayer toAbstractPlayer(ProxiedPlayer player) {
+        String ip = (player.getSocketAddress() instanceof InetSocketAddress)
+                ? ((InetSocketAddress) player.getSocketAddress()).getAddress().getHostAddress() : null;
+        return new AbstractPlayer(player.getUniqueId(), player.getName(), player.isConnected(), ip);
+    }
+
     @Override
     public void dispatchPlayerCommand(UUID uuid, String command) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
-        if (player != null) {
-            ProxyServer.getInstance().getPluginManager().dispatchCommand(player, command);
-        }
+        if (player != null) ProxyServer.getInstance().getPluginManager().dispatchCommand(player, command);
     }
 
     @Override
@@ -268,7 +230,7 @@ public class BungeePlatform implements Platform {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
         if (player == null) return null;
         try {
-            // InitialHandler.getLoginProfile() is an internal BungeeCord class - use reflection
+            // Reflection required: getLoginProfile() is internal BungeeCord API
             Object pendingConnection = player.getPendingConnection();
             Object profile = pendingConnection.getClass().getMethod("getLoginProfile").invoke(pendingConnection);
             if (profile == null) return null;
@@ -276,13 +238,9 @@ public class BungeePlatform implements Platform {
             if (properties == null) return null;
             for (Object prop : properties) {
                 String name = (String) prop.getClass().getMethod("getName").invoke(prop);
-                if ("textures".equals(name)) {
-                    return (String) prop.getClass().getMethod("getValue").invoke(prop);
-                }
+                if ("textures".equals(name)) return (String) prop.getClass().getMethod("getValue").invoke(prop);
             }
-        } catch (Exception e) {
-            // Reflection failure - return null
-        }
+        } catch (Exception ignored) {}
         return null;
     }
 
@@ -307,7 +265,7 @@ public class BungeePlatform implements Platform {
     }
 
     @Override
-    public gg.modl.minecraft.core.service.BridgeService getBridgeService() {
+    public BridgeService getBridgeService() {
         return bridgeService;
     }
 }

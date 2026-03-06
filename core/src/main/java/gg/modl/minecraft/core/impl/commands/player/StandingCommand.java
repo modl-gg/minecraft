@@ -2,7 +2,9 @@ package gg.modl.minecraft.core.impl.commands.player;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.*;
+import co.aikar.commands.annotation.CommandAlias;
+import co.aikar.commands.annotation.Conditions;
+import co.aikar.commands.annotation.Description;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
@@ -30,9 +32,7 @@ public class StandingCommand extends BaseCommand {
     private final LocaleManager localeManager;
     private final Map<UUID, Long> cooldowns = new ConcurrentHashMap<>();
 
-    private ModlHttpClient getHttpClient() {
-        return httpClientHolder.getClient();
-    }
+    private static final int PREVIEW_TYPE_ORDINAL = 6;
 
     @CommandAlias("%cmd_standing")
     @Description("View your current standing and punishment history")
@@ -40,24 +40,12 @@ public class StandingCommand extends BaseCommand {
     public void standing(CommandIssuer sender) {
         UUID uuid = sender.getUniqueId();
 
-        long now = System.currentTimeMillis();
-        Long lastUsed = cooldowns.get(uuid);
-        if (lastUsed != null) {
-            long remaining = COOLDOWN_MS - (now - lastUsed);
-            if (remaining > 0) {
-                int seconds = (int) Math.ceil(remaining / 1000.0);
-                sender.sendMessage(localeManager.getMessage("standing.cooldown",
-                        Map.of("seconds", String.valueOf(seconds))));
-                return;
-            }
-        }
-        cooldowns.put(uuid, now);
+        if (!checkCooldown(sender, uuid)) return;
+        cooldowns.put(uuid, System.currentTimeMillis());
 
         sender.sendMessage(localeManager.getMessage("standing.loading"));
 
-        ModlHttpClient httpClient = getHttpClient();
-
-        // Fetch player profile (contains punishments)
+        ModlHttpClient httpClient = httpClientHolder.getClient();
         httpClient.getPlayerProfile(uuid).thenAccept(profileResponse -> {
             if (profileResponse == null || profileResponse.getProfile() == null) {
                 sender.sendMessage(localeManager.getMessage("standing.error"));
@@ -65,35 +53,11 @@ public class StandingCommand extends BaseCommand {
             }
 
             Account account = profileResponse.getProfile();
+            PunishmentPreviewResponse previewData = loadPreviewData(httpClient, uuid);
+            Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = loadPunishmentTypes(httpClient);
 
-            // Fetch standing status (social/gameplay) using any type ordinal
-            PunishmentPreviewResponse previewData = null;
-            try {
-                previewData = httpClient.getPunishmentPreview(uuid, 6).join();
-                if (previewData != null && !previewData.isSuccess()) {
-                    previewData = null;
-                }
-            } catch (Exception ignored) {
-                // Status data unavailable - menu will show "Unknown"
-            }
-
-            // Load punishment types for display names
-            Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
-            try {
-                PunishmentTypesResponse typesResponse = httpClient.getPunishmentTypes().join();
-                if (typesResponse != null && typesResponse.isSuccess() && typesResponse.getData() != null) {
-                    for (PunishmentTypesResponse.PunishmentTypeData type : typesResponse.getData()) {
-                        typesByOrdinal.put(type.getOrdinal(), type);
-                    }
-                }
-            } catch (Exception ignored) {
-                // Will use fallback type detection
-            }
-
-            // Load config
             StandingGuiConfig guiConfig = StandingGuiConfig.load(
-                    platform.getDataFolder().toPath(),
-                    Logger.getLogger("modl"));
+                    platform.getDataFolder().toPath(), Logger.getLogger("modl"));
 
             StandingMenu menu = new StandingMenu(
                 platform, httpClient, uuid,
@@ -105,5 +69,39 @@ public class StandingCommand extends BaseCommand {
             sender.sendMessage(localeManager.getMessage("standing.error"));
             return null;
         });
+    }
+
+    private boolean checkCooldown(CommandIssuer sender, UUID uuid) {
+        Long lastUsed = cooldowns.get(uuid);
+        if (lastUsed == null) return true;
+
+        long remaining = COOLDOWN_MS - (System.currentTimeMillis() - lastUsed);
+        if (remaining <= 0) return true;
+
+        int seconds = (int) Math.ceil(remaining / 1000.0);
+        sender.sendMessage(localeManager.getMessage("standing.cooldown",
+                Map.of("seconds", String.valueOf(seconds))));
+        return false;
+    }
+
+    private PunishmentPreviewResponse loadPreviewData(ModlHttpClient httpClient, UUID uuid) {
+        try {
+            PunishmentPreviewResponse preview = httpClient.getPunishmentPreview(uuid, PREVIEW_TYPE_ORDINAL).join();
+            return (preview != null && preview.isSuccess()) ? preview : null;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private Map<Integer, PunishmentTypesResponse.PunishmentTypeData> loadPunishmentTypes(ModlHttpClient httpClient) {
+        Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
+        try {
+            PunishmentTypesResponse typesResponse = httpClient.getPunishmentTypes().join();
+            if (typesResponse != null && typesResponse.isSuccess() && typesResponse.getData() != null)
+                for (PunishmentTypesResponse.PunishmentTypeData type : typesResponse.getData())
+                    typesByOrdinal.put(type.getOrdinal(), type);
+        } catch (Exception ignored) {
+        }
+        return typesByOrdinal;
     }
 }

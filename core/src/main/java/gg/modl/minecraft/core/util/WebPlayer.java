@@ -15,35 +15,33 @@ import java.util.logging.Logger;
 
 public record WebPlayer(String name, UUID uuid, String skin, String textureValue, boolean valid) {
     private static final Logger logger = Logger.getLogger(WebPlayer.class.getName());
-    private static final String REGEX_PATTERN = "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)";
+    private static final String UUID_REGEX = "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)";
+    private static final String MOJANG_PROFILE_URL = "https://api.mojang.com/users/profiles/minecraft/";
+    private static final String MOJANG_SESSION_URL = "https://sessionserver.mojang.com/session/minecraft/profile/";
+    private static final String TEXTURE_URL_PREFIX_HTTP = "http://textures.minecraft.net/texture/";
+    private static final String TEXTURE_URL_PREFIX_HTTPS = "https://textures.minecraft.net/texture/";
+    private static final WebPlayer INVALID = new WebPlayer(null, null, null, null, false);
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+    private static final long SYNC_TIMEOUT_MS = 10_000;
 
-    // Shared HTTP client for better performance
     private static final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
+            .connectTimeout(CONNECT_TIMEOUT)
             .build();
 
-    /**
-     * Get player information by username asynchronously
-     */
     public static CompletableFuture<WebPlayer> get(String username) {
-        return fromUrl("https://api.mojang.com/users/profiles/minecraft/" + username);
+        return fromUrl(MOJANG_PROFILE_URL + username);
     }
 
-    /**
-     * Get player information by UUID asynchronously
-     */
     public static CompletableFuture<WebPlayer> get(UUID uuid) {
-        return fromUrl("https://sessionserver.mojang.com/session/minecraft/profile/" + uuid.toString().replace("-", ""));
+        return fromUrl(MOJANG_SESSION_URL + uuid.toString().replace("-", ""));
     }
 
-    /**
-     * Fetch player data from URL asynchronously
-     */
     private static CompletableFuture<WebPlayer> fromUrl(String rawUrl) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(rawUrl))
-                    .timeout(Duration.ofSeconds(10))
+                    .timeout(REQUEST_TIMEOUT)
                     .GET()
                     .build();
 
@@ -52,19 +50,19 @@ public record WebPlayer(String name, UUID uuid, String skin, String textureValue
                         try {
                             if (response.statusCode() != 200) {
                                 logger.warning("Mojang API returned status " + response.statusCode() + " for URL: " + rawUrl);
-                                return new WebPlayer(null, null, null, null, false);
+                                return INVALID;
                             }
 
                             String jsonString = response.body();
                             if (jsonString == null || jsonString.trim().isEmpty()) {
                                 logger.warning("Empty response from Mojang API for URL: " + rawUrl);
-                                return new WebPlayer(null, null, null, null, false);
+                                return INVALID;
                             }
 
                             JsonObject json = JsonParser.parseString(jsonString).getAsJsonObject();
                             if (json == null) {
                                 logger.warning("Invalid JSON response from Mojang API for URL: " + rawUrl);
-                                return new WebPlayer(null, null, null, null, false);
+                                return INVALID;
                             }
 
                             String name = json.has("name") ? json.get("name").getAsString() : null;
@@ -72,18 +70,16 @@ public record WebPlayer(String name, UUID uuid, String skin, String textureValue
 
                             if (name == null || idString == null) {
                                 logger.warning("Missing name or id in Mojang API response for URL: " + rawUrl);
-                                return new WebPlayer(null, null, null, null, false);
+                                return INVALID;
                             }
 
-                            UUID playerUuid = UUID.fromString(idString.replaceFirst(REGEX_PATTERN, "$1-$2-$3-$4-$5"));
+                            UUID playerUuid = UUID.fromString(idString.replaceFirst(UUID_REGEX, "$1-$2-$3-$4-$5"));
 
-                            // Capture raw base64 texture value before extracting skin ID
                             String textureValue = null;
-                            if (json.has("properties") && json.getAsJsonArray("properties").size() > 0) {
-                                JsonObject properties = json.getAsJsonArray("properties").get(0).getAsJsonObject();
-                                if (properties.has("value")) {
-                                    textureValue = properties.get("value").getAsString();
-                                }
+                            com.google.gson.JsonArray propsArray = json.has("properties") ? json.getAsJsonArray("properties") : null;
+                            if (propsArray != null && !propsArray.isEmpty()) {
+                                JsonObject properties = propsArray.get(0).getAsJsonObject();
+                                if (properties.has("value")) textureValue = properties.get("value").getAsString();
                             }
 
                             String skinId = getSkinId(json);
@@ -91,32 +87,26 @@ public record WebPlayer(String name, UUID uuid, String skin, String textureValue
                             return new WebPlayer(name, playerUuid, skinId, textureValue, true);
                         } catch (Exception e) {
                             logger.warning("Error parsing Mojang API response for URL " + rawUrl + ": " + e.getMessage());
-                            return new WebPlayer(null, null, null, null, false);
+                            return INVALID;
                         }
                     })
                     .exceptionally(throwable -> {
                         logger.warning("Failed to fetch player data from Mojang API for URL " + rawUrl + ": " + throwable.getMessage());
-                        return new WebPlayer(null, null, null, null, false);
+                        return INVALID;
                     });
         } catch (Exception e) {
             logger.warning("Error creating request for Mojang API URL " + rawUrl + ": " + e.getMessage());
-            return CompletableFuture.completedFuture(new WebPlayer(null, null, null, null, false));
+            return CompletableFuture.completedFuture(INVALID);
         }
     }
 
-    /**
-     * Extract skin ID from Mojang API response
-     */
     public static String getSkinId(JsonObject json) {
         try {
-            if (!json.has("properties") || json.getAsJsonArray("properties").size() == 0) {
-                return null;
-            }
+            com.google.gson.JsonArray propsArr = json.has("properties") ? json.getAsJsonArray("properties") : null;
+            if (propsArr == null || propsArr.isEmpty()) return null;
 
-            JsonObject properties = json.getAsJsonArray("properties").get(0).getAsJsonObject();
-            if (!properties.has("value")) {
-                return null;
-            }
+            JsonObject properties = propsArr.get(0).getAsJsonObject();
+            if (!properties.has("value")) return null;
 
             return getSkinId(properties.get("value").getAsString());
         } catch (Exception e) {
@@ -125,70 +115,46 @@ public record WebPlayer(String name, UUID uuid, String skin, String textureValue
         }
     }
 
-    /**
-     * Extract skin ID from base64 encoded texture data
-     */
     public static String getSkinId(String base64) {
         try {
-            if (base64 == null || base64.trim().isEmpty()) {
-                return null;
-            }
+            if (base64 == null || base64.trim().isEmpty()) return null;
 
-            // Decode the base64 value
             String decodedJson = new String(Base64.getDecoder().decode(base64));
             JsonObject decodedObject = JsonParser.parseString(decodedJson).getAsJsonObject();
-
-            // Extract the textures.minecraft.net link
-            if (!decodedObject.has("textures")) {
-                return null;
-            }
+            if (!decodedObject.has("textures")) return null;
 
             JsonObject textures = decodedObject.getAsJsonObject("textures");
-            if (!textures.has("SKIN")) {
-                return null;
-            }
+            if (!textures.has("SKIN")) return null;
 
             JsonObject skin = textures.getAsJsonObject("SKIN");
-            if (!skin.has("url")) {
-                return null;
-            }
+            if (!skin.has("url")) return null;
 
             String url = skin.get("url").getAsString();
-            return url.replace("http://textures.minecraft.net/texture/", "")
-                     .replace("https://textures.minecraft.net/texture/", "");
+            return url.replace(TEXTURE_URL_PREFIX_HTTP, "")
+                     .replace(TEXTURE_URL_PREFIX_HTTPS, "");
         } catch (Exception e) {
             logger.warning("Error extracting skin ID from base64: " + e.getMessage());
             return null;
         }
     }
 
-    /**
-     * Synchronous wrapper for backward compatibility (deprecated)
-     * @deprecated Use the async get() methods instead
-     */
     @Deprecated
     public static WebPlayer getSync(String username) {
         try {
-            return get(username).get(java.util.concurrent.TimeUnit.SECONDS.toMillis(10),
-                                   java.util.concurrent.TimeUnit.MILLISECONDS);
+            return get(username).get(SYNC_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             logger.warning("Synchronous WebPlayer.get() failed for username " + username + ": " + e.getMessage());
-            return new WebPlayer(null, null, null, null, false);
+            return INVALID;
         }
     }
 
-    /**
-     * Synchronous wrapper for backward compatibility (deprecated)
-     * @deprecated Use the async get() methods instead
-     */
     @Deprecated
     public static WebPlayer getSync(UUID uuid) {
         try {
-            return get(uuid).get(java.util.concurrent.TimeUnit.SECONDS.toMillis(10),
-                                java.util.concurrent.TimeUnit.MILLISECONDS);
+            return get(uuid).get(SYNC_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             logger.warning("Synchronous WebPlayer.get() failed for UUID " + uuid + ": " + e.getMessage());
-            return new WebPlayer(null, null, null, null, false);
+            return INVALID;
         }
     }
 }

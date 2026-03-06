@@ -14,6 +14,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class IPAddress {
+    private static final String UNKNOWN = "Unknown";
+
     @SerializedName("proxy")
     private boolean proxy;
 
@@ -45,12 +47,12 @@ public class IPAddress {
 
     @NotNull
     public String getCountry() {
-        return country != null ? country : "Unknown";
+        return country != null ? country : UNKNOWN;
     }
 
     @NotNull
     public String getRegion() {
-        return region != null ? region : "Unknown";
+        return region != null ? region : UNKNOWN;
     }
 
     @NotNull

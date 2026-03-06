@@ -10,6 +10,6 @@ import lombok.NoArgsConstructor;
 public class TogglePunishmentOptionRequest {
     private String punishmentId;
     private String issuerName;
-    private String option; // "ALT_BLOCKING" or "STAT_WIPE"
+    private String option;
     private boolean enabled;
 }

@@ -6,12 +6,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Manages frozen player state. Frozen players cannot move, chat, or use commands.
- */
 public class FreezeService {
-
-    // Maps frozen player UUID -> staff UUID who froze them
     private final Map<UUID, UUID> frozenPlayers = new ConcurrentHashMap<>();
 
     public void freeze(UUID target, UUID staff) {
@@ -34,7 +29,8 @@ public class FreezeService {
         return Collections.unmodifiableSet(frozenPlayers.keySet());
     }
 
+    /** Alias for {@link #unfreeze} — used on player disconnect. */
     public void removePlayer(UUID uuid) {
-        frozenPlayers.remove(uuid);
+        unfreeze(uuid);
     }
 }
