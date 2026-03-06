@@ -106,10 +106,9 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         originalPermissions = new HashSet<>(role.getPermissions());
 
         Set<String> allNodes = new LinkedHashSet<>(AVAILABLE_PERMISSIONS);
-        for (String perm : role.getPermissions()) {
-            if (perm.startsWith("punishment.apply."))
-                allNodes.add(perm);
-        }
+        for (String perm : role.getPermissions())
+            if (perm.startsWith("punishment.apply.")) allNodes.add(perm);
+
         if (cache != null && cache.getCachedPunishmentTypes() != null
                 && cache.getCachedPunishmentTypes().getData() != null) {
             for (var type : cache.getCachedPunishmentTypes().getData()) {
@@ -118,9 +117,8 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             }
         }
 
-        for (String node : allNodes) {
+        for (String node : allNodes)
             allPermissions.add(new Permission(node, enabledPermissions.contains(node)));
-        }
     }
 
     @Override
@@ -211,13 +209,9 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
     @Override
     protected void handleClick(Click click, Permission permission) {
-        if (permission.getNode() == null || "no_permission".equals(permission.getNode()) || !hasPermission) {
-            return;
-        }
+        if (permission.getNode() == null || "no_permission".equals(permission.getNode()) || !hasPermission) return;
 
-        if (isChildPermission(permission.getNode()) && isParentEnabled(permission.getNode())) {
-            return;
-        }
+        if (isChildPermission(permission.getNode()) && isParentEnabled(permission.getNode())) return;
 
         boolean newState = !permission.isEnabled();
         permission.setEnabled(newState);
@@ -231,9 +225,8 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
                     enabledPermissions.add(p.getNode());
                 }
             }
-        } else {
-            enabledPermissions.remove(permission.getNode());
-        }
+        } else enabledPermissions.remove(permission.getNode());
+
 
         RoleListMenu.Role localRole = new RoleListMenu.Role(
                 role.getId(), role.getName(), role.getDescription(), new ArrayList<>(enabledPermissions));
