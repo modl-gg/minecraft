@@ -105,6 +105,7 @@ public class PunishmentActionCommand extends BaseCommand {
     private void promptLinkEvidence(CommandIssuer sender, String punishmentId) {
         UUID senderUuid = sender.getUniqueId();
         String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
+        String issuerId = cache.getStaffId(senderUuid);
         platform.getChatInputManager().requestInput(senderUuid,
                 localeManager.getMessage("punishment_action.enter_evidence_url", Map.of("id", punishmentId)),
                 (url) -> {
@@ -114,7 +115,7 @@ public class PunishmentActionCommand extends BaseCommand {
                     }
 
                     AddPunishmentEvidenceRequest request = new AddPunishmentEvidenceRequest(
-                            punishmentId, senderName, url
+                            punishmentId, senderName, issuerId, url
                     );
 
                     httpClientHolder.getClient().addPunishmentEvidence(request).thenAccept(v -> platform.sendMessage(senderUuid, localeManager.getMessage("punishment_action.evidence_linked", Map.of("id", punishmentId)))).exceptionally(throwable -> {

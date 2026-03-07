@@ -44,6 +44,7 @@ public abstract class AbstractManualPunishmentCommand extends BaseCommand {
 
         ParsedArgs parsed = parseArguments(args, getSupportedFlags());
         String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
+        String issuerId = CommandUtil.resolveIssuerId(sender, cache);
         String reason = parsed.reason.isEmpty() ? localeManager.getMessage("config.default_reason") : parsed.reason;
 
         Map<String, Object> dataMap = new HashMap<>();
@@ -60,6 +61,7 @@ public abstract class AbstractManualPunishmentCommand extends BaseCommand {
         PunishmentCreateRequest request = new PunishmentCreateRequest(
             target.getMinecraftUuid().toString(),
             issuerName,
+            issuerId,
             reason,
             null, null,
             getOrdinal(),

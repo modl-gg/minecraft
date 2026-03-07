@@ -61,7 +61,7 @@ public class SyncResponse {
     
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class ActiveStaffMember {
-        private @NotNull String minecraftUuid, minecraftUsername, staffUsername, staffRole, email;
+        private @NotNull String minecraftUuid, minecraftUsername, staffUsername, staffRole, email, staffId;
         private @NotNull List<String> permissions;
         private Boolean twoFactorSessionValid;
     }

@@ -6,6 +6,6 @@ import lombok.NoArgsConstructor;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class ChangePunishmentDurationRequest {
-    private String punishmentId, issuerName;
+    private String punishmentId, issuerName, issuerId;
     private Long newDuration;
 }

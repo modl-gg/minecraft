@@ -47,13 +47,17 @@ public final class PunishmentModificationActions {
         this.displayMenu = displayMenu;
     }
 
+    private String resolveViewerIssuerId() {
+        return platform.getCache() != null ? platform.getCache().getStaffId(viewerUuid) : null;
+    }
+
     public void handleAddNote(Click click) {
         click.clickedMenu().close();
 
         platform.getChatInputManager().requestInput(viewerUuid, "Enter note to add to this punishment:",
                 input -> {
                     AddPunishmentNoteRequest request = new AddPunishmentNoteRequest(
-                            punishment.getId(), viewerName, input);
+                            punishment.getId(), viewerName, resolveViewerIssuerId(), input);
 
                     httpClient.addPunishmentNote(request).thenAccept(v -> {
                         sendMessage.accept(MenuItems.COLOR_GREEN + "Note added successfully!");
@@ -96,7 +100,7 @@ public final class PunishmentModificationActions {
         platform.getChatInputManager().requestInput(viewerUuid, "Enter evidence URL:",
                 input -> {
                     AddPunishmentEvidenceRequest request = new AddPunishmentEvidenceRequest(
-                            punishment.getId(), viewerName, input);
+                            punishment.getId(), viewerName, resolveViewerIssuerId(), input);
 
                     httpClient.addPunishmentEvidence(request).thenAccept(v -> {
                         sendMessage.accept(MenuItems.COLOR_GREEN + "Evidence added successfully!");
@@ -116,7 +120,7 @@ public final class PunishmentModificationActions {
 
     public void handlePardon(Click click) {
         PardonPunishmentRequest request = new PardonPunishmentRequest(
-                punishment.getId(), viewerName, null, null);
+                punishment.getId(), viewerName, resolveViewerIssuerId(), null, null);
 
         httpClient.pardonPunishment(request).thenAccept(response -> {
             if (response.hasPardoned()) {
@@ -147,7 +151,7 @@ public final class PunishmentModificationActions {
                     }
 
                     ChangePunishmentDurationRequest request = new ChangePunishmentDurationRequest(
-                            punishment.getId(), viewerName, durationMs);
+                            punishment.getId(), viewerName, resolveViewerIssuerId(), durationMs);
 
                     httpClient.changePunishmentDuration(request).thenAccept(v -> {
                         sendMessage.accept(MenuItems.COLOR_GREEN + "Duration changed successfully!");
@@ -170,7 +174,7 @@ public final class PunishmentModificationActions {
         boolean currentStatus = Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
 
         TogglePunishmentOptionRequest request = new TogglePunishmentOptionRequest(
-                punishment.getId(), viewerName, "STAT_WIPE", !currentStatus);
+                punishment.getId(), viewerName, resolveViewerIssuerId(), "STAT_WIPE", !currentStatus);
 
         httpClient.togglePunishmentOption(request).thenAccept(v -> {
             sendMessage.accept(MenuItems.COLOR_GREEN + "Stat-wipe " + (!currentStatus ? "enabled" : "disabled") + " successfully!");
@@ -185,7 +189,7 @@ public final class PunishmentModificationActions {
         boolean currentStatus = Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
 
         TogglePunishmentOptionRequest request = new TogglePunishmentOptionRequest(
-                punishment.getId(), viewerName, "ALT_BLOCKING", !currentStatus);
+                punishment.getId(), viewerName, resolveViewerIssuerId(), "ALT_BLOCKING", !currentStatus);
 
         httpClient.togglePunishmentOption(request).thenAccept(v -> {
             sendMessage.accept(MenuItems.COLOR_GREEN + "Alt-blocking " + (!currentStatus ? "enabled" : "disabled") + " successfully!");

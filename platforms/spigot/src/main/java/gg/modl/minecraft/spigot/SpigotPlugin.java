@@ -15,7 +15,6 @@ import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import net.byteflux.libby.BukkitLibraryManager;
 import net.byteflux.libby.Library;
-import org.bstats.bukkit.Metrics;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -26,7 +25,7 @@ import java.util.List;
 
 public class SpigotPlugin extends JavaPlugin {
     private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg", BRIDGE_PLUGIN_NAME = "modl-bridge", DEFAULT_BRIDGE_NAME = "bridge";
-    private static final int DEFAULT_BRIDGE_PORT = 25590, MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2, BSTATS_PLUGIN_ID = 29705;
+    private static final int DEFAULT_BRIDGE_PORT = 25590, MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
 
     private PluginLoader loader;
     private QueryStatWipeExecutor queryStatWipeExecutor;
@@ -77,8 +76,6 @@ public class SpigotPlugin extends JavaPlugin {
                 loader.getConfigManager().getStaffChatConfig(),
                 loader.getBridgeService(), loader.getPlayerProfileRegistry(),
                 loader.isDebugMode()), this);
-
-        new Metrics(this, BSTATS_PLUGIN_ID);
     }
 
     @Override

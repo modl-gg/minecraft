@@ -21,7 +21,6 @@ import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
 import net.md_5.bungee.config.YamlConfiguration;
-import org.bstats.bungeecord.Metrics;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +32,7 @@ import java.util.logging.Level;
 @Getter
 public class BungeePlugin extends Plugin {
     private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg", DEFAULT_BRIDGE_NAME = "bridge";
-    private static final int DEFAULT_BRIDGE_PORT = 25590, MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2, BSTATS_PLUGIN_ID = 29831;
+    private static final int DEFAULT_BRIDGE_PORT = 25590, MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
 
     private Configuration configuration;
     private PluginLoader loader;
@@ -87,8 +86,6 @@ public class BungeePlugin extends Plugin {
 
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
         getProxy().getPluginManager().registerListener(this, new AsyncCommandInterceptor(asyncExecutor, getProxy()));
-
-        new Metrics(this, BSTATS_PLUGIN_ID);
     }
 
     @Override

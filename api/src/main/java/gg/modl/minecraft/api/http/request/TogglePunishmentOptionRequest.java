@@ -6,6 +6,6 @@ import lombok.NoArgsConstructor;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class TogglePunishmentOptionRequest {
-    private String punishmentId, issuerName, option;
+    private String punishmentId, issuerName, issuerId, option;
     private boolean enabled;
 }

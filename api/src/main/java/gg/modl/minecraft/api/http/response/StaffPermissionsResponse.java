@@ -18,7 +18,7 @@ public class StaffPermissionsResponse {
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class StaffMember {
-        private String minecraftUuid, minecraftUsername, staffUsername, staffRole, email;
+        private String minecraftUuid, minecraftUsername, staffUsername, staffId, staffRole, email;
         private List<String> permissions;
     }
 }

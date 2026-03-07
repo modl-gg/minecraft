@@ -121,9 +121,11 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
 
         platform.getChatInputManager().requestInput(viewerUuid, "Enter note content for " + targetName + ":",
                 input -> {
+                    String issuerId = platform.getCache() != null ? platform.getCache().getStaffId(viewerUuid) : null;
                     CreatePlayerNoteRequest request = new CreatePlayerNoteRequest(
                             targetUuid.toString(),
                             viewerName,
+                            issuerId,
                             input
                     );
 

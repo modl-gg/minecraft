@@ -18,6 +18,11 @@ public final class CommandUtil {
         return platform.getAbstractPlayer(sender.getUniqueId(), false).getUsername();
     }
 
+    public static String resolveIssuerId(CommandIssuer sender, Cache cache) {
+        if (!sender.isPlayer()) return null;
+        return cache.getStaffId(sender.getUniqueId());
+    }
+
     public static String resolveSenderName(UUID uuid, Cache cache, Platform platform) {
         String name = cache.getStaffDisplayName(uuid);
         if (name != null) return name;

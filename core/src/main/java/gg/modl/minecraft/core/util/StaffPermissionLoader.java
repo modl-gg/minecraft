@@ -18,7 +18,7 @@ public final class StaffPermissionLoader {
                 if (staffMember.getMinecraftUuid() != null) {
                     try {
                         UUID uuid = UUID.fromString(staffMember.getMinecraftUuid());
-                        cache.cacheStaffPermissions(uuid, staffMember.getStaffUsername(), staffMember.getStaffRole(), staffMember.getPermissions());
+                        cache.cacheStaffPermissions(uuid, staffMember.getStaffUsername(), staffMember.getStaffId(), staffMember.getStaffRole(), staffMember.getPermissions());
                         loadedCount++;
                     } catch (IllegalArgumentException e) {
                         logger.warning("Invalid UUID for staff member: " + staffMember.getMinecraftUuid());

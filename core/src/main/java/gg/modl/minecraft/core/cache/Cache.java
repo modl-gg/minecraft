@@ -84,6 +84,18 @@ public class Cache {
         return null;
     }
 
+    public String getStaffId(UUID playerUuid) {
+        PlayerProfile profile = registry.getProfile(playerUuid);
+        if (profile != null) {
+            SyncResponse.ActiveStaffMember staff = profile.getStaffMember();
+            if (staff != null) return staff.getStaffId();
+        }
+
+        StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
+        if (staffPerms != null && staffPerms.getStaffId() != null) return staffPerms.getStaffId();
+        return null;
+    }
+
     public String getDisplayName(UUID playerUuid, String fallback) {
         String panelName = getStaffDisplayName(playerUuid);
         return panelName != null ? panelName : fallback;
@@ -113,8 +125,12 @@ public class Cache {
         return false;
     }
 
-    public void cacheStaffPermissions(UUID playerUuid, String staffUsername, String staffRole, List<String> permissions) {
-        staffPermissionsCache.put(playerUuid, new StaffPermissions(staffUsername, staffRole, permissions));
+    public void cacheStaffPermissions(UUID playerUuid, String staffUsername, String staffId, String staffRole, List<String> permissions) {
+        staffPermissionsCache.put(playerUuid, new StaffPermissions(staffUsername, staffId, staffRole, permissions));
+    }
+
+    public void removeStaffPermissions(UUID playerUuid) {
+        staffPermissionsCache.remove(playerUuid);
     }
 
     public void clearStaffPermissions() {
@@ -141,11 +157,12 @@ public class Cache {
 
     @Getter
     public static class StaffPermissions {
-        private final String staffUsername, staffRole;
+        private final String staffUsername, staffId, staffRole;
         private final List<String> permissions;
 
-        public StaffPermissions(String staffUsername, String staffRole, List<String> permissions) {
+        public StaffPermissions(String staffUsername, String staffId, String staffRole, List<String> permissions) {
             this.staffUsername = staffUsername;
+            this.staffId = staffId;
             this.staffRole = staffRole;
             this.permissions = permissions != null ? permissions : List.of();
         }

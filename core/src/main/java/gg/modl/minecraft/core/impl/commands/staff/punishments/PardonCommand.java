@@ -41,9 +41,10 @@ public class PardonCommand extends BaseCommand {
     @Conditions("permission:value=punishment.modify")
     public void pardon(CommandIssuer sender, @Name("target") String target, @Default() String reason) {
         final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
+        final String issuerId = CommandUtil.resolveIssuerId(sender, cache);
 
-        if (isPunishmentId(target)) tryPunishmentIdWithFallback(sender, target, issuerName, reason, null);
-        else pardonByPlayerName(sender, target, issuerName, reason, null);
+        if (isPunishmentId(target)) tryPunishmentIdWithFallback(sender, target, issuerName, issuerId, reason, null);
+        else pardonByPlayerName(sender, target, issuerName, issuerId, reason, null);
     }
 
     @CommandAlias("%cmd_unban")
@@ -52,9 +53,10 @@ public class PardonCommand extends BaseCommand {
     @Conditions("permission:value=punishment.modify")
     public void unban(CommandIssuer sender, @Name("target") String target, @Default() String reason) {
         final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
+        final String issuerId = CommandUtil.resolveIssuerId(sender, cache);
 
-        if (isPunishmentId(target)) tryPunishmentIdWithFallback(sender, target, issuerName, reason, "ban");
-        else pardonByPlayerName(sender, target, issuerName, reason, "ban");
+        if (isPunishmentId(target)) tryPunishmentIdWithFallback(sender, target, issuerName, issuerId, reason, "ban");
+        else pardonByPlayerName(sender, target, issuerName, issuerId, reason, "ban");
     }
 
     @CommandAlias("%cmd_unmute")
@@ -63,18 +65,19 @@ public class PardonCommand extends BaseCommand {
     @Conditions("permission:value=punishment.modify")
     public void unmute(CommandIssuer sender, @Name("target") String target, @Default() String reason) {
         final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
+        final String issuerId = CommandUtil.resolveIssuerId(sender, cache);
 
-        if (isPunishmentId(target)) tryPunishmentIdWithFallback(sender, target, issuerName, reason, "mute");
-        else pardonByPlayerName(sender, target, issuerName, reason, "mute");
+        if (isPunishmentId(target)) tryPunishmentIdWithFallback(sender, target, issuerName, issuerId, reason, "mute");
+        else pardonByPlayerName(sender, target, issuerName, issuerId, reason, "mute");
     }
 
-    private void pardonByPlayerName(CommandIssuer sender, String playerName, String issuerName, String reason, String type) {
+    private void pardonByPlayerName(CommandIssuer sender, String playerName, String issuerName, String issuerId, String reason, String type) {
         sender.sendMessage(localeManager.getMessage("pardon.processing_player", Map.of("player", playerName)));
 
         String displayType = type != null ? type : "punishment";
 
         httpClientHolder.getClient().pardonPlayer(new PardonPlayerRequest(
-            playerName, issuerName, type, reason.isEmpty() ? null : reason
+            playerName, issuerName, issuerId, type, reason.isEmpty() ? null : reason
         )).thenAccept(response -> {
             if (response.hasPardoned()) {
                 sender.sendMessage(localeManager.getMessage("pardon.success_player",
@@ -88,9 +91,9 @@ public class PardonCommand extends BaseCommand {
         });
     }
 
-    private void tryPunishmentIdWithFallback(CommandIssuer sender, String target, String issuerName, String reason, String expectedType) {
+    private void tryPunishmentIdWithFallback(CommandIssuer sender, String target, String issuerName, String issuerId, String reason, String expectedType) {
         PardonPunishmentRequest request = new PardonPunishmentRequest(
-            target, issuerName, reason.isEmpty() ? null : reason, expectedType
+            target, issuerName, issuerId, reason.isEmpty() ? null : reason, expectedType
         );
 
         httpClientHolder.getClient().pardonPunishment(request).thenAccept(response -> {
@@ -111,7 +114,7 @@ public class PardonCommand extends BaseCommand {
             String errorMessage = cause.getMessage();
 
             if (errorMessage != null && (errorMessage.contains("not found") || errorMessage.contains("404")))
-                pardonByPlayerName(sender, target, issuerName, reason, expectedType);
+                pardonByPlayerName(sender, target, issuerName, issuerId, reason, expectedType);
             else if (errorMessage != null && errorMessage.toLowerCase().contains("type")) {
                 if ("ban".equals(expectedType)) sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_ban",
                         Map.of("id", target)));

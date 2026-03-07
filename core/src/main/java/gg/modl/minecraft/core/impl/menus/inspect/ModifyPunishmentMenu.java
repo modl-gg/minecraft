@@ -288,8 +288,9 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                     return;
                 }
 
+                String issuerId = platform.getCache() != null ? platform.getCache().getStaffId(viewerUuid) : null;
                 ModifyPunishmentTicketsRequest request = new ModifyPunishmentTicketsRequest(
-                        punishment.getId(), viewerName, addIds, removeIds, true
+                        punishment.getId(), viewerName, issuerId, addIds, removeIds, true
                 );
 
                 httpClient.modifyPunishmentTickets(request).thenAccept(v -> {

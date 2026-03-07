@@ -44,10 +44,6 @@
                 </executions>
                 <configuration>
                     <relocations>
-                        <relocation>
-                            <pattern>org.bstats</pattern>
-                            <shadedPattern>gg.modl.minecraft.libs.bstats</shadedPattern>
-                        </relocation>
                     </relocations>
                     <filters>
                         <filter>

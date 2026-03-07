@@ -25,8 +25,10 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionException;
@@ -235,8 +237,21 @@ public class SyncService {
         for (SyncResponse.ModifiedPunishment modified : data.getRecentlyModifiedPunishments()) punishmentExecutor.processModifiedPunishment(modified);
         for (SyncResponse.PendingPunishment pending : data.getPendingPunishments()) punishmentExecutor.processPendingPunishment(pending);
 
-        for (SyncResponse.ActiveStaffMember staffMember : data.getActiveStaffMembers())
+        Set<UUID> activeStaffUuids = new HashSet<>();
+        for (SyncResponse.ActiveStaffMember staffMember : data.getActiveStaffMembers()) {
             processActiveStaffMember(staffMember);
+            try {
+                activeStaffUuids.add(UUID.fromString(staffMember.getMinecraftUuid()));
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        for (PlayerProfile profile : cache.getRegistry().getAllProfiles()) {
+            if (profile.getStaffMember() != null && !activeStaffUuids.contains(profile.getUuid())) {
+                profile.setStaffMember(null);
+                cache.removeStaffPermissions(profile.getUuid());
+                if (debugMode) logger.info("Evicted stale staff data for " + profile.getUuid());
+            }
+        }
 
         for (SyncResponse.PlayerNotification notification : data.getPlayerNotifications()) notificationService.processPlayerNotification(notification);
 

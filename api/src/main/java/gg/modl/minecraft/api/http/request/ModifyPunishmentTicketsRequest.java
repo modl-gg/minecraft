@@ -8,7 +8,7 @@ import java.util.List;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class ModifyPunishmentTicketsRequest {
-    private String punishmentId, issuerName;
+    private String punishmentId, issuerName, issuerId;
     private List<String> addTicketIds, removeTicketIds;
     private boolean modifyAssociatedTickets;
 }

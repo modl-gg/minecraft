@@ -47,9 +47,10 @@ public class WarnCommand extends BaseCommand {
         }
 
         final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
+        final String issuerId = CommandUtil.resolveIssuerId(sender, cache);
 
         CreatePlayerNoteRequest noteRequest = new CreatePlayerNoteRequest(
-            target.getMinecraftUuid().toString(), issuerName, WARNING_NOTE_PREFIX + warnArgs.reason
+            target.getMinecraftUuid().toString(), issuerName, issuerId, WARNING_NOTE_PREFIX + warnArgs.reason
         );
 
         httpClientHolder.getClient().createPlayerNote(noteRequest).thenAccept(response -> {

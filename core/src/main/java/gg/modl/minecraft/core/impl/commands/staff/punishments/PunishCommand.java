@@ -120,6 +120,7 @@ public class PunishCommand extends BaseCommand {
 
         if (punishmentArgs.severity == null) punishmentArgs.severity = DEFAULT_SEVERITY;
         final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
+        final String issuerId = CommandUtil.resolveIssuerId(sender, cache);
         Map<String, Object> data = buildPunishmentData(punishmentArgs, punishmentType, target);
 
         data.put("issuedServer", sender.isPlayer()
@@ -132,6 +133,7 @@ public class PunishCommand extends BaseCommand {
         PunishmentCreateRequest request = new PunishmentCreateRequest(
             target.getMinecraftUuid().toString(),
             issuerName,
+            issuerId,
             punishmentArgs.reason.isEmpty() ? localeManager.getMessage("config.default_reason") : punishmentArgs.reason,
             punishmentArgs.severity,
             null,

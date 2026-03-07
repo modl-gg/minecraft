@@ -317,9 +317,11 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                     if (silentMode) data.put("silent", true);
                     data.put("issuedServer", platform.getPlayerServer(viewerUuid));
 
+                    String issuerId = platform.getCache() != null ? platform.getCache().getStaffId(viewerUuid) : null;
                     PunishmentCreateRequest request = new PunishmentCreateRequest(
                             targetUuid.toString(),
                             viewerName,
+                            issuerId,
                             reason,
                             severityStr,
                             silentMode ? "silent" : "active",

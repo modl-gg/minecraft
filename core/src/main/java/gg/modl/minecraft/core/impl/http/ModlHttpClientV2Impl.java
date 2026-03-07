@@ -402,6 +402,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     public CompletableFuture<Void> addPunishmentNote(@NotNull AddPunishmentNoteRequest request) {
         Map<String, String> body = new HashMap<>();
         body.put("issuerName", request.getIssuerName());
+        if (request.getIssuerId() != null) body.put("issuerId", request.getIssuerId());
         body.put("note", request.getNote());
 
         return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/note")
@@ -414,6 +415,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     public CompletableFuture<Void> addPunishmentEvidence(@NotNull AddPunishmentEvidenceRequest request) {
         Map<String, String> body = new HashMap<>();
         body.put("issuerName", request.getIssuerName());
+        if (request.getIssuerId() != null) body.put("issuerId", request.getIssuerId());
         body.put("evidenceUrl", request.getEvidenceUrl());
 
         return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/evidence")
@@ -426,6 +428,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     public CompletableFuture<Void> changePunishmentDuration(@NotNull ChangePunishmentDurationRequest request) {
         Map<String, Object> body = new HashMap<>();
         body.put("issuerName", request.getIssuerName());
+        if (request.getIssuerId() != null) body.put("issuerId", request.getIssuerId());
         body.put("newDuration", request.getNewDuration());
 
         return sendAsync(requestBuilder("/minecraft/punishments/" + request.getPunishmentId() + "/duration")
@@ -438,6 +441,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     public CompletableFuture<Void> togglePunishmentOption(@NotNull TogglePunishmentOptionRequest request) {
         Map<String, Object> body = new HashMap<>();
         body.put("issuerName", request.getIssuerName());
+        if (request.getIssuerId() != null) body.put("issuerId", request.getIssuerId());
         body.put("option", request.getOption());
         body.put("enabled", request.isEnabled());
 
@@ -538,6 +542,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     public CompletableFuture<Void> modifyPunishmentTickets(@NotNull ModifyPunishmentTicketsRequest request) {
         Map<String, Object> body = new HashMap<>();
         body.put("issuerName", request.getIssuerName());
+        if (request.getIssuerId() != null) body.put("issuerId", request.getIssuerId());
         body.put("addTicketIds", request.getAddTicketIds());
         body.put("removeTicketIds", request.getRemoveTicketIds());
         body.put("modifyAssociatedTickets", request.isModifyAssociatedTickets());

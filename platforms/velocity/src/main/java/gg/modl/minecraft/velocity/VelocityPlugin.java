@@ -24,7 +24,6 @@ import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.velocity.factory.VelocityPacketEventsBuilder;
 import net.byteflux.libby.Library;
 import net.byteflux.libby.VelocityLibraryManager;
-import org.bstats.velocity.Metrics;
 import org.slf4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
@@ -44,13 +43,12 @@ import java.util.Map;
         url = PluginInfo.URL)
 public final class VelocityPlugin {
     private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg", DEFAULT_BRIDGE_NAME = "bridge";
-    private static final int DEFAULT_BRIDGE_PORT = 25590, MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2, BSTATS_PLUGIN_ID = 29830;
+    private static final int DEFAULT_BRIDGE_PORT = 25590, MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
 
     private final PluginContainer plugin;
     private final ProxyServer server;
     private final Path folder;
     private final Logger logger;
-    private final Metrics.Factory metrics;
     private final PluginLogger pluginLogger;
 
     private Map<String, Object> configuration;
@@ -58,12 +56,11 @@ public final class VelocityPlugin {
     private QueryStatWipeExecutor queryStatWipeExecutor;
 
     @Inject
-    public VelocityPlugin(PluginContainer plugin, ProxyServer server, @DataDirectory Path folder, Logger logger, Metrics.Factory metrics) {
+    public VelocityPlugin(PluginContainer plugin, ProxyServer server, @DataDirectory Path folder, Logger logger) {
         this.plugin = plugin;
         this.server = server;
         this.folder = folder;
         this.logger = logger;
-        this.metrics = metrics;
         this.pluginLogger = new PluginLogger() {
             @Override public void info(String message) { logger.info(message); }
             @Override public void warning(String message) { logger.warn(message); }
@@ -121,8 +118,6 @@ public final class VelocityPlugin {
                 pluginLoader.getFreezeService(), pluginLoader.getNetworkChatInterceptService(),
                 pluginLoader.getChatCommandLogService(),
                 pluginLoader.getConfigManager().getStaffChatConfig()));
-
-        metrics.make(this, BSTATS_PLUGIN_ID);
     }
 
     @Subscribe

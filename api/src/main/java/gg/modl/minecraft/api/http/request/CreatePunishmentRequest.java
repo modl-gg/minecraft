@@ -10,7 +10,8 @@ import java.util.List;
 
 @Data
 public class CreatePunishmentRequest {
-    private @NotNull final String targetUuid, issuerName;
+    private @NotNull final String targetUuid;
+    private @Nullable final String issuerName, issuerId;
     private @Nullable final String reason;
     private @Nullable final JsonObject data;
     private @Nullable final List<String> notes, attachedTicketIds;
