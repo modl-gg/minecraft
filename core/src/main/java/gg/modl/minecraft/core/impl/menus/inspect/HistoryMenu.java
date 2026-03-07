@@ -13,7 +13,7 @@ import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;

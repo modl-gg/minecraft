@@ -19,7 +19,8 @@ import gg.modl.minecraft.api.http.response.PlayerLookupResponse;
 import gg.modl.minecraft.api.http.response.PunishmentDetailResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -198,7 +199,7 @@ public class InspectCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("print.inspect.uuid", Map.of("player", playerName, "uuid", data.getMinecraftUuid())));
 
         UUID playerUuid = UUID.fromString(data.getMinecraftUuid());
-        gg.modl.minecraft.core.impl.cache.PlayerProfile targetProfile = cache.getPlayerProfile(playerUuid);
+        PlayerProfile targetProfile = cache.getPlayerProfile(playerUuid);
         boolean isBanned = targetProfile != null && targetProfile.isBanned();
         boolean isMuted = targetProfile != null && targetProfile.isMuted();
 
@@ -255,7 +256,7 @@ public class InspectCommand extends BaseCommand {
                     ? account.getUsernames().get(account.getUsernames().size() - 1).getUsername()
                     : Constants.UNKNOWN;
 
-                gg.modl.minecraft.core.impl.cache.PlayerProfile accountProfile = account.getMinecraftUuid() != null ? cache.getPlayerProfile(account.getMinecraftUuid()) : null;
+                PlayerProfile accountProfile = account.getMinecraftUuid() != null ? cache.getPlayerProfile(account.getMinecraftUuid()) : null;
                 boolean accountBanned = accountProfile != null && accountProfile.isBanned();
                 boolean accountMuted = accountProfile != null && accountProfile.isMuted();
 

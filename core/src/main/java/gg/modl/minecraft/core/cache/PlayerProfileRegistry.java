@@ -1,4 +1,4 @@
-package gg.modl.minecraft.core.impl.cache;
+package gg.modl.minecraft.core.cache;
 
 import org.jetbrains.annotations.Nullable;
 

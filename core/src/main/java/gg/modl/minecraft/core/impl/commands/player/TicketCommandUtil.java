@@ -6,8 +6,8 @@ import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.api.http.response.CreateTicketResponse;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
-import gg.modl.minecraft.core.impl.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.cache.PlayerProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.Map;

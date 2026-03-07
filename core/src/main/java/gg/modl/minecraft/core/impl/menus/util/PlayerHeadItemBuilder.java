@@ -6,6 +6,7 @@ import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.IPAddress;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.cache.PlayerProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.WebPlayer;
 
@@ -29,7 +30,7 @@ public final class PlayerHeadItemBuilder {
             if (earliest != null) firstLogin = MenuItems.formatDate(earliest);
         }
 
-        gg.modl.minecraft.core.impl.cache.PlayerProfile targetProfile = platform.getCache() != null ? platform.getCache().getPlayerProfile(targetUuid) : null;
+        PlayerProfile targetProfile = platform.getCache() != null ? platform.getCache().getPlayerProfile(targetUuid) : null;
         boolean isOnline = targetProfile != null;
         boolean isBanned = targetAccount.getPunishments().stream()
                 .anyMatch(p -> p.isActive() && p.isBanType());

@@ -4,7 +4,7 @@ import co.aikar.commands.CommandManager;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;

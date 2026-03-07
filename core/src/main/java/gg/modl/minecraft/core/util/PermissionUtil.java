@@ -2,8 +2,8 @@ package gg.modl.minecraft.core.util;
 
 import co.aikar.commands.CommandIssuer;
 import gg.modl.minecraft.api.http.response.SyncResponse;
-import gg.modl.minecraft.core.impl.cache.Cache;
-import gg.modl.minecraft.core.impl.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.cache.PlayerProfile;
 
 import java.util.UUID;
 

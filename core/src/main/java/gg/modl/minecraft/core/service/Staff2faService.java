@@ -1,8 +1,8 @@
 package gg.modl.minecraft.core.service;
 
 import gg.modl.minecraft.core.config.ConfigManager.Staff2faConfig;
-import gg.modl.minecraft.core.impl.cache.PlayerProfile;
-import gg.modl.minecraft.core.impl.cache.PlayerProfileRegistry;
+import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.PlayerProfileRegistry;
 import lombok.Setter;
 
 import java.util.UUID;

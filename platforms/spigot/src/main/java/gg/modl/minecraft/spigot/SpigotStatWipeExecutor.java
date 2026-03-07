@@ -1,6 +1,6 @@
 package gg.modl.minecraft.spigot;
 
-import gg.modl.minecraft.core.sync.StatWipeExecutor;
+import gg.modl.minecraft.core.service.sync.StatWipeExecutor;
 import gg.modl.minecraft.core.util.PluginLogger;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;

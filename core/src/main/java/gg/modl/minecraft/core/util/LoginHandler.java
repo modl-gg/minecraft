@@ -4,11 +4,11 @@ import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
-import gg.modl.minecraft.core.impl.cache.Cache;
-import gg.modl.minecraft.core.impl.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.cache.PlayerProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.MaintenanceService;
-import gg.modl.minecraft.core.sync.SyncService;
+import gg.modl.minecraft.core.service.sync.SyncService;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 

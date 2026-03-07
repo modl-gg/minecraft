@@ -9,7 +9,7 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.staff.StaffMenu;
 import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.Permissions;

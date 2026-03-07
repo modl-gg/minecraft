@@ -13,7 +13,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ReportGuiConfig;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.ReportMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;

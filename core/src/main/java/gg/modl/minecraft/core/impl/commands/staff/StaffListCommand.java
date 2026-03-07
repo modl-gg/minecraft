@@ -10,7 +10,7 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.staff.StaffMembersMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.VanishService;

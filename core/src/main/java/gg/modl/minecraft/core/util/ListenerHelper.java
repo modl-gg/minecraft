@@ -7,16 +7,16 @@ import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
-import gg.modl.minecraft.core.impl.cache.PlayerProfile;
-import gg.modl.minecraft.core.impl.cache.PlayerProfileRegistry;
+import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.PlayerProfileRegistry;
 
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffModeService;
-import gg.modl.minecraft.core.sync.SyncService;
+import gg.modl.minecraft.core.service.sync.SyncService;
 
 import java.util.Map;
 import java.util.UUID;

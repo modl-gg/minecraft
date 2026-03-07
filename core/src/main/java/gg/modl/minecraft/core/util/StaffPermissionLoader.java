@@ -3,7 +3,7 @@ package gg.modl.minecraft.core.util;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.response.StaffPermissionsResponse;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;

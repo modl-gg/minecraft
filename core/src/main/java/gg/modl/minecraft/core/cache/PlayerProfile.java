@@ -1,4 +1,4 @@
-package gg.modl.minecraft.core.impl.cache;
+package gg.modl.minecraft.core.cache;
 
 import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.api.http.response.SyncResponse;

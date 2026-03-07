@@ -1,4 +1,4 @@
-package gg.modl.minecraft.core.sync;
+package gg.modl.minecraft.core.service.sync;
 
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
@@ -6,8 +6,8 @@ import gg.modl.minecraft.api.http.request.NotificationAcknowledgeRequest;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
-import gg.modl.minecraft.core.impl.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.cache.PlayerProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PluginLogger;
 import lombok.Setter;
@@ -99,9 +99,8 @@ class NotificationService {
 
     void processPlayerNotification(SyncResponse.PlayerNotification notification) {
         try {
-            if (debugMode) {
+            if (debugMode)
                 logger.info("Processing notification " + notification.getId() + " (type: " + notification.getType() + "): " + notification.getMessage());
-            }
 
             String targetPlayerUuid = notification.getTargetPlayerUuid();
             if (targetPlayerUuid == null || targetPlayerUuid.isEmpty()) {

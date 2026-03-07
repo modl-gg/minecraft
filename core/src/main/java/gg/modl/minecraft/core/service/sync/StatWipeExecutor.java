@@ -1,4 +1,4 @@
-package gg.modl.minecraft.core.sync;
+package gg.modl.minecraft.core.service.sync;
 
 public interface StatWipeExecutor {
     void executeStatWipe(String username, String uuid, String punishmentId, StatWipeCallback callback);

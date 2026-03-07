@@ -1,4 +1,4 @@
-package gg.modl.minecraft.core.impl.commands.punishments;
+package gg.modl.minecraft.core.impl.commands.staff.punishments;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
@@ -7,7 +7,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;

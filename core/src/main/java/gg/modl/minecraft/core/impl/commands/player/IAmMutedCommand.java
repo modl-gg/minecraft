@@ -9,8 +9,8 @@ import co.aikar.commands.annotation.Name;
 import co.aikar.commands.annotation.Syntax;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
-import gg.modl.minecraft.core.impl.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.cache.PlayerProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
 

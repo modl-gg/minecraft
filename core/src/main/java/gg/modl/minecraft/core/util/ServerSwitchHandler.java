@@ -2,7 +2,7 @@ package gg.modl.minecraft.core.util;
 
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.Map;

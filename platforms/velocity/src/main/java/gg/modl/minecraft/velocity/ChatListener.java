@@ -6,7 +6,7 @@ import com.velocitypowered.api.event.command.CommandExecuteEvent;
 import com.velocitypowered.api.event.player.PlayerChatEvent;
 import com.velocitypowered.api.proxy.Player;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatCommandLogService;
 import gg.modl.minecraft.core.service.ChatManagementService;

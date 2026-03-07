@@ -1,6 +1,6 @@
 package gg.modl.minecraft.core.query;
 
-import gg.modl.minecraft.core.sync.StatWipeExecutor;
+import gg.modl.minecraft.core.service.sync.StatWipeExecutor;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 

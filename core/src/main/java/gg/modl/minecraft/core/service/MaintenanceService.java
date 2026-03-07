@@ -2,7 +2,7 @@ package gg.modl.minecraft.core.service;
 
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.util.PermissionUtil;
 
 import java.util.UUID;

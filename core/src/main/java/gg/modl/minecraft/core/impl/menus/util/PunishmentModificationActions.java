@@ -13,6 +13,7 @@ import gg.modl.minecraft.api.http.request.PardonPunishmentRequest;
 import gg.modl.minecraft.api.http.request.TogglePunishmentOptionRequest;
 import gg.modl.minecraft.core.Platform;
 
+import gg.modl.minecraft.core.cache.PlayerProfile;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -197,7 +198,7 @@ public final class PunishmentModificationActions {
 
     public void invalidateCache() {
         if (platform.getCache() != null) {
-            gg.modl.minecraft.core.impl.cache.PlayerProfile profile = platform.getCache().getPlayerProfile(targetUuid);
+            PlayerProfile profile = platform.getCache().getPlayerProfile(targetUuid);
             if (profile != null) {
                 profile.setActiveBan(null);
                 profile.setActiveMute(null);

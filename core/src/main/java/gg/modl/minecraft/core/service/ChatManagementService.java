@@ -1,7 +1,7 @@
 package gg.modl.minecraft.core.service;
 
-import gg.modl.minecraft.core.impl.cache.PlayerProfile;
-import gg.modl.minecraft.core.impl.cache.PlayerProfileRegistry;
+import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.PlayerProfileRegistry;
 import lombok.Getter;
 
 import java.util.UUID;

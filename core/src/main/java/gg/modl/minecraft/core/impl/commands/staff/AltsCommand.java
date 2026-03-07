@@ -15,7 +15,8 @@ import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.AltsMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
@@ -112,7 +113,7 @@ public class AltsCommand extends BaseCommand {
                     username = account.getUsernames().get(account.getUsernames().size() - 1).getUsername();
 
                 String uuid = account.getMinecraftUuid() != null ? account.getMinecraftUuid().toString() : Constants.UNKNOWN;
-                gg.modl.minecraft.core.impl.cache.PlayerProfile altProfile = account.getMinecraftUuid() != null ? cache.getPlayerProfile(account.getMinecraftUuid()) : null;
+                PlayerProfile altProfile = account.getMinecraftUuid() != null ? cache.getPlayerProfile(account.getMinecraftUuid()) : null;
                 boolean isBanned = altProfile != null && altProfile.isBanned();
                 boolean isMuted = altProfile != null && altProfile.isMuted();
 

@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
-import dev.simplix.cirrus.actionhandler.ActionHandler;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -14,7 +13,7 @@ import gg.modl.minecraft.api.http.response.PunishmentPreviewResponse;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.PunishGuiConfig;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;

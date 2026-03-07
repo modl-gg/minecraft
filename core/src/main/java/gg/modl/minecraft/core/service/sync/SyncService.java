@@ -1,4 +1,4 @@
-package gg.modl.minecraft.core.sync;
+package gg.modl.minecraft.core.service.sync;
 
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
@@ -9,8 +9,8 @@ import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
-import gg.modl.minecraft.core.impl.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.cache.PlayerProfile;
 
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatCommandLogService;

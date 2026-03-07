@@ -11,7 +11,7 @@ import gg.modl.minecraft.api.http.request.AddPunishmentEvidenceRequest;
 import gg.modl.minecraft.api.http.response.PunishmentDetailResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.ModifyPunishmentMenu;
 
 import gg.modl.minecraft.core.locale.LocaleManager;

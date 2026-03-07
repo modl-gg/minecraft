@@ -6,7 +6,7 @@ import co.aikar.commands.annotation.CommandAlias;
 import co.aikar.commands.annotation.Conditions;
 import co.aikar.commands.annotation.Default;
 import co.aikar.commands.annotation.Description;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.NetworkChatInterceptService;
 import gg.modl.minecraft.core.util.PermissionUtil;

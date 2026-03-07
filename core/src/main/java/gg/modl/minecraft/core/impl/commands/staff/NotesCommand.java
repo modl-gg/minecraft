@@ -15,7 +15,7 @@ import gg.modl.minecraft.api.Note;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.NotesMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;

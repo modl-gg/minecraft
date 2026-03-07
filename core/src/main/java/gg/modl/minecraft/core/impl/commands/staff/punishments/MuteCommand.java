@@ -1,4 +1,4 @@
-package gg.modl.minecraft.core.impl.commands.punishments;
+package gg.modl.minecraft.core.impl.commands.staff.punishments;
 
 import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.CommandAlias;
@@ -10,7 +10,7 @@ import co.aikar.commands.annotation.Syntax;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.Set;
