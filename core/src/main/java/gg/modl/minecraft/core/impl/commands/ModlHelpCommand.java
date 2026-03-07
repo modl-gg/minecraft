@@ -9,6 +9,7 @@ import co.aikar.commands.annotation.Subcommand;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.plugin.PluginInfo;
+import gg.modl.minecraft.core.util.Pagination;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.AllArgsConstructor;
@@ -39,15 +40,7 @@ public class ModlHelpCommand extends BaseCommand {
     @Subcommand("help")
     @Description("Show available modl.gg commands")
     public void help(CommandIssuer sender, @Default("1") String pageArg) {
-        int page;
-        try {
-            page = Integer.parseInt(pageArg);
-        } catch (NumberFormatException e) {
-            page = 1;
-        }
-        if (page < 1) page = 1;
-
-        displayHelp(sender, page);
+        displayHelp(sender, Pagination.parsePage(pageArg));
     }
 
     private void displayHelp(CommandIssuer sender, int page) {
@@ -102,8 +95,8 @@ public class ModlHelpCommand extends BaseCommand {
             }
         }
 
-        int totalPages = Math.max(1, (int) Math.ceil((double) entries.size() / ENTRIES_PER_PAGE));
-        if (page > totalPages) {
+        Pagination.Page pg = Pagination.paginate(entries, ENTRIES_PER_PAGE, page);
+        if (pg.isOutOfRange()) {
             sender.sendMessage(localeManager.getMessage("help.no_more_pages"));
             return;
         }
@@ -111,14 +104,11 @@ public class ModlHelpCommand extends BaseCommand {
         sender.sendMessage("");
         sender.sendMessage(localeManager.getMessage("help.header", Map.of(
                 "version", PluginInfo.VERSION,
-                "page", String.valueOf(page),
-                "total_pages", String.valueOf(totalPages)
+                "page", String.valueOf(pg.getPage()),
+                "total_pages", String.valueOf(pg.getTotalPages())
         )));
 
-        int start = (page - 1) * ENTRIES_PER_PAGE;
-        int end = Math.min(start + ENTRIES_PER_PAGE, entries.size());
-
-        for (int i = start; i < end; i++) {
+        for (int i = pg.getStart(); i < pg.getEnd(); i++) {
             HelpEntry entry = entries.get(i);
             sender.sendMessage(localeManager.getMessage("help.entry", Map.of(
                     "command", entry.getCommand(),
@@ -126,11 +116,11 @@ public class ModlHelpCommand extends BaseCommand {
             )));
         }
 
-        if (page < totalPages)
+        if (pg.hasNextPage())
             sender.sendMessage(localeManager.getMessage("help.footer", Map.of(
-                    "page", String.valueOf(page),
-                    "total_pages", String.valueOf(totalPages),
-                    "next_page", String.valueOf(page + 1)
+                    "page", String.valueOf(pg.getPage()),
+                    "total_pages", String.valueOf(pg.getTotalPages()),
+                    "next_page", String.valueOf(pg.getPage() + 1)
             )));
         sender.sendMessage("");
     }

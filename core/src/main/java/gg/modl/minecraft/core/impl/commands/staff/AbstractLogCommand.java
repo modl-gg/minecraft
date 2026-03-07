@@ -9,6 +9,7 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.Constants;
 import gg.modl.minecraft.core.util.DateFormatter;
+import gg.modl.minecraft.core.util.Pagination;
 import gg.modl.minecraft.core.util.PermissionUtil;
 
 import java.util.Date;
@@ -42,15 +43,7 @@ public abstract class AbstractLogCommand<T> extends BaseCommand {
             return;
         }
 
-        int page;
-        try {
-            page = Integer.parseInt(pageArg);
-        } catch (NumberFormatException e) {
-            page = 1;
-        }
-        if (page < 1) page = 1;
-
-        final int requestedPage = page;
+        final int requestedPage = Pagination.parsePage(pageArg);
         String errorKey = localePrefix() + ".error";
 
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
@@ -80,13 +73,9 @@ public abstract class AbstractLogCommand<T> extends BaseCommand {
             return;
         }
 
-        int totalPages = Math.max(1, (int) Math.ceil((double) entries.size() / ENTRIES_PER_PAGE));
-        if (page > totalPages) page = totalPages;
+        Pagination.Page pg = Pagination.paginate(entries, ENTRIES_PER_PAGE, page);
 
-        int start = (page - 1) * ENTRIES_PER_PAGE;
-        int end = Math.min(start + ENTRIES_PER_PAGE, entries.size());
-
-        for (int i = start; i < end; i++) {
+        for (int i = pg.getStart(); i < pg.getEnd(); i++) {
             T entry = entries.get(i);
             String timestamp = DateFormatter.format(new Date(getTimestamp(entry)));
             String server = getServer(entry) != null ? getServer(entry) : Constants.UNKNOWN;
@@ -96,8 +85,8 @@ public abstract class AbstractLogCommand<T> extends BaseCommand {
         }
 
         sender.sendMessage(localeManager.getMessage(localePrefix() + ".footer", Map.of(
-                "page", String.valueOf(page),
-                "total_pages", String.valueOf(totalPages),
+                "page", String.valueOf(pg.getPage()),
+                "total_pages", String.valueOf(pg.getTotalPages()),
                 "total", String.valueOf(entries.size())
         )));
     }

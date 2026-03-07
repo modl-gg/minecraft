@@ -379,7 +379,7 @@ print:
     entry_unstarted: "&6{ordinal}. &c#{id} &e{date} &f{type} ({duration}) &eby {issuer} for &f{reason} &7(not started yet)"
     entry_expired: "&6{ordinal}. &7#{id} &e{date} &f{type} ({duration}) &eby {issuer} for &f{reason} &7(expired {expired_ago} ago)"
     entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} ({duration}) &eby {issuer} for &f{reason} &7(pardoned {pardoned_ago} ago"
-    total: "&eCount: &f{count}&e punishment(s)"
+    total: "&ePage {page}/{total_pages} ({count} total)"
     empty: "&7Player has never been punished."
     footer: ""
 
@@ -387,7 +387,7 @@ print:
   notes:
     header: ""
     entry: "&6{ordinal}. &e{date} {author}: &f{content}"
-    total: "&eCount: &f{count}&e note(s)"
+    total: "&ePage {page}/{total_pages} ({count} total)"
     empty: "&7No staff notes found."
     footer: ""
 
@@ -399,7 +399,7 @@ print:
     status_muted: "&eMuted"
     status_banned_and_muted: "&cBanned & Muted"
     status_clean: "&aClean"
-    total: "&eCount: &f{count}&e linked account(s)"
+    total: "&ePage {page}/{total_pages} ({count} total)"
     empty: "&7No linked accounts found."
     footer: ""
 
@@ -408,7 +408,7 @@ print:
     header: ""
     entry: "&6{ordinal}. &e#{id} {date} ({status}&e) &f{type} report &eby {reporter}"
     entry_content: " &f{content}"
-    total: "&eCount: &f{count}&e report(s)"
+    total: "&ePage {page}/{total_pages} ({count} total)"
     empty: "&7No reports found."
     footer: ""
 
@@ -465,6 +465,8 @@ menus:
       - "&7Region: &f{region} (Country: {country})"
       - "&7Banned: &f{is_banned}"
       - "&7Muted: &f{is_muted}"
+      - ""
+      - "&eLeft-click to target {player_name}"
 
   # Punishment history items
   history_item:
@@ -623,7 +625,7 @@ menus:
 # Help Command
 # Set usage to "" to hide a command from the help list (e.g. if you disabled it).
 help:
-  header: "&a&lmodl.gg &av{version} &f- &eCommand List (Page {page}/{total_pages})"
+  header: "&a&lmodl.gg &av{version} &f- &eCommand List"
   entry: "&f/{command} &7- {description}"
   footer: "&ePage {page}/{total_pages}. Use &a/modl help {next_page}&e for the next page."
   no_more_pages: "&7No more pages."
@@ -660,16 +662,16 @@ help:
       usage: "inspect <player> [-p]"
       description: "Open player inspect menu (-p for print)"
     history:
-      usage: "history <player> [-p]"
+      usage: "history <player> [-p [page]]"
       description: "Open player history (-p for print)"
     notes:
-      usage: "notes <player> [-p]"
+      usage: "notes <player> [-p [page]]"
       description: "Open player notes (-p for print)"
     alts:
-      usage: "alts <player> [-p]"
+      usage: "alts <player> [-p [page]]"
       description: "Open player alts (-p for print)"
     reports:
-      usage: "reports [player] [-p]"
+      usage: "reports [player] [-p [page]]"
       description: "Open reports menu (-p for print)"
     punish:
       usage: "punish <player> [type] [reason]"
@@ -738,7 +740,7 @@ staff_list:
   entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &eon &f{server}{v}"
   vanish: " &7[V]"
   empty: "&7No staff members online."
-  footer: "&eCount: &f{count} &estaff online"
+  footer: "&ePage {page}/{total_pages} ({count} total)"
 
 # Staff Notifications
 staff_notifications:

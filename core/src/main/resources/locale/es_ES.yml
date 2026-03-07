@@ -273,13 +273,13 @@ print:
     entry_permanent: "&6{ordinal}. &a#{id} &e{date} &f{type} &epor {issuer} (nunca expira)."
     entry_inactive: "&6{ordinal}. &7#{id} &e{date} &f{type} &epor {issuer} (inactiva)."
     entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} &epor {issuer} (perdonada)."
-    total: "&eCantidad: &f{count}&e sanción(es)"
+    total: "&eCantidad: &f{count}&e sanción(es) &7(Página {page}/{total_pages})"
     empty: "&7El jugador nunca ha sido sancionado."
     footer: ""
   notes:
     header: ""
     entry: "&6{ordinal}. &e{date} {author}: &f{content}"
-    total: "&eCantidad: &f{count}&e nota(s)"
+    total: "&eCantidad: &f{count}&e nota(s) &7(Página {page}/{total_pages})"
     empty: "&7No se encontraron notas del staff."
     footer: ""
   alts:
@@ -289,14 +289,14 @@ print:
     status_muted: "&eSilenciado"
     status_banned_and_muted: "&cBaneado y Silenciado"
     status_clean: "&aLimpio"
-    total: "&eCantidad: &f{count}&e cuenta(s) vinculada(s)"
+    total: "&eCantidad: &f{count}&e cuenta(s) vinculada(s) &7(Página {page}/{total_pages})"
     empty: "&7No se encontraron cuentas vinculadas."
     footer: ""
   reports:
     header: ""
     entry: "&6{ordinal}. &e#{id} {date} ({status}&e) &f{type} &epor {reporter}"
     entry_content: " &f{content}"
-    total: "&eCantidad: &f{count}&e reporte(s)"
+    total: "&eCantidad: &f{count}&e reporte(s) &7(Página {page}/{total_pages})"
     empty: "&7No se encontraron reportes."
     footer: ""
 
@@ -593,16 +593,16 @@ help:
       usage: "inspect <jugador> [-p]"
       description: "Abrir menú de inspección (-p para texto)"
     history:
-      usage: "history <jugador> [-p]"
+      usage: "history <jugador> [-p [página]]"
       description: "Abrir historial del jugador (-p para texto)"
     notes:
-      usage: "notes <jugador> [-p]"
+      usage: "notes <jugador> [-p [página]]"
       description: "Abrir notas del jugador (-p para texto)"
     alts:
-      usage: "alts <jugador> [-p]"
+      usage: "alts <jugador> [-p [página]]"
       description: "Abrir cuentas alt (-p para texto)"
     reports:
-      usage: "reports [jugador] [-p]"
+      usage: "reports [jugador] [-p [página]]"
       description: "Abrir reportes (-p para texto)"
     punish:
       usage: "punish <jugador> [tipo] [razón]"
@@ -671,7 +671,7 @@ staff_list:
   entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &een &f{server}{v}"
   vanish: " &7[V]"
   empty: "&7No hay miembros del staff en línea."
-  footer: "&eCantidad: &f{count} &estaff en línea"
+  footer: "&eCantidad: &f{count} &estaff en línea &7(Página {page}/{total_pages})"
 
 # Notificaciones de Staff
 staff_notifications:

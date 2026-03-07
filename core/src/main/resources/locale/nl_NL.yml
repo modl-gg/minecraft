@@ -336,7 +336,7 @@ print:
     entry_permanent: "&6{ordinal}. &a#{id} &e{date} &f{type} &edoor {issuer} (verloopt nooit)."
     entry_inactive: "&6{ordinal}. &7#{id} &e{date} &f{type} &edoor {issuer} (inactief)."
     entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} &edoor {issuer} (kwijtgescholden)."
-    total: "&eAantal: &f{count}&e straf(fen)"
+    total: "&eAantal: &f{count}&e straf(fen) &7(Pagina {page}/{total_pages})"
     empty: "&7Speler is nooit bestraft."
     footer: ""
 
@@ -344,7 +344,7 @@ print:
   notes:
     header: ""
     entry: "&6{ordinal}. &e{date} {author}: &f{content}"
-    total: "&eAantal: &f{count}&e notitie(s)"
+    total: "&eAantal: &f{count}&e notitie(s) &7(Pagina {page}/{total_pages})"
     empty: "&7Geen personeelsnotities gevonden."
     footer: ""
 
@@ -356,7 +356,7 @@ print:
     status_muted: "&eGedempt"
     status_banned_and_muted: "&cVerbannen & Gedempt"
     status_clean: "&aSchoon"
-    total: "&eAantal: &f{count}&e gekoppeld(e) account(s)"
+    total: "&eAantal: &f{count}&e gekoppeld(e) account(s) &7(Pagina {page}/{total_pages})"
     empty: "&7Geen gekoppelde accounts gevonden."
     footer: ""
 
@@ -365,7 +365,7 @@ print:
     header: ""
     entry: "&6{ordinal}. &e#{id} {date} ({status}&e) &f{type} &edoor {reporter}"
     entry_content: " &f{content}"
-    total: "&eAantal: &f{count}&e rapport(en)"
+    total: "&eAantal: &f{count}&e rapport(en) &7(Pagina {page}/{total_pages})"
     empty: "&7Geen rapporten gevonden."
     footer: ""
 
@@ -685,16 +685,16 @@ help:
       usage: "inspect <speler> [-p]"
       description: "Open inspectie menu (-p voor tekst)"
     history:
-      usage: "history <speler> [-p]"
+      usage: "history <speler> [-p [pagina]]"
       description: "Open spelersgeschiedenis (-p voor tekst)"
     notes:
-      usage: "notes <speler> [-p]"
+      usage: "notes <speler> [-p [pagina]]"
       description: "Open spelersnotities (-p voor tekst)"
     alts:
-      usage: "alts <speler> [-p]"
+      usage: "alts <speler> [-p [pagina]]"
       description: "Open alt-accounts (-p voor tekst)"
     reports:
-      usage: "reports [speler] [-p]"
+      usage: "reports [speler] [-p [pagina]]"
       description: "Open rapportenmenu (-p voor tekst)"
     punish:
       usage: "punish <speler> [type] [reden]"
@@ -763,7 +763,7 @@ staff_list:
   entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &eop &f{server}{v}"
   vanish: " &7[V]"
   empty: "&7Geen personeelsleden online."
-  footer: "&eAantal: &f{count} &epersoneel online"
+  footer: "&eAantal: &f{count} &epersoneel online &7(Pagina {page}/{total_pages})"
 
 # Personeelsmeldingen
 staff_notifications:

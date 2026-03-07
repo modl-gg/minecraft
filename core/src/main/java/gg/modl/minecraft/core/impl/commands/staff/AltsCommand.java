@@ -21,6 +21,7 @@ import gg.modl.minecraft.core.impl.menus.inspect.AltsMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.Constants;
+import gg.modl.minecraft.core.util.Pagination;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
@@ -38,14 +39,15 @@ public class AltsCommand extends BaseCommand {
 
     @CommandCompletion("@players")
     @CommandAlias("%cmd_alts")
-    @Syntax("<player> [-p]")
+    @Syntax("<player> [-p [page]]")
     @Description("Open the alts menu for a player, or use -p to print to chat")
     @Conditions("player|staff")
     public void alts(CommandIssuer sender, @Name("player") String playerQuery, @Default() String flags) {
-        boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
+        int page = Pagination.parsePrintFlags(flags);
+        boolean printMode = page > 0;
 
         if (!sender.isPlayer() || printMode) {
-            printAlts(sender, playerQuery);
+            printAlts(sender, playerQuery, Math.max(1, page));
             return;
         }
 
@@ -79,7 +81,7 @@ public class AltsCommand extends BaseCommand {
         });
     }
 
-    private void printAlts(CommandIssuer sender, String playerQuery) {
+    private void printAlts(CommandIssuer sender, String playerQuery, int page) {
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
@@ -89,9 +91,9 @@ public class AltsCommand extends BaseCommand {
                 String playerName = response.getData().getCurrentUsername();
                 UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
 
-                httpClientHolder.getClient().getLinkedAccounts(targetUuid).thenAccept(linkedResponse -> displayAlts(sender, playerName, linkedResponse.getLinkedAccounts())).exceptionally(throwable -> {
+                httpClientHolder.getClient().getLinkedAccounts(targetUuid).thenAccept(linkedResponse -> displayAlts(sender, playerName, linkedResponse.getLinkedAccounts(), page)).exceptionally(throwable -> {
                     if (throwable.getCause() instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-                    else displayAlts(sender, playerName, List.of());
+                    else displayAlts(sender, playerName, List.of(), page);
                     return null;
                 });
             } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
@@ -101,13 +103,17 @@ public class AltsCommand extends BaseCommand {
         });
     }
 
-    private void displayAlts(CommandIssuer sender, String playerName, List<Account> linkedAccounts) {
+    private static final int ENTRIES_PER_PAGE = 8;
+
+    private void displayAlts(CommandIssuer sender, String playerName, List<Account> linkedAccounts, int page) {
         sender.sendMessage(localeManager.getMessage("print.alts.header", Map.of("player", playerName)));
 
         if (linkedAccounts == null || linkedAccounts.isEmpty()) sender.sendMessage(localeManager.getMessage("print.alts.empty"));
         else {
-            int ordinal = 1;
-            for (Account account : linkedAccounts) {
+            Pagination.Page pg = Pagination.paginate(linkedAccounts, ENTRIES_PER_PAGE, page);
+            for (int i = pg.getStart(); i < pg.getEnd(); i++) {
+                int ordinal = i + 1;
+                Account account = linkedAccounts.get(i);
                 String username = Constants.UNKNOWN;
                 if (!account.getUsernames().isEmpty())
                     username = account.getUsernames().get(account.getUsernames().size() - 1).getUsername();
@@ -132,10 +138,11 @@ public class AltsCommand extends BaseCommand {
                         "uuid", uuid,
                         "status", status
                 )));
-                ordinal++;
             }
             sender.sendMessage(localeManager.getMessage("print.alts.total", Map.of(
-                    "count", String.valueOf(linkedAccounts.size())
+                    "count", String.valueOf(linkedAccounts.size()),
+                    "page", String.valueOf(pg.getPage()),
+                    "total_pages", String.valueOf(pg.getTotalPages())
             )));
         }
 

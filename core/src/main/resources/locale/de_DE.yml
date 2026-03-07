@@ -273,13 +273,13 @@ print:
     entry_permanent: "&6{ordinal}. &a#{id} &e{date} &f{type} &evon {issuer} (läuft nie ab)."
     entry_inactive: "&6{ordinal}. &7#{id} &e{date} &f{type} &evon {issuer} (inaktiv)."
     entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} &evon {issuer} (begnadigt)."
-    total: "&eAnzahl: &f{count}&e Strafe(n)"
+    total: "&eAnzahl: &f{count}&e Strafe(n) &7(Seite {page}/{total_pages})"
     empty: "&7Spieler wurde noch nie bestraft."
     footer: ""
   notes:
     header: ""
     entry: "&6{ordinal}. &e{date} {author}: &f{content}"
-    total: "&eAnzahl: &f{count}&e Notiz(en)"
+    total: "&eAnzahl: &f{count}&e Notiz(en) &7(Seite {page}/{total_pages})"
     empty: "&7Keine Teamnotizen gefunden."
     footer: ""
   alts:
@@ -289,14 +289,14 @@ print:
     status_muted: "&eStummgeschaltet"
     status_banned_and_muted: "&cGebannt & Stummgeschaltet"
     status_clean: "&aSauber"
-    total: "&eAnzahl: &f{count}&e verknüpfte(s) Konto/Konten"
+    total: "&eAnzahl: &f{count}&e verknüpfte(s) Konto/Konten &7(Seite {page}/{total_pages})"
     empty: "&7Keine verknüpften Konten gefunden."
     footer: ""
   reports:
     header: ""
     entry: "&6{ordinal}. &e#{id} {date} ({status}&e) &f{type} &evon {reporter}"
     entry_content: " &f{content}"
-    total: "&eAnzahl: &f{count}&e Meldung(en)"
+    total: "&eAnzahl: &f{count}&e Meldung(en) &7(Seite {page}/{total_pages})"
     empty: "&7Keine Meldungen gefunden."
     footer: ""
 
@@ -593,16 +593,16 @@ help:
       usage: "inspect <spieler> [-p]"
       description: "Spieler-Inspektionsmenü öffnen (-p für Text)"
     history:
-      usage: "history <spieler> [-p]"
+      usage: "history <spieler> [-p [seite]]"
       description: "Spielerverlauf öffnen (-p für Text)"
     notes:
-      usage: "notes <spieler> [-p]"
+      usage: "notes <spieler> [-p [seite]]"
       description: "Spielernotizen öffnen (-p für Text)"
     alts:
-      usage: "alts <spieler> [-p]"
+      usage: "alts <spieler> [-p [seite]]"
       description: "Spieler-Alts öffnen (-p für Text)"
     reports:
-      usage: "reports [spieler] [-p]"
+      usage: "reports [spieler] [-p [seite]]"
       description: "Meldeübersicht öffnen (-p für Text)"
     punish:
       usage: "punish <spieler> [typ] [grund]"
@@ -671,7 +671,7 @@ staff_list:
   entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &eauf &f{server}{v}"
   vanish: " &7[V]"
   empty: "&7Keine Teammitglieder online."
-  footer: "&eAnzahl: &f{count} &eTeammitglieder online"
+  footer: "&eAnzahl: &f{count} &eTeammitglieder online &7(Seite {page}/{total_pages})"
 
 # Team-Benachrichtigungen
 staff_notifications:

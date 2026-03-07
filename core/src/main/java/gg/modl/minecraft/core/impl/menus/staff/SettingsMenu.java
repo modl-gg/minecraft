@@ -93,6 +93,16 @@ public class SettingsMenu extends BaseStaffMenu {
                 )
         ).slot(MenuSlots.SETTINGS_TICKETS).actionHandler("staffMembers"));
 
+        if (canManageStaff) {
+            set(CirrusItem.of(
+                CirrusItemType.IRON_CHESTPLATE,
+                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Manage Staff"),
+                MenuItems.lore(
+                    MenuItems.COLOR_GRAY + "Manage staff roles"
+                )
+            ).slot(MenuSlots.SETTINGS_STAFF).actionHandler("manageStaff"));
+        }
+
         if (canModifySettings) {
             set(CirrusItem.of(
                     CirrusItemType.BLAZE_ROD,
@@ -101,16 +111,6 @@ public class SettingsMenu extends BaseStaffMenu {
                             MenuItems.COLOR_GRAY + "Modify role permissions"
                     )
             ).slot(MenuSlots.SETTINGS_ROLES).actionHandler("editRoles"));
-        }
-
-        if (canManageStaff) {
-            set(CirrusItem.of(
-                    CirrusItemType.IRON_CHESTPLATE,
-                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Manage Staff"),
-                    MenuItems.lore(
-                            MenuItems.COLOR_GRAY + "Manage staff roles"
-                    )
-            ).slot(MenuSlots.SETTINGS_STAFF).actionHandler("manageStaff"));
         }
 
         if (canModifySettings) {

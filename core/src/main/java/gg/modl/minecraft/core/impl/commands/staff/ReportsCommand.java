@@ -23,6 +23,7 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.Constants;
 import gg.modl.minecraft.core.util.DateFormatter;
+import gg.modl.minecraft.core.util.Pagination;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
 
@@ -43,29 +44,32 @@ public class ReportsCommand extends BaseCommand {
 
     @CommandCompletion("@players")
     @CommandAlias("%cmd_reports")
-    @Syntax("[player] [-p]")
+    @Syntax("[player] [-p [page]]")
     @Description("Open the reports menu (for a player or all reports), or use -p to print to chat")
     @Conditions("player|staff")
     public void reports(CommandIssuer sender, @Optional @Name("player") String playerQuery, @Default() String flags) {
         boolean printMode;
         String actualPlayerQuery;
 
+        int page;
         if ("-p".equalsIgnoreCase(playerQuery) || "print".equalsIgnoreCase(playerQuery)) {
             printMode = true;
             actualPlayerQuery = null;
+            page = 1;
         } else {
-            printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
+            page = Pagination.parsePrintFlags(flags);
+            printMode = page > 0;
             actualPlayerQuery = playerQuery;
         }
 
         if (printMode && actualPlayerQuery != null && !actualPlayerQuery.isEmpty()) {
-            printPlayerReports(sender, actualPlayerQuery);
+            printPlayerReports(sender, actualPlayerQuery, Math.max(1, page));
             return;
         }
 
         if (!sender.isPlayer()) {
             if (actualPlayerQuery != null && !actualPlayerQuery.isEmpty()) {
-                printPlayerReports(sender, actualPlayerQuery);
+                printPlayerReports(sender, actualPlayerQuery, Math.max(1, page));
             } else sender.sendMessage(localeManager.getMessage("general.invalid_syntax"));
 
             return;
@@ -110,7 +114,7 @@ public class ReportsCommand extends BaseCommand {
         });
     }
 
-    private void printPlayerReports(CommandIssuer sender, String playerQuery) {
+    private void printPlayerReports(CommandIssuer sender, String playerQuery, int page) {
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
@@ -122,12 +126,12 @@ public class ReportsCommand extends BaseCommand {
 
                 httpClientHolder.getClient().getPlayerReports(targetUuid, "all").thenAccept(reportsResponse -> {
                     if (reportsResponse.isSuccess()) {
-                        displayReports(sender, playerName, reportsResponse.getReports());
-                    } else displayReports(sender, playerName, List.of());
+                        displayReports(sender, playerName, reportsResponse.getReports(), page);
+                    } else displayReports(sender, playerName, List.of(), page);
                 }).exceptionally(throwable -> {
                     if (throwable.getCause() instanceof PanelUnavailableException) {
                         sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-                    } else displayReports(sender, playerName, List.of());
+                    } else displayReports(sender, playerName, List.of(), page);
 
                     return null;
                 });
@@ -138,13 +142,17 @@ public class ReportsCommand extends BaseCommand {
         });
     }
 
-    private void displayReports(CommandIssuer sender, String playerName, List<ReportsResponse.Report> reports) {
+    private static final int ENTRIES_PER_PAGE = 8;
+
+    private void displayReports(CommandIssuer sender, String playerName, List<ReportsResponse.Report> reports, int page) {
         sender.sendMessage(localeManager.getMessage("print.reports.header", Map.of("player", playerName)));
 
         if (reports == null || reports.isEmpty()) sender.sendMessage(localeManager.getMessage("print.reports.empty"));
         else {
-            int ordinal = 1;
-            for (ReportsResponse.Report report : reports) {
+            Pagination.Page pg = Pagination.paginate(reports, ENTRIES_PER_PAGE, page);
+            for (int i = pg.getStart(); i < pg.getEnd(); i++) {
+                int ordinal = i + 1;
+                ReportsResponse.Report report = reports.get(i);
                 String date = report.getCreatedAt() != null ? DateFormatter.format(report.getCreatedAt()) : Constants.UNKNOWN;
                 String id = report.getId() != null ? report.getId() : "?";
                 String status = report.getStatus() != null ? report.getStatus() : Constants.UNKNOWN;
@@ -177,10 +185,11 @@ public class ReportsCommand extends BaseCommand {
                             "content", content
                     )));
                 }
-                ordinal++;
             }
             sender.sendMessage(localeManager.getMessage("print.reports.total", Map.of(
-                    "count", String.valueOf(reports.size())
+                    "count", String.valueOf(reports.size()),
+                    "page", String.valueOf(pg.getPage()),
+                    "total_pages", String.valueOf(pg.getTotalPages())
             )));
         }
 

@@ -15,6 +15,7 @@ import gg.modl.minecraft.core.impl.menus.staff.StaffMembersMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.VanishService;
 import gg.modl.minecraft.core.util.Constants;
+import gg.modl.minecraft.core.util.Pagination;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.AllArgsConstructor;
@@ -39,8 +40,11 @@ public class StaffListCommand extends BaseCommand {
     @Description("List all online staff members")
     @Conditions("staff")
     public void staffList(CommandIssuer sender, @Optional String flag) {
-        if ("-p".equals(flag) || !sender.isPlayer()) {
-            printStaffList(sender);
+        int page = flag != null ? Pagination.parsePrintFlags(flag) : 0;
+        boolean printMode = page > 0;
+
+        if (printMode || !sender.isPlayer()) {
+            printStaffList(sender, Math.max(1, page));
             return;
         }
 
@@ -58,7 +62,9 @@ public class StaffListCommand extends BaseCommand {
         });
     }
 
-    private void printStaffList(CommandIssuer sender) {
+    private static final int ENTRIES_PER_PAGE = 8;
+
+    private void printStaffList(CommandIssuer sender, int page) {
         List<StaffEntry> staffEntries = collectOnlineStaff();
 
         sender.sendMessage(localeManager.getMessage("staff_list.header", Map.of(
@@ -68,7 +74,9 @@ public class StaffListCommand extends BaseCommand {
         if (staffEntries.isEmpty()) {
             sender.sendMessage(localeManager.getMessage("staff_list.empty"));
         } else {
-            for (StaffEntry entry : staffEntries) {
+            Pagination.Page pg = Pagination.paginate(staffEntries, ENTRIES_PER_PAGE, page);
+            for (int i = pg.getStart(); i < pg.getEnd(); i++) {
+                StaffEntry entry = staffEntries.get(i);
                 String vanishTag = entry.isVanished() ? localeManager.getMessage("staff_list.vanish") : "";
                 sender.sendMessage(localeManager.getMessage("staff_list.entry", Map.of(
                         "role", entry.getRole(),
@@ -78,11 +86,12 @@ public class StaffListCommand extends BaseCommand {
                         "v", vanishTag
                 )));
             }
+            sender.sendMessage(localeManager.getMessage("staff_list.footer", Map.of(
+                    "count", String.valueOf(staffEntries.size()),
+                    "page", String.valueOf(pg.getPage()),
+                    "total_pages", String.valueOf(pg.getTotalPages())
+            )));
         }
-
-        sender.sendMessage(localeManager.getMessage("staff_list.footer", Map.of(
-                "count", String.valueOf(staffEntries.size())
-        )));
     }
 
     private List<StaffEntry> collectOnlineStaff() {

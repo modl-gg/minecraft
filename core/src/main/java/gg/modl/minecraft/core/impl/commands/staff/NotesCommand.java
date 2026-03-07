@@ -20,8 +20,10 @@ import gg.modl.minecraft.core.impl.menus.inspect.NotesMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.DateFormatter;
+import gg.modl.minecraft.core.util.Pagination;
 import lombok.RequiredArgsConstructor;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -34,14 +36,15 @@ public class NotesCommand extends BaseCommand {
 
     @CommandCompletion("@players")
     @CommandAlias("%cmd_notes")
-    @Syntax("<player> [-p]")
+    @Syntax("<player> [-p [page]]")
     @Description("Open the notes menu for a player, or use -p to print to chat")
     @Conditions("player|staff")
     public void notes(CommandIssuer sender, @Name("player") String playerQuery, @Default() String flags) {
-        boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
+        int page = Pagination.parsePrintFlags(flags);
+        boolean printMode = page > 0;
 
         if (!sender.isPlayer() || printMode) {
-            printNotes(sender, playerQuery);
+            printNotes(sender, playerQuery, Math.max(1, page));
             return;
         }
 
@@ -74,7 +77,7 @@ public class NotesCommand extends BaseCommand {
         });
     }
 
-    private void printNotes(CommandIssuer sender, String playerQuery) {
+    private void printNotes(CommandIssuer sender, String playerQuery, int page) {
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
@@ -87,7 +90,7 @@ public class NotesCommand extends BaseCommand {
                 httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
                     if (profileResponse.getStatus() == 200) {
                         Account profile = profileResponse.getProfile();
-                        displayNotes(sender, playerName, profile);
+                        displayNotes(sender, playerName, profile, page);
                     } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
                 }).exceptionally(throwable -> {
                     CommandUtil.handleException(sender, throwable, localeManager);
@@ -100,13 +103,18 @@ public class NotesCommand extends BaseCommand {
         });
     }
 
-    private void displayNotes(CommandIssuer sender, String playerName, Account profile) {
+    private static final int ENTRIES_PER_PAGE = 8;
+
+    private void displayNotes(CommandIssuer sender, String playerName, Account profile, int page) {
+        List<Note> notes = profile.getNotes();
         sender.sendMessage(localeManager.getMessage("print.notes.header", Map.of("player", playerName)));
 
-        if (profile.getNotes().isEmpty()) sender.sendMessage(localeManager.getMessage("print.notes.empty"));
+        if (notes.isEmpty()) sender.sendMessage(localeManager.getMessage("print.notes.empty"));
         else {
-            int ordinal = 1;
-            for (Note note : profile.getNotes()) {
+            Pagination.Page pg = Pagination.paginate(notes, ENTRIES_PER_PAGE, page);
+            for (int i = pg.getStart(); i < pg.getEnd(); i++) {
+                int ordinal = i + 1;
+                Note note = notes.get(i);
                 String date = DateFormatter.format(note.getDate());
                 String author = note.getIssuerName();
                 String content = note.getText();
@@ -117,10 +125,11 @@ public class NotesCommand extends BaseCommand {
                         "author", author,
                         "content", content
                 )));
-                ordinal++;
             }
             sender.sendMessage(localeManager.getMessage("print.notes.total", Map.of(
-                    "count", String.valueOf(profile.getNotes().size())
+                    "count", String.valueOf(notes.size()),
+                    "page", String.valueOf(pg.getPage()),
+                    "total_pages", String.valueOf(pg.getTotalPages())
             )));
         }
 
