@@ -273,13 +273,13 @@ print:
     entry_permanent: "&6{ordinal}. &a#{id} &e{date} &f{type} &evon {issuer} (läuft nie ab)."
     entry_inactive: "&6{ordinal}. &7#{id} &e{date} &f{type} &evon {issuer} (inaktiv)."
     entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} &evon {issuer} (begnadigt)."
-    total: "&eAnzahl: &f{count}&e Strafe(n) &7(Seite {page}/{total_pages})"
+    total: "&eSeite {page}/{total_pages} ({count} gesamt)"
     empty: "&7Spieler wurde noch nie bestraft."
     footer: ""
   notes:
     header: ""
     entry: "&6{ordinal}. &e{date} {author}: &f{content}"
-    total: "&eAnzahl: &f{count}&e Notiz(en) &7(Seite {page}/{total_pages})"
+    total: "&eSeite {page}/{total_pages} ({count} gesamt)"
     empty: "&7Keine Teamnotizen gefunden."
     footer: ""
   alts:
@@ -289,16 +289,24 @@ print:
     status_muted: "&eStummgeschaltet"
     status_banned_and_muted: "&cGebannt & Stummgeschaltet"
     status_clean: "&aSauber"
-    total: "&eAnzahl: &f{count}&e verknüpfte(s) Konto/Konten &7(Seite {page}/{total_pages})"
+    total: "&eSeite {page}/{total_pages} ({count} gesamt)"
     empty: "&7Keine verknüpften Konten gefunden."
     footer: ""
   reports:
     header: ""
     entry: "&6{ordinal}. &e#{id} {date} ({status}&e) &f{type} &evon {reporter}"
     entry_content: " &f{content}"
-    total: "&eAnzahl: &f{count}&e Meldung(en) &7(Seite {page}/{total_pages})"
+    total: "&eSeite {page}/{total_pages} ({count} gesamt)"
     empty: "&7Keine Meldungen gefunden."
     footer: ""
+
+  # /stafflist -p
+  staff_list:
+    header: ""
+    entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &eauf &f{server}{v}"
+    vanish: " &7[V]"
+    empty: "&7Keine Teammitglieder online."
+    total: "&eSeite {page}/{total_pages} ({count} gesamt)"
 
 punishment_commands:
   invalid_severity: "&cUngültiger Schweregrad. Gültige Schweregrade: lenient, regular, severe"
@@ -665,13 +673,6 @@ chat_management:
     clear: "&f/chat clear [anzahl] &7- Chat leeren"
     slow: "&f/chat slow <sekunden|off> &7- Langsamemodus einstellen/deaktivieren"
 
-# Team-Liste
-staff_list:
-  header: ""
-  entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &eauf &f{server}{v}"
-  vanish: " &7[V]"
-  empty: "&7Keine Teammitglieder online."
-  footer: "&eAnzahl: &f{count} &eTeammitglieder online &7(Seite {page}/{total_pages})"
 
 # Team-Benachrichtigungen
 staff_notifications:

@@ -273,13 +273,13 @@ print:
     entry_permanent: "&6{ordinal}. &a#{id} &e{date} &f{type} &epor {issuer} (nunca expira)."
     entry_inactive: "&6{ordinal}. &7#{id} &e{date} &f{type} &epor {issuer} (inactiva)."
     entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} &epor {issuer} (perdonada)."
-    total: "&eCantidad: &f{count}&e sanción(es) &7(Página {page}/{total_pages})"
+    total: "&ePágina {page}/{total_pages} ({count} total)"
     empty: "&7El jugador nunca ha sido sancionado."
     footer: ""
   notes:
     header: ""
     entry: "&6{ordinal}. &e{date} {author}: &f{content}"
-    total: "&eCantidad: &f{count}&e nota(s) &7(Página {page}/{total_pages})"
+    total: "&ePágina {page}/{total_pages} ({count} total)"
     empty: "&7No se encontraron notas del staff."
     footer: ""
   alts:
@@ -289,16 +289,24 @@ print:
     status_muted: "&eSilenciado"
     status_banned_and_muted: "&cBaneado y Silenciado"
     status_clean: "&aLimpio"
-    total: "&eCantidad: &f{count}&e cuenta(s) vinculada(s) &7(Página {page}/{total_pages})"
+    total: "&ePágina {page}/{total_pages} ({count} total)"
     empty: "&7No se encontraron cuentas vinculadas."
     footer: ""
   reports:
     header: ""
     entry: "&6{ordinal}. &e#{id} {date} ({status}&e) &f{type} &epor {reporter}"
     entry_content: " &f{content}"
-    total: "&eCantidad: &f{count}&e reporte(s) &7(Página {page}/{total_pages})"
+    total: "&ePágina {page}/{total_pages} ({count} total)"
     empty: "&7No se encontraron reportes."
     footer: ""
+
+  # /stafflist -p
+  staff_list:
+    header: ""
+    entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &een &f{server}{v}"
+    vanish: " &7[V]"
+    empty: "&7No hay miembros del staff en línea."
+    total: "&ePágina {page}/{total_pages} ({count} total)"
 
 punishment_commands:
   invalid_severity: "&cSeveridad inválida. Severidades válidas: lenient, regular, severe"
@@ -665,13 +673,6 @@ chat_management:
     clear: "&f/chat clear [cantidad] &7- Limpiar chat"
     slow: "&f/chat slow <segundos|off> &7- Configurar/desactivar modo lento"
 
-# Lista de Staff
-staff_list:
-  header: ""
-  entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &een &f{server}{v}"
-  vanish: " &7[V]"
-  empty: "&7No hay miembros del staff en línea."
-  footer: "&eCantidad: &f{count} &estaff en línea &7(Página {page}/{total_pages})"
 
 # Notificaciones de Staff
 staff_notifications:

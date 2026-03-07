@@ -412,6 +412,14 @@ print:
     empty: "&7No reports found."
     footer: ""
 
+  # /stafflist -p
+  staff_list:
+    header: ""
+    entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &eon &f{server}{v}"
+    vanish: " &7[V]"
+    empty: "&7No staff members online."
+    total: "&ePage {page}/{total_pages} ({count} total)"
+
 # Punishment Command Messages
 punishment_commands:
   invalid_severity: "&cInvalid severity. Valid severities: lenient, regular, severe"
@@ -734,13 +742,6 @@ chat_management:
     clear: "&f/chat clear [count] &7- Clear chat"
     slow: "&f/chat slow <seconds|off> &7- Set/disable slow mode"
 
-# Staff List
-staff_list:
-  header: ""
-  entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &eon &f{server}{v}"
-  vanish: " &7[V]"
-  empty: "&7No staff members online."
-  footer: "&ePage {page}/{total_pages} ({count} total)"
 
 # Staff Notifications
 staff_notifications:

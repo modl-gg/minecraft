@@ -67,18 +67,18 @@ public class StaffListCommand extends BaseCommand {
     private void printStaffList(CommandIssuer sender, int page) {
         List<StaffEntry> staffEntries = collectOnlineStaff();
 
-        sender.sendMessage(localeManager.getMessage("staff_list.header", Map.of(
+        sender.sendMessage(localeManager.getMessage("print.staff_list.header", Map.of(
                 "count", String.valueOf(staffEntries.size())
         )));
 
         if (staffEntries.isEmpty()) {
-            sender.sendMessage(localeManager.getMessage("staff_list.empty"));
+            sender.sendMessage(localeManager.getMessage("print.staff_list.empty"));
         } else {
             Pagination.Page pg = Pagination.paginate(staffEntries, ENTRIES_PER_PAGE, page);
             for (int i = pg.getStart(); i < pg.getEnd(); i++) {
                 StaffEntry entry = staffEntries.get(i);
-                String vanishTag = entry.isVanished() ? localeManager.getMessage("staff_list.vanish") : "";
-                sender.sendMessage(localeManager.getMessage("staff_list.entry", Map.of(
+                String vanishTag = entry.isVanished() ? localeManager.getMessage("print.staff_list.vanish") : "";
+                sender.sendMessage(localeManager.getMessage("print.staff_list.entry", Map.of(
                         "role", entry.getRole(),
                         "player", entry.getDisplayName(),
                         "in-game-name", entry.getInGameName(),
@@ -86,7 +86,7 @@ public class StaffListCommand extends BaseCommand {
                         "v", vanishTag
                 )));
             }
-            sender.sendMessage(localeManager.getMessage("staff_list.footer", Map.of(
+            sender.sendMessage(localeManager.getMessage("print.staff_list.total", Map.of(
                     "count", String.valueOf(staffEntries.size()),
                     "page", String.valueOf(pg.getPage()),
                     "total_pages", String.valueOf(pg.getTotalPages())
