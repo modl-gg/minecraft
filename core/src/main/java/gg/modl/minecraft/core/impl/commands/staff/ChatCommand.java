@@ -7,6 +7,7 @@ import co.aikar.commands.annotation.Conditions;
 import co.aikar.commands.annotation.Default;
 import co.aikar.commands.annotation.Description;
 import co.aikar.commands.annotation.Subcommand;
+import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ConfigManager.ChatManagementConfig;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
@@ -143,8 +144,8 @@ public class ChatCommand extends BaseCommand {
 
     private String getInGameName(CommandIssuer sender) {
         if (!sender.isPlayer()) return "Console";
-        var player = platform.getPlayer(sender.getUniqueId());
-        return player != null ? player.username() : "Staff";
+        AbstractPlayer player = platform.getPlayer(sender.getUniqueId());
+        return player != null ? player.getUsername() : "Staff";
     }
 
     private String getPanelName(CommandIssuer sender, String fallback) {

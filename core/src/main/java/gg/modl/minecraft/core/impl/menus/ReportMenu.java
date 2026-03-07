@@ -43,18 +43,18 @@ public class ReportMenu extends SimpleMenu {
         this.guiConfig = guiConfig;
         this.chatMessageCache = chatMessageCache;
 
-        title(locale.getMessage("messages.report_gui_title", Map.of("player", target.username())));
+        title(locale.getMessage("messages.report_gui_title", Map.of("player", target.getUsername())));
         type(CirrusInventoryType.GENERIC_9X6);
         buildMenu();
     }
 
     private void buildMenu() {
         CirrusItem headItem = MenuItems.playerHead(
-                locale.getMessage("messages.report_gui_title", Map.of("player", target.username())),
+                locale.getMessage("messages.report_gui_title", Map.of("player", target.getUsername())),
                 List.of()
         );
         if (platform.getCache() != null) {
-            String texture = platform.getCache().getSkinTexture(target.uuid());
+            String texture = platform.getCache().getSkinTexture(target.getUuid());
             if (texture != null) headItem = headItem.texture(texture);
         }
         set(headItem.slot(4));

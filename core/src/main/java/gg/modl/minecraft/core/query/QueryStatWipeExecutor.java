@@ -66,7 +66,7 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
         if (firstServerName != null) callback.onComplete(true, firstServerName);
         else
             logger.warning("[bridge] No connected bridges available for stat wipe of " + username +
-                    " — will retry on next sync");
+                    ", will retry on next sync");
     }
 
     private void handleMessage(String serverName, QueryClient.QueryMessage message) {

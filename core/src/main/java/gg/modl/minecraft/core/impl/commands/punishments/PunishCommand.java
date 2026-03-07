@@ -268,7 +268,7 @@ public class PunishCommand extends BaseCommand {
         if (!Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange())) return null;
         try {
             WebPlayer webPlayer = WebPlayer.getSync(target.getMinecraftUuid());
-            return (webPlayer != null && webPlayer.valid()) ? webPlayer.skin() : null;
+            return (webPlayer != null && webPlayer.isValid()) ? webPlayer.getSkin() : null;
         } catch (Exception e) {
             java.util.logging.Logger.getLogger("modl").warning(
                 "Failed to get skin hash for " + target.getUsernames().get(0).getUsername() + ": " + e.getMessage());

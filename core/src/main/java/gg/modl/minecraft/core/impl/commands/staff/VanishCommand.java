@@ -6,6 +6,7 @@ import co.aikar.commands.annotation.CommandAlias;
 import co.aikar.commands.annotation.Conditions;
 import co.aikar.commands.annotation.Default;
 import co.aikar.commands.annotation.Description;
+import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -55,7 +56,7 @@ public class VanishCommand extends BaseCommand {
     }
 
     private String resolveInGameName(UUID uuid) {
-        var player = platform.getPlayer(uuid);
+        AbstractPlayer player = platform.getPlayer(uuid);
         return player != null ? player.getName() : Constants.DEFAULT_STAFF_NAME;
     }
 }

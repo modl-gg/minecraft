@@ -263,7 +263,7 @@ public class BungeePlatform implements Platform {
                 }
             }
         } catch (Exception e) {
-            // Methods not available; cache null to skip on future calls
+            // method not available, cache null to skip on future calls
             getLoginProfileMethod = null;
         }
         skinMethodsResolved = true;

@@ -17,6 +17,8 @@ import gg.modl.minecraft.core.service.VanishService;
 import gg.modl.minecraft.core.util.Constants;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
@@ -50,8 +52,10 @@ public class StaffListCommand extends BaseCommand {
 
         StaffMembersMenu menu = new StaffMembersMenu(
                 platform, httpClientHolder.getClient(), viewerUuid, viewerName, isAdmin, panelUrl, null);
-        CirrusPlayerWrapper player = platform.getPlayerWrapper(viewerUuid);
-        menu.display(player);
+        menu.getDataFuture().thenRun(() -> {
+            CirrusPlayerWrapper player = platform.getPlayerWrapper(viewerUuid);
+            if (player != null) menu.display(player);
+        });
     }
 
     private void printStaffList(CommandIssuer sender) {
@@ -65,12 +69,12 @@ public class StaffListCommand extends BaseCommand {
             sender.sendMessage(localeManager.getMessage("staff_list.empty"));
         } else {
             for (StaffEntry entry : staffEntries) {
-                String vanishTag = entry.vanished() ? localeManager.getMessage("staff_list.vanish") : "";
+                String vanishTag = entry.isVanished() ? localeManager.getMessage("staff_list.vanish") : "";
                 sender.sendMessage(localeManager.getMessage("staff_list.entry", Map.of(
-                        "role", entry.role(),
-                        "player", entry.displayName(),
-                        "in-game-name", entry.inGameName(),
-                        "server", entry.server(),
+                        "role", entry.getRole(),
+                        "player", entry.getDisplayName(),
+                        "in-game-name", entry.getInGameName(),
+                        "server", entry.getServer(),
                         "v", vanishTag
                 )));
             }
@@ -103,5 +107,12 @@ public class StaffListCommand extends BaseCommand {
         return entries;
     }
 
-    private record StaffEntry(String displayName, String inGameName, String role, String server, boolean vanished) {}
+    @Data @AllArgsConstructor
+    private static class StaffEntry {
+        private final String displayName;
+        private final String inGameName;
+        private final String role;
+        private final String server;
+        private final boolean vanished;
+    }
 }

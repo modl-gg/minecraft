@@ -20,6 +20,7 @@ import lombok.Setter;
 import net.md_5.bungee.chat.ComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -45,7 +46,6 @@ public class SpigotPlatform implements Platform {
     private @Setter Staff2faService staff2faService;
     private @Setter ChatInputManager chatInputManager;
 
-    // Cached reflection methods for getPlayerSkinTexture
     private static volatile boolean skinMethodsResolved = false;
     private static volatile Method getPlayerProfileMethod;
     private static volatile Method getPropertiesMethod;
@@ -112,7 +112,7 @@ public class SpigotPlatform implements Platform {
         if (player != null) return toAbstractPlayer(player);
 
         if (!queryMojang) return null;
-        var offlinePlayer = Bukkit.getOfflinePlayer(uuid);
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
         return new AbstractPlayer(uuid, offlinePlayer.getName(), null, false);
     }
 
@@ -122,7 +122,7 @@ public class SpigotPlatform implements Platform {
         if (player != null) return toAbstractPlayer(player);
 
         if (!queryMojang) return null;
-        var offlinePlayer = Bukkit.getOfflinePlayer(username);
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(username);
         if (offlinePlayer.hasPlayedBefore()) return new AbstractPlayer(offlinePlayer.getUniqueId(), offlinePlayer.getName(), null, false);
         return null;
     }

@@ -21,8 +21,10 @@ public class DateFormatter {
     }
 
     public static void setTimezone(String timezoneId) {
-        if (timezoneId != null && !timezoneId.isEmpty()) timeZone = TimeZone.getTimeZone(timezoneId);
-        else timeZone = null;
+        if (timezoneId != null && !timezoneId.isEmpty()) {
+            timeZone = TimeZone.getTimeZone(timezoneId);
+        } else timeZone = null;
+
         FORMAT_CACHE.remove();
     }
 

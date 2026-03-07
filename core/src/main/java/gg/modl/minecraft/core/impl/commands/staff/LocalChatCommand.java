@@ -6,6 +6,7 @@ import co.aikar.commands.annotation.CommandAlias;
 import co.aikar.commands.annotation.Conditions;
 import co.aikar.commands.annotation.Default;
 import co.aikar.commands.annotation.Description;
+import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -44,7 +45,7 @@ public class LocalChatCommand extends BaseCommand {
     }
 
     private void sendLocalMessage(UUID senderUuid, String message) {
-        var player = platform.getPlayer(senderUuid);
+        AbstractPlayer player = platform.getPlayer(senderUuid);
         if (player == null) return;
 
         String displayName = cache.getStaffDisplayName(senderUuid);

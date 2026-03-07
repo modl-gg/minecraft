@@ -46,7 +46,7 @@ public class ReportChatLogMenu extends SimpleMenu {
         this.guiConfig = guiConfig;
         this.chatMessageCache = chatMessageCache;
         this.reportData = reportData;
-        title(locale.getMessage("messages.report_gui_title", Map.of("player", target.username())));
+        title(locale.getMessage("messages.report_gui_title", Map.of("player", target.getUsername())));
         type(CirrusInventoryType.GENERIC_9X3);
         buildMenu();
     }
@@ -70,13 +70,13 @@ public class ReportChatLogMenu extends SimpleMenu {
     }
 
     private CirrusItem buildTargetHead(String localeKey) {
-        List<String> skullLines = locale.getMessageList(localeKey, Map.of("player", target.username()));
+        List<String> skullLines = locale.getMessageList(localeKey, Map.of("player", target.getUsername()));
         CirrusItem head = MenuItems.playerHead(
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
         );
         if (platform.getCache() != null) {
-            String texture = platform.getCache().getSkinTexture(target.uuid());
+            String texture = platform.getCache().getSkinTexture(target.getUuid());
             if (texture != null) head = head.texture(texture);
         }
         return head;
@@ -93,13 +93,13 @@ public class ReportChatLogMenu extends SimpleMenu {
     protected void registerActionHandlers() {
         registerActionHandler("attachChat", click -> {
             String chatLog = chatMessageCache.getChatLogForReport(
-                    target.uuid().toString(),
-                    reporter.uuid().toString()
+                    target.getUuid().toString(),
+                    reporter.getUuid().toString()
             );
 
             if (chatLog.isEmpty()) {
-                platform.sendMessage(reporter.uuid(),
-                        locale.getMessage("messages.no_chat_logs_available", Map.of("player", target.username())));
+                platform.sendMessage(reporter.getUuid(),
+                        locale.getMessage("messages.no_chat_logs_available", Map.of("player", target.getUsername())));
             } else reportData.setChatLog(chatLog);
 
             openDetailsMenu(click);

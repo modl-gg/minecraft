@@ -132,7 +132,7 @@ public class PardonCommand extends BaseCommand {
         try {
             AbstractPlayer player = platform.getAbstractPlayer(playerName, false);
             if (player != null) {
-                gg.modl.minecraft.core.impl.cache.PlayerProfile profile = cache.getPlayerProfile(player.uuid());
+                gg.modl.minecraft.core.impl.cache.PlayerProfile profile = cache.getPlayerProfile(player.getUuid());
                 if (profile != null) {
                     if ("ban".equals(type)) profile.setActiveBan(null);
                     else if ("mute".equals(type)) profile.setActiveMute(null);

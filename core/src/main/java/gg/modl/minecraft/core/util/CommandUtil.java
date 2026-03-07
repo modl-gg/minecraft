@@ -15,14 +15,14 @@ public final class CommandUtil {
         if (!sender.isPlayer()) return "Console";
         String panelName = cache.getStaffDisplayName(sender.getUniqueId());
         if (panelName != null) return panelName;
-        return platform.getAbstractPlayer(sender.getUniqueId(), false).username();
+        return platform.getAbstractPlayer(sender.getUniqueId(), false).getUsername();
     }
 
     public static String resolveSenderName(UUID uuid, Cache cache, Platform platform) {
         String name = cache.getStaffDisplayName(uuid);
         if (name != null) return name;
         AbstractPlayer player = platform.getPlayer(uuid);
-        if (player != null) return player.username();
+        if (player != null) return player.getUsername();
         return "Staff";
     }
 

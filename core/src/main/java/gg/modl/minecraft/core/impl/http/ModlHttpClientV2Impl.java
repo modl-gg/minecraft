@@ -683,7 +683,8 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                             throw new PanelUnavailableException(request.uri().getPath(), HTTP_BAD_GATEWAY,
                                     "V2 API is temporarily unavailable (502 Bad Gateway)");
                         } else if (response.statusCode() == HttpURLConnection.HTTP_NOT_FOUND) {
-                            if (debugMode) logger.fine(String.format("[V2-REQ-%s] Not found (404): %s — %s", requestId, request.uri().getPath(), errorMessage));
+                            if (debugMode) logger.fine(String.format("[V2-REQ-%s] Not found (404): %s - %s", requestId,
+                                request.uri().getPath(), errorMessage));
                         } else if (response.statusCode() == 401 || response.statusCode() == 403) {
                             circuitBreaker.recordFailure();
                             logger.severe(String.format("[V2-REQ-%s] Authentication failed - check API key and server domain", requestId));

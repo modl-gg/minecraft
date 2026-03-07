@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class AsyncCommandExecutor {
     /**
-     * Max 4 threads — commands are I/O-bound (HTTP calls ~50-500ms), so threads
+     * Max 4 threads, commands are I/O-bound (HTTP calls ~50-500ms), so threads
      * spend most time blocked, not competing for CPU. 4 concurrent commands is
      * well above typical peak usage on any Minecraft server, and keeps thread
      * stack memory (~1MB each) and context switching costs negligible.

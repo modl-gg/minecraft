@@ -124,7 +124,7 @@ public final class ListenerHelper {
 
     /**
      * Simplified disconnect handler. Per-player state is destroyed atomically
-     * via {@link PlayerProfileRegistry#destroyProfile} — no need to call
+     * via {@link PlayerProfileRegistry#destroyProfile}, no need to call
      * removePlayer() on each service individually.
      */
     public static void handlePlayerDisconnect(
@@ -151,22 +151,16 @@ public final class ListenerHelper {
                     Map.of("player", playerName)));
         }
 
-        if (profile != null && profile.isVanished()) {
-            if (bridgeService != null) {
-                String panelName = cache.getDisplayName(uuid, playerName);
-                bridgeService.sendVanishExit(uuid.toString(), playerName, panelName);
-            }
+        if (profile != null && profile.isVanished() && bridgeService != null) {
+            String panelName = cache.getDisplayName(uuid, playerName);
+            bridgeService.sendVanishExit(uuid.toString(), playerName, panelName);
         }
 
-        if (profile != null && profile.getStaffModeState() != StaffModeService.StaffModeState.OFF) {
-            if (bridgeService != null) {
-                String panelName = cache.getDisplayName(uuid, playerName);
-                bridgeService.sendStaffModeExit(uuid.toString(), playerName, panelName);
-            }
+        if (profile != null && profile.getStaffModeState() != StaffModeService.StaffModeState.OFF && bridgeService != null) {
+            String panelName = cache.getDisplayName(uuid, playerName);
+            bridgeService.sendStaffModeExit(uuid.toString(), playerName, panelName);
         }
 
-        // Atomic cleanup — destroys all per-player state (mute, ban, staff member,
-        // freeze, vanish, staffmode, staffchat, 2fa, notifications, preferences, cooldowns)
         registry.destroyProfile(uuid);
         cache.setOffline(uuid);
         chatMessageCache.removePlayer(uuid.toString());

@@ -9,6 +9,7 @@ import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.response.LinkedAccountsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
@@ -40,7 +41,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
 
     private void loadLinkedAccounts() {
         try {
-            var response = httpClient.getLinkedAccounts(targetUuid).join();
+            LinkedAccountsResponse response = httpClient.getLinkedAccounts(targetUuid).join();
             if (response.getStatus() == 200) {
                 linkedAccounts = new ArrayList<>(response.getLinkedAccounts());
 
@@ -50,8 +51,8 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
                         if (alt.getMinecraftUuid() != null && platform.getCache().getSkinTexture(alt.getMinecraftUuid()) == null) {
                             final UUID altUuid = alt.getMinecraftUuid();
                             futures.add(WebPlayer.get(altUuid).thenAccept(wp -> {
-                                if (wp != null && wp.valid() && wp.textureValue() != null) {
-                                    platform.getCache().cacheSkinTexture(altUuid, wp.textureValue());
+                                if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
+                                    platform.getCache().cacheSkinTexture(altUuid, wp.getTextureValue());
                                 }
                             }));
                         }

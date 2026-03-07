@@ -34,9 +34,9 @@ public class BugReportCommand extends BaseCommand {
         String createdServer = platform.getPlayerServer(sender.getUniqueId());
 
         CreateTicketRequest request = new CreateTicketRequest(
-            reporter.uuid().toString(),
+            reporter.getUuid().toString(),
             "bug",
-            reporter.username(),
+            reporter.getUsername(),
             title,
             null, null, null,
             "normal",

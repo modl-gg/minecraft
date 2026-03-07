@@ -54,17 +54,17 @@ public class IAmMutedCommand extends BaseCommand {
             sender.sendMessage(localeManager.getMessage("messages.player_not_online"));
             return;
         }
-        if (targetPlayer.uuid().equals(senderUuid)) {
+        if (targetPlayer.getUuid().equals(senderUuid)) {
             sender.sendMessage(localeManager.getMessage("iammuted.cannot_message_self"));
             return;
         }
 
         AbstractPlayer senderPlayer = platform.getAbstractPlayer(senderUuid, false);
-        platform.sendMessage(targetPlayer.uuid(), localeManager.getMessage("iammuted.notification_to_target", Map.of(
-            "sender", senderPlayer.username()
+        platform.sendMessage(targetPlayer.getUuid(), localeManager.getMessage("iammuted.notification_to_target", Map.of(
+            "sender", senderPlayer.getUsername()
         )));
         sender.sendMessage(localeManager.getMessage("iammuted.success_message", Map.of(
-            "target", targetPlayer.username()
+            "target", targetPlayer.getUsername()
         )));
 
         senderProfile.getCooldowns().set(COOLDOWN_KEY);
@@ -86,6 +86,6 @@ public class IAmMutedCommand extends BaseCommand {
         return false;
     }
 
-    /** @deprecated No-op — cooldown state is destroyed with the player profile on disconnect. */
+    /** @deprecated No cooldown state is destroyed with the player profile on disconnect. */
     public static void clearOnDisconnect(UUID uuid) {}
 }

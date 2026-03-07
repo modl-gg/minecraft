@@ -9,6 +9,7 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.response.ReportsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
@@ -64,7 +65,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
             httpClient.getPlayerReports(targetAccount.getMinecraftUuid(), "all").thenAccept(response -> {
                 if (response.isSuccess() && response.getReports() != null) {
                     reports.clear();
-                    for (var report : response.getReports()) {
+                    for (ReportsResponse.Report report : response.getReports()) {
                         String type = report.getType() != null ? report.getType() : report.getCategory();
                         if ("player".equalsIgnoreCase(type)) type = "gameplay";
                         reports.add(new Report(

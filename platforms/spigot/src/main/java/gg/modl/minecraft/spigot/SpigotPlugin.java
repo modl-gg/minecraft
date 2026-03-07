@@ -115,7 +115,7 @@ public class SpigotPlugin extends JavaPlugin {
 
         String bridgeHost = getConfig().getString("bridge.host", "");
         if (bridgeHost.isEmpty()) {
-            getLogger().warning("modl-bridge plugin not found and bridge.host not configured — stat wipe commands will not execute");
+            getLogger().warning("modl-bridge plugin not found and bridge.host not configured, stat wipe commands will not execute");
             return;
         }
 
@@ -165,14 +165,14 @@ public class SpigotPlugin extends JavaPlugin {
 
     private void loadLibrary(BukkitLibraryManager libraryManager, LibraryRecord record) {
         Library.Builder builder = Library.builder()
-                .groupId(record.groupId())
-                .artifactId(record.artifactId())
-                .version(record.version())
-                .id(record.id());
+                .groupId(record.getGroupId())
+                .artifactId(record.getArtifactId())
+                .version(record.getVersion())
+                .id(record.getId());
 
-        if (record.hasRelocation()) builder.relocate(record.oldRelocation(), record.newRelocation());
-        if (record.url() != null) builder.url(record.url());
-        if (record.hasChecksum()) builder.checksum(record.checksum());
+        if (record.hasRelocation()) builder.relocate(record.getOldRelocation(), record.getNewRelocation());
+        if (record.getUrl() != null) builder.url(record.getUrl());
+        if (record.hasChecksum()) builder.checksum(record.getChecksum());
 
         libraryManager.loadLibrary(builder.build());
     }

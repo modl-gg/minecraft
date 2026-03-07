@@ -89,8 +89,6 @@ public class Cache {
         return panelName != null ? panelName : fallback;
     }
 
-    // ---- Permissions (staffPermissionsCache stays in Cache — loaded for all staff, including offline) ----
-
     public boolean hasPermission(UUID playerUuid, String permission) {
         StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
         if (staffPerms != null) return checkRoleAndPermissions(staffPerms.getStaffRole(), staffPerms.getPermissions(), permission);

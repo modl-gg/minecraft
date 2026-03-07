@@ -99,10 +99,10 @@ public class BungeeListener implements Listener {
 
         CompletableFuture<Map<String, Object>> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
         CompletableFuture<String> skinHashFuture = WebPlayer.get(event.getConnection().getUniqueId())
-                .thenApply(wp -> wp != null && wp.valid() ? wp.skin() : null)
+                .thenApply(wp -> wp != null && wp.isValid() ? wp.getSkin() : null)
                 .exceptionally(t -> null);
 
-        // getNow() avoids blocking - backend will request IP lookup via pendingIpLookups if null
+        // getNow() avoids blocking, backend will request IP lookup via pendingIpLookups if null
         Map<String, Object> ipInfo = null;
         String skinHash = null;
         try {
@@ -126,15 +126,15 @@ public class BungeeListener implements Listener {
                 cache, debugMode, platform.getLogger());
 
         if (result instanceof LoginHandler.LoginResult.Denied denied) {
-            denyLogin(event, denied.message());
+            denyLogin(event, denied.getMessage());
         }
     }
 
     private void handleLoginException(LoginEvent event, Exception e) {
         LoginHandler.LoginResult result = LoginHandler.handleLoginError(e);
         if (result instanceof LoginHandler.LoginResult.Denied denied) {
-            platform.getLogger().warning("Login blocked for " + event.getConnection().getName() + ": " + denied.message());
-            denyLogin(event, denied.message());
+            platform.getLogger().warning("Login blocked for " + event.getConnection().getName() + ": " + denied.getMessage());
+            denyLogin(event, denied.getMessage());
         } else platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + e.getMessage());
     }
 
@@ -187,7 +187,7 @@ public class BungeeListener implements Listener {
         ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
         String serverName = getPlayerServerName(sender);
 
-        var result = ChatEventHandler.handleChat(
+        ChatEventHandler.Result result = ChatEventHandler.handleChat(
                 sender.getUniqueId(), sender.getName(), event.getMessage(), serverName,
                 msg -> sender.sendMessage(new TextComponent(StringUtil.unescapeNewlines(msg))),
                 platform, cache, localeManager, chatMessageCache,
@@ -199,7 +199,7 @@ public class BungeeListener implements Listener {
     private void handleCommand(ChatEvent event) {
         if (!(event.getSender() instanceof ProxiedPlayer sender)) return;
 
-        var result = CommandInterceptHandler.handleCommand(
+        CommandInterceptHandler.CommandResult result = CommandInterceptHandler.handleCommand(
                 sender.getUniqueId(), sender.getName(),
                 event.getMessage(), getPlayerServerName(sender),
                 mutedCommands, cache, freezeService, chatCommandLogService);

@@ -34,9 +34,9 @@ public class SupportCommand extends BaseCommand {
         String createdServer = platform.getPlayerServer(sender.getUniqueId());
 
         CreateTicketRequest request = new CreateTicketRequest(
-            requester.uuid().toString(),
+            requester.getUuid().toString(),
             "support",
-            requester.username(),
+            requester.getUsername(),
             title,
             null, null, null,
             "normal",

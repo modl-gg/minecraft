@@ -46,7 +46,7 @@ public class ReportCommand extends BaseCommand {
             return;
         }
 
-        if (targetPlayer.username().equalsIgnoreCase(reporter.username())) {
+        if (targetPlayer.getUsername().equalsIgnoreCase(reporter.getUsername())) {
             sender.sendMessage(localeManager.getMessage("messages.cannot_report_self"));
             return;
         }

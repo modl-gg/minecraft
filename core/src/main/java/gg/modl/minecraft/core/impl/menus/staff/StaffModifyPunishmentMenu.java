@@ -12,6 +12,7 @@ import gg.modl.minecraft.api.Evidence;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.ModifyPunishmentTicketsRequest;
+import gg.modl.minecraft.api.http.response.RecentPunishmentsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -232,7 +233,7 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
         httpClient.getRecentPunishments(48).thenAccept(response -> {
             if (response.isSuccess() && response.getPunishments() != null) {
                 List<RecentPunishmentsMenu.PunishmentWithPlayer> freshData = new ArrayList<>();
-                for (var p : response.getPunishments()) {
+                for (RecentPunishmentsResponse.RecentPunishment p : response.getPunishments()) {
                     UUID playerUuid = null;
                     try {
                         if (p.getPlayerUuid() != null) {

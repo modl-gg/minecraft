@@ -53,10 +53,18 @@ public class HttpManager {
             return host != null ? host : url;
         } catch (Exception e) {
             String result = url;
-            if (result.startsWith("https://")) result = result.substring(8);
-            else if (result.startsWith("http://")) result = result.substring(7);
+
+            if (result.startsWith("https://")) {
+                result = result.substring(8);
+            } else if (result.startsWith("http://")) {
+                result = result.substring(7);
+            }
+
             int slashIndex = result.indexOf('/');
-            if (slashIndex > 0) result = result.substring(0, slashIndex);
+            if (slashIndex > 0) {
+                result = result.substring(0, slashIndex);
+            }
+
             return result;
         }
     }

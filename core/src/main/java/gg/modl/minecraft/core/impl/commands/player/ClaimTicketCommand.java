@@ -35,8 +35,8 @@ public class ClaimTicketCommand extends BaseCommand {
 
         ClaimTicketRequest request = new ClaimTicketRequest(
             ticketId,
-            player.uuid().toString(),
-            player.username()
+            player.getUuid().toString(),
+            player.getUsername()
         );
 
         httpClient.claimTicket(request).thenAccept(response -> {

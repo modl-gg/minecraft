@@ -37,35 +37,35 @@ public class ChatReportCommand extends BaseCommand {
 
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
-        if (targetPlayer.username().equalsIgnoreCase(reporter.username())) {
+        if (targetPlayer.getUsername().equalsIgnoreCase(reporter.getUsername())) {
             sender.sendMessage(localeManager.getMessage("messages.cannot_report_self"));
             return;
         }
 
         String chatLog = chatMessageCache.getChatLogForReport(
-            targetPlayer.uuid().toString(),
-            reporter.uuid().toString()
+            targetPlayer.getUuid().toString(),
+            reporter.getUuid().toString()
         );
 
         if (chatLog.isEmpty()) {
-            sender.sendMessage(localeManager.getMessage("messages.no_chat_logs_available", Map.of("player", targetPlayer.username())));
+            sender.sendMessage(localeManager.getMessage("messages.no_chat_logs_available", Map.of("player", targetPlayer.getUsername())));
             return;
         }
 
-        String description = "**Chat Report for " + targetPlayer.username() + "**\n\n" +
-                             "Reported by: " + reporter.username() + "\n\n" +
+        String description = "**Chat Report for " + targetPlayer.getUsername() + "**\n\n" +
+                             "Reported by: " + reporter.getUsername() + "\n\n" +
                              "**Chat Log:**\n```\n" + chatLog + "\n```";
 
         String createdServer = platform.getPlayerServer(sender.getUniqueId());
 
         CreateTicketRequest request = new CreateTicketRequest(
-            reporter.uuid().toString(),
+            reporter.getUuid().toString(),
             "chat",
-            reporter.username(),
-            "Chat Report: " + targetPlayer.username(),
+            reporter.getUsername(),
+            "Chat Report: " + targetPlayer.getUsername(),
             description,
-            targetPlayer.uuid().toString(),
-            targetPlayer.username(),
+            targetPlayer.getUuid().toString(),
+            targetPlayer.getUsername(),
             "normal",
             createdServer,
             List.of(chatLog.split("\n")),

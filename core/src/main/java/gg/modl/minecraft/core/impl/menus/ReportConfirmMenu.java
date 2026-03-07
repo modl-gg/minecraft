@@ -54,7 +54,7 @@ public class ReportConfirmMenu extends SimpleMenu {
         this.chatMessageCache = chatMessageCache;
         this.reportData = reportData;
 
-        title(locale.getMessage("messages.report_gui_title", Map.of("player", target.username())));
+        title(locale.getMessage("messages.report_gui_title", Map.of("player", target.getUsername())));
         type(CirrusInventoryType.GENERIC_9X3);
         buildMenu();
     }
@@ -73,13 +73,13 @@ public class ReportConfirmMenu extends SimpleMenu {
                 MenuItems.lore(confirmLore)
         ).slot(11).actionHandler("confirm"));
 
-        List<String> skullLines = locale.getMessageList("messages.report_skull_confirm", Map.of("player", target.username()));
+        List<String> skullLines = locale.getMessageList("messages.report_skull_confirm", Map.of("player", target.getUsername()));
         CirrusItem confirmHead = MenuItems.playerHead(
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
         );
         if (platform.getCache() != null) {
-            String texture = platform.getCache().getSkinTexture(target.uuid());
+            String texture = platform.getCache().getSkinTexture(target.getUuid());
             if (texture != null) confirmHead = confirmHead.texture(texture);
         }
         set(confirmHead.slot(13));
@@ -125,21 +125,21 @@ public class ReportConfirmMenu extends SimpleMenu {
         if (reportData.getChatLog() != null) description.append("\n\n**Chat Log:**\n```\n").append(reportData.getChatLog()).append("\n```");
 
         String ticketType = reportData.isChatReport() ? "chat" : "player";
-        String subject = (reportData.isChatReport() ? "Chat Report" : "Player Report") + ": " + target.username();
+        String subject = (reportData.isChatReport() ? "Chat Report" : "Player Report") + ": " + target.getUsername();
 
         List<String> chatMessages = null;
         if (reportData.getChatLog() != null) chatMessages = List.of(reportData.getChatLog().split("\n"));
 
-        String createdServer = platform.getPlayerServer(reporter.uuid());
+        String createdServer = platform.getPlayerServer(reporter.getUuid());
 
         CreateTicketRequest request = new CreateTicketRequest(
-                reporter.uuid().toString(),
+                reporter.getUuid().toString(),
                 ticketType,
-                reporter.username(),
+                reporter.getUsername(),
                 subject,
                 description.toString(),
-                target.uuid().toString(),
-                target.username(),
+                target.getUuid().toString(),
+                target.getUsername(),
                 "normal",
                 createdServer,
                 chatMessages,
@@ -184,11 +184,11 @@ public class ReportConfirmMenu extends SimpleMenu {
                 ticketUrl, ticketId
         );
 
-        UUID reporterUuid = reporter.uuid();
+        UUID reporterUuid = reporter.getUuid();
         platform.runOnMainThread(() -> platform.sendJsonMessage(reporterUuid, clickableMessage));
     }
 
     private void sendMessage(String message) {
-        platform.sendMessage(reporter.uuid(), message);
+        platform.sendMessage(reporter.getUuid(), message);
     }
 }

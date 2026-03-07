@@ -8,6 +8,7 @@ import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.response.ReportsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
@@ -70,7 +71,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
             httpClient.getReports("all").thenAccept(response -> {
                 if (response.isSuccess() && response.getReports() != null) {
                     reports.clear();
-                    for (var report : response.getReports()) {
+                    for (ReportsResponse.Report report : response.getReports()) {
                         UUID reportedUuid = null;
                         try {
                             if (report.getReportedPlayerUuid() != null) {

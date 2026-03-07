@@ -32,10 +32,10 @@ public class ApplyCommand extends BaseCommand {
         String createdServer = platform.getPlayerServer(sender.getUniqueId());
 
         CreateTicketRequest request = new CreateTicketRequest(
-            applicant.uuid().toString(),
+            applicant.getUuid().toString(),
             "staff",
-            applicant.username(),
-            "Application: " + applicant.username(),
+            applicant.getUsername(),
+            "Application: " + applicant.getUsername(),
             null, null,
             null,
             "normal",

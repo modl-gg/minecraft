@@ -2,6 +2,7 @@ package gg.modl.minecraft.core.util;
 
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
+import gg.modl.minecraft.api.http.response.StaffPermissionsResponse;
 import gg.modl.minecraft.core.impl.cache.Cache;
 
 import java.util.UUID;
@@ -13,7 +14,7 @@ public final class StaffPermissionLoader {
         return httpClient.getStaffPermissions().thenAccept(response -> {
             if (clearFirst) cache.clearStaffPermissions();
             int loadedCount = 0;
-            for (var staffMember : response.getData().getStaff()) {
+            for (StaffPermissionsResponse.StaffMember staffMember : response.getData().getStaff()) {
                 if (staffMember.getMinecraftUuid() != null) {
                     try {
                         UUID uuid = UUID.fromString(staffMember.getMinecraftUuid());

@@ -1,5 +1,7 @@
 package gg.modl.minecraft.api;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -7,15 +9,17 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-public record PunishmentData(
-        @Nullable String blockedName,
-        @Nullable String blockedSkin,
-        @Nullable String linkedBanId,
-        @Nullable Date linkedBanExpiry,
-        @Nullable List<String> chatLog,
-        long duration,
-        boolean altBlocking,
-        boolean wipeAfterExpiry) {
+@Data @AllArgsConstructor
+public class PunishmentData {
+    @Nullable private final String blockedName;
+    @Nullable private final String blockedSkin;
+    @Nullable private final String linkedBanId;
+    @Nullable private final Date linkedBanExpiry;
+    @Nullable private final List<String> chatLog;
+    private final long duration;
+    private final boolean altBlocking;
+    private final boolean wipeAfterExpiry;
+
     private static final String KEY_BLOCKED_NAME = "blockedName", KEY_BLOCKED_SKIN = "blockedSkin",
             KEY_LINKED_BAN_ID = "linkedBanId", KEY_LINKED_BAN_EXPIRY = "linkedBanExpiry",
             KEY_CHAT_LOG = "chatLog", KEY_DURATION = "duration",

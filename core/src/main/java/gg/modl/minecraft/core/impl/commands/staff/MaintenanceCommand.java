@@ -7,6 +7,7 @@ import co.aikar.commands.annotation.Conditions;
 import co.aikar.commands.annotation.Default;
 import co.aikar.commands.annotation.Description;
 import co.aikar.commands.annotation.Subcommand;
+import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -69,7 +70,7 @@ public class MaintenanceCommand extends BaseCommand {
 
     private String getInGameName(CommandIssuer sender) {
         if (!sender.isPlayer()) return "Console";
-        var player = platform.getPlayer(sender.getUniqueId());
+        AbstractPlayer player = platform.getPlayer(sender.getUniqueId());
         return player != null ? player.getName() : "Staff";
     }
 

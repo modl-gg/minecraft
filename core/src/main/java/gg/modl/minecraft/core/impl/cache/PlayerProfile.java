@@ -26,12 +26,10 @@ public class PlayerProfile {
     private final UUID uuid;
     private final long joinTime = System.currentTimeMillis();
 
-    // Punishments (from login response + sync)
     @Setter private volatile SimplePunishment activeMute;
     @Setter private volatile SimplePunishment activeBan;
     @Setter private volatile SyncResponse.ActiveStaffMember staffMember;
 
-    // Staff state
     @Setter private volatile StaffChatService.ChatMode chatMode = StaffChatService.ChatMode.NORMAL;
     @Setter private volatile StaffModeService.StaffModeState staffModeState = StaffModeService.StaffModeState.OFF;
     @Setter private volatile boolean vanished;
@@ -40,17 +38,11 @@ public class PlayerProfile {
     @Setter private volatile boolean interceptingNetworkChat;
     @Setter private volatile boolean staffNotificationsEnabled = true;
 
-    // 2FA
     @Setter private volatile Staff2faService.AuthState authState;
     @Setter private volatile boolean twoFaNotified;
 
-    // Notifications
     private final List<PendingNotification> pendingNotifications = Collections.synchronizedList(new ArrayList<>());
-
-    // Chat state
     @Setter private volatile long lastChatMessageTime;
-
-    // Cooldowns (replaces static maps in IAmMutedCommand, StandingCommand, TicketCommandUtil)
     private final CooldownTracker cooldowns = new CooldownTracker();
 
     public PlayerProfile(UUID uuid) {

@@ -90,7 +90,7 @@ public class AltsCommand extends BaseCommand {
 
                 httpClientHolder.getClient().getLinkedAccounts(targetUuid).thenAccept(linkedResponse -> displayAlts(sender, playerName, linkedResponse.getLinkedAccounts())).exceptionally(throwable -> {
                     if (throwable.getCause() instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-                    else displayAlts(sender, playerName, List.of()); // Show empty list on error
+                    else displayAlts(sender, playerName, List.of());
                     return null;
                 });
             } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));

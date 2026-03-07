@@ -76,7 +76,7 @@
             <version>4.26.1</version>
             <scope>provided</scope>
         </dependency>
-        <!-- Netty — provided at runtime by Velocity/BungeeCord servers -->
+        <!-- Netty provided at runtime by Velocity/BungeeCord servers -->
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>

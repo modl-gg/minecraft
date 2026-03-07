@@ -11,6 +11,8 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
@@ -119,8 +121,8 @@ public class ModlHelpCommand extends BaseCommand {
         for (int i = start; i < end; i++) {
             HelpEntry entry = entries.get(i);
             sender.sendMessage(localeManager.getMessage("help.entry", Map.of(
-                    "command", entry.command(),
-                    "description", entry.description()
+                    "command", entry.getCommand(),
+                    "description", entry.getDescription()
             )));
         }
 
@@ -140,5 +142,9 @@ public class ModlHelpCommand extends BaseCommand {
         entries.add(new HelpEntry(usage, description));
     }
 
-    private record HelpEntry(String command, String description) {}
+    @Data @AllArgsConstructor
+    private static class HelpEntry {
+        private final String command;
+        private final String description;
+    }
 }

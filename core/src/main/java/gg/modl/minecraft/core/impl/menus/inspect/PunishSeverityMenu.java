@@ -274,7 +274,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         super.registerActionHandlers();
 
         registerActionHandler("issueSingle", click -> {
-            issuePunishment(click, 1); // Regular severity for single
+            issuePunishment(click, 1); // regular severity for single
             return CallResult.DENY_GRABBING;
         });
         registerActionHandler("issueLenient", click -> {
@@ -290,18 +290,15 @@ public class PunishSeverityMenu extends BaseInspectMenu {
             return CallResult.DENY_GRABBING;
         });
 
-        // Toggle handlers
         registerActionHandler("toggleSilent", this::handleToggleSilent);
         registerActionHandler("toggleAltBlock", this::handleToggleAltBlock);
         registerActionHandler("toggleStatWipe", this::handleToggleStatWipe);
 
-        // Link Reports handler
         registerActionHandler("linkReports", click -> {
             handleLinkReports(click);
             return CallResult.DENY_GRABBING;
         });
 
-        // Override header navigation - pass rootBackAction to preserve the back button on primary tabs
         InspectNavigationHandlers.registerAll(
                 this::registerActionHandler,
                 platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction);
@@ -310,13 +307,10 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     private void issuePunishment(Click click, int severityLevel) {
         click.clickedMenu().close();
 
-        // Prompt for reason
         platform.getChatInputManager().requestInput(viewerUuid, "Enter punishment reason for " + targetName + ":",
                 reason -> {
-                    // Create punishment request
                     String severityStr = severityLevel == 0 ? "lenient" : severityLevel == 1 ? "regular" : "aggravated";
 
-                    // Build data map with optional flags
                     Map<String, Object> data = new HashMap<>();
                     if (altBlocking) data.put("altBlocking", true);
                     if (statWipe) data.put("statWipe", true);
@@ -330,9 +324,9 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                             severityStr,
                             silentMode ? "silent" : "active",
                             punishmentType.getOrdinal(),
-                            null, // duration - let API determine from severity
+                            null,
                             data,
-                            null, // notes
+                            null,
                             linkedReportIds.isEmpty() ? null : linkedReportIds
                     );
 
@@ -340,7 +334,6 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                         if (response.isSuccess()) {
                             LocaleManager localeManager = platform.getLocaleManager();
 
-                            // Success message to issuer (same as command)
                             String successMessage = localeManager.punishment()
                                 .type(punishmentType.getName())
                                 .target(targetName)
@@ -348,20 +341,15 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                                 .get("general.punishment_issued");
                             sendMessage(successMessage);
 
-                            // Send action buttons
                             if (response.getPunishmentId() != null) {
                                 platform.runOnMainThread(() -> PunishmentActionMessages.sendPunishmentActions(platform, viewerUuid, response.getPunishmentId()));
                             }
 
-                            // Resolve linked reports
                             if (!linkedReportIds.isEmpty()) {
                                 for (String reportId : linkedReportIds) {
                                     httpClient.resolveReport(reportId, viewerName,
                                             "Report accepted - punishment issued", response.getPunishmentId())
-                                            .exceptionally(ex -> {
-                                                // Log but don't fail the punishment for resolve errors
-                                                return null;
-                                            });
+                                            .exceptionally(ex -> null);
                                 }
                                 sendMessage(MenuItems.COLOR_GREEN + "Resolved " + linkedReportIds.size() + " linked report(s).");
                             }
@@ -381,14 +369,12 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     }
 
     private void handleToggleSilent(Click click) {
-        // Refresh menu with toggled silent state
         ActionHandlers.openMenu(
                 new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, !silentMode, altBlocking, statWipe, linkedReportIds))
                 .handle(click);
     }
 
     private void handleToggleAltBlock(Click click) {
-        // Refresh menu with toggled alt-blocking state
         ActionHandlers.openMenu(
                 new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, silentMode, !altBlocking, statWipe, linkedReportIds))
                 .handle(click);
@@ -402,10 +388,8 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     }
 
     private void handleLinkReports(Click click) {
-        // Open LinkReportsMenu, passing current linked IDs as pre-selected
         Set<String> preSelected = new HashSet<>(linkedReportIds);
         Consumer<Set<String>> onComplete = selectedIds -> {
-            // Return to PunishSeverityMenu with updated linked report IDs
             List<String> newLinkedIds = new ArrayList<>(selectedIds);
             new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType,
                 rootBackAction, menuBackAction, silentMode, altBlocking, statWipe, newLinkedIds)

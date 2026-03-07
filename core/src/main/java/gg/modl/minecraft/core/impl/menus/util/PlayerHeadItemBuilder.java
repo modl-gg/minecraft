@@ -117,9 +117,9 @@ public final class PlayerHeadItemBuilder {
                 try {
                     WebPlayer wp = WebPlayer.get(targetUuid)
                             .get(3, TimeUnit.SECONDS);
-                    if (wp != null && wp.valid() && wp.textureValue() != null) {
-                        platform.getCache().cacheSkinTexture(targetUuid, wp.textureValue());
-                        cachedTexture = wp.textureValue();
+                    if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
+                        platform.getCache().cacheSkinTexture(targetUuid, wp.getTextureValue());
+                        cachedTexture = wp.getTextureValue();
                     }
                 } catch (Exception ignored) {}
             }

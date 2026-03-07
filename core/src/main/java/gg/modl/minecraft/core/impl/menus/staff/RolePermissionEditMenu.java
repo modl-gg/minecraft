@@ -9,6 +9,7 @@ import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
@@ -109,7 +110,7 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             if (perm.startsWith("punishment.apply.")) allNodes.add(perm);
 
         if (cache != null && cache.getCachedPunishmentTypes() != null && cache.getCachedPunishmentTypes().getData() != null)
-            for (var type : cache.getCachedPunishmentTypes().getData()) {
+            for (PunishmentTypesResponse.PunishmentTypeData type : cache.getCachedPunishmentTypes().getData()) {
                 String permNode = "punishment.apply." + type.getName().toLowerCase().replace(" ", "-");
                 allNodes.add(permNode);
             }

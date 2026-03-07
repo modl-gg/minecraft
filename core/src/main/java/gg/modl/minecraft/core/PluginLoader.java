@@ -542,11 +542,15 @@ public class PluginLoader {
 
         commandManager.getCommandConditions().addCondition("staff_no2fa", context -> {
             if (!context.getIssuer().isPlayer()) return;
-            if (!PermissionUtil.isStaff(context.getIssuer(), cache)) throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
+            if (!PermissionUtil.isStaff(context.getIssuer(), cache)) {
+                throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
+            }
         });
 
         commandManager.getCommandConditions().addCondition("player", context -> {
-            if (!context.getIssuer().isPlayer()) throw new ConditionFailedException(localeManager.getMessage("iammuted.only_players"));
+            if (!context.getIssuer().isPlayer()) {
+                throw new ConditionFailedException(localeManager.getMessage("iammuted.only_players"));
+            }
         });
 
         commandManager.getCommandConditions().addCondition("permission", context -> {
@@ -560,16 +564,21 @@ public class PluginLoader {
                     message = localeManager.getPunishmentMessage("general.no_permission_punishment",
                             Map.of("type", type));
                 } else message = localeManager.getMessage("general.no_permission");
+
                 throw new ConditionFailedException(message);
             }
-            if (staff2faService != null && staff2faService.isEnabled() && !staff2faService.isAuthenticated(context.getIssuer().getUniqueId())) {
+            if (staff2faService != null && staff2faService.isEnabled()
+                && !staff2faService.isAuthenticated(context.getIssuer().getUniqueId())) {
                 throw new ConditionFailedException(localeManager.getMessage("staff_2fa.not_verified"));
             }
         });
 
         commandManager.getCommandConditions().addCondition("admin", context -> {
             if (!context.getIssuer().isPlayer()) return;
-            if (!PermissionUtil.hasAnyPermission(context.getIssuer(), cache, Permissions.SETTINGS_VIEW, Permissions.SETTINGS_MODIFY, "admin.reload")) throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
+            if (!PermissionUtil.hasAnyPermission(
+                context.getIssuer(), cache, Permissions.SETTINGS_VIEW, Permissions.SETTINGS_MODIFY, "admin.reload")) {
+                throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
+            }
         });
     }
 

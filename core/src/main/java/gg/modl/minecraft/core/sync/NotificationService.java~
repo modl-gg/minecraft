@@ -99,8 +99,9 @@ class NotificationService {
 
     void processPlayerNotification(SyncResponse.PlayerNotification notification) {
         try {
-            if (debugMode)
+            if (debugMode) {
                 logger.info("Processing notification " + notification.getId() + " (type: " + notification.getType() + "): " + notification.getMessage());
+            }
 
             String targetPlayerUuid = notification.getTargetPlayerUuid();
             if (targetPlayerUuid == null || targetPlayerUuid.isEmpty()) {

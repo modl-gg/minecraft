@@ -41,7 +41,7 @@ public class HackReportCommand extends BaseCommand {
             return;
         }
 
-        if (targetPlayer.username().equalsIgnoreCase(reporter.username())) {
+        if (targetPlayer.getUsername().equalsIgnoreCase(reporter.getUsername())) {
             sender.sendMessage(localeManager.getMessage("messages.cannot_report_self"));
             return;
         }
@@ -50,13 +50,13 @@ public class HackReportCommand extends BaseCommand {
         String createdServer = platform.getPlayerServer(sender.getUniqueId());
 
         CreateTicketRequest request = new CreateTicketRequest(
-            reporter.uuid().toString(),
+            reporter.getUuid().toString(),
             "player",
-            reporter.username(),
-            "Cheating: " + targetPlayer.username(),
+            reporter.getUsername(),
+            "Cheating: " + targetPlayer.getUsername(),
             description,
-            targetPlayer.uuid().toString(),
-            targetPlayer.username(),
+            targetPlayer.getUuid().toString(),
+            targetPlayer.getUsername(),
             "normal",
             createdServer,
             null,

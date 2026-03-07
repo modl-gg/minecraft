@@ -198,7 +198,6 @@ public class SyncService {
 
     private void handleSyncException(CompletionException e) {
         Throwable cause = e.getCause() != null ? e.getCause() : e;
-        // Silently ignore PanelUnavailableException to avoid log spam during backend outages
         if (cause instanceof PanelUnavailableException) return;
         if (cause instanceof TimeoutException) logger.warning("Sync request timed out");
         else logger.warning("Sync request failed: " + cause.getMessage());
@@ -289,7 +288,7 @@ public class SyncService {
         AbstractPlayer player = platform.getPlayer(uuid);
         if (player == null) return;
         platform.sendMessage(uuid, localeManager.getMessage("staff_2fa.verify_success"));
-        String inGameName = player.username();
+        String inGameName = player.getUsername();
         String panelName = cache.getStaffDisplayName(uuid);
         if (panelName == null) panelName = inGameName;
         platform.staffBroadcast(localeManager.getMessage("staff_notifications.verified",
@@ -384,10 +383,10 @@ public class SyncService {
 
     private void handleStatWipeResult(SyncResponse.PendingStatWipe statWipe, boolean success, String serverName) {
         if (!success) {
-            logger.warning("[bridge] Failed for " + statWipe.getUsername() + " — will retry on next sync");
+            logger.warning("[bridge] Failed for " + statWipe.getUsername() + ", will retry on next sync");
             return;
         }
-        logger.info("[bridge] Completed for " + statWipe.getUsername() + " on " + serverName + " — acknowledging");
+        logger.info("[bridge] Completed for " + statWipe.getUsername() + " on " + serverName + ", acknowledging");
         httpClientHolder.getClient().acknowledgeStatWipe(
                 new StatWipeAcknowledgeRequest(statWipe.getPunishmentId(), serverName, true))
                 .exceptionally(throwable -> {
@@ -426,7 +425,7 @@ public class SyncService {
     }
 
     private void broadcastStaffJoin(UUID uuid, AbstractPlayer player) {
-        String inGameName = player.username();
+        String inGameName = player.getUsername();
         String panelName = cache.getStaffDisplayName(uuid);
         if (panelName == null) panelName = inGameName;
         platform.staffBroadcast(localeManager.getMessage("staff_notifications.join",

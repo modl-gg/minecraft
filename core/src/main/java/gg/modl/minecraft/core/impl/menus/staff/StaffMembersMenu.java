@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -65,6 +66,7 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
     private String currentFilter;
     private final List<String> filterOptions = Arrays.asList("Online", "Offline", "All");
     private final String panelUrl;
+    @Getter private CompletableFuture<Void> dataFuture;
 
     public StaffMembersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                             boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
@@ -79,15 +81,16 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
         this.currentFilter = filter;
         activeTab = StaffTab.SETTINGS;
 
-        if (existingMembers != null)
+        if (existingMembers != null) {
             this.staffMembers = new ArrayList<>(existingMembers);
-        else
-            fetchStaffMembers();
+            this.dataFuture = CompletableFuture.completedFuture(null);
+        } else
+            this.dataFuture = fetchStaffMembers();
     }
 
-    private void fetchStaffMembers() {
+    private CompletableFuture<Void> fetchStaffMembers() {
         Cache cache = platform.getCache();
-        httpClient.getStaffList().thenAccept(response -> {
+        return httpClient.getStaffList().thenAccept(response -> {
             if (response != null && response.isSuccess() && response.getStaff() != null) {
                 staffMembers.clear();
                 for (StaffListResponse.StaffEntry entry : response.getStaff()) {
@@ -119,8 +122,8 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
                     if (uuid != null && cache != null && cache.getSkinTexture(uuid) == null) {
                         final UUID staffUuid = uuid;
                         WebPlayer.get(staffUuid).thenAccept(wp -> {
-                            if (wp != null && wp.valid() && wp.textureValue() != null) {
-                                cache.cacheSkinTexture(staffUuid, wp.textureValue());
+                            if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
+                                cache.cacheSkinTexture(staffUuid, wp.getTextureValue());
                             }
                         });
                     }

@@ -9,7 +9,7 @@ import java.util.UUID;
 
 /**
  * Staff two-factor authentication. Session validity comes from the backend
- * via sync responses — no local session/IP caching.
+ * via sync responses, no local session/IP caching.
  */
 public class Staff2faService {
     public enum AuthState {

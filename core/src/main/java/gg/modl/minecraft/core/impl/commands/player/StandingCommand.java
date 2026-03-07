@@ -61,7 +61,7 @@ public class StandingCommand extends BaseCommand {
 
             StandingMenu menu = new StandingMenu(
                 platform, httpClient, uuid,
-                platform.getAbstractPlayer(uuid, false).username(),
+                platform.getAbstractPlayer(uuid, false).getUsername(),
                 account, previewData, configManager.getStandingGuiConfig(), localeManager, typesByOrdinal);
             CirrusPlayerWrapper player = platform.getPlayerWrapper(uuid);
             menu.display(player);

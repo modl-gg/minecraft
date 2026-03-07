@@ -6,6 +6,7 @@ import co.aikar.commands.annotation.CommandAlias;
 import co.aikar.commands.annotation.Conditions;
 import co.aikar.commands.annotation.Default;
 import co.aikar.commands.annotation.Description;
+import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.impl.cache.Cache;
@@ -56,7 +57,7 @@ public class StaffChatCommand extends BaseCommand {
         }
 
         UUID senderUuid = sender.getUniqueId();
-        var player = platform.getPlayer(senderUuid);
+        AbstractPlayer player = platform.getPlayer(senderUuid);
         String inGameName = player != null ? player.getName() : "Staff";
         String display = cache.getStaffDisplayName(senderUuid);
         String panelName = display != null ? display : inGameName;

@@ -86,7 +86,7 @@ public class SpigotListener implements Listener {
 
         CompletableFuture<Void> combinedFuture = ipInfoFuture
             .thenCombine(webPlayerFuture, (ipInfo, webPlayer) -> {
-                String skinHash = (webPlayer != null && webPlayer.valid()) ? webPlayer.skin() : null;
+                String skinHash = (webPlayer != null && webPlayer.isValid()) ? webPlayer.getSkin() : null;
                 PlayerLoginRequest request = new PlayerLoginRequest(
                         event.getUniqueId().toString(), event.getName(),
                         ipAddress, skinHash, platform.getServerName(), ipInfo);
@@ -136,7 +136,7 @@ public class SpigotListener implements Listener {
                     platform.getLogger().warning("Panel 502 during login check for " + event.getPlayer().getName() + " - blocking login for safety");
                 }
                 event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
-                event.setKickMessage(denied.message());
+                event.setKickMessage(denied.getMessage());
             } else {
                 platform.getLogger().severe("Failed to check punishments for " + event.getPlayer().getName() + ": " + preLoginResult.getError().getMessage());
             }
@@ -155,7 +155,7 @@ public class SpigotListener implements Listener {
 
         if (result instanceof LoginHandler.LoginResult.Denied denied) {
             event.setResult(PlayerLoginEvent.Result.KICK_BANNED);
-            event.setKickMessage(denied.message());
+            event.setKickMessage(denied.getMessage());
         }
     }
 
@@ -183,8 +183,8 @@ public class SpigotListener implements Listener {
         }
         WebPlayer.get(uuid)
                 .thenAccept(webPlayer -> {
-                    if (webPlayer != null && webPlayer.valid() && webPlayer.textureValue() != null)
-                        cache.cacheSkinTexture(uuid, webPlayer.textureValue());
+                    if (webPlayer != null && webPlayer.isValid() && webPlayer.getTextureValue() != null)
+                        cache.cacheSkinTexture(uuid, webPlayer.getTextureValue());
                 })
                 .exceptionally(throwable -> null);
     }
@@ -199,7 +199,7 @@ public class SpigotListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerChat(AsyncPlayerChatEvent event) {
-        var result = ChatEventHandler.handleChat(
+        ChatEventHandler.Result result = ChatEventHandler.handleChat(
                 event.getPlayer().getUniqueId(), event.getPlayer().getName(), event.getMessage(),
                 platform.getServerName(),
                 msg -> event.getPlayer().sendMessage(msg),
@@ -211,7 +211,7 @@ public class SpigotListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onCommandPreprocess(PlayerCommandPreprocessEvent event) {
-        var result = CommandInterceptHandler.handleCommand(
+        CommandInterceptHandler.CommandResult result = CommandInterceptHandler.handleCommand(
                 event.getPlayer().getUniqueId(), event.getPlayer().getName(),
                 event.getMessage(), platform.getServerName(),
                 mutedCommands, cache, freezeService, chatCommandLogService);

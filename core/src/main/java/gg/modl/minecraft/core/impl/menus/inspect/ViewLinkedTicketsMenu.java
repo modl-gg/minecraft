@@ -39,7 +39,7 @@ public class ViewLinkedTicketsMenu extends BaseInspectListMenu<TicketsResponse.T
                     }
                 }).join();
             } catch (Exception e) {
-                // Failed to fetch - list remains empty
+                // fail to fetch, list remains empty
             }
         }
     }

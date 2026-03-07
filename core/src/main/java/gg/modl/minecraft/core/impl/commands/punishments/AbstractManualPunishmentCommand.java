@@ -73,7 +73,7 @@ public abstract class AbstractManualPunishmentCommand extends BaseCommand {
             if (response.isSuccess()) {
                 String targetName = target.getUsernames().get(0).getUsername();
 
-                var builder = localeManager.punishment()
+                LocaleManager.PunishmentMessageBuilder builder = localeManager.punishment()
                     .type(getTypeName())
                     .target(targetName)
                     .punishmentId(response.getPunishmentId());

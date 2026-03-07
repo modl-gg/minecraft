@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * ConcurrentHashMaps that were scattered across Cache and 12+ service classes.
  * <p>
  * Profile lifecycle: created on player join, destroyed on player disconnect.
- * Destroying a profile atomically removes all per-player state — no need to
+ * Destroying a profile atomically removes all per-player state, no need to
  * call removePlayer() on each service individually.
  */
 public class PlayerProfileRegistry {

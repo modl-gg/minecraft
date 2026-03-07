@@ -59,8 +59,9 @@ public final class ChatEventHandler {
 
         boolean isStaff = PermissionUtil.isStaff(senderUuid, cache);
         if (!chatManagementService.canSendMessage(senderUuid, isStaff)) {
-            if (!chatManagementService.isChatEnabled()) sendMessage.accept(localeManager.getMessage("chat_management.chat_disabled"));
-            else {
+            if (!chatManagementService.isChatEnabled()) {
+                sendMessage.accept(localeManager.getMessage("chat_management.chat_disabled"));
+            } else {
                 int remaining = chatManagementService.getSlowModeRemaining(senderUuid);
                 sendMessage.accept(localeManager.getMessage("chat_management.slow_mode_wait",
                         Map.of("seconds", String.valueOf(remaining))));

@@ -48,7 +48,7 @@ public class ReportDetailsMenu extends SimpleMenu {
         this.chatMessageCache = chatMessageCache;
         this.reportData = reportData;
         this.previousMenu = previousMenu;
-        title(locale.getMessage("messages.report_gui_title", Map.of("player", target.username())));
+        title(locale.getMessage("messages.report_gui_title", Map.of("player", target.getUsername())));
         type(CirrusInventoryType.GENERIC_9X3);
         buildMenu();
     }
@@ -72,20 +72,20 @@ public class ReportDetailsMenu extends SimpleMenu {
     }
 
     private CirrusItem buildTargetHead() {
-        List<String> skullLines = locale.getMessageList("messages.report_skull_details", Map.of("player", target.username()));
+        List<String> skullLines = locale.getMessageList("messages.report_skull_details", Map.of("player", target.getUsername()));
         CirrusItem head = MenuItems.playerHead(
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
         );
         if (platform.getCache() != null) {
-            String texture = platform.getCache().getSkinTexture(target.uuid());
+            String texture = platform.getCache().getSkinTexture(target.getUuid());
             if (texture != null) head = head.texture(texture);
         }
         return head;
     }
 
     private void displayMenu(SimpleMenu menu) {
-        CirrusPlayerWrapper playerWrapper = platform.getPlayerWrapper(reporter.uuid());
+        CirrusPlayerWrapper playerWrapper = platform.getPlayerWrapper(reporter.getUuid());
         menu.display(playerWrapper);
     }
 
@@ -93,8 +93,8 @@ public class ReportDetailsMenu extends SimpleMenu {
     protected void registerActionHandlers() {
         registerActionHandler("addDetails", click -> {
             click.clickedMenu().close();
-            String prompt = locale.getMessage("messages.report_details_prompt", Map.of("player", target.username()));
-            platform.getChatInputManager().requestInput(reporter.uuid(), prompt, input -> {
+            String prompt = locale.getMessage("messages.report_details_prompt", Map.of("player", target.getUsername()));
+            platform.getChatInputManager().requestInput(reporter.getUuid(), prompt, input -> {
                 reportData.setDetails(input);
                 displayMenu(new ReportConfirmMenu(
                     reporter, target, httpClient, locale, platform, panelUrl,

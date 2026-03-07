@@ -82,7 +82,7 @@ public class JoinListener {
 
         CompletableFuture<Map<String, Object>> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
         CompletableFuture<String> skinHashFuture = WebPlayer.get(event.getPlayer().getUniqueId())
-                .thenApply(wp -> wp != null && wp.valid() ? wp.skin() : null)
+                .thenApply(wp -> wp != null && wp.isValid() ? wp.getSkin() : null)
                 .exceptionally(t -> null);
 
         Map<String, Object> ipInfo = null;
@@ -108,9 +108,8 @@ public class JoinListener {
                     cache, debugMode, platform.getLogger());
 
             if (result instanceof LoginHandler.LoginResult.Denied denied) {
-                event.setResult(ResultedEvent.ComponentResult.denied(Colors.get(denied.message())));
+                event.setResult(ResultedEvent.ComponentResult.denied(Colors.get(denied.getMessage())));
             } else {
-                // Buffer response — profile doesn't exist yet, will be cached in onPostLogin
                 pendingLoginData.put(event.getPlayer().getUniqueId(), response);
                 event.setResult(ResultedEvent.ComponentResult.allowed());
                 if (debugMode) logger.info("Allowed login for {}", event.getPlayer().getUsername());
@@ -118,9 +117,9 @@ public class JoinListener {
         } catch (Exception e) {
             LoginHandler.LoginResult errorResult = LoginHandler.handleLoginError(e);
             if (errorResult instanceof LoginHandler.LoginResult.Denied denied) {
-                logger.warn("Login blocked for {}: {}", event.getPlayer().getUsername(), denied.message());
+                logger.warn("Login blocked for {}: {}", event.getPlayer().getUsername(), denied.getMessage());
                 event.setResult(ResultedEvent.ComponentResult.denied(
-                        Component.text(denied.message()).color(NamedTextColor.RED)));
+                        Component.text(denied.getMessage()).color(NamedTextColor.RED)));
             } else {
                 logger.error("Failed to check punishments for {} - allowing login as fallback", event.getPlayer().getUsername(), e);
                 event.setResult(ResultedEvent.ComponentResult.allowed());
@@ -137,7 +136,6 @@ public class JoinListener {
         String texture = platform.getPlayerSkinTexture(uuid);
         if (texture != null) cache.cacheSkinTexture(uuid, texture);
 
-        // Cache login data now that the profile exists
         PlayerLoginResponse response = pendingLoginData.remove(uuid);
         LoginHandler.cacheLoginData(uuid, response, cache, platform.getLogger());
     }

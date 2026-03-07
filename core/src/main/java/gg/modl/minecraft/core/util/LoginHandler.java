@@ -9,6 +9,8 @@ import gg.modl.minecraft.core.impl.cache.PlayerProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.MaintenanceService;
 import gg.modl.minecraft.core.sync.SyncService;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
 import java.util.Map;
 import java.util.UUID;
@@ -20,8 +22,12 @@ import java.util.UUID;
  */
 public final class LoginHandler {
     public sealed interface LoginResult {
-        record Allowed(PlayerLoginResponse response) implements LoginResult {}
-        record Denied(String message) implements LoginResult {}
+        @Data @AllArgsConstructor final class Allowed implements LoginResult {
+            private final PlayerLoginResponse response;
+        }
+        @Data @AllArgsConstructor final class Denied implements LoginResult {
+            private final String message;
+        }
     }
 
     /**
@@ -78,7 +84,7 @@ public final class LoginHandler {
             return new LoginResult.Denied("Login verification timed out. Please try again.");
         }
 
-        // Allow login on other errors to prevent bad kicks
+        // allow login on other errors to prevent bad kicks
         return null;
     }
 

@@ -123,8 +123,8 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
                         if (staff.getUuid() != null && platform.getCache().getSkinTexture(staff.getUuid()) == null) {
                             final UUID staffUuid = staff.getUuid();
                             WebPlayer.get(staffUuid).thenAccept(wp -> {
-                                if (wp != null && wp.valid() && wp.textureValue() != null) {
-                                    platform.getCache().cacheSkinTexture(staffUuid, wp.textureValue());
+                                if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
+                                    platform.getCache().cacheSkinTexture(staffUuid, wp.getTextureValue());
                                 }
                             });
                         }
@@ -225,8 +225,8 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
             } else {
                 final UUID uuid = staff.getUuid();
                 WebPlayer.get(uuid).thenAccept(wp -> {
-                    if (wp != null && wp.valid() && wp.textureValue() != null) {
-                        platform.getCache().cacheSkinTexture(uuid, wp.textureValue());
+                    if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
+                        platform.getCache().cacheSkinTexture(uuid, wp.getTextureValue());
                     }
                 });
             }

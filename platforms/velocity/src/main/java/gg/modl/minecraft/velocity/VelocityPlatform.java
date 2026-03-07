@@ -134,7 +134,7 @@ public class VelocityPlatform implements Platform {
         }
 
         if (webPlayer == null) return null;
-        return new AbstractPlayer(webPlayer.uuid(), webPlayer.name(), null, false);
+        return new AbstractPlayer(webPlayer.getUuid(), webPlayer.getName(), null, false);
     }
 
     @Override
@@ -152,7 +152,7 @@ public class VelocityPlatform implements Platform {
         }
 
         if (webPlayer == null) return null;
-        return new AbstractPlayer(webPlayer.uuid(), webPlayer.name(), null, false);
+        return new AbstractPlayer(webPlayer.getUuid(), webPlayer.getName(), null, false);
     }
 
     @Override

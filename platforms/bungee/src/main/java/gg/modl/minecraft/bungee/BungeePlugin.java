@@ -85,7 +85,6 @@ public class BungeePlugin extends Plugin {
                 loader.getBridgeService(), loader.getPlayerProfileRegistry(),
                 loader.isDebugMode()));
 
-        // Named class (not anonymous) to avoid BungeeCord EventBus reflection issues
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
         getProxy().getPluginManager().registerListener(this, new AsyncCommandInterceptor(asyncExecutor, getProxy()));
 
@@ -167,15 +166,15 @@ public class BungeePlugin extends Plugin {
 
     private void loadLibrary(BungeeLibraryManager libraryManager, LibraryRecord record) {
         Library.Builder builder = Library.builder()
-                .groupId(record.groupId())
-                .artifactId(record.artifactId())
-                .version(record.version())
-                .id(record.id())
+                .groupId(record.getGroupId())
+                .artifactId(record.getArtifactId())
+                .version(record.getVersion())
+                .id(record.getId())
                 .isolatedLoad(false);
 
-        if (record.hasRelocation()) builder.relocate(record.oldRelocation(), record.newRelocation());
-        if (record.url() != null) builder.url(record.url());
-        if (record.hasChecksum()) builder.checksum(record.checksum());
+        if (record.hasRelocation()) builder.relocate(record.getOldRelocation(), record.getNewRelocation());
+        if (record.getUrl() != null) builder.url(record.getUrl());
+        if (record.hasChecksum()) builder.checksum(record.getChecksum());
 
         libraryManager.loadLibrary(builder.build());
     }

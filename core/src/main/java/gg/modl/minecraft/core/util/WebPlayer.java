@@ -2,6 +2,8 @@ package gg.modl.minecraft.core.util;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -13,7 +15,14 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
-public record WebPlayer(String name, UUID uuid, String skin, String textureValue, boolean valid) {
+@Data @AllArgsConstructor
+public class WebPlayer {
+    private final String name;
+    private final UUID uuid;
+    private final String skin;
+    private final String textureValue;
+    private final boolean valid;
+
     private static final Logger logger = Logger.getLogger(WebPlayer.class.getName());
     private static final String UUID_REGEX = "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)";
     private static final String MOJANG_PROFILE_URL = "https://api.mojang.com/users/profiles/minecraft/";

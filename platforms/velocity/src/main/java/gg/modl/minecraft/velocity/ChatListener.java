@@ -40,7 +40,7 @@ public class ChatListener {
     public void onPlayerChat(PlayerChatEvent event) {
         String serverName = getPlayerServerName(event.getPlayer());
 
-        var result = ChatEventHandler.handleChat(
+        ChatEventHandler.Result result = ChatEventHandler.handleChat(
                 event.getPlayer().getUniqueId(), event.getPlayer().getUsername(), event.getMessage(), serverName,
                 msg -> event.getPlayer().sendMessage(Colors.get(StringUtil.unescapeNewlines(msg))),
                 platform, cache, localeManager, chatMessageCache,
@@ -53,7 +53,7 @@ public class ChatListener {
     public void onCommandExecute(CommandExecuteEvent event) {
         if (!(event.getCommandSource() instanceof Player player)) return;
 
-        var result = CommandInterceptHandler.handleCommand(
+        CommandInterceptHandler.CommandResult result = CommandInterceptHandler.handleCommand(
                 player.getUniqueId(), player.getUsername(),
                 "/" + event.getCommand(), getPlayerServerName(player),
                 mutedCommands, cache, freezeService, chatCommandLogService);

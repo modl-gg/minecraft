@@ -9,6 +9,8 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.response.OnlinePlayersResponse;
+import gg.modl.minecraft.api.http.response.ReportsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
@@ -89,7 +91,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
             httpClient.getOnlinePlayers().thenAccept(response -> {
                 if (response.isSuccess() && response.getPlayers() != null) {
                     onlinePlayers.clear();
-                    for (var player : response.getPlayers()) {
+                    for (OnlinePlayersResponse.OnlinePlayer player : response.getPlayers()) {
                         UUID uuid = null;
                         try {
                             uuid = UUID.fromString(player.getUuid());
@@ -112,7 +114,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                 if (!response.isSuccess() || response.getReports() == null) return;
 
                 Map<String, List<ReportSummary>> reportsByPlayer = new HashMap<>();
-                for (var report : response.getReports()) {
+                for (ReportsResponse.Report report : response.getReports()) {
                     String type = report.getType() != null ? report.getType() : report.getCategory();
                     if ("player".equalsIgnoreCase(type)) type = "gameplay";
                     if (!"gameplay".equalsIgnoreCase(type)) continue;
@@ -236,8 +238,8 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
             } else {
                 final UUID uuid = player.getUuid();
                 WebPlayer.get(uuid).thenAccept(wp -> {
-                    if (wp != null && wp.valid() && wp.textureValue() != null) {
-                        platform.getCache().cacheSkinTexture(uuid, wp.textureValue());
+                    if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
+                        platform.getCache().cacheSkinTexture(uuid, wp.getTextureValue());
                     }
                 });
             }

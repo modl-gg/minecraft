@@ -8,6 +8,7 @@ import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.response.TicketsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -67,7 +68,7 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
             httpClient.getTickets(null, null).thenAccept(response -> {
                 if (response.isSuccess() && response.getTickets() != null) {
                     tickets.clear();
-                    for (var ticket : response.getTickets()) {
+                    for (TicketsResponse.Ticket ticket : response.getTickets()) {
                         if ("Unfinished".equalsIgnoreCase(ticket.getStatus())) {
                             continue;
                         }
