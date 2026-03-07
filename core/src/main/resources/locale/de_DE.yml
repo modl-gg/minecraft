@@ -472,7 +472,14 @@ menus:
       - "&7Gesamte Spielzeit: &f{total_playtime}"
       - "&7Strafen: {punishments}"
       - ""
-      - "&eLinksklick zum Zielen | Rechtsklick zum Inspizieren"
+      - "&7Meldungen ({report_count}):"
+      - "{report-list}"
+      - ""
+      - "&cLinksklick zum Inspizieren"
+      - "&aRechtsklick zum Zielen"
+    report_entry: " &6- &e{date} {reporter}: &f{details}"
+    reports_more: " &e... und {count} mehr"
+    no_reports: " &eKeine Meldungen"
 
 # Standing GUI (player-facing)
 standing_gui:

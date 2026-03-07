@@ -8,13 +8,13 @@ import lombok.Setter;
  */
 @Setter
 public class BridgeService {
-    private static final String CMD_STAFF_MODE_ENTER = "STAFF_MODE_ENTER";
-    private static final String CMD_STAFF_MODE_EXIT = "STAFF_MODE_EXIT";
-    private static final String CMD_VANISH_ENTER = "VANISH_ENTER";
-    private static final String CMD_VANISH_EXIT = "VANISH_EXIT";
-    private static final String CMD_FREEZE_PLAYER = "FREEZE_PLAYER";
-    private static final String CMD_UNFREEZE_PLAYER = "UNFREEZE_PLAYER";
-    private static final String CMD_TARGET_REQUEST = "TARGET_REQUEST";
+    private static final String CMD_STAFF_MODE_ENTER = "STAFF_MODE_ENTER",
+            CMD_STAFF_MODE_EXIT = "STAFF_MODE_EXIT",
+            CMD_VANISH_ENTER = "VANISH_ENTER",
+            CMD_VANISH_EXIT = "VANISH_EXIT",
+            CMD_FREEZE_PLAYER = "FREEZE_PLAYER",
+            CMD_UNFREEZE_PLAYER = "UNFREEZE_PLAYER",
+            CMD_TARGET_REQUEST = "TARGET_REQUEST";
 
     private volatile QueryStatWipeExecutor executor;
 

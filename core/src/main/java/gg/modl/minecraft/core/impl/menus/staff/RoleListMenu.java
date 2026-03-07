@@ -27,9 +27,7 @@ import java.util.function.Consumer;
 public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
     @Getter
     public static class Role {
-        private final String id;
-        private final String name;
-        private final String description;
+        private final String id, name, description;
         private final List<String> permissions;
 
         public Role(String id, String name, String description, List<String> permissions) {

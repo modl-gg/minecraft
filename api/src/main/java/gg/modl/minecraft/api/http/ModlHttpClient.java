@@ -61,9 +61,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * HTTP client interface for communicating with the modl backend API.
  *
- * <p>All methods return {@link CompletableFuture} for asynchronous execution. Implementations
- * include V1 (panel-based), V2 (centralized api.modl.gg), and a fallback wrapper that
- * auto-upgrades from V1 to V2.</p>
+ * <p>All methods return {@link CompletableFuture} for asynchronous execution.</p>
  */
 public interface ModlHttpClient {
 
@@ -117,20 +115,18 @@ public interface ModlHttpClient {
     @NotNull CompletableFuture<CreateTicketResponse> createUnfinishedTicket(@NotNull CreateTicketRequest request);
 
     /**
-     * Creates a punishment for a player. This is a legacy method that returns no response body.
+     * Creates a punishment for a player. Returns no response body.
      *
      * @param request the punishment creation request containing player, type, duration, and issuer info
      * @return a future that completes when the punishment has been created
-     * @deprecated Use {@link #createPunishmentWithResponse(PunishmentCreateRequest)} for proper return data
      */
     @NotNull CompletableFuture<Void> createPunishment(@NotNull CreatePunishmentRequest request);
 
     /**
-     * Creates a note on a player's record. This is a legacy method that returns no response body.
+     * Creates a note on a player's record. Returns no response body.
      *
      * @param request the note creation request containing player UUID and note content
      * @return a future that completes when the note has been created
-     * @deprecated Use {@link #createPlayerNoteWithResponse(PlayerNoteCreateRequest)} for proper return data
      */
     @NotNull CompletableFuture<Void> createPlayerNote(@NotNull CreatePlayerNoteRequest request);
 

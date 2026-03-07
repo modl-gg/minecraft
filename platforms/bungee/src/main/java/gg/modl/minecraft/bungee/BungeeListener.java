@@ -1,6 +1,5 @@
 package gg.modl.minecraft.bungee;
 
-import com.google.gson.JsonObject;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
@@ -8,6 +7,7 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.cache.LoginCache;
+import gg.modl.minecraft.core.impl.cache.PlayerProfileRegistry;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.ChatCommandLogService;
@@ -18,8 +18,6 @@ import gg.modl.minecraft.core.service.MaintenanceService;
 import gg.modl.minecraft.core.service.NetworkChatInterceptService;
 import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffChatService;
-import gg.modl.minecraft.core.service.StaffModeService;
-import gg.modl.minecraft.core.service.VanishService;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.ChatEventHandler;
 import gg.modl.minecraft.core.util.CommandInterceptHandler;
@@ -44,6 +42,7 @@ import net.md_5.bungee.event.EventPriority;
 
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -55,7 +54,6 @@ public class BungeeListener implements Listener {
     private final ChatMessageCache chatMessageCache;
     private final SyncService syncService;
     private final LocaleManager localeManager;
-    private final boolean debugMode;
     private final List<String> mutedCommands;
     private final Plugin plugin;
     private final StaffChatService staffChatService;
@@ -67,9 +65,9 @@ public class BungeeListener implements Listener {
     private final Staff2faService staff2faService;
     private final StaffChatConfig staffChatConfig;
     private final LoginCache loginCache;
-    private final VanishService vanishService;
-    private final StaffModeService staffModeService;
     private final BridgeService bridgeService;
+    private final PlayerProfileRegistry registry;
+    private final boolean debugMode;
 
     private static final long LOGIN_TIMEOUT_SECONDS = 5;
 
@@ -99,13 +97,13 @@ public class BungeeListener implements Listener {
     private void performLoginCheck(LoginEvent event) throws Exception {
         String ipAddress = extractIpAddress(event.getConnection().getSocketAddress());
 
-        CompletableFuture<JsonObject> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
+        CompletableFuture<Map<String, Object>> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
         CompletableFuture<String> skinHashFuture = WebPlayer.get(event.getConnection().getUniqueId())
                 .thenApply(wp -> wp != null && wp.valid() ? wp.skin() : null)
                 .exceptionally(t -> null);
 
         // getNow() avoids blocking - backend will request IP lookup via pendingIpLookups if null
-        JsonObject ipInfo = null;
+        Map<String, Object> ipInfo = null;
         String skinHash = null;
         try {
             ipInfo = ipInfoFuture.getNow(null);
@@ -115,7 +113,7 @@ public class BungeeListener implements Listener {
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getConnection().getUniqueId().toString(),
                 event.getConnection().getName(),
-                ipAddress, skinHash, ipInfo, platform.getServerName()
+                ipAddress, skinHash, platform.getServerName(), ipInfo
         );
 
         PlayerLoginResponse response = getHttpClient().playerLogin(request).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -137,9 +135,7 @@ public class BungeeListener implements Listener {
         if (result instanceof LoginHandler.LoginResult.Denied denied) {
             platform.getLogger().warning("Login blocked for " + event.getConnection().getName() + ": " + denied.message());
             denyLogin(event, denied.message());
-        } else {
-            platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + e.getMessage());
-        }
+        } else platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + e.getMessage());
     }
 
     private void denyLogin(LoginEvent event, String reason) {
@@ -167,10 +163,8 @@ public class BungeeListener implements Listener {
     public void onPlayerDisconnect(PlayerDisconnectEvent event) {
         ListenerHelper.handlePlayerDisconnect(
                 event.getPlayer().getUniqueId(), event.getPlayer().getName(),
-                getHttpClient(), cache, platform, localeManager, freezeService,
-                staffChatService, chatManagementService, networkChatInterceptService,
-                staff2faService, chatMessageCache,
-                vanishService, staffModeService, bridgeService);
+                getHttpClient(), cache, platform, localeManager,
+                chatMessageCache, bridgeService, registry);
     }
 
     @EventHandler

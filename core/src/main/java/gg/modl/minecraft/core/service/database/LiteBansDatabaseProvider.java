@@ -34,7 +34,7 @@ public class LiteBansDatabaseProvider implements DatabaseProvider {
 
     @Override
     public Connection getConnection() {
-        return null; // LiteBans API doesn't expose raw connections
+        throw new UnsupportedOperationException("LiteBans does not expose raw connections");
     }
 
     @Override

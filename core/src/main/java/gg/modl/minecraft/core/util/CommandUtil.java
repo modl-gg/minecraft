@@ -27,11 +27,20 @@ public final class CommandUtil {
     }
 
     public static Void handleApiError(CommandIssuer sender, Throwable throwable, LocaleManager localeManager) {
+        return handleException(sender, throwable, localeManager, "general.punishment_error");
+    }
+
+    public static Void handleException(CommandIssuer sender, Throwable throwable, LocaleManager localeManager) {
+        return handleException(sender, throwable, localeManager, "player_lookup.error");
+    }
+
+    public static Void handleException(CommandIssuer sender, Throwable throwable, LocaleManager localeManager, String errorKey) {
         Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
-        if (cause instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-        else {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
-                    Map.of("error", localeManager.sanitizeErrorMessage(cause.getMessage()))));
+        if (cause instanceof PanelUnavailableException) {
+            sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+        } else {
+            sender.sendMessage(localeManager.getMessage(errorKey,
+                    Map.of("error", localeManager.sanitizeErrorMessage(cause.getMessage() != null ? cause.getMessage() : "Unknown error"))));
         }
         return null;
     }

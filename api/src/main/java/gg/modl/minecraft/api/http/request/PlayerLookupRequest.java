@@ -7,4 +7,9 @@ import lombok.NoArgsConstructor;
 @Data @NoArgsConstructor @AllArgsConstructor
 public class PlayerLookupRequest {
     private String query;
+    private boolean queryMojang;
+
+    public PlayerLookupRequest(String query) {
+        this(query, false);
+    }
 }

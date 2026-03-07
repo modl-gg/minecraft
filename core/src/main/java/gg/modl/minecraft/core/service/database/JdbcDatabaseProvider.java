@@ -13,7 +13,6 @@ import gg.modl.minecraft.core.util.PluginLogger;
  * Replaces LiteBans table tokens ({bans}, {mutes}, etc.) with prefixed table names.
  */
 public class JdbcDatabaseProvider implements DatabaseProvider {
-    private static final String LOG_PREFIX = "";
     private static final String[][] TABLE_TOKENS = {
         {"{bans}", "bans"}, {"{mutes}", "mutes"}, {"{warnings}", "warnings"},
         {"{kicks}", "kicks"}, {"{history}", "history"}, {"{servers}", "servers"}
@@ -32,7 +31,7 @@ public class JdbcDatabaseProvider implements DatabaseProvider {
     private Connection establishConnection() throws SQLException {
         try {
             Class.forName(config.getDriverClass());
-            logger.info(LOG_PREFIX + "Connecting to database: " + config.getJdbcUrl());
+            logger.info("Connecting to database: " + config.getJdbcUrl());
             return DriverManager.getConnection(config.getJdbcUrl(), config.getUsername(), config.getPassword());
         } catch (ClassNotFoundException e) {
             throw new SQLException("Database driver not found: " + config.getDriverClass(), e);
@@ -43,7 +42,7 @@ public class JdbcDatabaseProvider implements DatabaseProvider {
     public PreparedStatement prepareStatement(String query) throws SQLException {
         String processedQuery = replaceTableTokens(query);
         if (connection == null || connection.isClosed()) {
-            logger.warning(LOG_PREFIX + "Database connection was closed, reconnecting...");
+            logger.warning("Database connection was closed, reconnecting...");
             connection = establishConnection();
         }
         return connection.prepareStatement(processedQuery);
@@ -60,9 +59,9 @@ public class JdbcDatabaseProvider implements DatabaseProvider {
         if (connection == null) return;
         try {
             connection.close();
-            logger.info(LOG_PREFIX + "Database connection closed");
+            logger.info("Database connection closed");
         } catch (SQLException e) {
-            logger.warning(LOG_PREFIX + "Failed to close database connection: " + e.getMessage());
+            logger.warning("Failed to close database connection: " + e.getMessage());
         }
     }
 

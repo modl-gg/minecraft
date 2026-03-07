@@ -14,42 +14,32 @@ public class SyncRequest {
     private @NotNull List<OnlinePlayer> onlinePlayers;
     private @NotNull ServerStatus serverStatus;
     private @Nullable String serverName;
-    private @Nullable List<ChatLogEntry> chatLogs;
-    private @Nullable List<CommandLogEntry> commandLogs;
+    private transient @Nullable List<ChatLogEntry> chatLogs;
+    private transient @Nullable List<CommandLogEntry> commandLogs;
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class OnlinePlayer {
-        private @NotNull String uuid;
-        private @NotNull String username;
-        private @NotNull String ipAddress;
+        private @NotNull String uuid, username, ipAddress;
 
         private long sessionDurationMs;
     }
     
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class ServerStatus {
-        private int onlinePlayerCount;
-        private int maxPlayers;
+        private @NotNull String serverVersion, timestamp;
 
-        private @NotNull String serverVersion;
-        private @NotNull String timestamp;
+        private int onlinePlayerCount, maxPlayers;
     }
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class ChatLogEntry {
-        private String uuid;
-        private String username;
-        private String message;
+        private String uuid, username, message, server;
         private long timestamp;
-        private String server;
     }
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class CommandLogEntry {
-        private String uuid;
-        private String username;
-        private String command;
+        private String uuid, username, command, server;
         private long timestamp;
-        private String server;
     }
 }

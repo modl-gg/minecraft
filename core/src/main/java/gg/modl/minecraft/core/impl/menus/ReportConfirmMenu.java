@@ -30,8 +30,7 @@ import java.util.concurrent.CompletableFuture;
  * Reviews the report and allows the player to confirm or cancel.
  */
 public class ReportConfirmMenu extends SimpleMenu {
-    private final AbstractPlayer reporter;
-    private final AbstractPlayer target;
+    private final AbstractPlayer reporter, target;
     private final ModlHttpClient httpClient;
     private final LocaleManager locale;
     private final Platform platform;
@@ -135,16 +134,16 @@ public class ReportConfirmMenu extends SimpleMenu {
 
         CreateTicketRequest request = new CreateTicketRequest(
                 reporter.uuid().toString(),
-                reporter.username(),
                 ticketType,
+                reporter.username(),
                 subject,
                 description.toString(),
                 target.uuid().toString(),
                 target.username(),
-                chatMessages,
-                List.of("report"),
                 "normal",
-                createdServer
+                createdServer,
+                chatMessages,
+                List.of("report")
         );
 
         sendMessage(locale.getMessage("messages.submitting", Map.of("type", "report")));

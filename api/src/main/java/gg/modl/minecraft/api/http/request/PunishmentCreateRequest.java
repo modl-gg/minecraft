@@ -8,14 +8,9 @@ import java.util.Map;
 
 @Data
 public class PunishmentCreateRequest {
-    private final String targetUuid;
-    private final String issuerName;
-    private @SerializedName("type_ordinal") final Integer typeOrdinal;
-    private final String reason;
+    private final String targetUuid, issuerName, reason, severity, status;
+    private @SerializedName("type_ordinal") final int typeOrdinal;
     private final Long duration;
     private final Map<String, Object> data;
-    private final List<String> notes;
-    private final List<String> attachedTicketIds;
-    private final String severity;
-    private final String status;
+    private final List<String> notes, attachedTicketIds;
 }

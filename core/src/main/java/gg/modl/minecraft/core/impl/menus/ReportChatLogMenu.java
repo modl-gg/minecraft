@@ -21,13 +21,9 @@ import java.util.List;
 import java.util.Map;
 
 public class ReportChatLogMenu extends SimpleMenu {
-    private static final int SLOT_ATTACH_CHAT = 11;
-    private static final int SLOT_PLAYER_HEAD = 13;
-    private static final int SLOT_SKIP_CHAT = 15;
-    private static final int SLOT_BACK = 22;
+    private static final int SLOT_ATTACH_CHAT = 11, SLOT_PLAYER_HEAD = 13, SLOT_SKIP_CHAT = 15, SLOT_BACK = 22;
 
-    private final AbstractPlayer reporter;
-    private final AbstractPlayer target;
+    private final AbstractPlayer reporter, target;
     private final ModlHttpClient httpClient;
     private final LocaleManager locale;
     private final Platform platform;

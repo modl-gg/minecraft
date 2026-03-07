@@ -25,13 +25,8 @@ import java.nio.file.Files;
 import java.util.List;
 
 public class SpigotPlugin extends JavaPlugin {
-    private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg";
-    private static final String BRIDGE_PLUGIN_NAME = "modl-bridge";
-    private static final String DEFAULT_BRIDGE_NAME = "bridge";
-    private static final int DEFAULT_BRIDGE_PORT = 25590;
-    private static final int MIN_SYNC_POLLING_RATE = 1;
-    private static final int DEFAULT_SYNC_POLLING_RATE = 2;
-    private static final int BSTATS_PLUGIN_ID = 29705;
+    private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg", BRIDGE_PLUGIN_NAME = "modl-bridge", DEFAULT_BRIDGE_NAME = "bridge";
+    private static final int DEFAULT_BRIDGE_PORT = 25590, MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2, BSTATS_PLUGIN_ID = 29705;
 
     private PluginLoader loader;
     private QueryStatWipeExecutor queryStatWipeExecutor;
@@ -75,12 +70,13 @@ public class SpigotPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new SpigotListener(
                 platform, loader.getCache(), loader.getHttpClientHolder(), loader.getChatMessageCache(),
                 loader.getSyncService(), loader.getLocaleManager(), loader.getLoginCache(),
-                loader.isDebugMode(), mutedCommands, loader.getStaffChatService(),
+                mutedCommands, loader.getStaffChatService(),
                 loader.getChatManagementService(), loader.getMaintenanceService(),
                 loader.getFreezeService(), loader.getNetworkChatInterceptService(),
                 loader.getChatCommandLogService(), loader.getStaff2faService(),
-                loader.getConfigManager().getStaffChatConfig(), loader.getVanishService(),
-                loader.getStaffModeService(), loader.getBridgeService()), this);
+                loader.getConfigManager().getStaffChatConfig(),
+                loader.getBridgeService(), loader.getPlayerProfileRegistry(),
+                loader.isDebugMode()), this);
 
         new Metrics(this, BSTATS_PLUGIN_ID);
     }

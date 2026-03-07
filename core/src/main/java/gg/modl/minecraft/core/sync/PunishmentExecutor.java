@@ -9,6 +9,7 @@ import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.cache.PlayerProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 
@@ -17,9 +18,6 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import gg.modl.minecraft.core.util.PluginLogger;
 
-/**
- * Executes punishments (ban, mute, kick) and applies modifications (pardon, duration change).
- */
 class PunishmentExecutor {
     private static final long ACK_TIMEOUT_SECONDS = 5;
 
@@ -87,7 +85,8 @@ class PunishmentExecutor {
 
     private boolean executeMute(UUID uuid, String username, SimplePunishment punishment) {
         try {
-            cache.cacheMute(uuid, punishment);
+            PlayerProfile profile = cache.getPlayerProfile(uuid);
+            if (profile != null) profile.setActiveMute(punishment);
             platform.broadcast(PunishmentMessages.formatPunishmentBroadcast(username, punishment, localeManager));
             if (debugMode) logger.info("Executed mute for " + username + ": " + punishment.getDescription());
             return true;
@@ -154,25 +153,28 @@ class PunishmentExecutor {
     }
 
     private void handlePardon(UUID uuid, String username, String punishmentId) {
-        boolean matched = removeCachedPunishmentById(uuid, punishmentId);
-        if (!matched) {
-            cache.removeMute(uuid);
-            cache.removeBan(uuid);
+        PlayerProfile profile = cache.getPlayerProfile(uuid);
+        if (profile != null) {
+            boolean matched = removeCachedPunishmentById(profile, punishmentId);
+            if (!matched) {
+                profile.setActiveMute(null);
+                profile.setActiveBan(null);
+            }
         }
         if (debugMode) logger.info("Pardoned punishment " + punishmentId + " for " + username);
     }
 
     /** @return true if a cached mute or ban matched the punishment ID and was removed */
-    private boolean removeCachedPunishmentById(UUID uuid, String punishmentId) {
+    private boolean removeCachedPunishmentById(PlayerProfile profile, String punishmentId) {
         boolean removed = false;
-        SimplePunishment cachedMute = cache.getSimpleMute(uuid);
+        SimplePunishment cachedMute = profile.getActiveMute();
         if (cachedMute != null && cachedMute.getId().equals(punishmentId)) {
-            cache.removeMute(uuid);
+            profile.setActiveMute(null);
             removed = true;
         }
-        SimplePunishment cachedBan = cache.getSimpleBan(uuid);
+        SimplePunishment cachedBan = profile.getActiveBan();
         if (cachedBan != null && cachedBan.getId().equals(punishmentId)) {
-            cache.removeBan(uuid);
+            profile.setActiveBan(null);
             removed = true;
         }
         return removed;
@@ -183,8 +185,11 @@ class PunishmentExecutor {
         long baseTime = (modificationTimestamp != null) ? modificationTimestamp : System.currentTimeMillis();
         Long newExpiration = (newDuration != null && newDuration > 0) ? baseTime + newDuration : null;
 
-        updateCachedExpiration(cache.getSimpleMute(uuid), punishmentId, newExpiration);
-        updateCachedExpiration(cache.getSimpleBan(uuid), punishmentId, newExpiration);
+        PlayerProfile profile = cache.getPlayerProfile(uuid);
+        if (profile != null) {
+            updateCachedExpiration(profile.getActiveMute(), punishmentId, newExpiration);
+            updateCachedExpiration(profile.getActiveBan(), punishmentId, newExpiration);
+        }
 
         if (debugMode) {
             String durationStr = newDuration != null ? newDuration + " ms" : "permanent";
@@ -200,7 +205,7 @@ class PunishmentExecutor {
 
     private void acknowledgePunishment(String punishmentId, String playerUuid, boolean success) {
         PunishmentAcknowledgeRequest request = new PunishmentAcknowledgeRequest(
-                punishmentId, playerUuid, Instant.now().toString(), success, null);
+                punishmentId, playerUuid, Instant.now().toString(), null, success);
 
         httpClientHolder.getClient().acknowledgePunishment(request)
                 .thenAccept(response -> {

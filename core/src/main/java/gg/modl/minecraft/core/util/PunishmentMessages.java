@@ -1,14 +1,12 @@
 package gg.modl.minecraft.core.util;
 
 import gg.modl.minecraft.api.SimplePunishment;
-import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 public class PunishmentMessages {
     private static final String FALLBACK_MUTE_MESSAGE = "§cYou are muted!";
@@ -41,10 +39,8 @@ public class PunishmentMessages {
         return localeManager.getPlayerNotificationMessage(ordinal, ban.getType(), variables, ban, context);
     }
 
-    public static String getMuteMessage(UUID playerUuid, Cache cache, LocaleManager localeManager) {
-        Cache.CachedPlayerData data = cache.getCachedPlayerData(playerUuid);
-        if (data == null) return FALLBACK_MUTE_MESSAGE;
-        if (data.getSimpleMute() != null) return formatMuteMessage(data.getSimpleMute(), localeManager, MessageContext.CHAT);
+    public static String getMuteMessage(SimplePunishment mute, LocaleManager localeManager) {
+        if (mute != null) return formatMuteMessage(mute, localeManager, MessageContext.CHAT);
         return FALLBACK_MUTE_MESSAGE;
     }
 

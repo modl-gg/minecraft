@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -21,8 +22,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class LocaleManager {
-    private static final Yaml yaml = new Yaml();
     private static final Pattern LEGACY_CODE_PATTERN = Pattern.compile("&([0-9a-fk-orA-FK-OR])");
+    private static final Pattern EXCEPTION_PREFIX_PATTERN = Pattern.compile("^[a-zA-Z0-9_.]+Exception: .+");
+    private static final Pattern JAVA_PREFIX_PATTERN = Pattern.compile("^java\\.[a-zA-Z0-9_.]+: .+");
+    private static final Pattern LOCALE_PATH_PATTERN = Pattern.compile(".*\\.[a-z_]+\\.[a-z_]+.*");
     private static final Map<Character, String> LEGACY_TO_MINIMESSAGE = Map.ofEntries(
             Map.entry('0', "<black>"), Map.entry('1', "<dark_blue>"),
             Map.entry('2', "<dark_green>"), Map.entry('3', "<dark_aqua>"),
@@ -61,6 +64,7 @@ public class LocaleManager {
         String resourcePath = "/locale/" + locale + ".yml";
         try (InputStream resourceStream = getClass().getResourceAsStream(resourcePath)) {
             if (resourceStream == null) throw new RuntimeException("Locale file not found: " + resourcePath);
+            Yaml yaml = new Yaml();
             this.messages = yaml.load(resourceStream);
         } catch (RuntimeException e) {
             throw e;
@@ -72,16 +76,19 @@ public class LocaleManager {
     public void loadFromFile(Path localeFile) {
         try {
             if (Files.exists(localeFile)) {
-                Map<String, Object> fileMessages = yaml.load(Files.newInputStream(localeFile));
-                if (fileMessages != null) this.messages = YamlMergeUtil.deepMerge(this.messages, fileMessages);
+                try (InputStream is = Files.newInputStream(localeFile)) {
+                    Yaml yaml = new Yaml();
+                    Map<String, Object> fileMessages = yaml.load(is);
+                    if (fileMessages != null) this.messages = YamlMergeUtil.deepMerge(this.messages, fileMessages);
+                }
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to load locale from file: " + localeFile, e);
         }
     }
-    
+
     public String getMessage(String path) {
-        return getMessage(path, new HashMap<>());
+        return getMessage(path, Map.of());
     }
 
     public String getMessage(String path, Map<String, String> placeholders) {
@@ -102,12 +109,12 @@ public class LocaleManager {
         }
         return "&cMissing locale: " + path;
     }
-    
+
     @SuppressWarnings("unchecked")
     public List<String> getMessageList(String path) {
-        return getMessageList(path, new HashMap<>());
+        return getMessageList(path, Map.of());
     }
-    
+
     @SuppressWarnings("unchecked")
     public List<String> getMessageList(String path, Map<String, String> placeholders) {
         Object value = getNestedValue(messages, path);
@@ -136,7 +143,7 @@ public class LocaleManager {
     private Object getNestedValue(Map<String, Object> map, String path) {
         String[] keys = path.split("\\.");
         Object current = map;
-        
+
         for (String key : keys) {
             if (current instanceof Map) {
                 @SuppressWarnings("unchecked")
@@ -144,10 +151,10 @@ public class LocaleManager {
                 current = currentMap.get(key);
             } else return null;
         }
-        
+
         return current;
     }
-    
+
     private String replacePlaceholders(String line, Map<String, String> variables) {
         for (Map.Entry<String, String> entry : variables.entrySet()) {
             line = line.replace("{" + entry.getKey() + "}", entry.getValue());
@@ -160,7 +167,7 @@ public class LocaleManager {
             message = legacyToMiniMessage(message);
             return renderer.componentToLegacy(renderer.render(message));
         }
-        return message.replace("&", "§");
+        return message.replace("&", "\u00a7");
     }
 
     private String legacyToMiniMessage(String message) {
@@ -173,18 +180,18 @@ public class LocaleManager {
         matcher.appendTail(sb);
         return sb.toString();
     }
-    
+
     public String getPunishmentMessage(String path, Map<String, String> variables) {
         Map<String, String> allVariables = new HashMap<>(variables);
         allVariables.putIfAbsent("default_reason", getMessage("config.default_reason"));
 
         return getMessage(path, allVariables);
     }
-    
+
     public PunishmentMessageBuilder punishment() {
         return new PunishmentMessageBuilder(this);
     }
-    
+
     public String getPublicNotificationMessage(int ordinal, Map<String, String> variables) {
         String path = "punishment_types.ordinal_" + ordinal + ".public_notification";
         Object value = getNestedValue(messages, path);
@@ -255,7 +262,7 @@ public class LocaleManager {
             default -> "punishments.player_notifications.default";
         };
     }
-    
+
     private String getDefaultPublicNotification(int ordinal, Map<String, String> variables) {
         String defaultPath = getDefaultPublicPathForOrdinal(ordinal);
         return getMessage(defaultPath, variables);
@@ -292,7 +299,7 @@ public class LocaleManager {
 
         long timeLeft = punishment.getExpiration() - System.currentTimeMillis();
         if (timeLeft <= 0) return "";
-        
+
         String duration = PunishmentMessages.formatDuration(timeLeft);
         return "\n&7This " + punishmentType + " will expire in " + duration;
     }
@@ -302,7 +309,7 @@ public class LocaleManager {
 
         long timeLeft = punishment.getExpiration() - System.currentTimeMillis();
         if (timeLeft <= 0) return "";
-        
+
         String duration = PunishmentMessages.formatDuration(timeLeft);
         return " for " + duration;
     }
@@ -314,14 +321,14 @@ public class LocaleManager {
 
     public String formatDuration(long durationMs) {
         if (durationMs <= 0) return getMessage("config.duration_format.permanent");
-        
+
         long days = TimeUnit.MILLISECONDS.toDays(durationMs);
         long hours = TimeUnit.MILLISECONDS.toHours(durationMs) % 24;
         long minutes = TimeUnit.MILLISECONDS.toMinutes(durationMs) % 60;
         long seconds = TimeUnit.MILLISECONDS.toSeconds(durationMs) % 60;
-        
+
         StringBuilder duration = new StringBuilder();
-        
+
         if (days > 0) duration.append(getMessage("config.duration_format.days", Map.of("days", String.valueOf(days))));
         if (hours > 0) {
             if (!duration.isEmpty()) duration.append(" ");
@@ -334,7 +341,7 @@ public class LocaleManager {
         if (seconds > 0 && duration.isEmpty()) {
             duration.append(getMessage("config.duration_format.seconds", Map.of("seconds", String.valueOf(seconds))));
         }
-        
+
         return duration.toString();
     }
 
@@ -344,7 +351,7 @@ public class LocaleManager {
         try {
             SimpleDateFormat dateFormat = new SimpleDateFormat(format);
             String tz = getMessage("config.timezone");
-            if (tz != null && !tz.isEmpty() && !tz.startsWith("§cMissing")) dateFormat.setTimeZone(java.util.TimeZone.getTimeZone(tz));
+            if (tz != null && !tz.isEmpty() && !tz.startsWith("\u00a7cMissing")) dateFormat.setTimeZone(java.util.TimeZone.getTimeZone(tz));
             return dateFormat.format(date);
         } catch (Exception e) {
             return date.toString();
@@ -358,40 +365,40 @@ public class LocaleManager {
     public static class PunishmentMessageBuilder {
         private final LocaleManager localeManager;
         private final Map<String, String> variables;
-        
+
         public PunishmentMessageBuilder(LocaleManager localeManager) {
             this.localeManager = localeManager;
             this.variables = new HashMap<>();
         }
-        
+
         public PunishmentMessageBuilder target(String target) {
             variables.put("target", target);
             return this;
         }
-        
+
         public PunishmentMessageBuilder type(String type) {
             variables.put("type", type);
             variables.put("punishment_type", type);
             return this;
         }
-        
+
         public PunishmentMessageBuilder duration(long durationMs) {
             variables.put("duration", localeManager.formatDuration(durationMs));
             variables.put("for_duration", " for " +localeManager.formatDuration(durationMs));
             return this;
         }
-        
+
         public PunishmentMessageBuilder punishmentId(String punishmentId) {
             variables.put("id", punishmentId);
             return this;
         }
-        
+
         public String get(String path) {
             return localeManager.getPunishmentMessage(path, variables);
         }
 
     }
-    
+
     public void reloadLocale() {
         loadLocale(currentLocale);
     }
@@ -400,17 +407,17 @@ public class LocaleManager {
         if (errorMessage == null || errorMessage.isEmpty()) return getMessage("messages.unknown_error");
 
         String unwrapped = errorMessage;
-        while (unwrapped.matches("^[a-zA-Z0-9_.]+Exception: .+")) {
+        while (EXCEPTION_PREFIX_PATTERN.matcher(unwrapped).matches()) {
             unwrapped = unwrapped.substring(unwrapped.indexOf(": ") + 2);
         }
-        while (unwrapped.matches("^java\\.[a-zA-Z0-9_.]+: .+")) {
+        while (JAVA_PREFIX_PATTERN.matcher(unwrapped).matches()) {
             unwrapped = unwrapped.substring(unwrapped.indexOf(": ") + 2);
         }
 
         if (unwrapped.equalsIgnoreCase("Player not found")) return getMessage("general.player_not_found");
-        if (unwrapped.contains("Missing locale:") || unwrapped.matches(".*\\.[a-z_]+\\.[a-z_]+.*")) return getMessage("messages.unknown_error");
+        if (unwrapped.contains("Missing locale:") || LOCALE_PATH_PATTERN.matcher(unwrapped).matches()) return getMessage("messages.unknown_error");
 
-        String cleaned = unwrapped.replaceAll("[§&][0-9a-fk-or]", "");
+        String cleaned = unwrapped.replaceAll("[\u00a7&][0-9a-fk-or]", "");
         if (cleaned.contains("Exception") || cleaned.contains("java.") || cleaned.contains("null")) return getMessage("messages.unknown_error");
 
         return cleaned;

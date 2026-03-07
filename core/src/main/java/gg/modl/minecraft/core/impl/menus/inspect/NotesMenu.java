@@ -11,7 +11,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.CreatePlayerNoteRequest;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
-import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
+
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -63,11 +63,10 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
     protected CirrusItem map(Note note) {
         LocaleManager locale = platform.getLocaleManager();
 
-        note.getText();
+        if (note.getText() == null) return createEmptyPlaceholder(locale.getMessage("menus.empty.notes"));
 
         String formattedDate = MenuItems.formatDate(note.getDate());
-        note.getIssuerName();
-        String author = note.getIssuerName();
+        String author = note.getIssuerName() != null ? note.getIssuerName() : "";
         String content = note.getText();
 
         Map<String, String> vars = Map.of(
@@ -96,8 +95,6 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
 
     @Override
     protected void handleClick(Click click, Note note) {
-        note.getText();
-
         String noteText = note.getText();
         String escapedText = noteText.replace("\\", "\\\\").replace("\"", "\\\"");
         String json = "[{\"text\":\"" + MenuItems.COLOR_GRAY + "Note: " + MenuItems.COLOR_WHITE +
@@ -122,7 +119,7 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
     private void handleCreateNote(Click click) {
         click.clickedMenu().close();
 
-        ChatInputManager.requestInput(platform, viewerUuid, "Enter note content for " + targetName + ":",
+        platform.getChatInputManager().requestInput(viewerUuid, "Enter note content for " + targetName + ":",
                 input -> {
                     CreatePlayerNoteRequest request = new CreatePlayerNoteRequest(
                             targetUuid.toString(),

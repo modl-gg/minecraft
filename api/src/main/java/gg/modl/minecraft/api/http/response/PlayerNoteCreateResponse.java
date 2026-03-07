@@ -4,8 +4,8 @@ import lombok.Data;
 
 @Data
 public class PlayerNoteCreateResponse {
-    private final int status;
     private final String message;
+    private final int status;
     
     public boolean isSuccess() {
         return status >= 200 && status < 300;

@@ -21,11 +21,12 @@ import gg.modl.minecraft.core.util.CommandUtil;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @RequiredArgsConstructor
 public class PardonCommand extends BaseCommand {
+    private static final Pattern PUNISHMENT_ID_PATTERN = Pattern.compile("^[A-Z0-9]+$");
     private static final int PUNISHMENT_ID_LENGTH = 8;
-    private static final String PUNISHMENT_ID_PATTERN = "^[A-Z0-9]+$";
 
     private final HttpClientHolder httpClientHolder;
     private final Platform platform;
@@ -81,7 +82,7 @@ public class PardonCommand extends BaseCommand {
             } else sender.sendMessage(localeManager.getMessage("pardon.no_active_punishment",
                     Map.of("player", playerName, "type", displayType)));
         }).exceptionally(throwable -> {
-            handleError(sender, throwable);
+            CommandUtil.handleException(sender, throwable, localeManager, "pardon.error");
             return null;
         });
     }
@@ -124,33 +125,25 @@ public class PardonCommand extends BaseCommand {
     }
 
     private boolean isPunishmentId(String target) {
-        return target.length() == PUNISHMENT_ID_LENGTH && target.matches(PUNISHMENT_ID_PATTERN);
+        return target.length() == PUNISHMENT_ID_LENGTH && PUNISHMENT_ID_PATTERN.matcher(target).matches();
     }
 
     private void invalidatePlayerCache(String playerName, String type) {
         try {
             AbstractPlayer player = platform.getAbstractPlayer(playerName, false);
             if (player != null) {
-                if ("ban".equals(type)) cache.removeBan(player.uuid());
-                else if ("mute".equals(type)) cache.removeMute(player.uuid());
-                else {
-                    cache.removeBan(player.uuid());
-                    cache.removeMute(player.uuid());
+                gg.modl.minecraft.core.impl.cache.PlayerProfile profile = cache.getPlayerProfile(player.uuid());
+                if (profile != null) {
+                    if ("ban".equals(type)) profile.setActiveBan(null);
+                    else if ("mute".equals(type)) profile.setActiveMute(null);
+                    else {
+                        profile.setActiveBan(null);
+                        profile.setActiveMute(null);
+                    }
                 }
             }
         } catch (Exception ignored) {
         }
     }
 
-    private void handleError(CommandIssuer sender, Throwable throwable) {
-        Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
-        if (cause instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-        else {
-            String errorMessage = cause.getMessage();
-            if (errorMessage != null && (errorMessage.contains("not found") || errorMessage.contains("404")))
-                sender.sendMessage(localeManager.getMessage("general.player_not_found"));
-            else sender.sendMessage(localeManager.getMessage("pardon.error",
-                    Map.of("error", localeManager.sanitizeErrorMessage(errorMessage != null ? errorMessage : "Unknown error"))));
-        }
-    }
 }

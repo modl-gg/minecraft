@@ -34,14 +34,8 @@ public final class MenuItems {
         FORMAT_CACHE.remove();
     }
 
-    public static final String COLOR_GOLD = "§6";
-    public static final String COLOR_YELLOW = "§e";
-    public static final String COLOR_GREEN = "§a";
-    public static final String COLOR_RED = "§c";
-    public static final String COLOR_GRAY = "§7";
-    public static final String COLOR_DARK_GRAY = "§8";
-    public static final String COLOR_WHITE = "§f";
-    public static final String COLOR_AQUA = "§b";
+    public static final String COLOR_GOLD = "§6", COLOR_YELLOW = "§e", COLOR_GREEN = "§a", COLOR_RED = "§c",
+            COLOR_GRAY = "§7", COLOR_DARK_GRAY = "§8", COLOR_WHITE = "§f", COLOR_AQUA = "§b";
 
     public static CirrusItem backButton() {
         return CirrusItem.of(

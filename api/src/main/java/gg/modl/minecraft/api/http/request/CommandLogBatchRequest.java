@@ -12,10 +12,7 @@ public class CommandLogBatchRequest {
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class CommandLogEntry {
-        private String uuid;
-        private String username;
-        private String command;
+        private String uuid, username, command, server;
         private long timestamp;
-        private String server;
     }
 }

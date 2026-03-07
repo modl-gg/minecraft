@@ -43,13 +43,8 @@ import java.util.Map;
         description = PluginInfo.DESCRIPTION,
         url = PluginInfo.URL)
 public final class VelocityPlugin {
-    private static final Yaml yaml = new Yaml();
-    private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg";
-    private static final String DEFAULT_BRIDGE_NAME = "bridge";
-    private static final int DEFAULT_BRIDGE_PORT = 25590;
-    private static final int MIN_SYNC_POLLING_RATE = 1;
-    private static final int DEFAULT_SYNC_POLLING_RATE = 2;
-    private static final int BSTATS_PLUGIN_ID = 29830;
+    private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg", DEFAULT_BRIDGE_NAME = "bridge";
+    private static final int DEFAULT_BRIDGE_PORT = 25590, MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2, BSTATS_PLUGIN_ID = 29830;
 
     private final PluginContainer plugin;
     private final ProxyServer server;
@@ -102,7 +97,7 @@ public final class VelocityPlugin {
                 (Boolean) getNestedConfig("server.query_mojang", false)
         );
 
-        VelocityPlatform platform = new VelocityPlatform(this.server, commandManager, logger, folder.toFile(), getConfigString("server.name", "Server 1"));
+        VelocityPlatform platform = new VelocityPlatform(this.server, commandManager, logger, folder.toFile(), getConfigString("server.name", "Server 1"), pluginLogger);
         ChatMessageCache chatMessageCache = new ChatMessageCache();
         int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfigInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
 
@@ -115,12 +110,10 @@ public final class VelocityPlugin {
         server.getEventManager().register(this, new JoinListener(
                 pluginLoader.getHttpClientHolder(), pluginLoader.getCache(), logger,
                 pluginLoader.getChatMessageCache(), platform, pluginLoader.getSyncService(),
-                pluginLoader.getLocaleManager(), pluginLoader.isDebugMode(),
-                pluginLoader.getStaffChatService(), pluginLoader.getChatManagementService(),
-                pluginLoader.getMaintenanceService(), pluginLoader.getFreezeService(),
-                pluginLoader.getNetworkChatInterceptService(), pluginLoader.getStaff2faService(),
-                pluginLoader.getVanishService(), pluginLoader.getStaffModeService(),
-                pluginLoader.getBridgeService()));
+                pluginLoader.getLocaleManager(), pluginLoader.getMaintenanceService(),
+                pluginLoader.getStaff2faService(), pluginLoader.getBridgeService(),
+                pluginLoader.getPlayerProfileRegistry(),
+                pluginLoader.isDebugMode()));
         server.getEventManager().register(this, new ChatListener(
                 platform, pluginLoader.getCache(), pluginLoader.getChatMessageCache(),
                 pluginLoader.getLocaleManager(), mutedCommands,
@@ -220,6 +213,7 @@ public final class VelocityPlugin {
             Path configFile = folder.resolve("config.yml");
             if (!Files.exists(configFile)) createDefaultConfig(configFile);
 
+            Yaml yaml = new Yaml();
             try (InputStream inputStream = Files.newInputStream(configFile)) {
                 this.configuration = yaml.load(inputStream);
                 if (this.configuration == null) {

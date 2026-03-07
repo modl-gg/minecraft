@@ -10,12 +10,10 @@ import java.util.List;
 
 @Data
 public class CreatePunishmentRequest {
-    private @NotNull final String targetUuid;
-    private @NotNull final String issuerName;
-    private @SerializedName("type_ordinal") final int typeOrdinal;
+    private @NotNull final String targetUuid, issuerName;
     private @Nullable final String reason;
-    private final long duration;
     private @Nullable final JsonObject data;
-    private @Nullable final List<String> notes;
-    private @Nullable final List<String> attachedTicketIds;
+    private @Nullable final List<String> notes, attachedTicketIds;
+    private @SerializedName("type_ordinal") final int typeOrdinal;
+    private final long duration;
 }

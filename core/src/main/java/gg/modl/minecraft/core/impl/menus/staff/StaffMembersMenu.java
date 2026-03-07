@@ -34,11 +34,9 @@ import java.util.stream.Collectors;
 public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMemberEntry> {
     @Getter
     public static class StaffMemberEntry {
-        private final String id;
-        private final String panelName;
-        private final String role;
+        private final String id, panelName, role;
         private final UUID minecraftUuid;
-        private final String minecraftUsername;
+        private final String minecraftUsername, lastServer;
         private final Date lastSeen;
         private final Long totalPlaytimeMs;
         private final int punishmentsIssuedCount;
@@ -46,13 +44,14 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
         private final long sessionDuration;
 
         public StaffMemberEntry(String id, String panelName, String role, UUID minecraftUuid, String minecraftUsername,
-                                Date lastSeen, Long totalPlaytimeMs, int punishmentsIssuedCount,
+                                String lastServer, Date lastSeen, Long totalPlaytimeMs, int punishmentsIssuedCount,
                                 boolean online, long sessionDuration) {
             this.id = id;
             this.panelName = panelName;
             this.role = role;
             this.minecraftUuid = minecraftUuid;
             this.minecraftUsername = minecraftUsername;
+            this.lastServer = lastServer;
             this.lastSeen = lastSeen;
             this.totalPlaytimeMs = totalPlaytimeMs;
             this.punishmentsIssuedCount = punishmentsIssuedCount;
@@ -99,8 +98,9 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
                         } catch (Exception ignored) {}
                     }
 
-                    boolean online = uuid != null && cache != null && cache.isOnline(uuid);
-                    long sessionDuration = online ? cache.getSessionDuration(uuid) : 0;
+                    gg.modl.minecraft.core.impl.cache.PlayerProfile staffProfile = uuid != null && cache != null ? cache.getPlayerProfile(uuid) : null;
+                    boolean online = staffProfile != null;
+                    long sessionDuration = online ? staffProfile.getSessionDuration() : 0;
 
                     staffMembers.add(new StaffMemberEntry(
                             entry.getId(),
@@ -108,6 +108,7 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
                             entry.getRole(),
                             uuid,
                             entry.getMinecraftUsername(),
+                            entry.getLastServer(),
                             entry.getLastSeen(),
                             entry.getTotalPlaytimeMs(),
                             entry.getPunishmentsIssuedCount(),
@@ -141,6 +142,8 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
         if (entry.isOnline() && entry.getMinecraftUuid() != null) {
             String playerServer = platform.getPlayerServer(entry.getMinecraftUuid());
             if (playerServer != null) server = playerServer;
+        } else if (entry.getLastServer() != null) {
+            server = entry.getLastServer();
         }
 
         Map<String, String> placeholders = new HashMap<>();
@@ -178,7 +181,7 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
         };
 
         if (filtered.isEmpty())
-            return Collections.singletonList(new StaffMemberEntry(null, null, null, null, null, null, null, 0, false, 0));
+            return Collections.singletonList(new StaffMemberEntry(null, null, null, null, null, null, null, null, 0, false, 0));
         return filtered;
     }
 

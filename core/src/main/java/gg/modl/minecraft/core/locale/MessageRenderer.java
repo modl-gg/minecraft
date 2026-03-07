@@ -10,8 +10,7 @@ public class MessageRenderer {
     private static final Pattern MINIMESSAGE_TAG_PATTERN = Pattern.compile("<[a-zA-Z_/!#][a-zA-Z0-9_:/.#-]*>");
 
     private final MiniMessage miniMessage;
-    private final LegacyComponentSerializer legacySerializer;
-    private final LegacyComponentSerializer sectionSerializer;
+    private final LegacyComponentSerializer legacySerializer, sectionSerializer;
 
     public MessageRenderer() {
         this.miniMessage = MiniMessage.builder().strict(false).build();

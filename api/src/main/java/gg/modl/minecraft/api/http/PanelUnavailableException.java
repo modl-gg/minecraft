@@ -7,12 +7,12 @@ import lombok.Getter;
  */
 @Getter
 public class PanelUnavailableException extends RuntimeException {
-    private final int statusCode;
     private final String endpoint;
+    private final int statusCode;
 
-    public PanelUnavailableException(int statusCode, String endpoint, String message) {
+    public PanelUnavailableException(String endpoint, int statusCode, String message) {
         super(message);
-        this.statusCode = statusCode;
         this.endpoint = endpoint;
+        this.statusCode = statusCode;
     }
 }

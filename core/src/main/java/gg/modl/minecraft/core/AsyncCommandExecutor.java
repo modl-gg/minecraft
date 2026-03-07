@@ -1,7 +1,7 @@
 package gg.modl.minecraft.core;
 
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -40,7 +40,7 @@ public class AsyncCommandExecutor {
                 },
                 new ThreadPoolExecutor.CallerRunsPolicy()
         );
-        this.asyncCommandAliases = new HashSet<>();
+        this.asyncCommandAliases = ConcurrentHashMap.newKeySet();
     }
 
     /**

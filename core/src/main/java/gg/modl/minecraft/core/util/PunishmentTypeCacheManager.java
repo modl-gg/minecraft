@@ -3,13 +3,14 @@ package gg.modl.minecraft.core.util;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class PunishmentTypeCacheManager {
-    private final Map<Integer, String> namesByOrdinal = new ConcurrentHashMap<>();
-    private final Map<String, String> namesById = new ConcurrentHashMap<>();
+    private volatile Map<Integer, String> namesByOrdinal = new ConcurrentHashMap<>();
+    private volatile Map<String, String> namesById = new ConcurrentHashMap<>();
 
     public void initialize(ModlHttpClient httpClient, PluginLogger logger) {
         httpClient.getPunishmentTypes().thenAccept(response -> {
@@ -21,13 +22,15 @@ public final class PunishmentTypeCacheManager {
     }
 
     public void update(List<PunishmentTypesResponse.PunishmentTypeData> allTypes) {
-        namesByOrdinal.clear();
-        namesById.clear();
+        Map<Integer, String> newNamesByOrdinal = new HashMap<>();
+        Map<String, String> newNamesById = new HashMap<>();
         allTypes.forEach(pt -> {
-            namesByOrdinal.put(pt.getOrdinal(), pt.getName());
-            namesById.put(String.valueOf(pt.getId()), pt.getName());
-            namesById.put(String.valueOf(pt.getOrdinal()), pt.getName());
+            newNamesByOrdinal.put(pt.getOrdinal(), pt.getName());
+            newNamesById.put(String.valueOf(pt.getId()), pt.getName());
+            newNamesById.put(String.valueOf(pt.getOrdinal()), pt.getName());
         });
+        namesByOrdinal = newNamesByOrdinal;
+        namesById = newNamesById;
     }
 
     public String getNameByOrdinal(int ordinal) {

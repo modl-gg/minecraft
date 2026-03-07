@@ -8,9 +8,9 @@ import java.util.List;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class PlayerLookupResponse {
-    private int status;
     private String message;
     private PlayerData data;
+    private int status;
     
     public boolean isSuccess() {
         return status >= 200 && status < 300;
@@ -18,53 +18,29 @@ public class PlayerLookupResponse {
     
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class PlayerData {
-        private String minecraftUuid;
-        private String currentUsername;
+        private String minecraftUuid, currentUsername, firstSeen, lastSeen, currentServer, ipAddress, country,
+                profileUrl, punishmentsUrl, ticketsUrl;
         private List<String> previousUsernames;
-        private String firstSeen;
-        private String lastSeen;
-        private String currentServer;
-        private boolean isOnline;
-        private String ipAddress;
-        private String country;
-
         private PunishmentStats punishmentStats;
         private List<RecentPunishment> recentPunishments;
         private List<RecentTicket> recentTickets;
-        private String profileUrl;
-        private String punishmentsUrl;
-        private String ticketsUrl;
+        private boolean isOnline;
     }
     
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class PunishmentStats {
-        private int totalPunishments;
-        private int activePunishments;
-        private int bans;
-        private int mutes;
-        private int kicks;
-        private int warnings;
-        private int points;
         private String status;
+        private int totalPunishments, activePunishments, bans, mutes, kicks, warnings, points;
     }
     
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class RecentPunishment {
-        private String id;
-        private String type;
-        private String issuer;
-        private String issuedAt;
-        private String expiresAt;
+        private String id, type, issuer, issuedAt, expiresAt;
         private boolean isActive;
     }
     
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class RecentTicket {
-        private String id;
-        private String title;
-        private String category;
-        private String status;
-        private String createdAt;
-        private String lastUpdated;
+        private String id, title, category, status, createdAt, lastUpdated;
     }
 }

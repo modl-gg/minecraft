@@ -472,7 +472,14 @@ menus:
       - "&7Tiempo total: &f{total_playtime}"
       - "&7Castigos: {punishments}"
       - ""
-      - "&eClic izquierdo para apuntar | Clic derecho para inspeccionar"
+      - "&7Reportes ({report_count}):"
+      - "{report-list}"
+      - ""
+      - "&cClic izquierdo para inspeccionar"
+      - "&aClic derecho para apuntar"
+    report_entry: " &6- &e{date} {reporter}: &f{details}"
+    reports_more: " &e... y {count} más"
+    no_reports: " &eSin reportes"
 
 # Standing GUI (player-facing)
 standing_gui:

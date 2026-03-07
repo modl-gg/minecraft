@@ -36,10 +36,7 @@ import java.util.stream.Collectors;
 public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu.Report> {
     @Getter
     public static class Report {
-        private final String id;
-        private final String type;
-        private final String reporterName;
-        private final String content;
+        private final String id, type, reporterName, content;
         private final Date date;
 
         public Report(String id, String type, String reporterName, String content, Date date) {

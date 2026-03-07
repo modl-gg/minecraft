@@ -15,11 +15,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 public final class YamlMergeUtil {
-    private static final Yaml yaml = new Yaml();
 
     @SuppressWarnings("unchecked")
     public static void mergeWithDefaults(String jarResourcePath, Path externalFile, PluginLogger logger) {
         try {
+            Yaml yaml = new Yaml();
             if (!Files.exists(externalFile)) {
                 try (InputStream jarStream = YamlMergeUtil.class.getResourceAsStream(jarResourcePath)) {
                     if (jarStream == null) {

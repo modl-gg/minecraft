@@ -19,13 +19,8 @@ public class HttpManager {
 
     private @NotNull final ModlHttpClient httpClient;
     private @NotNull final HttpClientHolder httpClientHolder;
-    private @NotNull final String apiKey;
-    private @NotNull final String apiUrl;
-    private final boolean debugHttp;
-    private @NotNull final String serverDomain;
-    private final boolean useTestingApi;
-    private @NotNull final String panelUrl;
-    private final boolean queryMojang;
+    private @NotNull final String apiKey, apiUrl, serverDomain, panelUrl;
+    private final boolean debugHttp, useTestingApi, queryMojang;
 
     public HttpManager(@NotNull String key, @NotNull String url, boolean debugHttp, boolean useTestingApi, boolean queryMojang) {
         this.apiKey = key;

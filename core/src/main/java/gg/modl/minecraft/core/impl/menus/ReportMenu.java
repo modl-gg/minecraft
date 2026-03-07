@@ -20,16 +20,15 @@ import java.util.List;
 import java.util.Map;
 
 public class ReportMenu extends SimpleMenu {
-    private final AbstractPlayer reporter;
-    private final AbstractPlayer target;
+    private static final int[] GUI_SLOTS = {19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34};
+
+    private final AbstractPlayer reporter, target;
     private final ModlHttpClient httpClient;
     private final LocaleManager locale;
     private final Platform platform;
     private final String panelUrl;
     private final ReportGuiConfig guiConfig;
     private final ChatMessageCache chatMessageCache;
-
-    private static final int[] GUI_SLOTS = {19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34};
 
     public ReportMenu(AbstractPlayer reporter, AbstractPlayer target, ModlHttpClient httpClient,
                       LocaleManager locale, Platform platform, String panelUrl,

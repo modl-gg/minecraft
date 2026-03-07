@@ -15,7 +15,7 @@ import gg.modl.minecraft.api.http.response.PunishmentPreviewResponse;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
-import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
+
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -34,13 +34,10 @@ import java.util.function.Consumer;
 
 public class PunishSeverityMenu extends BaseInspectMenu {
     private final PunishmentTypesResponse.PunishmentTypeData punishmentType;
-    private final Consumer<CirrusPlayerWrapper> menuBackAction;
-    private final Consumer<CirrusPlayerWrapper> rootBackAction;
-    private final boolean silentMode;
-    private final boolean altBlocking;
-    private final boolean statWipe;
+    private final Consumer<CirrusPlayerWrapper> menuBackAction, rootBackAction;
     private final List<String> linkedReportIds;
     private PunishmentPreviewResponse previewData;
+    private final boolean silentMode, altBlocking, statWipe;
 
     public PunishSeverityMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                Account targetAccount, PunishmentTypesResponse.PunishmentTypeData punishmentType,
@@ -314,7 +311,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         click.clickedMenu().close();
 
         // Prompt for reason
-        ChatInputManager.requestInput(platform, viewerUuid, "Enter punishment reason for " + targetName + ":",
+        platform.getChatInputManager().requestInput(viewerUuid, "Enter punishment reason for " + targetName + ":",
                 reason -> {
                     // Create punishment request
                     String severityStr = severityLevel == 0 ? "lenient" : severityLevel == 1 ? "regular" : "aggravated";
@@ -329,14 +326,14 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                     PunishmentCreateRequest request = new PunishmentCreateRequest(
                             targetUuid.toString(),
                             viewerName,
-                            punishmentType.getOrdinal(),
                             reason,
+                            severityStr,
+                            silentMode ? "silent" : "active",
+                            punishmentType.getOrdinal(),
                             null, // duration - let API determine from severity
                             data,
                             null, // notes
-                            linkedReportIds.isEmpty() ? null : linkedReportIds,
-                            severityStr,
-                            silentMode ? "silent" : "active"
+                            linkedReportIds.isEmpty() ? null : linkedReportIds
                     );
 
                     httpClient.createPunishmentWithResponse(request).thenAccept(response -> {

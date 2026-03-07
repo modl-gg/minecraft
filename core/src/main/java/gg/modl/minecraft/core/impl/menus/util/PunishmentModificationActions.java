@@ -19,10 +19,7 @@ import java.util.function.Consumer;
 
 public final class PunishmentModificationActions {
 
-    private static final long MS_PER_SECOND = 1000L;
-    private static final long MS_PER_MINUTE = 60 * MS_PER_SECOND;
-    private static final long MS_PER_HOUR = 60 * MS_PER_MINUTE;
-    private static final long MS_PER_DAY = 24 * MS_PER_HOUR;
+    private static final long MS_PER_SECOND = 1000L, MS_PER_MINUTE = 60 * MS_PER_SECOND, MS_PER_HOUR = 60 * MS_PER_MINUTE, MS_PER_DAY = 24 * MS_PER_HOUR;
 
     private final Platform platform;
     private final ModlHttpClient httpClient;
@@ -52,7 +49,7 @@ public final class PunishmentModificationActions {
     public void handleAddNote(Click click) {
         click.clickedMenu().close();
 
-        ChatInputManager.requestInput(platform, viewerUuid, "Enter note to add to this punishment:",
+        platform.getChatInputManager().requestInput(viewerUuid, "Enter note to add to this punishment:",
                 input -> {
                     AddPunishmentNoteRequest request = new AddPunishmentNoteRequest(
                             punishment.getId(), viewerName, input);
@@ -95,7 +92,7 @@ public final class PunishmentModificationActions {
 
         click.clickedMenu().close();
 
-        ChatInputManager.requestInput(platform, viewerUuid, "Enter evidence URL:",
+        platform.getChatInputManager().requestInput(viewerUuid, "Enter evidence URL:",
                 input -> {
                     AddPunishmentEvidenceRequest request = new AddPunishmentEvidenceRequest(
                             punishment.getId(), viewerName, input);
@@ -138,7 +135,7 @@ public final class PunishmentModificationActions {
     public void handleChangeDuration(Click click) {
         click.clickedMenu().close();
 
-        ChatInputManager.requestInput(platform, viewerUuid,
+        platform.getChatInputManager().requestInput(viewerUuid,
                 "Enter new duration (e.g., 30d, 2h, 30m, 1d2h30m, or 'perm' for permanent):",
                 input -> {
                     Long durationMs = parseDuration(input);
@@ -169,7 +166,6 @@ public final class PunishmentModificationActions {
     }
 
     public void handleToggleStatWipe(Click click) {
-        punishment.getDataMap();
         boolean currentStatus = Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
 
         TogglePunishmentOptionRequest request = new TogglePunishmentOptionRequest(
@@ -185,7 +181,6 @@ public final class PunishmentModificationActions {
     }
 
     public void handleToggleAltBlock(Click click) {
-        punishment.getDataMap();
         boolean currentStatus = Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
 
         TogglePunishmentOptionRequest request = new TogglePunishmentOptionRequest(
@@ -202,8 +197,11 @@ public final class PunishmentModificationActions {
 
     public void invalidateCache() {
         if (platform.getCache() != null) {
-            platform.getCache().removeBan(targetUuid);
-            platform.getCache().removeMute(targetUuid);
+            gg.modl.minecraft.core.impl.cache.PlayerProfile profile = platform.getCache().getPlayerProfile(targetUuid);
+            if (profile != null) {
+                profile.setActiveBan(null);
+                profile.setActiveMute(null);
+            }
         }
     }
 

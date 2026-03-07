@@ -9,28 +9,37 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.config.ConfigManager;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.cache.LoginCache;
-import gg.modl.minecraft.core.impl.commands.AltsCommand;
-import gg.modl.minecraft.core.impl.commands.ChatCommand;
-import gg.modl.minecraft.core.impl.commands.ChatLogsCommand;
-import gg.modl.minecraft.core.impl.commands.CommandLogsCommand;
-import gg.modl.minecraft.core.impl.commands.FreezeCommand;
-import gg.modl.minecraft.core.impl.commands.HistoryCommand;
-import gg.modl.minecraft.core.impl.commands.InspectCommand;
-import gg.modl.minecraft.core.impl.commands.InterceptNetworkChatCommand;
-import gg.modl.minecraft.core.impl.commands.LocalChatCommand;
-import gg.modl.minecraft.core.impl.commands.MaintenanceCommand;
-import gg.modl.minecraft.core.impl.commands.ModlReloadCommand;
-import gg.modl.minecraft.core.impl.commands.NotesCommand;
-import gg.modl.minecraft.core.impl.commands.PunishmentActionCommand;
-import gg.modl.minecraft.core.impl.commands.ReportsCommand;
-import gg.modl.minecraft.core.impl.commands.StaffChatCommand;
-import gg.modl.minecraft.core.impl.commands.StaffCommand;
-import gg.modl.minecraft.core.impl.commands.StaffListCommand;
-import gg.modl.minecraft.core.impl.commands.StaffModeCommand;
-import gg.modl.minecraft.core.impl.commands.TargetCommand;
-import gg.modl.minecraft.core.impl.commands.player.TicketCommands;
-import gg.modl.minecraft.core.impl.commands.VanishCommand;
-import gg.modl.minecraft.core.impl.commands.VerifyCommand;
+import gg.modl.minecraft.core.impl.cache.PlayerProfileRegistry;
+import gg.modl.minecraft.core.impl.commands.staff.AltsCommand;
+import gg.modl.minecraft.core.impl.commands.staff.ChatCommand;
+import gg.modl.minecraft.core.impl.commands.staff.ChatLogsCommand;
+import gg.modl.minecraft.core.impl.commands.staff.CommandLogsCommand;
+import gg.modl.minecraft.core.impl.commands.staff.FreezeCommand;
+import gg.modl.minecraft.core.impl.commands.staff.HistoryCommand;
+import gg.modl.minecraft.core.impl.commands.staff.InspectCommand;
+import gg.modl.minecraft.core.impl.commands.staff.InterceptNetworkChatCommand;
+import gg.modl.minecraft.core.impl.commands.staff.LocalChatCommand;
+import gg.modl.minecraft.core.impl.commands.staff.MaintenanceCommand;
+import gg.modl.minecraft.core.impl.commands.ModlHelpCommand;
+import gg.modl.minecraft.core.impl.commands.staff.ModlReloadCommand;
+import gg.modl.minecraft.core.impl.commands.staff.NotesCommand;
+import gg.modl.minecraft.core.impl.commands.staff.PunishmentActionCommand;
+import gg.modl.minecraft.core.impl.commands.staff.ReportsCommand;
+import gg.modl.minecraft.core.impl.commands.staff.StaffChatCommand;
+import gg.modl.minecraft.core.impl.commands.staff.StaffCommand;
+import gg.modl.minecraft.core.impl.commands.staff.StaffListCommand;
+import gg.modl.minecraft.core.impl.commands.staff.StaffModeCommand;
+import gg.modl.minecraft.core.impl.commands.staff.TargetCommand;
+import gg.modl.minecraft.core.impl.commands.player.ApplyCommand;
+import gg.modl.minecraft.core.impl.commands.player.BugReportCommand;
+import gg.modl.minecraft.core.impl.commands.player.ChatReportCommand;
+import gg.modl.minecraft.core.impl.commands.player.ClaimTicketCommand;
+import gg.modl.minecraft.core.impl.commands.player.HackReportCommand;
+import gg.modl.minecraft.core.impl.commands.player.ReportCommand;
+import gg.modl.minecraft.core.impl.commands.player.SupportCommand;
+import gg.modl.minecraft.core.impl.commands.player.TicketCommandUtil;
+import gg.modl.minecraft.core.impl.commands.staff.VanishCommand;
+import gg.modl.minecraft.core.impl.commands.staff.VerifyCommand;
 import gg.modl.minecraft.core.impl.commands.player.IAmMutedCommand;
 import gg.modl.minecraft.core.impl.commands.player.StandingCommand;
 import gg.modl.minecraft.core.impl.commands.punishments.BanCommand;
@@ -40,6 +49,7 @@ import gg.modl.minecraft.core.impl.commands.punishments.MuteCommand;
 import gg.modl.minecraft.core.impl.commands.punishments.PardonCommand;
 import gg.modl.minecraft.core.impl.commands.punishments.PunishCommand;
 import gg.modl.minecraft.core.impl.commands.punishments.WarnCommand;
+import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.locale.MessageRenderer;
@@ -57,7 +67,6 @@ import gg.modl.minecraft.core.util.StaffPermissionLoader;
 import lombok.Getter;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -68,20 +77,17 @@ import gg.modl.minecraft.core.util.PluginLogger;
 
 @Getter
 public class PluginLoader {
-    private static final Yaml yaml = new Yaml();
-
     private final HttpClientHolder httpClientHolder;
+    private final PlayerProfileRegistry playerProfileRegistry;
     private final Cache cache;
     private final SyncService syncService;
     private final UpdateCheckerService updateCheckerService;
     private final ChatMessageCache chatMessageCache;
     private final LocaleManager localeManager;
     private final LoginCache loginCache;
-    private final boolean queryMojang;
     private final AsyncCommandExecutor asyncCommandExecutor;
     private final Path dataDirectory;
     private final PluginLogger logger;
-    private final boolean debugMode;
     private final ConfigManager configManager;
     private final StaffChatService staffChatService;
     private final ChatManagementService chatManagementService;
@@ -93,6 +99,7 @@ public class PluginLoader {
     private final StaffModeService staffModeService;
     private final VanishService vanishService;
     private final BridgeService bridgeService;
+    private final boolean queryMojang, debugMode;
 
     public ModlHttpClient getHttpClient() {
         return httpClientHolder.getClient();
@@ -104,7 +111,8 @@ public class PluginLoader {
         this.chatMessageCache = chatMessageCache;
         this.queryMojang = httpManager.isQueryMojang();
         this.asyncCommandExecutor = new AsyncCommandExecutor();
-        cache = new Cache();
+        playerProfileRegistry = new PlayerProfileRegistry();
+        cache = new Cache(playerProfileRegistry);
         cache.setQueryMojang(httpManager.isQueryMojang());
         loginCache = new LoginCache();
         platform.setCache(cache);
@@ -131,7 +139,7 @@ public class PluginLoader {
 
         DatabaseConfig databaseConfig = loadDatabaseConfig(configYml, dataDirectory, logger);
 
-        this.staff2faService = new Staff2faService(configManager.getStaff2faConfig());
+        this.staff2faService = new Staff2faService(playerProfileRegistry, configManager.getStaff2faConfig());
         this.chatCommandLogService = new ChatCommandLogService();
 
         this.syncService = new SyncService(platform, httpClientHolder, cache, logger, this.localeManager,
@@ -183,7 +191,8 @@ public class PluginLoader {
 
         initializeStaffPermissions(httpManager.getHttpClient(), cache, logger, httpManager.isDebugHttp());
 
-        commandManager.registerCommand(new ModlReloadCommand(cache, this.localeManager, this::reloadRuntimeConfiguration));
+        commandManager.registerCommand(new ModlHelpCommand(cache, this.localeManager));
+        commandManager.registerCommand(new ModlReloadCommand(this.localeManager, this::reloadRuntimeConfiguration));
         commandManager.registerCommand(new BanCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new MuteCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new KickCommand(httpClientHolder, platform, cache, this.localeManager));
@@ -191,9 +200,18 @@ public class PluginLoader {
         commandManager.registerCommand(new PardonCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new WarnCommand(httpClientHolder, platform, cache, this.localeManager));
         commandManager.registerCommand(new IAmMutedCommand(platform, cache, this.localeManager));
-        commandManager.registerCommand(new StandingCommand(httpClientHolder, platform, this.localeManager, configManager));
-        commandManager.registerCommand(new TicketCommands(asyncCommandExecutor, platform, httpManager.getHttpClient(), httpManager.getPanelUrl(),
-            this.localeManager, chatMessageCache));
+        commandManager.registerCommand(new StandingCommand(httpClientHolder, platform, this.localeManager, configManager, cache));
+
+        TicketCommandUtil ticketUtil = new TicketCommandUtil(cache);
+        ModlHttpClient httpClient = httpManager.getHttpClient();
+        String panelUrl = httpManager.getPanelUrl();
+        commandManager.registerCommand(new ReportCommand(asyncCommandExecutor, platform, httpClient, panelUrl, this.localeManager, chatMessageCache, ticketUtil));
+        commandManager.registerCommand(new ChatReportCommand(platform, httpClient, panelUrl, this.localeManager, chatMessageCache, ticketUtil));
+        commandManager.registerCommand(new HackReportCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil));
+        commandManager.registerCommand(new ApplyCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil));
+        commandManager.registerCommand(new BugReportCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil));
+        commandManager.registerCommand(new SupportCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil));
+        commandManager.registerCommand(new ClaimTicketCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil));
 
         PunishmentTypeCacheManager punishmentTypeCache = new PunishmentTypeCacheManager();
         punishmentTypeCache.initialize(httpManager.getHttpClient(), logger);
@@ -210,17 +228,18 @@ public class PluginLoader {
         commandManager.registerCommand(new ReportsCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
         commandManager.registerCommand(new PunishmentActionCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
 
-        this.staffChatService = new StaffChatService();
-        this.chatManagementService = new ChatManagementService();
+        this.staffChatService = new StaffChatService(playerProfileRegistry);
+        this.chatManagementService = new ChatManagementService(playerProfileRegistry);
         this.maintenanceService = new MaintenanceService();
-        this.networkChatInterceptService = new NetworkChatInterceptService();
-        this.freezeService = new FreezeService();
-        this.staffModeService = new StaffModeService();
+        this.networkChatInterceptService = new NetworkChatInterceptService(playerProfileRegistry);
+        this.freezeService = new FreezeService(playerProfileRegistry);
+        this.staffModeService = new StaffModeService(playerProfileRegistry);
         platform.setStaffModeService(this.staffModeService);
         platform.setStaff2faService(this.staff2faService);
-        this.vanishService = new VanishService();
+        this.vanishService = new VanishService(playerProfileRegistry);
         this.bridgeService = new BridgeService();
         platform.setBridgeService(this.bridgeService);
+        platform.setChatInputManager(new ChatInputManager(platform));
 
         commandManager.registerCommand(new StaffChatCommand(platform, cache, this.localeManager, staffChatService, configManager.getStaffChatConfig()));
         commandManager.registerCommand(new LocalChatCommand(platform, cache, this.localeManager, staffChatService));
@@ -251,14 +270,14 @@ public class PluginLoader {
     public static Account fetchPlayer(String target, ModlHttpClient httpClient) {
         return PlayerLookupUtil.fetchAccount(target, httpClient);
     }
-    
+
     @SuppressWarnings("unchecked")
     private static Map<String, Object> readConfigYml(Path dataDirectory, PluginLogger logger) {
         try {
             Path configFile = dataDirectory.resolve("config.yml");
             if (!Files.exists(configFile)) return Collections.emptyMap();
-            try (InputStream inputStream = new FileInputStream(configFile.toFile())) {
-                Map<String, Object> config = yaml.load(inputStream);
+            try (InputStream inputStream = Files.newInputStream(configFile)) {
+                Map<String, Object> config = new Yaml().load(inputStream);
                 return config != null ? config : Collections.emptyMap();
             }
         } catch (Exception e) {
@@ -400,7 +419,7 @@ public class PluginLoader {
                 logger.info("Loaded database config: " + type + " @ " + host + ":" + port + "/" + dbName);
                 logger.info("Using table prefix: " + tablePrefix);
 
-                return new DatabaseConfig(host, port, dbName, username, password, dbType, tablePrefix);
+                return new DatabaseConfig(host, dbName, username, password, dbType, tablePrefix, port);
             }
         } catch (Exception e) {
             logger.warning("Failed to load database config: " + e.getMessage());
@@ -410,26 +429,26 @@ public class PluginLoader {
     }
 
     private DatabaseConfig createDefaultDatabaseConfig() {
-        return new DatabaseConfig("localhost", 3306, "minecraft", "root", "", DatabaseConfig.DatabaseType.MYSQL, "litebans_");
+        return new DatabaseConfig("localhost", "minecraft", "root", "", DatabaseConfig.DatabaseType.MYSQL, "litebans_", 3306);
     }
 
     private String detectLiteBansTablePrefix(Path dataDirectory, PluginLogger logger) {
         try {
             // LiteBans config is in plugins/LiteBans/config.yml
             Path litebansConfig = dataDirectory.getParent().resolve("LiteBans").resolve("config.yml");
-            
+
             if (!Files.exists(litebansConfig)) {
                 logger.info("LiteBans config not found, using prefix from modl.gg config");
                 return null;
             }
-            
-            try (InputStream inputStream = new FileInputStream(litebansConfig.toFile())) {
-                Map<String, Object> config = yaml.load(inputStream);
-                
+
+            try (InputStream inputStream = Files.newInputStream(litebansConfig)) {
+                Map<String, Object> config = new Yaml().load(inputStream);
+
                 if (config != null && config.containsKey("sql")) {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> sql = (Map<String, Object>) config.get("sql");
-                    
+
                     if (sql.containsKey("table_prefix")) {
                         String prefix = (String) sql.get("table_prefix");
                         if (prefix != null && !prefix.isEmpty()) return prefix;
@@ -439,7 +458,7 @@ public class PluginLoader {
         } catch (Exception e) {
             logger.warning("Failed to read LiteBans config: " + e.getMessage());
         }
-        
+
         return null;
     }
 
@@ -515,7 +534,7 @@ public class PluginLoader {
     private static void registerCommandConditions(CommandManager commandManager, Cache cache, LocaleManager localeManager, Staff2faService staff2faService) {
         commandManager.getCommandConditions().addCondition("staff", context -> {
             if (!context.getIssuer().isPlayer()) return;
-            if (PermissionUtil.isStaff(context.getIssuer(), cache)) throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
+            if (!PermissionUtil.isStaff(context.getIssuer(), cache)) throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
             if (staff2faService != null && staff2faService.isEnabled() && !staff2faService.isAuthenticated(context.getIssuer().getUniqueId())) {
                 throw new ConditionFailedException(localeManager.getMessage("staff_2fa.not_verified"));
             }
@@ -523,7 +542,7 @@ public class PluginLoader {
 
         commandManager.getCommandConditions().addCondition("staff_no2fa", context -> {
             if (!context.getIssuer().isPlayer()) return;
-            if (PermissionUtil.isStaff(context.getIssuer(), cache)) throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
+            if (!PermissionUtil.isStaff(context.getIssuer(), cache)) throw new ConditionFailedException(localeManager.getMessage("general.no_permission"));
         });
 
         commandManager.getCommandConditions().addCondition("player", context -> {

@@ -60,13 +60,13 @@ public abstract class AbstractManualPunishmentCommand extends BaseCommand {
         PunishmentCreateRequest request = new PunishmentCreateRequest(
             target.getMinecraftUuid().toString(),
             issuerName,
-            getOrdinal(),
             reason,
+            null, null,
+            getOrdinal(),
             duration,
             dataMap,
             new ArrayList<>(),
-            new ArrayList<>(),
-            null, null
+            new ArrayList<>()
         );
 
         getHttpClient().createPunishmentWithResponse(request).thenAccept(response -> {
@@ -125,9 +125,7 @@ public abstract class AbstractManualPunishmentCommand extends BaseCommand {
         final Set<Flag> flags;
         String reason = "";
         long duration = 0;
-        boolean silent = false;
-        boolean altBlocking = false;
-        boolean statWipe = false;
+        boolean silent = false, altBlocking = false, statWipe = false;
 
         ParsedArgs(Set<Flag> flags) {
             this.flags = flags;

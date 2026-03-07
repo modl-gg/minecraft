@@ -13,7 +13,12 @@ public class ChatInputManager {
     private static final long INPUT_EXPIRY_MS = 60_000;
     private static final String PROMPT_PREFIX = "§6§l» §e";
 
-    private static final Map<UUID, PendingInput> pendingInputs = new ConcurrentHashMap<>();
+    private final Platform platform;
+    private final Map<UUID, PendingInput> pendingInputs = new ConcurrentHashMap<>();
+
+    public ChatInputManager(Platform platform) {
+        this.platform = platform;
+    }
 
     @Getter @RequiredArgsConstructor
     public static class PendingInput {
@@ -27,7 +32,7 @@ public class ChatInputManager {
         }
     }
 
-    public static void requestInput(Platform platform, UUID playerUuid, String prompt, Consumer<String> callback, Runnable cancelCallback) {
+    public void requestInput(UUID playerUuid, String prompt, Consumer<String> callback, Runnable cancelCallback) {
         cancelInput(playerUuid);
         pendingInputs.put(playerUuid, new PendingInput(prompt, callback, cancelCallback));
         platform.sendMessage(playerUuid, "");
@@ -39,7 +44,7 @@ public class ChatInputManager {
     /**
      * Returns true if the message was consumed as pending input.
      */
-    public static boolean handleChat(UUID playerUuid, String message) {
+    public boolean handleChat(UUID playerUuid, String message) {
         PendingInput pending = pendingInputs.remove(playerUuid);
         if (pending == null) return false;
         if (pending.isExpired()) return false;
@@ -53,7 +58,7 @@ public class ChatInputManager {
         return true;
     }
 
-    public static void cancelInput(UUID playerUuid) {
+    public void cancelInput(UUID playerUuid) {
         PendingInput pending = pendingInputs.remove(playerUuid);
         if (pending != null && pending.getCancelCallback() != null) {
             pending.getCancelCallback().run();
@@ -61,11 +66,11 @@ public class ChatInputManager {
     }
 
     /** Unlike cancelInput, does NOT fire the cancel callback (player is offline). */
-    public static void clearOnDisconnect(UUID playerUuid) {
+    public void clearOnDisconnect(UUID playerUuid) {
         pendingInputs.remove(playerUuid);
     }
 
-    public static void cleanupExpired() {
+    public void cleanupExpired() {
         pendingInputs.entrySet().removeIf(entry -> entry.getValue().isExpired());
     }
 }

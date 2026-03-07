@@ -11,20 +11,18 @@ import org.jetbrains.annotations.Nullable;
  */
 @Data @NoArgsConstructor @AllArgsConstructor
 public class SimplePunishment {
-    private static final String CATEGORY_BAN = "BAN";
-    private static final String CATEGORY_MUTE = "MUTE";
-    private static final String CATEGORY_KICK = "KICK";
+    private static final String CATEGORY_BAN = "BAN", CATEGORY_MUTE = "MUTE", CATEGORY_KICK = "KICK";
 
     private @NotNull String type;
     private @Nullable String category;
-    private boolean started;
     private @Nullable Long expiration;
     private @NotNull String description;
     private @NotNull String id;
-    private int ordinal;
     private @Nullable String issuerName;
     private @Nullable Long issuedAt;
     private @Nullable String playerDescription;
+    private boolean started;
+    private int ordinal;
 
     /**
      * Backend-provided category is most authoritative (per-punishment, not per-type),

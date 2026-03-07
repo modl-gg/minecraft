@@ -27,8 +27,8 @@ public class QueryStatWipeExecutor implements StatWipeExecutor {
 
     public void addBridge(String serverName, String host, int port, String secret) {
         QueryClient client = new QueryClient(
-                serverName, host, port, secret,
-                logger, this::handleMessage, eventLoopGroup
+                serverName, host, secret,
+                logger, this::handleMessage, eventLoopGroup, port
         );
         clients.add(client);
         client.connect();

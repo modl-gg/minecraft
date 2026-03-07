@@ -14,10 +14,8 @@ public final class ReportRenderUtil {
     public static CirrusItemType getReportItemType(String type) {
         if (type == null) return CirrusItemType.PAPER;
         return switch (type.toLowerCase()) {
-            case "gameplay" -> CirrusItemType.PLAYER_HEAD;
+            case "gameplay" -> CirrusItemType.DIAMOND_SWORD;
             case "chat" -> CirrusItemType.WRITABLE_BOOK;
-            case "cheating" -> CirrusItemType.DIAMOND_SWORD;
-            case "behavior" -> CirrusItemType.SKELETON_SKULL;
             default -> CirrusItemType.PAPER;
         };
     }
@@ -53,7 +51,6 @@ public final class ReportRenderUtil {
     }
 
     public static String getPlayerName(Account account) {
-        account.getUsernames();
         if (!account.getUsernames().isEmpty()) {
             return account.getUsernames().stream()
                     .max(Comparator.comparing(Account.Username::getDate))

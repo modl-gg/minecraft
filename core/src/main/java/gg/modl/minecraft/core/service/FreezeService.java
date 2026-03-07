@@ -1,26 +1,29 @@
 package gg.modl.minecraft.core.service;
 
-import java.util.Map;
+import gg.modl.minecraft.core.impl.cache.PlayerProfile;
+import gg.modl.minecraft.core.impl.cache.PlayerProfileRegistry;
+
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class FreezeService {
-    private final Map<UUID, UUID> frozenPlayers = new ConcurrentHashMap<>();
+    private final PlayerProfileRegistry registry;
+
+    public FreezeService(PlayerProfileRegistry registry) {
+        this.registry = registry;
+    }
 
     public void freeze(UUID target, UUID staff) {
-        frozenPlayers.put(target, staff);
+        PlayerProfile profile = registry.getProfile(target);
+        if (profile != null) profile.setFrozenByStaff(staff);
     }
 
     public void unfreeze(UUID target) {
-        frozenPlayers.remove(target);
+        PlayerProfile profile = registry.getProfile(target);
+        if (profile != null) profile.setFrozenByStaff(null);
     }
 
     public boolean isFrozen(UUID target) {
-        return frozenPlayers.containsKey(target);
-    }
-
-    /** Alias for {@link #unfreeze} — used on player disconnect. */
-    public void removePlayer(UUID uuid) {
-        unfreeze(uuid);
+        PlayerProfile profile = registry.getProfile(target);
+        return profile != null && profile.getFrozenByStaff() != null;
     }
 }

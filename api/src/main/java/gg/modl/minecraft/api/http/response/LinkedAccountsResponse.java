@@ -8,6 +8,6 @@ import java.util.List;
 
 @Data
 public class LinkedAccountsResponse {
-    private int status;
     private @NotNull List<Account> linkedAccounts;
+    private int status;
 }

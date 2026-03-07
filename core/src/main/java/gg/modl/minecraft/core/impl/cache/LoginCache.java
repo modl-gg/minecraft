@@ -1,10 +1,10 @@
 package gg.modl.minecraft.core.impl.cache;
 
-import com.google.gson.JsonObject;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import lombok.Getter;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -12,8 +12,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class LoginCache {
-    private static final int LOGIN_RESULT_EXPIRY_SECONDS = 30;
-    private static final int PRE_LOGIN_RESULT_EXPIRY_SECONDS = 60;
+    private static final int LOGIN_RESULT_EXPIRY_SECONDS = 30, PRE_LOGIN_RESULT_EXPIRY_SECONDS = 60;
 
     private final ConcurrentHashMap<UUID, CachedLoginResult> loginResultCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, PreLoginResult> preLoginResults = new ConcurrentHashMap<>();
@@ -34,7 +33,7 @@ public class LoginCache {
         return null;
     }
 
-    public void cacheLoginResult(UUID playerUuid, PlayerLoginResponse response, JsonObject ipInfo, String skinHash) {
+    public void cacheLoginResult(UUID playerUuid, PlayerLoginResponse response, Map<String, Object> ipInfo, String skinHash) {
         loginResultCache.put(playerUuid, new CachedLoginResult(response, ipInfo, skinHash, Instant.now()));
     }
 
@@ -67,11 +66,11 @@ public class LoginCache {
     @Getter
     public static class CachedLoginResult {
         private final PlayerLoginResponse response;
-        private final JsonObject ipInfo;
+        private final Map<String, Object> ipInfo;
         private final String skinHash;
         private final Instant timestamp;
 
-        public CachedLoginResult(PlayerLoginResponse response, JsonObject ipInfo, String skinHash, Instant timestamp) {
+        public CachedLoginResult(PlayerLoginResponse response, Map<String, Object> ipInfo, String skinHash, Instant timestamp) {
             this.response = response;
             this.ipInfo = ipInfo;
             this.skinHash = skinHash;
@@ -86,12 +85,12 @@ public class LoginCache {
     @Getter
     public static class PreLoginResult {
         private final PlayerLoginResponse response;
-        private final JsonObject ipInfo;
+        private final Map<String, Object> ipInfo;
         private final String skinHash;
         private final Instant timestamp;
         private final Exception error;
 
-        public PreLoginResult(PlayerLoginResponse response, JsonObject ipInfo, String skinHash) {
+        public PreLoginResult(PlayerLoginResponse response, Map<String, Object> ipInfo, String skinHash) {
             this.response = response;
             this.ipInfo = ipInfo;
             this.skinHash = skinHash;

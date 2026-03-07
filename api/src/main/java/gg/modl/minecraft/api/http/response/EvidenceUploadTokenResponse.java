@@ -4,8 +4,8 @@ import lombok.Data;
 
 @Data
 public class EvidenceUploadTokenResponse {
-    private int status;
     private String token;
+    private int status;
 
     public boolean isSuccess() {
         return status >= 200 && status < 300 && token != null;

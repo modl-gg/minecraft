@@ -6,10 +6,9 @@ import lombok.NoArgsConstructor;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class PardonResponse {
-    private int status;
-    private boolean success;
-    private int pardonedCount;
     private String message;
+    private int status, pardonedCount;
+    private boolean success;
 
     public boolean hasPardoned() {
         return success && pardonedCount > 0;

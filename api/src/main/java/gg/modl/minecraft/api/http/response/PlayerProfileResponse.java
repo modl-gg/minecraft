@@ -6,6 +6,6 @@ import org.jetbrains.annotations.NotNull;
 
 @Data
 public class PlayerProfileResponse {
-    private int status;
     private @NotNull Account profile;
+    private int status;
 }

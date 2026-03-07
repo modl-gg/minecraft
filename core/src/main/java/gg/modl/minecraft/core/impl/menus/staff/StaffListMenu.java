@@ -34,8 +34,7 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
     public static class StaffMember {
         private final String id;
         private final UUID uuid;
-        private final String username;
-        private final String currentRole;
+        private final String username, currentRole;
 
         public StaffMember(String id, UUID uuid, String username, String currentRole) {
             this.id = id;
@@ -46,16 +45,15 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
 
     }
 
+    private static final String SUPER_ADMIN_ROLE = "Super Admin";
+
     private List<StaffMember> staffMembers = new ArrayList<>();
     private List<String> availableRoles = new ArrayList<>();
     private Map<String, Integer> roleOrders = new HashMap<>();
     private final String panelUrl;
-    private final boolean hasPermission;
     private String viewerRole;
-
     private final Map<String, String> selectedRoles = new HashMap<>();
-
-    private static final String SUPER_ADMIN_ROLE = "Super Admin";
+    private final boolean hasPermission;
 
     public StaffListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                          boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {

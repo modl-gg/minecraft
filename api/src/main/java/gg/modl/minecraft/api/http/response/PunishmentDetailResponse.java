@@ -7,26 +7,18 @@ import java.util.Map;
 
 @Data
 public class PunishmentDetailResponse {
-    private int status;
     private PunishmentDetail punishment;
+    private int status;
 
     public boolean isSuccess() {
-        return status < 200 || status >= 300 || punishment == null;
+        return status >= 200 && status < 300 && punishment != null;
     }
 
     @Data
     public static class PunishmentDetail {
-        private String id;
-        private String playerUuid;
-        private String playerName;
-        private String issuerName;
-        private String issued;
-        private String started;
-        private int typeOrdinal;
-        private String type;
+        private String id, playerUuid, playerName, issuerName, issued, started, type;
         private Map<String, Object> data;
-        private List<Object> modifications;
-        private List<Object> notes;
-        private List<Object> evidence;
+        private List<Object> modifications, notes, evidence;
+        private int typeOrdinal;
     }
 }

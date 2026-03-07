@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.util;
 
-import com.google.gson.JsonObject;
 import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PlayerDisconnectRequest;
@@ -9,18 +8,14 @@ import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
-import gg.modl.minecraft.core.impl.commands.player.IAmMutedCommand;
-import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
+import gg.modl.minecraft.core.impl.cache.PlayerProfile;
+import gg.modl.minecraft.core.impl.cache.PlayerProfileRegistry;
+
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
-import gg.modl.minecraft.core.service.ChatManagementService;
 import gg.modl.minecraft.core.service.ChatMessageCache;
-import gg.modl.minecraft.core.service.FreezeService;
-import gg.modl.minecraft.core.service.NetworkChatInterceptService;
 import gg.modl.minecraft.core.service.Staff2faService;
-import gg.modl.minecraft.core.service.StaffChatService;
 import gg.modl.minecraft.core.service.StaffModeService;
-import gg.modl.minecraft.core.service.VanishService;
 import gg.modl.minecraft.core.sync.SyncService;
 
 import java.util.Map;
@@ -60,8 +55,8 @@ public final class ListenerHelper {
                     ban.getId(),
                     playerUuid,
                     java.time.Instant.now().toString(),
-                    true,
-                    null
+                    null,
+                    true
             );
 
             httpClient.acknowledgePunishment(request).thenAccept(response -> {
@@ -75,11 +70,11 @@ public final class ListenerHelper {
         }
     }
 
-    public static void handlePendingIpLookups(ModlHttpClient httpClient, PlayerLoginResponse response, String minecraftUUID, String originalIp, CompletableFuture<JsonObject> originalIpInfoFuture, PluginLogger logger) {
+    public static void handlePendingIpLookups(ModlHttpClient httpClient, PlayerLoginResponse response, String minecraftUUID, String originalIp, CompletableFuture<Map<String, Object>> originalIpInfoFuture, PluginLogger logger) {
         if (response.getPendingIpLookups() == null || response.getPendingIpLookups().isEmpty()) return;
 
         for (String ip : response.getPendingIpLookups()) {
-            CompletableFuture<JsonObject> ipInfoFuture = ip.equals(originalIp) && originalIpInfoFuture != null
+            CompletableFuture<Map<String, Object>> ipInfoFuture = ip.equals(originalIp) && originalIpInfoFuture != null
                     ? originalIpInfoFuture
                     : IpApiClient.getIpInfo(ip);
             ipInfoFuture.thenAccept(ipInfo -> submitIpInfoIfSuccess(httpClient, minecraftUUID, ip, ipInfo, logger))
@@ -90,17 +85,17 @@ public final class ListenerHelper {
         }
     }
 
-    private static void submitIpInfoIfSuccess(ModlHttpClient httpClient, String minecraftUUID, String ip, JsonObject ipInfo, PluginLogger logger) {
-        if (ipInfo == null || !ipInfo.has("status") || !"success".equals(ipInfo.get("status").getAsString())) return;
+    private static void submitIpInfoIfSuccess(ModlHttpClient httpClient, String minecraftUUID, String ip, Map<String, Object> ipInfo, PluginLogger logger) {
+        if (ipInfo == null || !"success".equals(ipInfo.get("status"))) return;
 
         httpClient.submitIpInfo(
                 minecraftUUID,
                 ip,
-                ipInfo.has("countryCode") ? ipInfo.get("countryCode").getAsString() : null,
-                ipInfo.has("regionName") ? ipInfo.get("regionName").getAsString() : null,
-                ipInfo.has("as") ? ipInfo.get("as").getAsString() : null,
-                ipInfo.has("proxy") && ipInfo.get("proxy").getAsBoolean(),
-                ipInfo.has("hosting") && ipInfo.get("hosting").getAsBoolean()
+                (String) ipInfo.get("countryCode"),
+                (String) ipInfo.get("regionName"),
+                (String) ipInfo.get("as"),
+                Boolean.TRUE.equals(ipInfo.get("proxy")),
+                Boolean.TRUE.equals(ipInfo.get("hosting"))
         ).exceptionally(throwable -> {
             logger.warning("Failed to submit IP info for " + ip + ": " + throwable.getMessage());
             return null;
@@ -112,7 +107,7 @@ public final class ListenerHelper {
             Platform platform, Cache cache, LocaleManager localeManager,
             Staff2faService staff2faService, SyncService syncService) {
 
-        cache.setOnline(uuid);
+        cache.getRegistry().createProfile(uuid);
 
         if (staff2faService != null && staff2faService.isEnabled() && PermissionUtil.isStaff(uuid, cache)) staff2faService.onStaffJoin(uuid);
 
@@ -127,16 +122,21 @@ public final class ListenerHelper {
         syncService.deliverPendingNotifications(uuid);
     }
 
+    /**
+     * Simplified disconnect handler. Per-player state is destroyed atomically
+     * via {@link PlayerProfileRegistry#destroyProfile} — no need to call
+     * removePlayer() on each service individually.
+     */
     public static void handlePlayerDisconnect(
             UUID uuid, String playerName,
             ModlHttpClient httpClient, Cache cache, Platform platform,
-            LocaleManager localeManager, FreezeService freezeService,
-            StaffChatService staffChatService, ChatManagementService chatManagementService,
-            NetworkChatInterceptService networkChatInterceptService, Staff2faService staff2faService,
+            LocaleManager localeManager,
             ChatMessageCache chatMessageCache,
-            VanishService vanishService, StaffModeService staffModeService, BridgeService bridgeService) {
+            BridgeService bridgeService,
+            PlayerProfileRegistry registry) {
 
-        long sessionDuration = cache.getSessionDuration(uuid);
+        PlayerProfile profile = registry.getProfile(uuid);
+        long sessionDuration = profile != null ? profile.getSessionDuration() : 0;
         httpClient.playerDisconnect(new PlayerDisconnectRequest(uuid.toString(), sessionDuration));
 
         if (PermissionUtil.isStaff(uuid, cache)) {
@@ -146,37 +146,30 @@ public final class ListenerHelper {
             httpClient.reportStaffDisconnect(uuid.toString(), sessionDuration);
         }
 
-        if (freezeService.isFrozen(uuid)) {
+        if (profile != null && profile.getFrozenByStaff() != null) {
             platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification",
                     Map.of("player", playerName)));
-            freezeService.removePlayer(uuid);
         }
 
-        if (vanishService.isVanished(uuid)) {
-            vanishService.unvanish(uuid);
+        if (profile != null && profile.isVanished()) {
             if (bridgeService != null) {
                 String panelName = cache.getDisplayName(uuid, playerName);
                 bridgeService.sendVanishExit(uuid.toString(), playerName, panelName);
             }
         }
 
-        if (staffModeService.isInStaffMode(uuid)) {
-            staffModeService.removePlayer(uuid);
+        if (profile != null && profile.getStaffModeState() != StaffModeService.StaffModeState.OFF) {
             if (bridgeService != null) {
                 String panelName = cache.getDisplayName(uuid, playerName);
                 bridgeService.sendStaffModeExit(uuid.toString(), playerName, panelName);
             }
         }
 
+        // Atomic cleanup — destroys all per-player state (mute, ban, staff member,
+        // freeze, vanish, staffmode, staffchat, 2fa, notifications, preferences, cooldowns)
+        registry.destroyProfile(uuid);
         cache.setOffline(uuid);
-
-        staffChatService.removePlayer(uuid);
-        chatManagementService.removePlayer(uuid);
-        networkChatInterceptService.removePlayer(uuid);
-        if (staff2faService != null) staff2faService.removePlayer(uuid);
-        cache.removePlayer(uuid);
         chatMessageCache.removePlayer(uuid.toString());
-        ChatInputManager.clearOnDisconnect(uuid);
-        IAmMutedCommand.clearOnDisconnect(uuid);
+        platform.getChatInputManager().clearOnDisconnect(uuid);
     }
 }

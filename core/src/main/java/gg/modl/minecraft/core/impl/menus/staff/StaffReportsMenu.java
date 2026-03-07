@@ -33,33 +33,27 @@ import java.util.function.Consumer;
 public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report> {
     @Getter
     public static class Report {
-        private final String id;
-        private final String type;
-        private final String reporterName;
+        private final String id, type, reporterName, reportedPlayerName, content, status;
         private final UUID reportedPlayerUuid;
-        private final String reportedPlayerName;
-        private final String content;
         private final Date date;
-        private final String status;
 
-        public Report(String id, String type, String reporterName, UUID reportedPlayerUuid,
-                      String reportedPlayerName, String content, Date date, String status) {
+        public Report(String id, String type, String reporterName, String reportedPlayerName,
+                      String content, String status, UUID reportedPlayerUuid, Date date) {
             this.id = id;
             this.type = type;
             this.reporterName = reporterName;
-            this.reportedPlayerUuid = reportedPlayerUuid;
             this.reportedPlayerName = reportedPlayerName;
             this.content = content;
-            this.date = date;
             this.status = status;
+            this.reportedPlayerUuid = reportedPlayerUuid;
+            this.date = date;
         }
 
     }
 
     private final List<Report> reports = new ArrayList<>();
-    private String currentFilter = "all";
-    private String currentStatusFilter = "open";
-    private final List<String> filterOptions = Arrays.asList("all", "gameplay", "chat", "cheating", "behavior", "other");
+    private String currentFilter = "all", currentStatusFilter = "open";
+    private final List<String> filterOptions = Arrays.asList("all", "gameplay", "chat");
     private final String panelUrl;
 
     public StaffReportsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -90,11 +84,11 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
                                 report.getId(),
                                 type,
                                 report.getReporterName(),
-                                reportedUuid,
                                 report.getReportedPlayerName(),
                                 report.getContent() != null ? report.getContent() : report.getSubject(),
-                                report.getCreatedAt(),
-                                report.getStatus()
+                                report.getStatus(),
+                                reportedUuid,
+                                report.getCreatedAt()
                         ));
                     }
                 }

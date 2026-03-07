@@ -10,19 +10,18 @@ import co.aikar.commands.annotation.Syntax;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.cache.PlayerProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 @RequiredArgsConstructor
 public class IAmMutedCommand extends BaseCommand {
-    private static final ConcurrentHashMap<UUID, Long> cooldowns = new ConcurrentHashMap<>();
     private static final long COOLDOWN_DURATION = TimeUnit.MINUTES.toMillis(5);
-    private static final long CLEANUP_THRESHOLD = COOLDOWN_DURATION * 2;
+    private static final String COOLDOWN_KEY = "iammuted";
     private static final int SECONDS_PER_MINUTE = 60;
 
     private final Platform platform;
@@ -41,7 +40,8 @@ public class IAmMutedCommand extends BaseCommand {
 
         UUID senderUuid = sender.getUniqueId();
 
-        if (!cache.isMuted(senderUuid)) {
+        PlayerProfile senderProfile = cache.getPlayerProfile(senderUuid);
+        if (senderProfile == null || !senderProfile.isMuted()) {
             sender.sendMessage(localeManager.getMessage("iammuted.not_muted"));
             return;
         }
@@ -67,17 +67,16 @@ public class IAmMutedCommand extends BaseCommand {
             "target", targetPlayer.username()
         )));
 
-        cooldowns.put(senderUuid, System.currentTimeMillis());
-        cleanupExpiredCooldowns();
+        senderProfile.getCooldowns().set(COOLDOWN_KEY);
     }
 
     private boolean checkAndNotifyCooldown(CommandIssuer sender, UUID senderUuid) {
-        Long lastUsed = cooldowns.get(senderUuid);
-        if (lastUsed == null) return true;
+        PlayerProfile profile = cache.getPlayerProfile(senderUuid);
+        if (profile == null) return true;
 
-        long remaining = COOLDOWN_DURATION - (System.currentTimeMillis() - lastUsed);
-        if (remaining <= 0) return true;
+        if (!profile.getCooldowns().isOnCooldown(COOLDOWN_KEY, COOLDOWN_DURATION)) return true;
 
+        long remaining = profile.getCooldowns().getRemainingMs(COOLDOWN_KEY, COOLDOWN_DURATION);
         long remainingMinutes = TimeUnit.MILLISECONDS.toMinutes(remaining);
         long remainingSeconds = TimeUnit.MILLISECONDS.toSeconds(remaining) % SECONDS_PER_MINUTE;
         sender.sendMessage(localeManager.getMessage("iammuted.cooldown_message", Map.of(
@@ -87,12 +86,6 @@ public class IAmMutedCommand extends BaseCommand {
         return false;
     }
 
-    private void cleanupExpiredCooldowns() {
-        long now = System.currentTimeMillis();
-        cooldowns.entrySet().removeIf(entry -> (now - entry.getValue()) > CLEANUP_THRESHOLD);
-    }
-
-    public static void clearOnDisconnect(UUID uuid) {
-        cooldowns.remove(uuid);
-    }
+    /** @deprecated No-op — cooldown state is destroyed with the player profile on disconnect. */
+    public static void clearOnDisconnect(UUID uuid) {}
 }

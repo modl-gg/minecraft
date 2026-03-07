@@ -23,12 +23,12 @@ import java.util.Map;
 
 @RequiredArgsConstructor
 public class WarnCommand extends BaseCommand {
+    private static final String WARNING_NOTE_PREFIX = "WARNING: ";
+
     private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
-
-    private static final String WARNING_NOTE_PREFIX = "WARNING: ";
 
     @CommandCompletion("@players")
     @CommandAlias("%cmd_warn")

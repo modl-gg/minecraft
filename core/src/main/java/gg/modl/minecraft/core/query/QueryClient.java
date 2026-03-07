@@ -31,21 +31,18 @@ import gg.modl.minecraft.core.util.PluginLogger;
 public class QueryClient {
     private static final byte[] MAGIC = "modl".getBytes(StandardCharsets.US_ASCII);
     private static final long[] BACKOFF_DELAYS = {5, 10, 20, 40, 60};
-    private static final int CONNECT_TIMEOUT_MS = 5000;
-    private static final int MAX_FRAME_LENGTH = 65536;
+    private static final int CONNECT_TIMEOUT_MS = 5000, MAX_FRAME_LENGTH = 65536;
 
     @Getter
     private final String serverName;
-    private final String host;
-    private final int port;
-    private final String secret;
+    private final String host, secret;
     private final PluginLogger logger;
     private final BiConsumer<String, QueryMessage> messageHandler;
     private final EventLoopGroup group;
+    private final int port;
 
     private Channel channel;
-    private volatile boolean connected = false;
-    private volatile boolean shuttingDown = false;
+    private volatile boolean connected = false, shuttingDown = false;
     private int reconnectAttempt = 0;
 
     public void connect() {

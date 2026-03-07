@@ -23,7 +23,7 @@ public final class TargetPlayerAction {
             platform.sendMessage(viewerUuid, platform.getLocaleManager().getMessage("target.cannot_target_self"));
             return;
         }
-        if (!platform.getCache().isOnline(targetUuid)) {
+        if (platform.getCache().getPlayerProfile(targetUuid) == null) {
             platform.sendMessage(viewerUuid, platform.getLocaleManager().getMessage("target.not_online"));
             return;
         }

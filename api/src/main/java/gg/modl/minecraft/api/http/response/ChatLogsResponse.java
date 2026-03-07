@@ -12,10 +12,7 @@ public class ChatLogsResponse {
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class ChatLogEntry {
-        private String uuid;
-        private String username;
-        private String message;
+        private String uuid, username, message, server;
         private long timestamp;
-        private String server;
     }
 }

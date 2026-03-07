@@ -10,6 +10,7 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.Staff2faService;
@@ -41,6 +42,9 @@ public class VelocityPlatform implements Platform {
     private @Setter StaffModeService staffModeService;
     private @Setter BridgeService bridgeService;
     private @Setter Staff2faService staff2faService;
+    private @Setter ChatInputManager chatInputManager;
+
+    private final gg.modl.minecraft.core.util.PluginLogger pluginLogger;
 
     private static Component colorize(String string) {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(string);
@@ -79,7 +83,7 @@ public class VelocityPlatform implements Platform {
 
     @Override
     public void sendMessage(UUID uuid, String message) {
-        server.getPlayer(uuid).orElseThrow().sendMessage(colorize(StringUtil.unescapeNewlines(message)));
+        server.getPlayer(uuid).ifPresent(player -> player.sendMessage(colorize(StringUtil.unescapeNewlines(message))));
     }
 
     @Override
@@ -92,7 +96,7 @@ public class VelocityPlatform implements Platform {
             Component component = net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson().deserialize(jsonMessage);
             player.sendMessage(component);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.warn("Failed to send JSON message to player", e);
             player.sendMessage(Component.text("Notification: " + jsonMessage));
         }
     }
@@ -119,7 +123,7 @@ public class VelocityPlatform implements Platform {
     public AbstractPlayer getAbstractPlayer(UUID uuid, boolean queryMojang) {
         Player player = getOnlinePlayer(uuid);
 
-        if (player != null) return new AbstractPlayer(player.getUniqueId(), player.getUsername(), true, player.getRemoteAddress().getAddress().getHostAddress());
+        if (player != null) return new AbstractPlayer(player.getUniqueId(), player.getUsername(), player.getRemoteAddress().getAddress().getHostAddress(), true);
         if (!queryMojang) return null;
 
         WebPlayer webPlayer;
@@ -130,14 +134,14 @@ public class VelocityPlatform implements Platform {
         }
 
         if (webPlayer == null) return null;
-        return new AbstractPlayer(webPlayer.uuid(), webPlayer.name(), false, null);
+        return new AbstractPlayer(webPlayer.uuid(), webPlayer.name(), null, false);
     }
 
     @Override
     public AbstractPlayer getAbstractPlayer(String username, boolean queryMojang) {
         Player player = getOnlinePlayer(username);
 
-        if (player != null) return new AbstractPlayer(player.getUniqueId(), player.getUsername(), true, player.getRemoteAddress().getAddress().getHostAddress());
+        if (player != null) return new AbstractPlayer(player.getUniqueId(), player.getUsername(), player.getRemoteAddress().getAddress().getHostAddress(), true);
         if (!queryMojang) return null;
 
         WebPlayer webPlayer;
@@ -148,7 +152,7 @@ public class VelocityPlatform implements Platform {
         }
 
         if (webPlayer == null) return null;
-        return new AbstractPlayer(webPlayer.uuid(), webPlayer.name(), false, null);
+        return new AbstractPlayer(webPlayer.uuid(), webPlayer.name(), null, false);
     }
 
     @Override
@@ -163,8 +167,8 @@ public class VelocityPlatform implements Platform {
                 .map(player -> new AbstractPlayer(
                         player.getUniqueId(),
                         player.getUsername(),
-                        true,
-                        player.getRemoteAddress().getAddress().getHostAddress()
+                        player.getRemoteAddress().getAddress().getHostAddress(),
+                        true
                 ))
                 .collect(Collectors.toList());
     }
@@ -173,12 +177,12 @@ public class VelocityPlatform implements Platform {
     public AbstractPlayer getPlayer(UUID uuid) {
         Player player = server.getPlayer(uuid).orElse(null);
         if (player == null) return null;
-        
+
         return new AbstractPlayer(
                 player.getUniqueId(),
                 player.getUsername(),
-                true,
-                player.getRemoteAddress().getAddress().getHostAddress()
+                player.getRemoteAddress().getAddress().getHostAddress(),
+                true
         );
     }
 
@@ -259,12 +263,7 @@ public class VelocityPlatform implements Platform {
 
     @Override
     public gg.modl.minecraft.core.util.PluginLogger getLogger() {
-        return new gg.modl.minecraft.core.util.PluginLogger() {
-            @Override public void info(String message) { logger.info(message); }
-            @Override public void warning(String message) { logger.warn(message); }
-            @Override public void severe(String message) { logger.error(message); }
-            @Override public void debug(String message) { logger.debug(message); }
-        };
+        return pluginLogger;
     }
 
     @Override
@@ -290,5 +289,10 @@ public class VelocityPlatform implements Platform {
     @Override
     public BridgeService getBridgeService() {
         return bridgeService;
+    }
+
+    @Override
+    public ChatInputManager getChatInputManager() {
+        return chatInputManager;
     }
 }

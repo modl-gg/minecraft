@@ -104,7 +104,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         else
             color = "&a";
 
-        boolean isOnline = platform.getCache() != null && platform.getCache().isOnline(alt.getMinecraftUuid());
+        boolean isOnline = platform.getCache() != null && platform.getCache().getPlayerProfile(alt.getMinecraftUuid()) != null;
         boolean realIpLogged = !alt.getIpList().isEmpty();
 
         String firstLogin = "Unknown";
@@ -134,9 +134,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
             StringBuilder activePunishmentList = new StringBuilder();
             for (int i = 0; i < activePunishments.size(); i++) {
                 Punishment p = activePunishments.get(i);
-                p.getId();
                 String pId = p.getId();
-                p.getIssued();
                 String pDate = MenuItems.formatDate(p.getIssued());
                 String pType = p.getTypeCategory();
                 String pRemaining = "Permanent";

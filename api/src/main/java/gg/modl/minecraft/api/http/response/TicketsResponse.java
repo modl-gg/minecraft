@@ -9,8 +9,8 @@ import java.util.List;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class TicketsResponse {
-    private int status;
     private List<Ticket> tickets;
+    private int status;
 
     public boolean isSuccess() {
         return status >= 200 && status < 300;
@@ -18,20 +18,10 @@ public class TicketsResponse {
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class Ticket {
-        private String id;
-        private String type;
-        private String category;
-        private String subject;
-        private String status;
-        private String playerName;
-        private String playerUuid;
-        private String priority;
+        private String id, type, category, subject, status, playerName, playerUuid, priority, firstReplyContent;
         private List<String> assignedTo;
-        private Date createdAt;
-        private Date updatedAt;
-        private boolean hasStaffResponse;
+        private Date createdAt, updatedAt;
+        private boolean hasStaffResponse, locked;
         private int replyCount;
-        private boolean locked;
-        private String firstReplyContent;
     }
 }

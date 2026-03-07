@@ -5,12 +5,10 @@ import lombok.*;
 @Data @NoArgsConstructor @AllArgsConstructor
 public class DatabaseConfig {
     private String host;
-    private int port;
-    private String database;
-    private String username;
-    private String password;
+    private String database, username, password;
     private DatabaseType type;
     private String tablePrefix;
+    private int port;
 
     @RequiredArgsConstructor
     public enum DatabaseType {

@@ -19,13 +19,13 @@ public class ChatCommandLogService {
 
     public void addChatMessage(String uuid, String username, String message, String server) {
         synchronized (chatBuffer) {
-            chatBuffer.add(new ChatLogEntry(uuid, username, message, System.currentTimeMillis(), server));
+            chatBuffer.add(new ChatLogEntry(uuid, username, message, server, System.currentTimeMillis()));
         }
     }
 
     public void addCommand(String uuid, String username, String command, String server) {
         synchronized (commandBuffer) {
-            commandBuffer.add(new CommandLogEntry(uuid, username, command, System.currentTimeMillis(), server));
+            commandBuffer.add(new CommandLogEntry(uuid, username, command, server, System.currentTimeMillis()));
         }
     }
 
@@ -37,7 +37,7 @@ public class ChatCommandLogService {
             chatBuffer.clear();
         }
         return entries.stream()
-                .map(e -> new SyncRequest.ChatLogEntry(e.getUuid(), e.getUsername(), e.getMessage(), e.getTimestamp(), e.getServer()))
+                .map(e -> new SyncRequest.ChatLogEntry(e.getUuid(), e.getUsername(), e.getMessage(), e.getServer(), e.getTimestamp()))
                 .collect(Collectors.toList());
     }
 
@@ -49,7 +49,7 @@ public class ChatCommandLogService {
             commandBuffer.clear();
         }
         return entries.stream()
-                .map(e -> new SyncRequest.CommandLogEntry(e.getUuid(), e.getUsername(), e.getCommand(), e.getTimestamp(), e.getServer()))
+                .map(e -> new SyncRequest.CommandLogEntry(e.getUuid(), e.getUsername(), e.getCommand(), e.getServer(), e.getTimestamp()))
                 .collect(Collectors.toList());
     }
 
@@ -57,7 +57,7 @@ public class ChatCommandLogService {
         return httpClientHolder.getClient().getChatLogs(uuid, limit).thenApply(response -> {
             if (response.getEntries() == null) return List.of();
             return response.getEntries().stream()
-                    .map(e -> new ChatLogEntry(e.getUuid(), e.getUsername(), e.getMessage(), e.getTimestamp(), e.getServer()))
+                    .map(e -> new ChatLogEntry(e.getUuid(), e.getUsername(), e.getMessage(), e.getServer(), e.getTimestamp()))
                     .collect(Collectors.toList());
         });
     }
@@ -66,26 +66,20 @@ public class ChatCommandLogService {
         return httpClientHolder.getClient().getCommandLogs(uuid, limit).thenApply(response -> {
             if (response.getEntries() == null) return List.of();
             return response.getEntries().stream()
-                    .map(e -> new CommandLogEntry(e.getUuid(), e.getUsername(), e.getCommand(), e.getTimestamp(), e.getServer()))
+                    .map(e -> new CommandLogEntry(e.getUuid(), e.getUsername(), e.getCommand(), e.getServer(), e.getTimestamp()))
                     .collect(Collectors.toList());
         });
     }
 
     @Data @AllArgsConstructor
     public static class ChatLogEntry {
-        private final String uuid;
-        private final String username;
-        private final String message;
+        private final String uuid, username, message, server;
         private final long timestamp;
-        private final String server;
     }
 
     @Data @AllArgsConstructor
     public static class CommandLogEntry {
-        private final String uuid;
-        private final String username;
-        private final String command;
+        private final String uuid, username, command, server;
         private final long timestamp;
-        private final String server;
     }
 }

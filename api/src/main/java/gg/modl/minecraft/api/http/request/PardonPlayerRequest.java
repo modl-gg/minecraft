@@ -6,8 +6,6 @@ import org.jetbrains.annotations.Nullable;
 
 @Data
 public class PardonPlayerRequest {
-    private @NotNull final String playerName;
-    private @NotNull final String issuerName;
-    private @Nullable final String punishmentType;
-    private @Nullable final String reason;
+    private @NotNull final String playerName, issuerName;
+    private @Nullable final String punishmentType, reason;
 }

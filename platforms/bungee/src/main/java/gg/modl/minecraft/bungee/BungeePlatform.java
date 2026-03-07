@@ -8,6 +8,7 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.Staff2faService;
@@ -15,7 +16,6 @@ import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ProxyServer;
@@ -24,23 +24,40 @@ import net.md_5.bungee.api.connection.ProxiedPlayer;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-@RequiredArgsConstructor
 public class BungeePlatform implements Platform {
     private final BungeeCommandManager commandManager;
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
+    private final gg.modl.minecraft.core.util.PluginLogger pluginLogger;
     private @Setter Cache cache;
     private @Setter LocaleManager localeManager;
     private @Setter StaffModeService staffModeService;
     private @Setter BridgeService bridgeService;
     private @Setter Staff2faService staff2faService;
+    private @Setter ChatInputManager chatInputManager;
+
+    // Cached reflection methods for getPlayerSkinTexture
+    private static volatile boolean skinMethodsResolved = false;
+    private static volatile Method getLoginProfileMethod;
+    private static volatile Method getPropertiesMethod;
+    private static volatile Method getNameMethod;
+    private static volatile Method getValueMethod;
+
+    public BungeePlatform(BungeeCommandManager commandManager, Logger logger, File dataFolder, String configServerName) {
+        this.commandManager = commandManager;
+        this.logger = logger;
+        this.dataFolder = dataFolder;
+        this.configServerName = configServerName;
+        this.pluginLogger = gg.modl.minecraft.core.util.PluginLogger.fromJul(logger);
+    }
 
     @Override
     public void broadcast(String string) {
@@ -79,7 +96,7 @@ public class BungeePlatform implements Platform {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
         if (player != null && player.isConnected()) player.sendMessage(StringUtil.unescapeNewlines(message));
     }
-    
+
     @Override
     public void sendJsonMessage(UUID uuid, String jsonMessage) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
@@ -183,13 +200,13 @@ public class BungeePlatform implements Platform {
 
     @Override
     public gg.modl.minecraft.core.util.PluginLogger getLogger() {
-        return gg.modl.minecraft.core.util.PluginLogger.fromJul(logger);
+        return pluginLogger;
     }
 
     private AbstractPlayer toAbstractPlayer(ProxiedPlayer player) {
         String ip = (player.getSocketAddress() instanceof InetSocketAddress)
                 ? ((InetSocketAddress) player.getSocketAddress()).getAddress().getHostAddress() : null;
-        return new AbstractPlayer(player.getUniqueId(), player.getName(), player.isConnected(), ip);
+        return new AbstractPlayer(player.getUniqueId(), player.getName(), ip, player.isConnected());
     }
 
     @Override
@@ -209,18 +226,47 @@ public class BungeePlatform implements Platform {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
         if (player == null) return null;
         try {
+            if (!skinMethodsResolved) {
+                resolveSkinMethods(player);
+            }
+            if (getLoginProfileMethod == null) return null;
+
             // Reflection required: getLoginProfile() is internal BungeeCord API
             Object pendingConnection = player.getPendingConnection();
-            Object profile = pendingConnection.getClass().getMethod("getLoginProfile").invoke(pendingConnection);
+            Object profile = getLoginProfileMethod.invoke(pendingConnection);
             if (profile == null) return null;
-            Object[] properties = (Object[]) profile.getClass().getMethod("getProperties").invoke(profile);
+            Object[] properties = (Object[]) getPropertiesMethod.invoke(profile);
             if (properties == null) return null;
             for (Object prop : properties) {
-                String name = (String) prop.getClass().getMethod("getName").invoke(prop);
-                if ("textures".equals(name)) return (String) prop.getClass().getMethod("getValue").invoke(prop);
+                String name = (String) getNameMethod.invoke(prop);
+                if ("textures".equals(name)) return (String) getValueMethod.invoke(prop);
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    private static synchronized void resolveSkinMethods(ProxiedPlayer player) {
+        if (skinMethodsResolved) return;
+        try {
+            Object pendingConnection = player.getPendingConnection();
+            getLoginProfileMethod = pendingConnection.getClass().getMethod("getLoginProfile");
+            Object profile = getLoginProfileMethod.invoke(pendingConnection);
+            if (profile != null) {
+                getPropertiesMethod = profile.getClass().getMethod("getProperties");
+                Object[] properties = (Object[]) getPropertiesMethod.invoke(profile);
+                if (properties != null) {
+                    for (Object prop : properties) {
+                        getNameMethod = prop.getClass().getMethod("getName");
+                        getValueMethod = prop.getClass().getMethod("getValue");
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Methods not available; cache null to skip on future calls
+            getLoginProfileMethod = null;
+        }
+        skinMethodsResolved = true;
     }
 
     @Override
@@ -246,5 +292,10 @@ public class BungeePlatform implements Platform {
     @Override
     public BridgeService getBridgeService() {
         return bridgeService;
+    }
+
+    @Override
+    public ChatInputManager getChatInputManager() {
+        return chatInputManager;
     }
 }

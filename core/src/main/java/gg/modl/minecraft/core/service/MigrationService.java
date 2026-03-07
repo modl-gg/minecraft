@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -31,18 +33,13 @@ import gg.modl.minecraft.core.util.PluginLogger;
 
 @RequiredArgsConstructor
 public class MigrationService {
-    private static final String HEADER_API_KEY = "X-API-Key";
-    private static final int HTTP_PAYLOAD_TOO_LARGE = 413;
-    private static final int PROGRESS_LOG_INTERVAL = 100;
-    private static final String LOG_PREFIX = "";
-    private static final String IMPORT_SOURCE = "litebans";
-    private static final int BAN_TYPE_ORDINAL = 2;
-    private static final int MUTE_TYPE_ORDINAL = 1;
+    private static final String HEADER_API_KEY = "X-API-Key", IMPORT_SOURCE = "litebans";
+    private static final int HTTP_PAYLOAD_TOO_LARGE = 413, PROGRESS_LOG_INTERVAL = 100,
+            BAN_TYPE_ORDINAL = 2, MUTE_TYPE_ORDINAL = 1;
 
     private final PluginLogger logger;
     private final ModlHttpClient httpClient;
-    private final String apiUrl;
-    private final String apiKey;
+    private final String apiUrl, apiKey;
     private final File dataFolder;
     private final DatabaseProvider databaseProvider;
     private final String defaultReason;
@@ -57,8 +54,8 @@ public class MigrationService {
         return CompletableFuture.supplyAsync(() -> {
             StreamingJsonWriter jsonWriter = null;
             try {
-                logger.info(LOG_PREFIX + "Starting LiteBans data export for task " + taskId);
-                logger.info(LOG_PREFIX + "Using " + (databaseProvider.isUsingLiteBansApi() ? "LiteBans API" : "direct JDBC"));
+                logger.info("Starting LiteBans data export for task " + taskId);
+                logger.info("Using " + (databaseProvider.isUsingLiteBansApi() ? "LiteBans API" : "direct JDBC"));
                 updateMigrationProgress(taskId, "building_json", "Starting LiteBans export...", 0, null);
 
                 File migrationFile = new File(dataFolder, "litebans-migration-" + taskId + ".json");
@@ -66,7 +63,7 @@ public class MigrationService {
 
                 Set<String> playerUuids = getAllPlayerUuids();
                 int totalPlayers = playerUuids.size();
-                logger.info(LOG_PREFIX + "Found " + totalPlayers + " unique players to migrate");
+                logger.info("Found " + totalPlayers + " unique players to migrate");
                 updateMigrationProgress(taskId, "building_json", "Processing " + totalPlayers + " players...", 0, totalPlayers);
 
                 int processed = 0;
@@ -81,22 +78,22 @@ public class MigrationService {
                                 processed, totalPlayers);
                         }
                     } catch (Exception e) {
-                        logger.warning(LOG_PREFIX + "Failed to process player " + uuid + ": " + e.getMessage());
+                        logger.warning("Failed to process player " + uuid + ": " + e.getMessage());
                     }
                 }
 
                 jsonWriter.close();
-                logger.info(LOG_PREFIX + "Export completed. File: " + migrationFile.getAbsolutePath());
+                logger.info("Export completed. File: " + migrationFile.getAbsolutePath());
                 return migrationFile;
             } catch (Exception e) {
-                logger.severe(LOG_PREFIX + "Error during LiteBans export: " + e.getMessage());
-                e.printStackTrace();
+                logger.severe("Error during LiteBans export: " + e.getMessage());
+                logger.severe("Stack trace: " + getStackTrace(e));
                 updateMigrationProgress(taskId, "failed", "Export failed: " + e.getMessage(), 0, null);
                 throw new RuntimeException("Failed to export LiteBans data", e);
             } finally {
                 if (jsonWriter != null) {
                     try { jsonWriter.close(); } catch (IOException e) {
-                        logger.warning(LOG_PREFIX + "Failed to close JSON writer: " + e.getMessage());
+                        logger.warning("Failed to close JSON writer: " + e.getMessage());
                     }
                 }
             }
@@ -105,9 +102,9 @@ public class MigrationService {
 
     private Set<String> getAllPlayerUuids() throws SQLException {
         Set<String> uuids = new LinkedHashSet<>();
-        
+
         String query = "SELECT DISTINCT UUID FROM {history}";
-        
+
         try (PreparedStatement stmt = databaseProvider.prepareStatement(query);
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
@@ -115,7 +112,7 @@ public class MigrationService {
                 if (uuid != null && !uuid.isEmpty() && !uuid.equalsIgnoreCase("CONSOLE")) uuids.add(uuid);
             }
         }
-        
+
         return uuids;
     }
 
@@ -125,23 +122,23 @@ public class MigrationService {
         data.usernames = extractUsernames(uuid);
         data.ipList = extractIpAddresses(uuid);
         data.punishments = extractPunishments(uuid);
-        
+
         return data;
     }
 
     private List<UsernameData> extractUsernames(String uuid) throws SQLException {
         List<UsernameData> usernames = new ArrayList<>();
-        
+
         String query = "SELECT NAME, DATE FROM {history} WHERE UUID = ? ORDER BY DATE ASC";
-        
+
         try (PreparedStatement stmt = databaseProvider.prepareStatement(query)) {
             stmt.setString(1, uuid);
-            
+
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String name = rs.getString("NAME");
                     Timestamp date = rs.getTimestamp("DATE");
-                    
+
                     if (name != null && !name.isEmpty()) {
                         UsernameData usernameData = new UsernameData();
                         usernameData.username = name;
@@ -152,7 +149,7 @@ public class MigrationService {
                 }
             }
         }
-        
+
         return usernames;
     }
 
@@ -172,7 +169,7 @@ public class MigrationService {
                     Timestamp loginDate = date != null ? date : new Timestamp(System.currentTimeMillis());
                     String loginTime = formatTimestamp(loginDate);
 
-                    if (!ipData.logins.contains(loginTime)) ipData.logins.add(loginTime);
+                    ipData.logins.add(loginTime);
                     if (ipData.firstLogin == null || loginDate.getTime() < parseIsoToMillis(ipData.firstLogin)) {
                         ipData.firstLogin = loginTime;
                     }
@@ -184,7 +181,7 @@ public class MigrationService {
             if (ipData.firstLogin != null) continue;
             ipData.firstLogin = ipData.logins.isEmpty()
                     ? formatMillisToIso(System.currentTimeMillis())
-                    : ipData.logins.get(0);
+                    : ipData.logins.iterator().next();
         }
         return new ArrayList<>(ipMap.values());
     }
@@ -194,7 +191,7 @@ public class MigrationService {
         data.ipAddress = ip;
         data.proxy = false;
         data.hosting = false;
-        data.logins = new ArrayList<>();
+        data.logins = new LinkedHashSet<>();
         return data;
     }
 
@@ -279,7 +276,7 @@ public class MigrationService {
             convertPunishments(playerData.punishments),
             null
         );
-        
+
         writer.writePlayer(jsonData);
     }
 
@@ -295,14 +292,14 @@ public class MigrationService {
         List<StreamingJsonWriter.IpEntry> result = new ArrayList<>();
         for (IpData ip : ipList) {
             result.add(new StreamingJsonWriter.IpEntry(
-                ip.ipAddress, 
-                ip.country, 
+                ip.ipAddress,
+                ip.country,
                 ip.region,
                 ip.asn,
                 ip.proxy != null ? ip.proxy : false,
                 ip.hosting != null ? ip.hosting : false,
-                ip.firstLogin, 
-                ip.logins
+                ip.firstLogin,
+                new ArrayList<>(ip.logins)
             ));
         }
         return result;
@@ -312,7 +309,7 @@ public class MigrationService {
         List<StreamingJsonWriter.PunishmentEntry> result = new ArrayList<>();
         for (PunishmentData p : punishments) {
             result.add(new StreamingJsonWriter.PunishmentEntry(
-                p.id, p.type, p.typeOrdinal, p.reason, p.issued, 
+                p.id, p.type, p.typeOrdinal, p.reason, p.issued,
                 p.issuerName, p.duration, p.started, p.data,
                 p.notes, p.evidence, p.attachedTicketIds
             ));
@@ -333,6 +330,12 @@ public class MigrationService {
         return Instant.parse(isoString).toEpochMilli();
     }
 
+    private static String getStackTrace(Throwable t) {
+        StringWriter sw = new StringWriter();
+        t.printStackTrace(new PrintWriter(sw));
+        return sw.toString();
+    }
+
     private static class PlayerMigrationData {
         String minecraftUuid;
         List<UsernameData> usernames;
@@ -341,65 +344,54 @@ public class MigrationService {
     }
 
     private static class UsernameData {
-        String username;
-        String date;
+        String username, date;
     }
 
     private static class IpData {
-        String ipAddress;
-        String country;
-        String region;
-        String asn;
-        Boolean proxy;
-        Boolean hosting;
-        String firstLogin;
-        List<String> logins;
+        String ipAddress, country, region, asn, firstLogin;
+        Boolean proxy, hosting;
+        Set<String> logins;
     }
 
     private static class PunishmentData {
-        String id;
-        String type;
-        int typeOrdinal;
-        String reason;
-        String issued;
-        String issuerName;
+        String id, type, reason, issued, issuerName, started;
         Long duration;
-        String started;
         Map<String, Object> data;
         List<Map<String, Object>> notes;
         List<Object> evidence;
         List<String> attachedTicketIds;
+        int typeOrdinal;
     }
 
     public CompletableFuture<Boolean> uploadMigrationFile(File jsonFile, String taskId) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 if (jsonFile == null || !jsonFile.exists()) {
-                    logger.severe(LOG_PREFIX + "Migration file does not exist");
+                    logger.severe("Migration file does not exist");
                     return false;
                 }
 
                 double fileSizeMB = jsonFile.length() / 1024.0 / 1024.0;
-                logger.info(String.format(LOG_PREFIX + "Uploading file: %s (%.2f MB, %d bytes)",
+                logger.info(String.format("Uploading file: %s (%.2f MB, %d bytes)",
                     jsonFile.getName(), fileSizeMB, jsonFile.length()));
                 updateMigrationProgress(taskId, "uploading_json", "Uploading migration file to panel...", 0, null);
 
                 boolean success = uploadFileMultipart(jsonFile);
-                if (success) logger.info(LOG_PREFIX + "File uploaded successfully");
-                else logger.severe(LOG_PREFIX + "File upload failed");
+                if (success) logger.info("File uploaded successfully");
+                else logger.severe("File upload failed");
                 return success;
             } catch (Exception e) {
-                logger.severe(LOG_PREFIX + "Error uploading file: " + e.getMessage());
-                e.printStackTrace();
+                logger.severe("Error uploading file: " + e.getMessage());
+                logger.severe("Stack trace: " + getStackTrace(e));
                 updateMigrationProgress(taskId, "failed", "Upload failed: " + e.getMessage(), 0, null);
                 return false;
             } finally {
                 if (jsonFile != null && jsonFile.exists()) {
                     try {
                         Files.delete(jsonFile.toPath());
-                        logger.info(LOG_PREFIX + "Cleaned up local migration file");
+                        logger.info("Cleaned up local migration file");
                     } catch (IOException e) {
-                        logger.warning(LOG_PREFIX + "Failed to delete local file: " + e.getMessage());
+                        logger.warning("Failed to delete local file: " + e.getMessage());
                     }
                 }
             }
@@ -420,16 +412,16 @@ public class MigrationService {
                 new org.apache.hc.client5.http.classic.methods.HttpPost(uploadUrl);
             httpPost.setHeader(HEADER_API_KEY, apiKey);
             httpPost.setEntity(builder.build());
-            logger.info(LOG_PREFIX + "Sending upload request to: " + uploadUrl);
+            logger.info("Sending upload request to: " + uploadUrl);
 
             return httpClient.execute(httpPost, response -> {
                 int statusCode = response.getCode();
                 String responseBody = org.apache.hc.core5.http.io.entity.EntityUtils.toString(response.getEntity());
-                logger.info(LOG_PREFIX + "Upload response: " + statusCode + " - " + responseBody);
+                logger.info("Upload response: " + statusCode + " - " + responseBody);
 
                 if (statusCode >= 200 && statusCode < 300) return true;
-                if (statusCode == HTTP_PAYLOAD_TOO_LARGE) logger.severe(LOG_PREFIX + "File too large: " + responseBody);
-                else logger.severe(LOG_PREFIX + "Upload failed with status " + statusCode + ": " + responseBody);
+                if (statusCode == HTTP_PAYLOAD_TOO_LARGE) logger.severe("File too large: " + responseBody);
+                else logger.severe("Upload failed with status " + statusCode + ": " + responseBody);
                 return false;
             });
         }
@@ -439,9 +431,9 @@ public class MigrationService {
                                          Integer recordsProcessed, Integer totalRecords) {
         try {
             httpClient.updateMigrationStatus(new MigrationStatusUpdateRequest(taskId, status, message, recordsProcessed, totalRecords));
-            logger.info(String.format(LOG_PREFIX + "Progress: %s - %s (%s/%s)", status, message, recordsProcessed, totalRecords));
+            logger.info(String.format("Progress: %s - %s (%s/%s)", status, message, recordsProcessed, totalRecords));
         } catch (Exception e) {
-            logger.warning(LOG_PREFIX + "Failed to update progress: " + e.getMessage());
+            logger.warning("Failed to update progress: " + e.getMessage());
         }
     }
 
@@ -449,4 +441,3 @@ public class MigrationService {
         migrationExecutor.shutdown();
     }
 }
-

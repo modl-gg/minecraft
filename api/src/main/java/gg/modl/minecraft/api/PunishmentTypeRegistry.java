@@ -11,12 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Populated from the server's punishment types configuration.
  */
 public class PunishmentTypeRegistry {
-    public static final int ORDINAL_KICK = 0;
-    public static final int ORDINAL_MUTE = 1;
-    public static final int ORDINAL_BAN = 2;
-    public static final int ORDINAL_SECURITY_BAN = 3;
-    public static final int ORDINAL_LINKED_BAN = 4;
-    public static final int ORDINAL_BLACKLIST = 5;
+    public static final int ORDINAL_KICK = 0, ORDINAL_MUTE = 1, ORDINAL_BAN = 2,
+            ORDINAL_SECURITY_BAN = 3, ORDINAL_LINKED_BAN = 4, ORDINAL_BLACKLIST = 5;
 
     private static final Map<Integer, PunishmentTypeInfo> registry = new ConcurrentHashMap<>();
     @Getter private static volatile boolean initialized = false;

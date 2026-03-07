@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.config;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.yaml.snakeyaml.Yaml;
@@ -15,34 +16,21 @@ import gg.modl.minecraft.core.util.PluginLogger;
 
 @Data
 public class ReportGuiConfig {
-    private static final Yaml yaml = new Yaml();
 
     private final Map<Integer, ReportSlotConfig> slots = new HashMap<>();
     private InfoConfig infoConfig;
 
-    @Data @NoArgsConstructor
+    @Data @NoArgsConstructor @AllArgsConstructor
     public static class ReportSlotConfig {
-        private int slotNumber;
-        private boolean enabled = false;
-        private String item = "minecraft:paper";
-        private String title = "Unknown";
-        private boolean chatReport = false;
+        private String item = "minecraft:paper", title = "Unknown";
         private List<String> description = new ArrayList<>();
-
-        public ReportSlotConfig(int slotNumber, boolean enabled, String item, String title, boolean chatReport, List<String> description) {
-            this.slotNumber = slotNumber;
-            this.enabled = enabled;
-            this.item = item;
-            this.title = title;
-            this.chatReport = chatReport;
-            this.description = description != null ? description : new ArrayList<>();
-        }
+        private int slotNumber;
+        private boolean enabled = false, chatReport = false;
     }
 
     @Data @NoArgsConstructor
     public static class InfoConfig {
-        private String item = "minecraft:oak_sign";
-        private String title = "&eInformation";
+        private String item = "minecraft:oak_sign", title = "&eInformation";
         private List<String> description = new ArrayList<>();
     }
 
@@ -54,6 +42,7 @@ public class ReportGuiConfig {
             Path dedicatedFile = dataDirectory.resolve("report_gui.yml");
             if (Files.exists(dedicatedFile)) {
                 try (InputStream is = Files.newInputStream(dedicatedFile)) {
+                    Yaml yaml = new Yaml();
                     Map<String, Object> data = yaml.load(is);
                     if (data != null && data.containsKey("report_gui")) reportGui = (Map<?, ?>) data.get("report_gui");
                     else if (data != null) reportGui = data;
@@ -68,8 +57,11 @@ public class ReportGuiConfig {
                     return createDefault();
                 }
                 try (InputStream inputStream = Files.newInputStream(configFile)) {
+                    Yaml yaml = new Yaml();
                     Map<String, Object> rootConfig = yaml.load(inputStream);
-                    if (rootConfig != null && rootConfig.containsKey("report_gui")) reportGui = (Map<?, ?>) rootConfig.get("report_gui");
+                    if (rootConfig != null && rootConfig.containsKey("report_gui")) {
+                        reportGui = (Map<?, ?>) rootConfig.get("report_gui");
+                    }
                 }
             }
 
@@ -144,28 +136,28 @@ public class ReportGuiConfig {
     public static ReportGuiConfig createDefault() {
         ReportGuiConfig config = new ReportGuiConfig();
 
-        config.slots.put(1, new ReportSlotConfig(1, false, "minecraft:paper", "", false, List.of()));
-        config.slots.put(2, new ReportSlotConfig(2, true, "minecraft:feather", "Chat Abuse", true,
-            List.of("&7Low-quality chat, spam, or inappropriate language", "", "&eClick to report")));
-        config.slots.put(3, new ReportSlotConfig(3, true, "minecraft:pufferfish", "Anti-social", true,
-            List.of("&7Harassment, threats, or bullying", "", "&eClick to report")));
-        config.slots.put(4, new ReportSlotConfig(4, true, "minecraft:name_tag", "Inappropriate Username/Skin", false,
-            List.of("&7Offensive username or skin", "", "&eClick to report")));
-        config.slots.put(5, new ReportSlotConfig(5, true, "minecraft:diamond_sword", "Cheating", false,
-            List.of("&7Hacking or using unfair modifications", "", "&eClick to report")));
-        config.slots.put(6, new ReportSlotConfig(6, true, "minecraft:book", "Game Rule Violation", false,
-            List.of("&7Violating server-specific game rules", "", "&eClick to report")));
-        config.slots.put(7, new ReportSlotConfig(7, false, "minecraft:paper", "", false, List.of()));
-        config.slots.put(8, new ReportSlotConfig(8, false, "minecraft:paper", "", false, List.of()));
-        config.slots.put(9, new ReportSlotConfig(9, true, "minecraft:tnt", "Exploits", false,
-            List.of("&7Abusing bugs or exploits", "", "&eClick to report")));
-        config.slots.put(10, new ReportSlotConfig(10, true, "minecraft:experience_bottle", "Stats Boosting", false,
-            List.of("&7Artificially inflating stats", "", "&eClick to report")));
-        config.slots.put(11, new ReportSlotConfig(11, true, "minecraft:paper", "Other", false,
-            List.of("&7Any other rule violation", "", "&eClick to report")));
-        config.slots.put(12, new ReportSlotConfig(12, false, "minecraft:paper", "", false, List.of()));
-        config.slots.put(13, new ReportSlotConfig(13, false, "minecraft:paper", "", false, List.of()));
-        config.slots.put(14, new ReportSlotConfig(14, false, "minecraft:paper", "", false, List.of()));
+        config.slots.put(1, new ReportSlotConfig("minecraft:paper", "", List.of(), 1, false, false));
+        config.slots.put(2, new ReportSlotConfig("minecraft:feather", "Chat Abuse",
+            List.of("&7Low-quality chat, spam, or inappropriate language", "", "&eClick to report"), 2, true, true));
+        config.slots.put(3, new ReportSlotConfig("minecraft:pufferfish", "Anti-social",
+            List.of("&7Harassment, threats, or bullying", "", "&eClick to report"), 3, true, true));
+        config.slots.put(4, new ReportSlotConfig("minecraft:name_tag", "Inappropriate Username/Skin",
+            List.of("&7Offensive username or skin", "", "&eClick to report"), 4, true, false));
+        config.slots.put(5, new ReportSlotConfig("minecraft:diamond_sword", "Cheating",
+            List.of("&7Hacking or using unfair modifications", "", "&eClick to report"), 5, true, false));
+        config.slots.put(6, new ReportSlotConfig("minecraft:book", "Game Rule Violation",
+            List.of("&7Violating server-specific game rules", "", "&eClick to report"), 6, true, false));
+        config.slots.put(7, new ReportSlotConfig("minecraft:paper", "", List.of(), 7, false, false));
+        config.slots.put(8, new ReportSlotConfig("minecraft:paper", "", List.of(), 8, false, false));
+        config.slots.put(9, new ReportSlotConfig("minecraft:tnt", "Exploits",
+            List.of("&7Abusing bugs or exploits", "", "&eClick to report"), 9, true, false));
+        config.slots.put(10, new ReportSlotConfig("minecraft:experience_bottle", "Stats Boosting",
+            List.of("&7Artificially inflating stats", "", "&eClick to report"), 10, true, false));
+        config.slots.put(11, new ReportSlotConfig("minecraft:paper", "Other",
+            List.of("&7Any other rule violation", "", "&eClick to report"), 11, true, false));
+        config.slots.put(12, new ReportSlotConfig("minecraft:paper", "", List.of(), 12, false, false));
+        config.slots.put(13, new ReportSlotConfig("minecraft:paper", "", List.of(), 13, false, false));
+        config.slots.put(14, new ReportSlotConfig("minecraft:paper", "", List.of(), 14, false, false));
 
         InfoConfig infoConfig = new InfoConfig();
         infoConfig.setItem("minecraft:oak_sign");

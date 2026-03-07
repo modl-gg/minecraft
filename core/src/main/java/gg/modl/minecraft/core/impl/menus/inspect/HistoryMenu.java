@@ -60,7 +60,6 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     protected CirrusItem map(Punishment punishment) {
         LocaleManager locale = platform.getLocaleManager();
 
-        punishment.getId();
         if (punishment.getId().isEmpty())
             return createEmptyPlaceholder(locale.getMessage("menus.empty.history"));
 
@@ -147,7 +146,6 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         }
 
         Map<String, String> vars = new HashMap<>();
-        punishment.getId();
         vars.put("punishment_id", punishment.getId());
         vars.put("punishment_type", typeName);
         vars.put("initial_duration_if_not_kick", initialDuration);
@@ -155,7 +153,6 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         vars.put("status_line", statusLine);
         vars.put("notes", notesBuilder.toString());
         vars.put("reason", punishment.getReason() != null ? punishment.getReason() : "No reason");
-        punishment.getIssuerName();
         vars.put("issuer", punishment.getIssuerName());
         vars.put("issued_date", MenuItems.formatDate(punishment.getIssued()));
         Object issuedServerObj = punishment.getDataMap().get("issuedServer");
@@ -219,7 +216,6 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
     @Override
     protected void handleClick(Click click, Punishment punishment) {
-        punishment.getId();
         if (punishment.getId().isEmpty())
             return;
 
@@ -280,7 +276,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
             return false;
 
         if (punishment.getStarted() == null)
-            return true;
+            return false;
 
         if (effectiveDuration == null || effectiveDuration <= 0)
             return true;

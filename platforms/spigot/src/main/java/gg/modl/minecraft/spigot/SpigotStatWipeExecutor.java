@@ -10,11 +10,13 @@ import java.lang.reflect.Method;
 
 @RequiredArgsConstructor
 public class SpigotStatWipeExecutor implements StatWipeExecutor {
-    private static final String BRIDGE_PLUGIN_NAME = "modl-bridge";
-    private static final String EXECUTE_METHOD = "executeStatWipeCommands";
+    private static final String BRIDGE_PLUGIN_NAME = "modl-bridge", EXECUTE_METHOD = "executeStatWipeCommands";
 
     private final PluginLogger logger;
     private final boolean debugMode;
+
+    private volatile Method cachedMethod;
+    private volatile boolean methodResolved;
 
     @Override
     public void executeStatWipe(String username, String uuid, String punishmentId, StatWipeCallback callback) {
@@ -27,14 +29,36 @@ public class SpigotStatWipeExecutor implements StatWipeExecutor {
         }
 
         try {
-            Method method = bridgePlugin.getClass().getMethod(EXECUTE_METHOD, String.class, String.class);
+            Method method = resolveMethod(bridgePlugin);
+            if (method == null) {
+                logger.warning("[bridge] modl-bridge plugin does not support stat wipe commands (outdated version?)");
+                return;
+            }
             boolean success = (boolean) method.invoke(bridgePlugin, username, punishmentId);
             callback.onComplete(success, Bukkit.getServer().getName());
-        } catch (NoSuchMethodException e) {
-            logger.warning("[bridge] modl-bridge plugin does not support stat wipe commands (outdated version?)");
         } catch (Exception e) {
             logger.severe("[bridge] Failed to execute stat wipe via bridge plugin: " + e.getMessage());
-            if (debugMode) e.printStackTrace();
+            if (debugMode) logger.severe("[bridge] Stack trace: " + stackTraceToString(e));
         }
+    }
+
+    private Method resolveMethod(Plugin bridgePlugin) {
+        if (methodResolved) return cachedMethod;
+        synchronized (this) {
+            if (methodResolved) return cachedMethod;
+            try {
+                cachedMethod = bridgePlugin.getClass().getMethod(EXECUTE_METHOD, String.class, String.class);
+            } catch (NoSuchMethodException e) {
+                cachedMethod = null;
+            }
+            methodResolved = true;
+            return cachedMethod;
+        }
+    }
+
+    private static String stackTraceToString(Exception e) {
+        java.io.StringWriter sw = new java.io.StringWriter();
+        e.printStackTrace(new java.io.PrintWriter(sw));
+        return sw.toString();
     }
 }

@@ -3,7 +3,8 @@ package gg.modl.minecraft.core.util;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.impl.cache.Cache;
-import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
+import gg.modl.minecraft.core.impl.cache.PlayerProfile;
+
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatCommandLogService;
 import gg.modl.minecraft.core.service.ChatManagementService;
@@ -36,7 +37,7 @@ public final class ChatEventHandler {
             ChatCommandLogService chatCommandLogService,
             NetworkChatInterceptService networkChatInterceptService) {
 
-        if (ChatInputManager.handleChat(senderUuid, message)) return Result.CANCELLED;
+        if (platform.getChatInputManager().handleChat(senderUuid, message)) return Result.CANCELLED;
 
         chatMessageCache.addMessage(serverName, senderUuid.toString(), senderName, message);
 
@@ -67,8 +68,9 @@ public final class ChatEventHandler {
             return Result.CANCELLED;
         }
 
-        if (cache.isMuted(senderUuid)) {
-            sendMessage.accept(PunishmentMessages.getMuteMessage(senderUuid, cache, localeManager));
+        PlayerProfile senderProfile = cache.getPlayerProfile(senderUuid);
+        if (senderProfile != null && senderProfile.isMuted()) {
+            sendMessage.accept(PunishmentMessages.getMuteMessage(senderProfile.getActiveMute(), localeManager));
             return Result.CANCELLED;
         }
 

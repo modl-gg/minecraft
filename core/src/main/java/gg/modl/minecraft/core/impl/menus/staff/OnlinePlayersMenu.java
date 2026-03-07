@@ -27,12 +27,25 @@ import java.util.*;
 import java.util.function.Consumer;
 
 public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.OnlinePlayer> {
+    @Getter
+    public static class ReportSummary {
+        private final String details, reporter;
+        private final Date date;
+
+        public ReportSummary(String details, String reporter, Date date) {
+            this.details = details;
+            this.reporter = reporter;
+            this.date = date;
+        }
+    }
+
     public static class OnlinePlayer {
         @Getter private final UUID uuid;
         @Getter private final String name;
         private final long sessionStartTime;
         @Getter private final long totalPlaytime;
         @Getter private final int punishmentCount;
+        @Getter private List<ReportSummary> recentReports = new ArrayList<>();
 
         public OnlinePlayer(UUID uuid, String name, long sessionStartTime, long totalPlaytime, int punishmentCount) {
             this.uuid = uuid;
@@ -43,16 +56,17 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
         }
 
         public long getSessionDuration() { return System.currentTimeMillis() - sessionStartTime; }
+        public int getRecentReportCount() { return recentReports.size(); }
     }
 
     private List<OnlinePlayer> onlinePlayers = new ArrayList<>();
     private String currentSort;
-    private final List<String> sortOptions = Arrays.asList("Least Playtime", "Recent Reports", "Longest Session");
+    private final List<String> sortOptions = Arrays.asList("Least Playtime", "Recent Gameplay Reports", "Longest Session");
     private final String panelUrl;
 
     public OnlinePlayersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                              boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
-        this(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction, "Recent Reports", null);
+        this(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction, "Recent Gameplay Reports", null);
     }
 
     public OnlinePlayersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -71,27 +85,62 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
     }
 
     private void fetchOnlinePlayers() {
-        httpClient.getOnlinePlayers().thenAccept(response -> {
-            if (response.isSuccess() && response.getPlayers() != null) {
-                onlinePlayers.clear();
-                for (var player : response.getPlayers()) {
-                    UUID uuid = null;
-                    try {
-                        uuid = UUID.fromString(player.getUuid());
-                    } catch (Exception ignored) {}
+        try {
+            httpClient.getOnlinePlayers().thenAccept(response -> {
+                if (response.isSuccess() && response.getPlayers() != null) {
+                    onlinePlayers.clear();
+                    for (var player : response.getPlayers()) {
+                        UUID uuid = null;
+                        try {
+                            uuid = UUID.fromString(player.getUuid());
+                        } catch (Exception ignored) {}
 
-                    long sessionStart = player.getJoinedAt() != null ? player.getJoinedAt().getTime() : System.currentTimeMillis();
-                    long totalPlaytime = player.getTotalPlaytimeMs() != null ? player.getTotalPlaytimeMs() : 0;
-                    onlinePlayers.add(new OnlinePlayer(uuid, player.getUsername(), sessionStart, totalPlaytime, 0));
+                        long sessionStart = player.getJoinedAt() != null ? player.getJoinedAt().getTime() : System.currentTimeMillis();
+                        long totalPlaytime = player.getTotalPlaytimeMs() != null ? player.getTotalPlaytimeMs() : 0;
+                        onlinePlayers.add(new OnlinePlayer(uuid, player.getUsername(), sessionStart, totalPlaytime, 0));
+                    }
                 }
-            } else {
-                java.util.logging.Logger.getLogger("modl").warning("Online players fetch: success=" + response.isSuccess()
-                        + " players=" + (response.getPlayers() != null ? response.getPlayers().size() : "null"));
-            }
-        }).exceptionally(e -> {
-            java.util.logging.Logger.getLogger("modl").warning("Failed to fetch online players: " + e.getMessage());
-            return null;
-        });
+            }).join();
+        } catch (Exception ignored) {}
+
+        fetchReportData();
+    }
+
+    private void fetchReportData() {
+        try {
+            httpClient.getReports("open").thenAccept(response -> {
+                if (!response.isSuccess() || response.getReports() == null) return;
+
+                Map<String, List<ReportSummary>> reportsByPlayer = new HashMap<>();
+                for (var report : response.getReports()) {
+                    String type = report.getType() != null ? report.getType() : report.getCategory();
+                    if ("player".equalsIgnoreCase(type)) type = "gameplay";
+                    if (!"gameplay".equalsIgnoreCase(type)) continue;
+
+                    String uuid = report.getReportedPlayerUuid();
+                    if (uuid == null) continue;
+
+                    String details = extractDetails(report.getContent(), report.getSubject());
+                    String reporter = report.getReporterName() != null ? report.getReporterName() : "Unknown";
+                    reportsByPlayer.computeIfAbsent(uuid, k -> new ArrayList<>())
+                            .add(new ReportSummary(details, reporter, report.getCreatedAt()));
+                }
+
+                for (OnlinePlayer player : onlinePlayers) {
+                    if (player.getUuid() == null) continue;
+                    List<ReportSummary> reports = reportsByPlayer.get(player.getUuid().toString());
+                    if (reports == null) continue;
+
+                    reports.sort((a, b) -> {
+                        if (a.getDate() == null && b.getDate() == null) return 0;
+                        if (a.getDate() == null) return 1;
+                        if (b.getDate() == null) return -1;
+                        return b.getDate().compareTo(a.getDate());
+                    });
+                    player.recentReports = reports;
+                }
+            }).join();
+        } catch (Exception ignored) {}
     }
 
     @Override
@@ -118,9 +167,9 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
             case "Longest Session":
                 sorted.sort((p1, p2) -> Long.compare(p2.getSessionDuration(), p1.getSessionDuration()));
                 break;
-            case "Recent Reports":
+            case "Recent Gameplay Reports":
             default:
-                // TODO: Would sort by recent reports if data available
+                sorted.sort((p1, p2) -> Integer.compare(p2.getRecentReportCount(), p1.getRecentReportCount()));
                 break;
         }
 
@@ -138,15 +187,41 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                 ? "&c" + player.getPunishmentCount()
                 : "&a0";
 
-        Map<String, String> placeholders = Map.of(
-                "player_name", player.getName(),
-                "session_duration", MenuItems.formatDuration(player.getSessionDuration()),
-                "total_playtime", MenuItems.formatDuration(player.getTotalPlaytime()),
-                "punishments", punishments
-        );
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("player_name", player.getName());
+        placeholders.put("session_duration", MenuItems.formatDuration(player.getSessionDuration()));
+        placeholders.put("total_playtime", MenuItems.formatDuration(player.getTotalPlaytime()));
+        placeholders.put("punishments", punishments);
+        placeholders.put("report_count", String.valueOf(player.getRecentReportCount()));
 
         String title = localeManager.getMessage("menus.online_players.title", placeholders);
-        List<String> lore = localeManager.getMessageList("menus.online_players.lore", placeholders);
+        List<String> templateLore = localeManager.getMessageList("menus.online_players.lore", placeholders);
+
+        List<String> lore = new ArrayList<>();
+        for (String line : templateLore) {
+            if (line.contains("{report-list}")) {
+                List<ReportSummary> reports = player.getRecentReports();
+                if (reports.isEmpty()) {
+                    lore.add(localeManager.getMessage("menus.online_players.no_reports"));
+                } else {
+                    int shown = Math.min(reports.size(), 5);
+                    for (int i = 0; i < shown; i++) {
+                        ReportSummary report = reports.get(i);
+                        Map<String, String> reportVars = new HashMap<>();
+                        reportVars.put("date", MenuItems.formatDate(report.getDate()));
+                        reportVars.put("details", report.getDetails());
+                        reportVars.put("reporter", report.getReporter());
+                        lore.add(localeManager.getMessage("menus.online_players.report_entry", reportVars));
+                    }
+                    if (reports.size() > 5) {
+                        lore.add(localeManager.getMessage("menus.online_players.reports_more",
+                                Map.of("count", String.valueOf(reports.size() - 5))));
+                    }
+                }
+            } else {
+                lore.add(line);
+            }
+        }
 
         CirrusItem headItem = CirrusItem.of(
                 CirrusItemType.PLAYER_HEAD,
@@ -176,7 +251,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
         if (player.getName() == null) return;
 
         StaffModeService staffModeService = platform.getStaffModeService();
-        if (staffModeService != null && !click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
+        if (staffModeService != null && click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
             if (platform.getCache() == null || !platform.getCache().hasPermission(viewerUuid, Permissions.MOD_ACTIONS)) {
                 sendMessage(platform.getLocaleManager().getMessage("general.no_permission"));
                 return;
@@ -244,6 +319,31 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
         registerActionHandler("openOnlinePlayers", click -> {});
+    }
+
+    private static String extractDetails(String content, String subject) {
+        String first = cleanLine(content != null ? content : subject);
+        if ("Automated anticheat report.".equals(first) && content != null) {
+            String third = nthLine(content, 3);
+            if (third != null) return third;
+        }
+        return first;
+    }
+
+    private static String nthLine(String text, int n) {
+        String[] lines = text.split("\n");
+        for (int i = 0, found = 0; i < lines.length; i++) {
+            String trimmed = lines[i].trim();
+            if (!trimmed.isEmpty() && ++found == n) return cleanLine(trimmed);
+        }
+        return null;
+    }
+
+    private static String cleanLine(String text) {
+        if (text == null || text.isEmpty()) return "";
+        int idx = text.indexOf('\n');
+        String line = idx >= 0 ? text.substring(0, idx).trim() : text.trim();
+        return line.replace("**", "").replace("__", "").replace("~~", "");
     }
 
     private void handleSort(Click click) {

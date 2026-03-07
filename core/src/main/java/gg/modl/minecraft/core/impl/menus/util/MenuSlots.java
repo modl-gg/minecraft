@@ -3,64 +3,22 @@ package gg.modl.minecraft.core.impl.menus.util;
 public final class MenuSlots {
     private MenuSlots() {}
 
-    public static final int INSPECT_PLAYER_HEAD = 10;
-    public static final int INSPECT_NOTES = 11;
-    public static final int INSPECT_ALTS = 12;
-    public static final int INSPECT_HISTORY = 13;
-    public static final int INSPECT_REPORTS = 14;
-    public static final int INSPECT_PUNISH = 16;
-
-    public static final int STAFF_ONLINE_PLAYERS = 10;
-    public static final int STAFF_REPORTS = 11;
-    public static final int STAFF_PUNISHMENTS = 12;
-    public static final int STAFF_TICKETS = 13;
-    public static final int STAFF_PANEL_LINK = 15;
-    public static final int STAFF_SETTINGS = 16;
-
-    public static final int PAGE_PREV = 38;
-    public static final int FILTER_BUTTON = 40;
-    public static final int SORT_BUTTON = 40;
-    public static final int PAGE_NEXT = 42;
-    public static final int BACK_BUTTON = 45;
-    public static final int CREATE_NOTE_BUTTON = 40;
-
-    public static final int MODIFY_ADD_NOTE = 28;
-    public static final int MODIFY_EVIDENCE = 29;
-    public static final int MODIFY_PARDON = 30;
-    public static final int MODIFY_DURATION = 31;
-    public static final int MODIFY_LINKED_TICKETS = 32;
-    public static final int MODIFY_STAT_WIPE = 33;
-    public static final int MODIFY_ALT_BLOCK = 34;
-
-    public static final int SEVERITY_LENIENT = 28;
-    public static final int SEVERITY_REGULAR = 30;
-    public static final int SEVERITY_AGGRAVATED = 32;
-    public static final int SEVERITY_LINK_REPORTS = 33;
-    public static final int SEVERITY_SILENT = 34;
-    public static final int SEVERITY_ALT_BLOCK = 42;
-    public static final int SEVERITY_STAT_WIPE = 43;
-
-    public static final int SETTINGS_INFO = 28;
-    public static final int SETTINGS_NOTIFICATIONS = 30;
-    public static final int SETTINGS_TICKETS = 31;
-    public static final int SETTINGS_ROLES = 32;
-    public static final int SETTINGS_STAFF = 33;
-    public static final int SETTINGS_RELOAD = 34;
-
-    public static final int COMPACT_BACK_BUTTON = 18;
-
-    public static final int COMPACT_STAFF_ONLINE = 10;
-    public static final int COMPACT_STAFF_REPORTS = 11;
-    public static final int COMPACT_STAFF_PUNISHMENTS = 12;
-    public static final int COMPACT_STAFF_TICKETS = 13;
-    public static final int COMPACT_STAFF_PANEL = 15;
-    public static final int COMPACT_STAFF_SETTINGS = 16;
-
-    public static final int COMPACT_INSPECT_HEAD = 10;
-    public static final int COMPACT_INSPECT_NOTES = 11;
-    public static final int COMPACT_INSPECT_ALTS = 12;
-    public static final int COMPACT_INSPECT_HISTORY = 13;
-    public static final int COMPACT_INSPECT_REPORTS = 14;
-    public static final int COMPACT_INSPECT_PUNISH = 16;
+    public static final int INSPECT_PLAYER_HEAD = 10, INSPECT_NOTES = 11, INSPECT_ALTS = 12,
+            INSPECT_HISTORY = 13, INSPECT_REPORTS = 14, INSPECT_PUNISH = 16,
+            STAFF_ONLINE_PLAYERS = 10, STAFF_REPORTS = 11, STAFF_PUNISHMENTS = 12,
+            STAFF_TICKETS = 13, STAFF_PANEL_LINK = 15, STAFF_SETTINGS = 16,
+            PAGE_PREV = 38, FILTER_BUTTON = 40, SORT_BUTTON = 40, PAGE_NEXT = 42,
+            BACK_BUTTON = 45, CREATE_NOTE_BUTTON = 40,
+            MODIFY_ADD_NOTE = 28, MODIFY_EVIDENCE = 29, MODIFY_PARDON = 30,
+            MODIFY_DURATION = 31, MODIFY_LINKED_TICKETS = 32, MODIFY_STAT_WIPE = 33, MODIFY_ALT_BLOCK = 34,
+            SEVERITY_LENIENT = 28, SEVERITY_REGULAR = 30, SEVERITY_AGGRAVATED = 32,
+            SEVERITY_LINK_REPORTS = 33, SEVERITY_SILENT = 34, SEVERITY_ALT_BLOCK = 42, SEVERITY_STAT_WIPE = 43,
+            SETTINGS_INFO = 28, SETTINGS_NOTIFICATIONS = 30, SETTINGS_TICKETS = 31,
+            SETTINGS_ROLES = 32, SETTINGS_STAFF = 33, SETTINGS_RELOAD = 34,
+            COMPACT_BACK_BUTTON = 18,
+            COMPACT_STAFF_ONLINE = 10, COMPACT_STAFF_REPORTS = 11, COMPACT_STAFF_PUNISHMENTS = 12,
+            COMPACT_STAFF_TICKETS = 13, COMPACT_STAFF_PANEL = 15, COMPACT_STAFF_SETTINGS = 16,
+            COMPACT_INSPECT_HEAD = 10, COMPACT_INSPECT_NOTES = 11, COMPACT_INSPECT_ALTS = 12,
+            COMPACT_INSPECT_HISTORY = 13, COMPACT_INSPECT_REPORTS = 14, COMPACT_INSPECT_PUNISH = 16;
 
 }

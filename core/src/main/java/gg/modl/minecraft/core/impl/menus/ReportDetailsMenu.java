@@ -12,7 +12,7 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ReportGuiConfig;
-import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
+
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
@@ -21,13 +21,9 @@ import java.util.List;
 import java.util.Map;
 
 public class ReportDetailsMenu extends SimpleMenu {
-    private static final int SLOT_ADD_DETAILS = 11;
-    private static final int SLOT_PLAYER_HEAD = 13;
-    private static final int SLOT_SKIP_DETAILS = 15;
-    private static final int SLOT_BACK = 22;
+    private static final int SLOT_ADD_DETAILS = 11, SLOT_PLAYER_HEAD = 13, SLOT_SKIP_DETAILS = 15, SLOT_BACK = 22;
 
-    private final AbstractPlayer reporter;
-    private final AbstractPlayer target;
+    private final AbstractPlayer reporter, target;
     private final ModlHttpClient httpClient;
     private final LocaleManager locale;
     private final Platform platform;
@@ -98,7 +94,7 @@ public class ReportDetailsMenu extends SimpleMenu {
         registerActionHandler("addDetails", click -> {
             click.clickedMenu().close();
             String prompt = locale.getMessage("messages.report_details_prompt", Map.of("player", target.username()));
-            ChatInputManager.requestInput(platform, reporter.uuid(), prompt, input -> {
+            platform.getChatInputManager().requestInput(reporter.uuid(), prompt, input -> {
                 reportData.setDetails(input);
                 displayMenu(new ReportConfirmMenu(
                     reporter, target, httpClient, locale, platform, panelUrl,

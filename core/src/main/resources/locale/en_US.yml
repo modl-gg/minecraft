@@ -602,7 +602,7 @@ menus:
     tickets_update_failed: "&cFailed to update linked tickets."
 
   # Online Players Menu (lore template for each player entry)
-  # Placeholders: {player_name}, {session_duration}, {total_playtime}, {punishments}
+  # Placeholders: {player_name}, {session_duration}, {total_playtime}, {punishments}, {report_count}
   online_players:
     title: "&6{player_name}"
     lore:
@@ -610,8 +610,15 @@ menus:
       - "&7Total Playtime: &f{total_playtime}"
       - "&7Punishments: &f{punishments}"
       - ""
-      - "&cLeft-click to target"
-      - "&aRight-click to inspect"
+      - "&7Reports ({report_count}):"
+      - "{report-list}"
+      - ""
+      - "&cLeft-click to inspect"
+      - "&aRight-click to target"
+    # Placeholders: {date}, {details}, {reporter}
+    report_entry: " &6- &e{date} {reporter}: &f{details}"
+    reports_more: " &e... and {count} more"
+    no_reports: " &eNo reports"
 
 # Help Command
 # Set usage to "" to hide a command from the help list (e.g. if you disabled it).

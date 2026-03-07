@@ -15,8 +15,8 @@ import java.util.Map;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class RecentPunishmentsResponse {
-    private int status;
     private List<RecentPunishment> punishments;
+    private int status;
 
     public boolean isSuccess() {
         return status >= 200 && status < 300;
@@ -24,25 +24,14 @@ public class RecentPunishmentsResponse {
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class RecentPunishment {
-        private String playerName;
-        private String playerUuid;
-        private String id;
-        private String issuerName;
-        private Date issued;
-        private Date started;
-
+        private String playerName, playerUuid, id, issuerName;
+        private Date issued, started;
         private @SerializedName("type") String type;
-
         private @SerializedName("typeOrdinal") Integer typeOrdinal;
-
         private @SerializedName("modifications") List<Modification> modifications;
-
         private @SerializedName("notes") List<Note> notes;
-
         private @SerializedName("evidence") List<Evidence> evidence;
-
         private @SerializedName("attachedTicketIds") List<String> attachedTicketIds;
-
         private @SerializedName("data") Map<String, Object> data;
 
         public List<Modification> getModifications() {

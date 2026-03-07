@@ -30,8 +30,7 @@ import java.util.function.Consumer;
 
 public class ModifyPunishmentMenu extends BaseInspectMenu {
     private final Punishment punishment;
-    private final Consumer<CirrusPlayerWrapper> menuBackAction;
-    private final Consumer<CirrusPlayerWrapper> rootBackAction;
+    private final Consumer<CirrusPlayerWrapper> menuBackAction, rootBackAction;
     private final PunishmentModificationActions modActions;
 
     public ModifyPunishmentMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -290,7 +289,7 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                 }
 
                 ModifyPunishmentTicketsRequest request = new ModifyPunishmentTicketsRequest(
-                        punishment.getId(), addIds, removeIds, true, viewerName
+                        punishment.getId(), viewerName, addIds, removeIds, true
                 );
 
                 httpClient.modifyPunishmentTickets(request).thenAccept(v -> {

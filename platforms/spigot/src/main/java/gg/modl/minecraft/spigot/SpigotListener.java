@@ -1,6 +1,5 @@
 package gg.modl.minecraft.spigot;
 
-import com.google.gson.JsonObject;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
@@ -8,6 +7,7 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.impl.cache.Cache;
 import gg.modl.minecraft.core.impl.cache.LoginCache;
+import gg.modl.minecraft.core.impl.cache.PlayerProfileRegistry;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.ChatCommandLogService;
@@ -18,8 +18,6 @@ import gg.modl.minecraft.core.service.MaintenanceService;
 import gg.modl.minecraft.core.service.NetworkChatInterceptService;
 import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffChatService;
-import gg.modl.minecraft.core.service.StaffModeService;
-import gg.modl.minecraft.core.service.VanishService;
 import gg.modl.minecraft.core.sync.SyncService;
 import gg.modl.minecraft.core.util.ChatEventHandler;
 import gg.modl.minecraft.core.util.CommandInterceptHandler;
@@ -39,6 +37,7 @@ import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -53,7 +52,6 @@ public class SpigotListener implements Listener {
     private final SyncService syncService;
     private final LocaleManager localeManager;
     private final LoginCache loginCache;
-    private final boolean debugMode;
     private final List<String> mutedCommands;
     private final StaffChatService staffChatService;
     private final ChatManagementService chatManagementService;
@@ -63,9 +61,9 @@ public class SpigotListener implements Listener {
     private final ChatCommandLogService chatCommandLogService;
     private final Staff2faService staff2faService;
     private final StaffChatConfig staffChatConfig;
-    private final VanishService vanishService;
-    private final StaffModeService staffModeService;
     private final BridgeService bridgeService;
+    private final PlayerProfileRegistry registry;
+    private final boolean debugMode;
 
     private ModlHttpClient getHttpClient() {
         return httpClientHolder.getClient();
@@ -83,7 +81,7 @@ public class SpigotListener implements Listener {
             return;
         }
 
-        CompletableFuture<JsonObject> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
+        CompletableFuture<Map<String, Object>> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
         CompletableFuture<WebPlayer> webPlayerFuture = WebPlayer.get(event.getUniqueId());
 
         CompletableFuture<Void> combinedFuture = ipInfoFuture
@@ -91,12 +89,13 @@ public class SpigotListener implements Listener {
                 String skinHash = (webPlayer != null && webPlayer.valid()) ? webPlayer.skin() : null;
                 PlayerLoginRequest request = new PlayerLoginRequest(
                         event.getUniqueId().toString(), event.getName(),
-                        ipAddress, skinHash, ipInfo, platform.getServerName());
+                        ipAddress, skinHash, platform.getServerName(), ipInfo);
                 return new Object[] { request, ipInfo, skinHash };
             })
             .thenCompose(data -> {
                 PlayerLoginRequest request = (PlayerLoginRequest) data[0];
-                JsonObject ipInfo = (JsonObject) data[1];
+                @SuppressWarnings("unchecked")
+                Map<String, Object> ipInfo = (Map<String, Object>) data[1];
                 String skinHash = (String) data[2];
                 return getHttpClient().playerLogin(request)
                     .thenAccept(response -> {
@@ -159,7 +158,7 @@ public class SpigotListener implements Listener {
             event.setKickMessage(denied.message());
         }
     }
-    
+
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         java.util.UUID uuid = event.getPlayer().getUniqueId();
@@ -194,10 +193,8 @@ public class SpigotListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         ListenerHelper.handlePlayerDisconnect(
                 event.getPlayer().getUniqueId(), event.getPlayer().getName(),
-                getHttpClient(), cache, platform, localeManager, freezeService,
-                staffChatService, chatManagementService, networkChatInterceptService,
-                staff2faService, chatMessageCache,
-                vanishService, staffModeService, bridgeService);
+                getHttpClient(), cache, platform, localeManager,
+                chatMessageCache, bridgeService, registry);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)

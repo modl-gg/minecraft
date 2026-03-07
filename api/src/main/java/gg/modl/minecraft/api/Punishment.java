@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -15,15 +14,10 @@ import java.util.Map;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class Punishment {
-    private static final String UNKNOWN = "Unknown";
-    private static final String DEFAULT_REASON = "No reason provided";
-    private static final String STATUS_UNSTARTED = "Unstarted";
-    private static final String DATA_KEY_ACTIVE = "active";
-    private static final String DATA_KEY_STATUS = "status";
-    private static final String DATA_KEY_EXPIRES = "expires";
-    private static final String DATA_KEY_DURATION = "duration";
-    private static final String DATA_KEY_REASON = "reason";
-    private static final String DATA_KEY_TYPE_NAME = "typeName";
+    private static final String UNKNOWN = "Unknown", DEFAULT_REASON = "No reason provided",
+            STATUS_UNSTARTED = "Unstarted", DATA_KEY_ACTIVE = "active", DATA_KEY_STATUS = "status",
+            DATA_KEY_EXPIRES = "expires", DATA_KEY_DURATION = "duration", DATA_KEY_REASON = "reason",
+            DATA_KEY_TYPE_NAME = "typeName";
 
     private @SerializedName("id") String id;
     private @SerializedName("issuerName") String issuerName;
@@ -37,6 +31,22 @@ public class Punishment {
     private @SerializedName("attachedTicketIds") List<String> attachedTicketIds;
     private @SerializedName("data") Map<String, Object> dataMap;
     private transient PunishmentData data;
+
+    public Map<String, Object> getDataMap() {
+        return dataMap != null ? dataMap : Collections.emptyMap();
+    }
+
+    public List<Modification> getModifications() {
+        return modifications != null ? modifications : Collections.emptyList();
+    }
+
+    public List<Note> getNotes() {
+        return notes != null ? notes : Collections.emptyList();
+    }
+
+    public List<Evidence> getEvidence() {
+        return evidence != null ? evidence : Collections.emptyList();
+    }
 
     /**
      * More reliable than getType() for custom punishment types.

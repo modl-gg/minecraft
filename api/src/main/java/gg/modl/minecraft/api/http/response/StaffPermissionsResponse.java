@@ -8,8 +8,8 @@ import java.util.List;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class StaffPermissionsResponse {
-    private int status;
     private StaffData data;
+    private int status;
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class StaffData {
@@ -18,11 +18,7 @@ public class StaffPermissionsResponse {
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class StaffMember {
-        private String minecraftUuid;
-        private String minecraftUsername;
-        private String staffUsername;
-        private String staffRole;
+        private String minecraftUuid, minecraftUsername, staffUsername, staffRole, email;
         private List<String> permissions;
-        private String email;
     }
 }

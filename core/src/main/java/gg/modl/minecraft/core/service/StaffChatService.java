@@ -1,8 +1,9 @@
 package gg.modl.minecraft.core.service;
 
-import java.util.Map;
+import gg.modl.minecraft.core.impl.cache.PlayerProfile;
+import gg.modl.minecraft.core.impl.cache.PlayerProfileRegistry;
+
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class StaffChatService {
     public enum ChatMode {
@@ -10,30 +11,34 @@ public class StaffChatService {
         STAFF
     }
 
-    private final Map<UUID, ChatMode> chatModes = new ConcurrentHashMap<>();
+    private final PlayerProfileRegistry registry;
+
+    public StaffChatService(PlayerProfileRegistry registry) {
+        this.registry = registry;
+    }
 
     public boolean isInStaffChat(UUID playerUuid) {
-        return chatModes.getOrDefault(playerUuid, ChatMode.NORMAL) == ChatMode.STAFF;
+        PlayerProfile profile = registry.getProfile(playerUuid);
+        return profile != null && profile.getChatMode() == ChatMode.STAFF;
     }
 
     /** @return the new chat mode after toggling */
     public ChatMode toggleStaffChat(UUID playerUuid) {
-        ChatMode current = chatModes.getOrDefault(playerUuid, ChatMode.NORMAL);
+        PlayerProfile profile = registry.getProfile(playerUuid);
+        if (profile == null) return ChatMode.NORMAL;
+        ChatMode current = profile.getChatMode();
         ChatMode newMode = (current == ChatMode.STAFF) ? ChatMode.NORMAL : ChatMode.STAFF;
-        chatModes.put(playerUuid, newMode);
+        profile.setChatMode(newMode);
         return newMode;
     }
 
     public void setMode(UUID playerUuid, ChatMode mode) {
-        if (mode == ChatMode.NORMAL) chatModes.remove(playerUuid);
-        else chatModes.put(playerUuid, mode);
+        PlayerProfile profile = registry.getProfile(playerUuid);
+        if (profile != null) profile.setChatMode(mode);
     }
 
     public ChatMode getMode(UUID playerUuid) {
-        return chatModes.getOrDefault(playerUuid, ChatMode.NORMAL);
-    }
-
-    public void removePlayer(UUID playerUuid) {
-        chatModes.remove(playerUuid);
+        PlayerProfile profile = registry.getProfile(playerUuid);
+        return profile != null ? profile.getChatMode() : ChatMode.NORMAL;
     }
 }

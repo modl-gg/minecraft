@@ -8,25 +8,11 @@ import lombok.NoArgsConstructor;
  */
 @Data @NoArgsConstructor
 public class PunishmentPreviewResponse {
-    private int status;
-    private boolean success;
-    private String message;
-
-    private String socialStatus;
-    private String gameplayStatus;
-    private int socialPoints;
-    private int gameplayPoints;
-    private String offenseLevel;
-    private SeverityPreview lenient;
-    private SeverityPreview regular;
-    private SeverityPreview aggravated;
-    private SeverityPreview singleSeverity;
-    private boolean singleSeverityPunishment;
-    private boolean permanentUntilUsernameChange;
-    private boolean permanentUntilSkinChange;
-    private boolean canBeAltBlocking;
-    private boolean canBeStatWiping;
-    private String category;
+    private String message, socialStatus, gameplayStatus, offenseLevel, category;
+    private SeverityPreview lenient, regular, aggravated, singleSeverity;
+    private boolean success, singleSeverityPunishment, permanentUntilUsernameChange, permanentUntilSkinChange,
+            canBeAltBlocking, canBeStatWiping;
+    private int status, socialPoints, gameplayPoints;
 
     public boolean isSuccess() {
         return success || (status >= 200 && status < 300);
@@ -34,15 +20,9 @@ public class PunishmentPreviewResponse {
 
     @Data @NoArgsConstructor
     public static class SeverityPreview {
-        private String severity;
-        private int points;
-        private long durationMs;
-        private String durationFormatted;
-        private String punishmentType;
+        private String severity, durationFormatted, punishmentType, newSocialStatus, newGameplayStatus;
         private boolean permanent;
-        private String newSocialStatus;
-        private String newGameplayStatus;
-        private int newSocialPoints;
-        private int newGameplayPoints;
+        private int points, newSocialPoints, newGameplayPoints;
+        private long durationMs;
     }
 }

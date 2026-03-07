@@ -4,7 +4,6 @@ import lombok.Data;
 
 @Data
 public class PlayerNoteCreateRequest {
-    private final String targetUuid;
-    private final String issuerName;
-    private final String text;
+    private transient final String targetUuid;
+    private final String issuerName, text;
 }

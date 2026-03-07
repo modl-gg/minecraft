@@ -9,8 +9,8 @@ import java.util.List;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class StaffListResponse {
-    private int status;
     private List<StaffEntry> staff;
+    private int status;
 
     public boolean isSuccess() {
         return status >= 200 && status < 300;
@@ -18,12 +18,7 @@ public class StaffListResponse {
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class StaffEntry {
-        private String id;
-        private String username;
-        private String email;
-        private String role;
-        private String minecraftUuid;
-        private String minecraftUsername;
+        private String id, username, email, role, minecraftUuid, minecraftUsername, lastServer;
         private List<String> permissions;
         private Date lastSeen;
         private Long totalPlaytimeMs;

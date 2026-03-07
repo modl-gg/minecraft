@@ -5,6 +5,7 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.Staff2faService;
@@ -59,5 +60,7 @@ public interface Platform {
     BridgeService getBridgeService();
     void setBridgeService(BridgeService bridgeService);
     void setStaff2faService(Staff2faService staff2faService);
+    ChatInputManager getChatInputManager();
+    void setChatInputManager(ChatInputManager chatInputManager);
 }
 

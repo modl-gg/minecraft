@@ -35,20 +35,16 @@ import java.util.stream.Collectors;
 public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report> {
     @Getter
     public static class Report {
-        private final String id;
-        private final String type;
-        private final String reporterName;
-        private final String content;
+        private final String id, type, reporterName, content, status;
         private final Date date;
-        private final String status;
 
-        public Report(String id, String type, String reporterName, String content, Date date, String status) {
+        public Report(String id, String type, String reporterName, String content, String status, Date date) {
             this.id = id;
             this.type = type;
             this.reporterName = reporterName;
             this.content = content;
-            this.date = date;
             this.status = status;
+            this.date = date;
         }
 
     }
@@ -85,8 +81,8 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
                                 type,
                                 report.getReporterName(),
                                 report.getContent() != null ? report.getContent() : report.getSubject(),
-                                report.getCreatedAt(),
-                                report.getStatus()
+                                report.getStatus(),
+                                report.getCreatedAt()
                         ));
                     }
                 }

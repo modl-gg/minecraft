@@ -12,12 +12,12 @@ import java.util.List;
 
 @Getter @NoArgsConstructor @AllArgsConstructor
 public class IPAddress {
-    private @SerializedName("proxy") boolean proxy;
-    private @SerializedName("hosting") boolean hosting;
     private @SerializedName("ipAddress") @Getter String ipAddress;
     private @SerializedName("country") @Getter String country;
     private @SerializedName("region") @Getter String region;
     private @SerializedName("asn") String asn;
     private @SerializedName("firstLogin") Date firstLogin;
     private @SerializedName("logins") List<Date> logins;
+    private @SerializedName("proxy") boolean proxy;
+    private @SerializedName("hosting") boolean hosting;
 }

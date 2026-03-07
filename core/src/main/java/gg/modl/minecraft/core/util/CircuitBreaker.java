@@ -5,9 +5,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class CircuitBreaker {
+    private static final long DEFAULT_TIMEOUT_MS = 60_000, DEFAULT_RETRY_TIMEOUT_MS = 30_000;
     private static final int DEFAULT_FAILURE_THRESHOLD = 5;
-    private static final long DEFAULT_TIMEOUT_MS = 60_000;
-    private static final long DEFAULT_RETRY_TIMEOUT_MS = 30_000;
 
     public enum State {
         CLOSED,
@@ -15,13 +14,11 @@ public class CircuitBreaker {
         HALF_OPEN
     }
 
-    private final int failureThreshold;
-    private final long timeoutMillis;
-    private final long retryTimeoutMillis;
-
     private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
     private final AtomicInteger failureCount = new AtomicInteger(0);
     private final AtomicLong nextRetryTime = new AtomicLong(0);
+    private final int failureThreshold;
+    private final long timeoutMillis, retryTimeoutMillis;
 
     public CircuitBreaker() {
         this(DEFAULT_FAILURE_THRESHOLD, DEFAULT_TIMEOUT_MS, DEFAULT_RETRY_TIMEOUT_MS);

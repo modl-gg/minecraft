@@ -6,7 +6,5 @@ import lombok.NoArgsConstructor;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class ClaimTicketRequest {
-    private String ticketId;
-    private String playerUuid;
-    private String playerName;
+    private String ticketId, playerUuid, playerName;
 }

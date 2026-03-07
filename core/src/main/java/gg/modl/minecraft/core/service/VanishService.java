@@ -1,30 +1,38 @@
 package gg.modl.minecraft.core.service;
 
-import java.util.Set;
+import gg.modl.minecraft.core.impl.cache.PlayerProfile;
+import gg.modl.minecraft.core.impl.cache.PlayerProfileRegistry;
+
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class VanishService {
-    private final Set<UUID> vanished = ConcurrentHashMap.newKeySet();
+    private final PlayerProfileRegistry registry;
+
+    public VanishService(PlayerProfileRegistry registry) {
+        this.registry = registry;
+    }
 
     public void vanish(UUID uuid) {
-        vanished.add(uuid);
+        PlayerProfile profile = registry.getProfile(uuid);
+        if (profile != null) profile.setVanished(true);
     }
 
     public void unvanish(UUID uuid) {
-        vanished.remove(uuid);
+        PlayerProfile profile = registry.getProfile(uuid);
+        if (profile != null) profile.setVanished(false);
     }
 
     public boolean isVanished(UUID uuid) {
-        return vanished.contains(uuid);
+        PlayerProfile profile = registry.getProfile(uuid);
+        return profile != null && profile.isVanished();
     }
 
     /** @return true if now vanished, false if now visible */
     public boolean toggle(UUID uuid) {
-        if (!vanished.add(uuid)) {
-            vanished.remove(uuid);
-            return false;
-        }
-        return true;
+        PlayerProfile profile = registry.getProfile(uuid);
+        if (profile == null) return false;
+        boolean newState = !profile.isVanished();
+        profile.setVanished(newState);
+        return newState;
     }
 }

@@ -8,6 +8,7 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.Staff2faService;
@@ -15,7 +16,6 @@ import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import net.md_5.bungee.chat.ComponentSerializer;
 import org.bukkit.Bukkit;
@@ -25,23 +25,41 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-@RequiredArgsConstructor
 public class SpigotPlatform implements Platform {
     private final BukkitCommandManager commandManager;
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
     private final JavaPlugin plugin;
+    private final gg.modl.minecraft.core.util.PluginLogger pluginLogger;
     private @Setter Cache cache;
     private @Setter LocaleManager localeManager;
     private @Setter StaffModeService staffModeService;
     private @Setter BridgeService bridgeService;
     private @Setter Staff2faService staff2faService;
+    private @Setter ChatInputManager chatInputManager;
+
+    // Cached reflection methods for getPlayerSkinTexture
+    private static volatile boolean skinMethodsResolved = false;
+    private static volatile Method getPlayerProfileMethod;
+    private static volatile Method getPropertiesMethod;
+    private static volatile Method getNameMethod;
+    private static volatile Method getValueMethod;
+
+    public SpigotPlatform(BukkitCommandManager commandManager, Logger logger, File dataFolder, String configServerName, JavaPlugin plugin) {
+        this.commandManager = commandManager;
+        this.logger = logger;
+        this.dataFolder = dataFolder;
+        this.configServerName = configServerName;
+        this.plugin = plugin;
+        this.pluginLogger = gg.modl.minecraft.core.util.PluginLogger.fromJul(logger);
+    }
 
     @Override
     public void broadcast(String string) {
@@ -70,7 +88,7 @@ public class SpigotPlatform implements Platform {
         Player player = Bukkit.getPlayer(uuid);
         if (player != null && player.isOnline()) player.sendMessage(StringUtil.unescapeNewlines(message));
     }
-    
+
     @Override
     public void sendJsonMessage(UUID uuid, String jsonMessage) {
         Player player = Bukkit.getPlayer(uuid);
@@ -95,7 +113,7 @@ public class SpigotPlatform implements Platform {
 
         if (!queryMojang) return null;
         var offlinePlayer = Bukkit.getOfflinePlayer(uuid);
-        return new AbstractPlayer(uuid, offlinePlayer.getName(), false, null);
+        return new AbstractPlayer(uuid, offlinePlayer.getName(), null, false);
     }
 
     @Override
@@ -105,7 +123,7 @@ public class SpigotPlatform implements Platform {
 
         if (!queryMojang) return null;
         var offlinePlayer = Bukkit.getOfflinePlayer(username);
-        if (offlinePlayer.hasPlayedBefore()) return new AbstractPlayer(offlinePlayer.getUniqueId(), offlinePlayer.getName(), false, null);
+        if (offlinePlayer.hasPlayedBefore()) return new AbstractPlayer(offlinePlayer.getUniqueId(), offlinePlayer.getName(), null, false);
         return null;
     }
 
@@ -184,12 +202,12 @@ public class SpigotPlatform implements Platform {
 
     @Override
     public gg.modl.minecraft.core.util.PluginLogger getLogger() {
-        return gg.modl.minecraft.core.util.PluginLogger.fromJul(logger);
+        return pluginLogger;
     }
 
     private AbstractPlayer toAbstractPlayer(Player player) {
         String ip = player.getAddress() != null ? player.getAddress().getAddress().getHostAddress() : null;
-        return new AbstractPlayer(player.getUniqueId(), player.getName(), player.isOnline(), ip);
+        return new AbstractPlayer(player.getUniqueId(), player.getName(), ip, player.isOnline());
     }
 
     @Override
@@ -203,15 +221,39 @@ public class SpigotPlatform implements Platform {
         Player player = Bukkit.getPlayer(uuid);
         if (player == null) return null;
         try {
+            if (!skinMethodsResolved) {
+                resolveSkinMethods(player);
+            }
+            if (getPlayerProfileMethod == null) return null;
+
             // reflection required: getPlayerProfile() only available on Spigot 1.18.1+
-            Object profile = player.getClass().getMethod("getPlayerProfile").invoke(player);
-            java.util.Collection<?> properties = (java.util.Collection<?>) profile.getClass().getMethod("getProperties").invoke(profile);
+            Object profile = getPlayerProfileMethod.invoke(player);
+            java.util.Collection<?> properties = (java.util.Collection<?>) getPropertiesMethod.invoke(profile);
             for (Object prop : properties) {
-                String name = (String) prop.getClass().getMethod("getName").invoke(prop);
-                if ("textures".equals(name)) return (String) prop.getClass().getMethod("getValue").invoke(prop);
+                String name = (String) getNameMethod.invoke(prop);
+                if ("textures".equals(name)) return (String) getValueMethod.invoke(prop);
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    private static synchronized void resolveSkinMethods(Player player) {
+        if (skinMethodsResolved) return;
+        try {
+            getPlayerProfileMethod = player.getClass().getMethod("getPlayerProfile");
+            Object profile = getPlayerProfileMethod.invoke(player);
+            getPropertiesMethod = profile.getClass().getMethod("getProperties");
+            java.util.Collection<?> properties = (java.util.Collection<?>) getPropertiesMethod.invoke(profile);
+            for (Object prop : properties) {
+                getNameMethod = prop.getClass().getMethod("getName");
+                getValueMethod = prop.getClass().getMethod("getValue");
+                break;
+            }
+        } catch (Exception e) {
+            // Methods not available on this server version; cache null to skip on future calls
+            getPlayerProfileMethod = null;
+        }
+        skinMethodsResolved = true;
     }
 
     @Override
@@ -237,5 +279,10 @@ public class SpigotPlatform implements Platform {
     @Override
     public BridgeService getBridgeService() {
         return bridgeService;
+    }
+
+    @Override
+    public ChatInputManager getChatInputManager() {
+        return chatInputManager;
     }
 }

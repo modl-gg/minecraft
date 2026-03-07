@@ -42,8 +42,7 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
     private final RoleListMenu.Role role;
     private final List<Permission> allPermissions = new ArrayList<>();
-    private final Set<String> enabledPermissions;
-    private final Set<String> originalPermissions;
+    private final Set<String> enabledPermissions, originalPermissions;
     private final String panelUrl;
     private final boolean hasPermission;
 
@@ -109,13 +108,11 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         for (String perm : role.getPermissions())
             if (perm.startsWith("punishment.apply.")) allNodes.add(perm);
 
-        if (cache != null && cache.getCachedPunishmentTypes() != null
-                && cache.getCachedPunishmentTypes().getData() != null) {
+        if (cache != null && cache.getCachedPunishmentTypes() != null && cache.getCachedPunishmentTypes().getData() != null)
             for (var type : cache.getCachedPunishmentTypes().getData()) {
                 String permNode = "punishment.apply." + type.getName().toLowerCase().replace(" ", "-");
                 allNodes.add(permNode);
             }
-        }
 
         for (String node : allNodes)
             allPermissions.add(new Permission(node, enabledPermissions.contains(node)));
@@ -167,16 +164,14 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
     @Override
     protected CirrusItem map(Permission permission) {
-        if ("no_permission".equals(permission.getNode())) {
-            return CirrusItem.of(
+        if ("no_permission".equals(permission.getNode())) return CirrusItem.of(
                 CirrusItemType.BARRIER,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + "No Permission"),
                     MenuItems.lore(
                             MenuItems.COLOR_GRAY + "You don't have permission",
                             MenuItems.COLOR_GRAY + "to edit role permissions"
-                    )
-            );
-        }
+                    ));
+
         if (permission.getNode() == null) return createEmptyPlaceholder("No permissions");
 
         boolean changed = permission.isEnabled() != originalPermissions.contains(permission.getNode());
@@ -197,13 +192,11 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         }
 
         return CirrusItem.of(
-                permission.isEnabled() ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
+            permission.isEnabled() ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
             CirrusChatElement.ofLegacyText(
-                        (permission.isEnabled() ? MenuItems.COLOR_GREEN : MenuItems.COLOR_GRAY) + displayPrefix + permission.getNode() + suffix
-                ),
-                MenuItems.lore(
-                        MenuItems.COLOR_YELLOW + "Click to toggle"
-                )
+                (permission.isEnabled() ? MenuItems.COLOR_GREEN : MenuItems.COLOR_GRAY) + displayPrefix + permission.getNode() + suffix
+            ),
+            MenuItems.lore(MenuItems.COLOR_YELLOW + "Click to toggle")
         );
     }
 
@@ -227,7 +220,6 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             }
         } else enabledPermissions.remove(permission.getNode());
 
-
         RoleListMenu.Role localRole = new RoleListMenu.Role(
                 role.getId(), role.getName(), role.getDescription(), new ArrayList<>(enabledPermissions));
         RolePermissionEditMenu newMenu = new RolePermissionEditMenu(
@@ -236,9 +228,8 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         newMenu.originalPermissions.addAll(this.originalPermissions);
 
         newMenu.allPermissions.clear();
-        for (Permission p : this.allPermissions) {
+        for (Permission p : this.allPermissions)
             newMenu.allPermissions.add(new Permission(p.getNode(), enabledPermissions.contains(p.getNode())));
-        }
 
         ActionHandlers.openMenu(newMenu).handle(click);
     }
@@ -267,9 +258,7 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
         httpClient.updateRolePermissions(role.getId(), new ArrayList<>(enabledPermissions)).thenAccept(v -> {
             sendMessage(MenuItems.COLOR_GREEN + "Permissions saved successfully!");
-
-            if (backAction != null)
-                backAction.accept(click.player());
+            if (backAction != null) backAction.accept(click.player());
         }).exceptionally(e -> {
             sendMessage(MenuItems.COLOR_RED + "Failed to save: " + e.getMessage());
             return null;

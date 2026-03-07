@@ -136,7 +136,6 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
         ).slot(MenuSlots.MODIFY_LINKED_TICKETS).actionHandler("linkedTickets"));
 
         if (isBanType) {
-            punishment.getDataMap();
             boolean statWipe = Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
             set(CirrusItem.of(
                     statWipe ? CirrusItemType.EXPERIENCE_BOTTLE : CirrusItemType.GLASS_BOTTLE,
@@ -148,7 +147,6 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
                     )
             ).slot(MenuSlots.MODIFY_STAT_WIPE).actionHandler("toggleStatWipe"));
 
-            punishment.getDataMap();
             boolean altBlock = Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
             set(CirrusItem.of(
                     altBlock ? CirrusItemType.TORCH : CirrusItemType.REDSTONE_TORCH,
@@ -207,7 +205,7 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
                 }
 
                 ModifyPunishmentTicketsRequest request = new ModifyPunishmentTicketsRequest(
-                        punishment.getId(), addIds, removeIds, true, viewerName
+                        punishment.getId(), viewerName, addIds, removeIds, true
                 );
 
                 httpClient.modifyPunishmentTickets(request).thenAccept(v -> {

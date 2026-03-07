@@ -24,9 +24,7 @@ import java.util.function.Consumer;
 
 public class SettingsMenu extends BaseStaffMenu {
     private final String panelUrl;
-
-    private final boolean canModifySettings;
-    private final boolean canManageStaff;
+    private final boolean canModifySettings, canManageStaff;
 
     public SettingsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                         boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
@@ -74,7 +72,8 @@ public class SettingsMenu extends BaseStaffMenu {
         ).slot(MenuSlots.SETTINGS_INFO));
 
         Cache cache = platform.getCache();
-        boolean staffNotificationsEnabled = cache != null && cache.isStaffNotificationsEnabled(viewerUuid);
+        gg.modl.minecraft.core.impl.cache.PlayerProfile viewerProfile = cache != null ? cache.getPlayerProfile(viewerUuid) : null;
+        boolean staffNotificationsEnabled = viewerProfile != null && viewerProfile.isStaffNotificationsEnabled();
         set(CirrusItem.of(
                 staffNotificationsEnabled ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Staff Notifications: " +
@@ -157,9 +156,10 @@ public class SettingsMenu extends BaseStaffMenu {
 
     private void handleToggleNotifications(Click click) {
         Cache cache = platform.getCache();
-        if (cache != null) {
-            boolean currentValue = cache.isStaffNotificationsEnabled(viewerUuid);
-            cache.setStaffNotificationsEnabled(viewerUuid, !currentValue);
+        gg.modl.minecraft.core.impl.cache.PlayerProfile profile = cache != null ? cache.getPlayerProfile(viewerUuid) : null;
+        if (profile != null) {
+            boolean currentValue = profile.isStaffNotificationsEnabled();
+            profile.setStaffNotificationsEnabled(!currentValue);
             sendMessage(MenuItems.COLOR_GREEN + "Staff notifications " + (!currentValue ? "enabled" : "disabled"));
         } else {
             sendMessage(MenuItems.COLOR_RED + "Unable to save preference - cache unavailable");

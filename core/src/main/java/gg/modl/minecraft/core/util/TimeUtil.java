@@ -1,18 +1,16 @@
 package gg.modl.minecraft.core.util;
 
-import java.util.Calendar;
-import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class TimeUtil {
-    private static final long MILLIS_PER_SECOND = 1000L;
-    private static final long MILLIS_PER_MINUTE = 60 * MILLIS_PER_SECOND;
-    private static final long MILLIS_PER_HOUR = 60 * MILLIS_PER_MINUTE;
-    private static final long MILLIS_PER_DAY = 24 * MILLIS_PER_HOUR;
-    private static final long MILLIS_PER_WEEK = 7 * MILLIS_PER_DAY;
-    private static final long MILLIS_PER_MONTH = 30 * MILLIS_PER_DAY;
     private static final Pattern DURATION_TOKEN_PATTERN = Pattern.compile("[a-z]+|\\d+");
+    private static final long MILLIS_PER_SECOND = 1000L,
+            MILLIS_PER_MINUTE = 60 * MILLIS_PER_SECOND,
+            MILLIS_PER_HOUR = 60 * MILLIS_PER_MINUTE,
+            MILLIS_PER_DAY = 24 * MILLIS_PER_HOUR,
+            MILLIS_PER_WEEK = 7 * MILLIS_PER_DAY,
+            MILLIS_PER_MONTH = 30 * MILLIS_PER_DAY;
 
     public static String formatTimeMillis(long millis) {
         long seconds = (millis / 1000L) + 1;

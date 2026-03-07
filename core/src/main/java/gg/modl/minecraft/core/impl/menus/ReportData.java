@@ -9,10 +9,8 @@ import lombok.Setter;
  */
 @Getter @Setter
 public class ReportData {
-    private String reason;
+    private String reason, chatLog, details;
     private boolean chatReport;
-    private String chatLog;
-    private String details;
 
     public ReportData(String reason, boolean chatReport) {
         this.reason = reason;

@@ -51,8 +51,7 @@ public class PunishCommand extends BaseCommand {
 
     private static final Set<String> VALID_SEVERITIES = Set.of("low", "regular", "severe");
     private static final String DEFAULT_SEVERITY = "regular";
-    private static final int MANUAL_PUNISHMENT_MAX_ORDINAL = 5;
-    private static final int MAX_TYPE_WORD_LENGTH = 4;
+    private static final int MANUAL_PUNISHMENT_MAX_ORDINAL = 5, MAX_TYPE_WORD_LENGTH = 4;
 
     private final HttpClientHolder httpClientHolder;
     private final Platform platform;
@@ -94,7 +93,7 @@ public class PunishCommand extends BaseCommand {
             String availableTypes = punishmentTypes.stream()
                     .map(PunishmentTypesResponse.PunishmentTypeData::getName)
                     .collect(Collectors.joining(", "));
-            sender.sendMessage(localeManager.getPunishmentMessage("general.invalid_punishment_type", 
+            sender.sendMessage(localeManager.getPunishmentMessage("general.invalid_punishment_type",
                 Map.of("types", availableTypes)));
             return;
         }
@@ -102,7 +101,7 @@ public class PunishCommand extends BaseCommand {
         final PunishmentTypesResponse.PunishmentTypeData punishmentType = parsed.punishmentType;
         String punishmentPermission = PermissionUtil.formatPunishmentPermission(punishmentType.getName());
         if (!PermissionUtil.hasPermission(sender, cache, punishmentPermission)) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.no_permission_punishment", 
+            sender.sendMessage(localeManager.getPunishmentMessage("general.no_permission_punishment",
                 Map.of("type", punishmentType.getName())));
             return;
         }
@@ -133,14 +132,14 @@ public class PunishCommand extends BaseCommand {
         PunishmentCreateRequest request = new PunishmentCreateRequest(
             target.getMinecraftUuid().toString(),
             issuerName,
-            punishmentType.getOrdinal(),
             punishmentArgs.reason.isEmpty() ? localeManager.getMessage("config.default_reason") : punishmentArgs.reason,
+            punishmentArgs.severity,
+            null,
+            punishmentType.getOrdinal(),
             punishmentArgs.duration > 0 ? punishmentArgs.duration : null,
             data,
             notes,
-            new ArrayList<>(),
-            punishmentArgs.severity,
-            null
+            new ArrayList<>()
         );
 
         final String punishmentTypeName = punishmentType.getName();
@@ -260,7 +259,6 @@ public class PunishCommand extends BaseCommand {
 
     private String resolveBlockedName(PunishmentTypesResponse.PunishmentTypeData punishmentType, Account target) {
         if (!Boolean.TRUE.equals(punishmentType.getPermanentUntilUsernameChange())) return null;
-        target.getUsernames();
         return !target.getUsernames().isEmpty()
             ? target.getUsernames().get(target.getUsernames().size() - 1).getUsername()
             : Constants.UNKNOWN;
@@ -325,11 +323,8 @@ public class PunishCommand extends BaseCommand {
     }
 
     private static class PunishmentArgs {
-        String severity = null;
-        String reason = "";
-        final long duration = 0;
-        boolean altBlocking = false;
-        boolean silent = false;
-        boolean statWipe = false;
+        String severity = null, reason = "";
+        long duration = 0;
+        boolean altBlocking = false, silent = false, statWipe = false;
     }
 }

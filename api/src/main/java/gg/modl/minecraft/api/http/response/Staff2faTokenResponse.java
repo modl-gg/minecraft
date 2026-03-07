@@ -5,6 +5,5 @@ import lombok.NoArgsConstructor;
 
 @Data @NoArgsConstructor
 public class Staff2faTokenResponse {
-    private String token;
-    private String verifyUrl;
+    private String token, verifyUrl;
 }

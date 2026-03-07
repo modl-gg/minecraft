@@ -4,10 +4,10 @@ import lombok.Getter;
 
 import java.util.UUID;
 
-public record AbstractPlayer(UUID uuid, String username, boolean online, String ipAddress) {
+public record AbstractPlayer(UUID uuid, String username, String ipAddress, boolean online) {
 
     public AbstractPlayer(UUID uuid, String username, boolean online) {
-        this(uuid, username, online, null);
+        this(uuid, username, null, online);
     }
 
     public UUID getUuid() {
@@ -18,11 +18,11 @@ public record AbstractPlayer(UUID uuid, String username, boolean online, String 
         return username;
     }
 
-    public boolean isOnline() {
-        return online;
-    }
-
     public String getIpAddress() {
         return ipAddress;
+    }
+
+    public boolean isOnline() {
+        return online;
     }
 }

@@ -61,39 +61,41 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
     }
 
     private void fetchRecentPunishments() {
-        httpClient.getRecentPunishments(48).thenAccept(response -> {
-            if (response.isSuccess() && response.getPunishments() != null) {
-                recentPunishments.clear();
-                for (var p : response.getPunishments()) {
-                    UUID playerUuid = null;
-                    try {
-                        if (p.getPlayerUuid() != null) {
-                            playerUuid = UUID.fromString(p.getPlayerUuid());
-                        }
-                    } catch (Exception ignored) {}
-
-                    Punishment punishment = new Punishment();
-                    punishment.setId(p.getId());
-                    punishment.setIssuerName(p.getIssuerName());
-                    punishment.setIssued(p.getIssued());
-                    punishment.setStarted(p.getStarted());
-                    punishment.setTypeOrdinal(p.getTypeOrdinal());
-                    punishment.setModifications(p.getModifications());
-                    punishment.setNotes(new ArrayList<>(p.getNotes()));
-                    punishment.setEvidence(new ArrayList<>(p.getEvidence()));
-                    punishment.setDataMap(new HashMap<>(p.getData()));
-                    punishment.setAttachedTicketIds(p.getAttachedTicketIds() != null ? new ArrayList<>(p.getAttachedTicketIds()) : null);
-
-                    if (p.getType() != null) {
+        try {
+            httpClient.getRecentPunishments(48).thenAccept(response -> {
+                if (response.isSuccess() && response.getPunishments() != null) {
+                    recentPunishments.clear();
+                    for (var p : response.getPunishments()) {
+                        UUID playerUuid = null;
                         try {
-                            punishment.setType(Punishment.Type.valueOf(p.getType()));
-                        } catch (IllegalArgumentException ignored) {}
-                    }
+                            if (p.getPlayerUuid() != null) {
+                                playerUuid = UUID.fromString(p.getPlayerUuid());
+                            }
+                        } catch (Exception ignored) {}
 
-                    recentPunishments.add(new PunishmentWithPlayer(punishment, playerUuid, p.getPlayerName(), null));
+                        Punishment punishment = new Punishment();
+                        punishment.setId(p.getId());
+                        punishment.setIssuerName(p.getIssuerName());
+                        punishment.setIssued(p.getIssued());
+                        punishment.setStarted(p.getStarted());
+                        punishment.setTypeOrdinal(p.getTypeOrdinal());
+                        punishment.setModifications(p.getModifications());
+                        punishment.setNotes(new ArrayList<>(p.getNotes()));
+                        punishment.setEvidence(new ArrayList<>(p.getEvidence()));
+                        punishment.setDataMap(new HashMap<>(p.getData()));
+                        punishment.setAttachedTicketIds(p.getAttachedTicketIds() != null ? new ArrayList<>(p.getAttachedTicketIds()) : null);
+
+                        if (p.getType() != null) {
+                            try {
+                                punishment.setType(Punishment.Type.valueOf(p.getType()));
+                            } catch (IllegalArgumentException ignored) {}
+                        }
+
+                        recentPunishments.add(new PunishmentWithPlayer(punishment, playerUuid, p.getPlayerName(), null));
+                    }
                 }
-            }
-        }).exceptionally(e -> null);
+            }).join();
+        } catch (Exception ignored) {}
     }
 
     @Override
@@ -198,7 +200,6 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         }
 
         Map<String, String> vars = new HashMap<>();
-        punishment.getId();
         vars.put("punishment_id", punishment.getId());
         vars.put("punishment_type", typeName);
         vars.put("initial_duration_if_not_kick", initialDuration);
@@ -206,7 +207,6 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         vars.put("status_line", statusLine);
         vars.put("notes", notesBuilder.toString());
         vars.put("reason", punishment.getReason() != null ? punishment.getReason() : "No reason");
-        punishment.getIssuerName();
         vars.put("issuer", punishment.getIssuerName());
         vars.put("issued_date", MenuItems.formatDate(punishment.getIssued()));
         Object issuedServerObj = punishment.getDataMap().get("issuedServer");
@@ -337,7 +337,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
             return false;
 
         if (punishment.getStarted() == null)
-            return true;
+            return false;
 
         if (effectiveDuration == null || effectiveDuration <= 0)
             return true;

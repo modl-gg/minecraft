@@ -25,8 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public class StandingMenu extends BaseListMenu<Punishment> {
-    private static final int SOCIAL_SLOT = 11;
-    private static final int GAMEPLAY_SLOT = 15;
+    private static final int SOCIAL_SLOT = 11, GAMEPLAY_SLOT = 15;
 
     private final PunishmentPreviewResponse previewData;
     private final StandingGuiConfig guiConfig;
@@ -85,7 +84,6 @@ public class StandingMenu extends BaseListMenu<Punishment> {
 
     @Override
     protected CirrusItem map(Punishment punishment) {
-        punishment.getId();
         if (punishment.getId().isEmpty()) {
             return createEmptyPlaceholder("No punishments");
         }
@@ -242,7 +240,7 @@ public class StandingMenu extends BaseListMenu<Punishment> {
     private boolean isPunishmentActive(Punishment punishment, Long effectiveDuration) {
         if (findPardonDate(punishment) != null) return false;
         if (!punishment.isActive()) return false;
-        if (punishment.getStarted() == null) return true;
+        if (punishment.getStarted() == null) return false;
         if (effectiveDuration == null || effectiveDuration <= 0) return true;
         long expiryTime = punishment.getStarted().getTime() + effectiveDuration;
         return System.currentTimeMillis() < expiryTime;

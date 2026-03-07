@@ -183,8 +183,7 @@ public class StreamingJsonWriter implements AutoCloseable {
     }
 
     public static class UsernameEntry {
-        public final String username;
-        public final String date;
+        public final String username, date;
 
         public UsernameEntry(String username, String date) {
             this.username = username;
@@ -193,9 +192,7 @@ public class StreamingJsonWriter implements AutoCloseable {
     }
 
     public static class NoteEntry {
-        public final String text;
-        public final String date;
-        public final String issuerName;
+        public final String text, date, issuerName;
 
         public NoteEntry(String text, String date, String issuerName) {
             this.text = text;
@@ -205,13 +202,8 @@ public class StreamingJsonWriter implements AutoCloseable {
     }
 
     public static class IpEntry {
-        public final String ipAddress;
-        public final String country;
-        public final String region;
-        public final String asn;
-        public final Boolean proxy;
-        public final Boolean hosting;
-        public final String firstLogin;
+        public final String ipAddress, country, region, asn, firstLogin;
+        public final Boolean proxy, hosting;
         public final List<String> logins;
 
         public IpEntry(String ipAddress, String country, String region, String asn, 
@@ -228,19 +220,13 @@ public class StreamingJsonWriter implements AutoCloseable {
     }
 
     public static class PunishmentEntry {
-        public final String id;
-        public final String type;
-        public final int typeOrdinal;
-        public final String reason;
-        public final String issued;
-        public final String issuerName;
+        public final String id, type, reason, issued, issuerName, started;
         public final Long duration;
-        public final String started;
         public final Map<String, Object> data;
         public final List<Map<String, Object>> notes;
-        public final List<Object> evidence;
+        public final List<Object> evidence, modifications;
         public final List<String> attachedTicketIds;
-        public final List<Object> modifications;
+        public final int typeOrdinal;
 
         public PunishmentEntry(String id, String type, int typeOrdinal, String reason, String issued,
                               String issuerName, Long duration, String started, Map<String, Object> data,

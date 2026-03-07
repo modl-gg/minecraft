@@ -3,8 +3,8 @@ package gg.modl.minecraft.core.util;
 import co.aikar.commands.CommandIssuer;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.impl.cache.Cache;
+import gg.modl.minecraft.core.impl.cache.PlayerProfile;
 
-import java.util.List;
 import java.util.UUID;
 
 public class PermissionUtil {
@@ -23,17 +23,20 @@ public class PermissionUtil {
 
     public static SyncResponse.ActiveStaffMember getStaffMember(CommandIssuer issuer, Cache cache) {
         if (!issuer.isPlayer()) return null;
-        return cache.getStaffMember(issuer.getUniqueId());
+        PlayerProfile profile = cache.getPlayerProfile(issuer.getUniqueId());
+        return profile != null ? profile.getStaffMember() : null;
     }
 
     public static boolean isStaff(CommandIssuer issuer, Cache cache) {
         if (!issuer.isPlayer()) return false;
-        return !isStaff(issuer.getUniqueId(), cache);
+        return isStaff(issuer.getUniqueId(), cache);
     }
 
     public static boolean isStaff(UUID playerUuid, Cache cache) {
         if (cache == null) return false;
-        return cache.isStaffMemberByPermissions(playerUuid) || cache.isStaffMember(playerUuid);
+        if (cache.isStaffMemberByPermissions(playerUuid)) return true;
+        PlayerProfile profile = cache.getPlayerProfile(playerUuid);
+        return profile != null && profile.getStaffMember() != null;
     }
 
     public static String formatPunishmentPermission(String punishmentTypeName) {

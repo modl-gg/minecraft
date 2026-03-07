@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 
 public class ConfigManager {
-    private static final Yaml yaml = new Yaml();
 
     private final Path dataFolder;
     private final PluginLogger logger;
@@ -40,7 +39,7 @@ public class ConfigManager {
                 .replace("{player}", inGameName)
                 .replace("{panel-name}", panelName != null ? panelName : inGameName)
                 .replace("{message}", message)
-                .replace("&", "§");
+                .replace("&", "\u00a7");
         }
     }
 
@@ -89,21 +88,25 @@ public class ConfigManager {
             Map<?, ?> itemsMap = null;
             Path configFile = dataFolder.resolve("config.yml");
             if (Files.exists(configFile)) try (InputStream is = Files.newInputStream(configFile)) {
+                Yaml yaml = new Yaml();
                 Map<String, Object> root = yaml.load(is);
-                if (root != null && root.containsKey("punishment_type_items_by_ordinal"))
+                if (root != null && root.containsKey("punishment_type_items_by_ordinal")) {
                     itemsMap = (Map<?, ?>) root.get("punishment_type_items_by_ordinal");
+                }
             }
 
-            if (itemsMap != null) for (Map.Entry<?, ?> entry : itemsMap.entrySet())
+            if (itemsMap != null) for (Map.Entry<?, ?> entry : itemsMap.entrySet()) {
                 try {
                     int ordinal = entry.getKey() instanceof Integer ? (Integer) entry.getKey() : Integer.parseInt(entry.getKey().toString());
                     String itemId = entry.getValue().toString();
                     String[] parts = itemId.split(":");
                     if (parts.length > 2) itemId = parts[0] + ":" + parts[1];
                     items.put(ordinal, itemId);
-                } catch (NumberFormatException ignored) {}
-
+                } catch (NumberFormatException ignored) {
+                }
+            }
         } catch (Exception e) { logger.warning("Failed to load punishment type items: " + e.getMessage()); }
+
         return items;
     }
 
@@ -130,8 +133,12 @@ public class ConfigManager {
         if (data.containsKey("clear_lines")) {
             Object val = data.get("clear_lines");
             if (val instanceof Number) config.clearLines = ((Number) val).intValue();
-            else if (val instanceof String)
-                try { config.clearLines = Integer.parseInt((String) val); } catch (NumberFormatException ignored) {}
+            else if (val instanceof String) {
+                try {
+                    config.clearLines = Integer.parseInt((String) val);
+                } catch (NumberFormatException ignored) {
+                }
+            }
         }
 
         return config;
@@ -145,19 +152,22 @@ public class ConfigManager {
 
             Path configFile = dataFolder.resolve("config.yml");
             if (Files.exists(configFile)) try (InputStream is = Files.newInputStream(configFile)) {
+                Yaml yaml = new Yaml();
                 Map<String, Object> root = yaml.load(is);
-                if (root != null && root.containsKey("standing_gui"))
+                if (root != null && root.containsKey("standing_gui")) {
                     gui = (Map<String, Object>) root.get("standing_gui");
+                }
             }
 
 
             if (gui == null) {
                 Path dedicatedFile = dataFolder.resolve("standing_gui.yml");
                 if (Files.exists(dedicatedFile)) try (InputStream is = Files.newInputStream(dedicatedFile)) {
+                    Yaml yaml = new Yaml();
                     Map<String, Object> data = yaml.load(is);
-                    if (data != null && data.containsKey("standing_gui"))
+                    if (data != null && data.containsKey("standing_gui")) {
                         gui = (Map<String, Object>) data.get("standing_gui");
-                    else if (data != null) gui = data;
+                    } else if (data != null) gui = data;
                 }
             }
 
@@ -212,19 +222,25 @@ public class ConfigManager {
     @SuppressWarnings("unchecked")
     public static Map<String, Object> loadSection(Path dataFolder, String fileName, String sectionName, PluginLogger logger) {
         Path dedicatedFile = dataFolder.resolve(fileName);
-        if (Files.exists(dedicatedFile)) try (InputStream is = Files.newInputStream(dedicatedFile)) {
-            Map<String, Object> data = yaml.load(is);
-            if (data != null) return data;
-        } catch (Exception e) { logger.warning("Failed to load " + fileName + ": " + e.getMessage()); }
+        if (Files.exists(dedicatedFile)) {
+            try (InputStream is = Files.newInputStream(dedicatedFile)) {
+                Yaml yaml = new Yaml();
+                Map<String, Object> data = yaml.load(is);
+                if (data != null) return data;
+            } catch (Exception e) { logger.warning("Failed to load " + fileName + ": " + e.getMessage()); }
+        }
 
         Path configFile = dataFolder.resolve("config.yml");
-        if (Files.exists(configFile)) try (InputStream is = Files.newInputStream(configFile)) {
-            Map<String, Object> root = yaml.load(is);
-            if (root != null && root.containsKey(sectionName)) {
-                Object section = root.get(sectionName);
-                if (section instanceof Map) return (Map<String, Object>) section;
-            }
-        } catch (Exception e) { logger.warning("Failed to load " + sectionName + " from config.yml: " + e.getMessage()); }
+        if (Files.exists(configFile)) {
+            try (InputStream is = Files.newInputStream(configFile)) {
+                Yaml yaml = new Yaml();
+                Map<String, Object> root = yaml.load(is);
+                if (root != null && root.containsKey(sectionName)) {
+                    Object section = root.get(sectionName);
+                    if (section instanceof Map) return (Map<String, Object>) section;
+                }
+            } catch (Exception e) { logger.warning("Failed to load " + sectionName + " from config.yml: " + e.getMessage()); }
+        }
 
         return null;
     }
@@ -232,18 +248,21 @@ public class ConfigManager {
     private void createDefaultGuiConfigFiles() {
         for (String fileName : GUI_CONFIG_FILES) {
             Path target = dataFolder.resolve(fileName);
-            if (!Files.exists(target)) try (InputStream is = getClass().getResourceAsStream("/" + fileName)) {
-                if (is != null) {
-                    Files.copy(is, target);
-                    logger.info("Created default config file: " + fileName);
-                }
-            } catch (Exception e) { logger.warning("Failed to create " + fileName + ": " + e.getMessage()); }
+            if (!Files.exists(target)) {
+                try (InputStream is = getClass().getResourceAsStream("/" + fileName)) {
+                    if (is != null) {
+                        Files.copy(is, target);
+                        logger.info("Created default config file: " + fileName);
+                    }
+                } catch (Exception e) { logger.warning("Failed to create " + fileName + ": " + e.getMessage()); }
+            }
         }
     }
 
     private void mergeGuiConfigDefaults() {
-        for (String fileName : GUI_CONFIG_FILES)
+        for (String fileName : GUI_CONFIG_FILES) {
             YamlMergeUtil.mergeWithDefaults("/" + fileName, dataFolder.resolve(fileName), logger);
+        }
     }
 
     private void migrateGuiConfigsFromConfigYml() {
@@ -306,8 +325,9 @@ public class ConfigManager {
             content.add(line);
         }
 
-        while (!content.isEmpty() && content.get(content.size() - 1).isBlank())
+        while (!content.isEmpty() && content.get(content.size() - 1).isBlank()) {
             content.remove(content.size() - 1);
+        }
 
         if (content.isEmpty()) return null;
 
@@ -347,8 +367,10 @@ public class ConfigManager {
 
                     i++;
                 }
-                while (!result.isEmpty() && result.get(result.size() - 1).isBlank())
+
+                while (!result.isEmpty() && result.get(result.size() - 1).isBlank()) {
                     result.remove(result.size() - 1);
+                }
 
             } else {
                 result.add(lines.get(i));

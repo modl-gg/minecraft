@@ -16,20 +16,18 @@ import java.util.concurrent.TimeUnit;
 import gg.modl.minecraft.core.util.PluginLogger;
 
 public class UpdateCheckerService {
-    private static final String RELEASES_API_URL = "https://api.github.com/repos/modl-gg/minecraft/releases/latest";
-    private static final String RELEASES_PAGE_URL = "https://github.com/modl-gg/minecraft/releases";
-    private static final int DEFAULT_INTERVAL_MINUTES = 60;
-    private static final int MIN_INTERVAL_MINUTES = 1;
-    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(8);
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+    private static final String RELEASES_API_URL = "https://api.github.com/repos/modl-gg/minecraft/releases/latest",
+            RELEASES_PAGE_URL = "https://github.com/modl-gg/minecraft/releases";
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(8), REQUEST_TIMEOUT = Duration.ofSeconds(10);
+    private static final int DEFAULT_INTERVAL_MINUTES = 60, MIN_INTERVAL_MINUTES = 1;
 
     private final PluginLogger logger;
-    private final boolean debugMode;
     private final String currentVersion;
     private final HttpClient httpClient;
     private final Gson gson = new Gson();
 
     private volatile ScheduledExecutorService scheduler;
+    private final boolean debugMode;
     private volatile boolean isFirstRun = true;
 
     public UpdateCheckerService(PluginLogger logger, boolean debugMode, String currentVersion) {
@@ -128,8 +126,7 @@ public class UpdateCheckerService {
     }
 
     private static final class ReleaseInfo {
-        private final String tagName;
-        private final String downloadUrl;
+        private final String tagName, downloadUrl;
 
         private ReleaseInfo(String tagName, String downloadUrl) {
             this.tagName = tagName;

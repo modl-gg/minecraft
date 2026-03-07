@@ -28,15 +28,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.logging.Level;
 
 @Getter
 public class BungeePlugin extends Plugin {
-    private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg";
-    private static final String DEFAULT_BRIDGE_NAME = "bridge";
-    private static final int DEFAULT_BRIDGE_PORT = 25590;
-    private static final int MIN_SYNC_POLLING_RATE = 1;
-    private static final int DEFAULT_SYNC_POLLING_RATE = 2;
-    private static final int BSTATS_PLUGIN_ID = 29831;
+    private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg", DEFAULT_BRIDGE_NAME = "bridge";
+    private static final int DEFAULT_BRIDGE_PORT = 25590, MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2, BSTATS_PLUGIN_ID = 29831;
 
     private Configuration configuration;
     private PluginLoader loader;
@@ -80,13 +77,13 @@ public class BungeePlugin extends Plugin {
         getProxy().getPluginManager().registerListener(this, new BungeeListener(
                 platform, loader.getCache(), loader.getHttpClientHolder(), loader.getChatMessageCache(),
                 loader.getSyncService(), loader.getLocaleManager(),
-                loader.isDebugMode(), mutedCommands, this, loader.getStaffChatService(),
+                mutedCommands, this, loader.getStaffChatService(),
                 loader.getChatManagementService(), loader.getMaintenanceService(),
                 loader.getFreezeService(), loader.getNetworkChatInterceptService(),
                 loader.getChatCommandLogService(), loader.getStaff2faService(),
                 loader.getConfigManager().getStaffChatConfig(), loader.getLoginCache(),
-                loader.getVanishService(), loader.getStaffModeService(),
-                loader.getBridgeService()));
+                loader.getBridgeService(), loader.getPlayerProfileRegistry(),
+                loader.isDebugMode()));
 
         // Named class (not anonymous) to avoid BungeeCord EventBus reflection issues
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
@@ -192,14 +189,14 @@ public class BungeePlugin extends Plugin {
                 if (defaultConfig != null) Files.copy(defaultConfig, file.toPath());
                 else getLogger().warning("Default config resource not found in JAR");
             } catch (IOException e) {
-                e.printStackTrace();
+                getLogger().log(Level.SEVERE, "Failed to create default config file", e);
             }
         }
 
         try {
             configuration = ConfigurationProvider.getProvider(YamlConfiguration.class).load(file);
         } catch (IOException e) {
-            e.printStackTrace();
+            getLogger().log(Level.SEVERE, "Failed to load configuration", e);
         }
     }
 

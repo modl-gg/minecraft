@@ -10,9 +10,8 @@ import java.util.List;
 
 public class PunishmentTypeParser {
     private static final Gson gson = new Gson();
+    private static final String[] SEVERITY_LEVELS = {"low", "regular", "severe"}, OFFENSE_LEVELS = {"first", "medium", "habitual"};
     private static final int MAX_ADMINISTRATIVE_ORDINAL = 5;
-    private static final String[] SEVERITY_LEVELS = {"low", "regular", "severe"};
-    private static final String[] OFFENSE_LEVELS = {"first", "medium", "habitual"};
 
     public static void populateRegistry(List<PunishmentTypesResponse.PunishmentTypeData> types) {
         PunishmentTypeRegistry.registerAdministrativeTypes();
@@ -69,8 +68,7 @@ public class PunishmentTypeParser {
     }
 
     private static class DurationInfo {
-        final boolean hasBan;
-        final boolean hasMute;
+        final boolean hasBan, hasMute;
 
         DurationInfo(boolean hasBan, boolean hasMute) {
             this.hasBan = hasBan;

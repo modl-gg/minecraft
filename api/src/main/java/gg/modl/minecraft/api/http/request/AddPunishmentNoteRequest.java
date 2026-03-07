@@ -6,7 +6,5 @@ import lombok.NoArgsConstructor;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class AddPunishmentNoteRequest {
-    private String punishmentId;
-    private String issuerName;
-    private String note;
+    private String punishmentId, issuerName, note;
 }

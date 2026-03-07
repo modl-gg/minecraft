@@ -29,7 +29,8 @@ public final class PlayerHeadItemBuilder {
             if (earliest != null) firstLogin = MenuItems.formatDate(earliest);
         }
 
-        boolean isOnline = platform.getCache() != null && platform.getCache().isOnline(targetUuid);
+        gg.modl.minecraft.core.impl.cache.PlayerProfile targetProfile = platform.getCache() != null ? platform.getCache().getPlayerProfile(targetUuid) : null;
+        boolean isOnline = targetProfile != null;
         boolean isBanned = targetAccount.getPunishments().stream()
                 .anyMatch(p -> p.isActive() && p.isBanType());
         boolean isMuted = targetAccount.getPunishments().stream()
@@ -38,8 +39,8 @@ public final class PlayerHeadItemBuilder {
         boolean realIpLogged = !targetAccount.getIpList().isEmpty();
 
         String lastSeenOrSessionTime = "N/A";
-        if (isOnline && platform.getCache() != null) {
-            long sessionMs = platform.getCache().getSessionDuration(targetUuid);
+        if (isOnline) {
+            long sessionMs = targetProfile.getSessionDuration();
             lastSeenOrSessionTime = MenuItems.formatDuration(sessionMs);
         } else if (!targetAccount.getUsernames().isEmpty()) {
             Date latest = targetAccount.getUsernames().stream()
@@ -53,7 +54,6 @@ public final class PlayerHeadItemBuilder {
         String server = "Unknown";
         if (isOnline) server = platform.getPlayerServer(targetUuid);
         else {
-            targetAccount.getData();
             Object lastServer = targetAccount.getData().get("lastServer");
             if (lastServer instanceof String) server = (String) lastServer;
         }
@@ -67,12 +67,11 @@ public final class PlayerHeadItemBuilder {
         }
 
         String playtime = "N/A";
-        targetAccount.getData();
         Object playtimeObj = targetAccount.getData().get("totalPlaytimeSeconds");
         long totalSeconds = 0;
         if (playtimeObj instanceof Number) totalSeconds = ((Number) playtimeObj).longValue();
-        if (isOnline && platform.getCache() != null) {
-            totalSeconds += platform.getCache().getSessionDuration(targetUuid) / 1000;
+        if (isOnline) {
+            totalSeconds += targetProfile.getSessionDuration() / 1000;
         }
         if (totalSeconds > 0) {
             long hours = totalSeconds / 3600;

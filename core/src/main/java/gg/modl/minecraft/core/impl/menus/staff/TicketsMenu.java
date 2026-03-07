@@ -63,27 +63,26 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
     }
 
     private void fetchTickets() {
-        httpClient.getTickets(null, null).thenAccept(response -> {
-            if (response.isSuccess() && response.getTickets() != null) {
-                tickets.clear();
-                for (var ticket : response.getTickets()) {
-                    if ("Unfinished".equalsIgnoreCase(ticket.getStatus())) {
-                        continue;
+        try {
+            httpClient.getTickets(null, null).thenAccept(response -> {
+                if (response.isSuccess() && response.getTickets() != null) {
+                    tickets.clear();
+                    for (var ticket : response.getTickets()) {
+                        if ("Unfinished".equalsIgnoreCase(ticket.getStatus())) {
+                            continue;
+                        }
+                        tickets.add(new Ticket(
+                                ticket.getId(),
+                                ticket.getPlayerName(),
+                                ticket.getSubject(),
+                                ticket.getCreatedAt(),
+                                ticket.getStatus(),
+                                ticket.isHasStaffResponse()
+                        ));
                     }
-                    tickets.add(new Ticket(
-                            ticket.getId(),
-                            ticket.getPlayerName(),
-                            ticket.getSubject(),
-                            ticket.getCreatedAt(),
-                            ticket.getStatus(),
-                            ticket.isHasStaffResponse()
-                    ));
                 }
-            }
-        }).exceptionally(e -> {
-            // fail to fetch, list remains empty
-            return null;
-        });
+            }).join();
+        } catch (Exception ignored) {}
     }
 
     public TicketsMenu withFilter(String filter) {

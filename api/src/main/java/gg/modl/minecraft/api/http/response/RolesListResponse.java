@@ -8,8 +8,8 @@ import java.util.List;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class RolesListResponse {
-    private int status;
     private List<RoleEntry> roles;
+    private int status;
 
     public boolean isSuccess() {
         return status >= 200 && status < 300;
@@ -17,9 +17,7 @@ public class RolesListResponse {
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class RoleEntry {
-        private String id;
-        private String name;
-        private String description;
+        private String id, name, description;
         private List<String> permissions;
         private boolean isDefault;
         private int order;

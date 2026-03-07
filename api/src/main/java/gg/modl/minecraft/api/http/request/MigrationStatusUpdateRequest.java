@@ -6,9 +6,6 @@ import org.jetbrains.annotations.Nullable;
 
 @Data
 public class MigrationStatusUpdateRequest {
-    private @NotNull final String taskId;
-    private @NotNull final String status;
-    private @NotNull final String message;
-    private @Nullable final Integer recordsProcessed;
-    private @Nullable final Integer totalRecords;
+    private @NotNull final String taskId, status, message;
+    private @Nullable final Integer recordsProcessed, totalRecords;
 }
