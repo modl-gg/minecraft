@@ -21,7 +21,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public class SpigotPlugin extends JavaPlugin {
     private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg", BRIDGE_PLUGIN_NAME = "modl-bridge", DEFAULT_BRIDGE_NAME = "bridge";
@@ -124,9 +126,43 @@ public class SpigotPlugin extends JavaPlugin {
 
         BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
                 platform, loader.getLocaleManager(), loader.getFreezeService(),
-                loader.getStaffModeService(), loader.getVanishService(), pluginLogger);
+                loader.getStaffModeService(), loader.getVanishService(),
+                loader.getHttpClient(), pluginLogger);
         queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
         loader.getBridgeService().setExecutor(queryStatWipeExecutor);
+    }
+
+    /**
+     * Creates a report ticket via the modl HTTP API. Called by the modl-bridge plugin
+     * via reflection (same-server setup).
+     */
+    public CompletableFuture<Boolean> createTicketFromBridge(
+            String creatorUuid, String creatorName, String type,
+            String subject, String description,
+            String reportedPlayerUuid, String reportedPlayerName,
+            String tagsJoined, String priority, String createdServer) {
+        if (loader == null) return CompletableFuture.completedFuture(false);
+
+        List<String> tags = tagsJoined.isEmpty() ? List.of() : Arrays.asList(tagsJoined.split(","));
+        gg.modl.minecraft.api.http.request.CreateTicketRequest request =
+                new gg.modl.minecraft.api.http.request.CreateTicketRequest(
+                        creatorUuid, type, creatorName, subject, description,
+                        reportedPlayerUuid, reportedPlayerName, priority, createdServer,
+                        null, tags
+                );
+
+        return loader.getHttpClient().createTicket(request).thenApply(response -> {
+            if (response.isSuccess()) {
+                getLogger().info("[bridge] Report ticket created: " + response.getTicketId());
+                return true;
+            } else {
+                getLogger().warning("[bridge] Failed to create report ticket: " + response.getMessage());
+                return false;
+            }
+        }).exceptionally(throwable -> {
+            getLogger().warning("[bridge] Error creating report ticket: " + throwable.getMessage());
+            return false;
+        });
     }
 
     private void initializePacketEvents() {

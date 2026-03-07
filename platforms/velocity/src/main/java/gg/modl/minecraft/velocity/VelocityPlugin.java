@@ -155,7 +155,8 @@ public final class VelocityPlugin {
 
         BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
                 platform, pluginLoader.getLocaleManager(), pluginLoader.getFreezeService(),
-                pluginLoader.getStaffModeService(), pluginLoader.getVanishService(), pluginLogger);
+                pluginLoader.getStaffModeService(), pluginLoader.getVanishService(),
+                pluginLoader.getHttpClient(), pluginLogger);
         queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
         pluginLoader.getBridgeService().setExecutor(queryStatWipeExecutor);
     }

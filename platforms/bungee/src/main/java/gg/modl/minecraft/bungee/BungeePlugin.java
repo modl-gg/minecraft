@@ -125,7 +125,8 @@ public class BungeePlugin extends Plugin {
 
         BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
                 platform, loader.getLocaleManager(), loader.getFreezeService(),
-                loader.getStaffModeService(), loader.getVanishService(), pluginLogger);
+                loader.getStaffModeService(), loader.getVanishService(),
+                loader.getHttpClient(), pluginLogger);
         queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
         loader.getBridgeService().setExecutor(queryStatWipeExecutor);
     }

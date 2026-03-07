@@ -1,5 +1,7 @@
 package gg.modl.minecraft.core.query;
 
+import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.FreezeService;
@@ -7,6 +9,8 @@ import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.service.VanishService;
 
 import java.io.DataInputStream;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import gg.modl.minecraft.core.util.PluginLogger;
@@ -17,16 +21,19 @@ public class BridgeMessageDispatcher {
     private final FreezeService freezeService;
     private final StaffModeService staffModeService;
     private final VanishService vanishService;
+    private final ModlHttpClient httpClient;
     private final PluginLogger logger;
 
     public BridgeMessageDispatcher(Platform platform, LocaleManager localeManager,
                                     FreezeService freezeService, StaffModeService staffModeService,
-                                    VanishService vanishService, PluginLogger logger) {
+                                    VanishService vanishService, ModlHttpClient httpClient,
+                                    PluginLogger logger) {
         this.platform = platform;
         this.localeManager = localeManager;
         this.freezeService = freezeService;
         this.staffModeService = staffModeService;
         this.vanishService = vanishService;
+        this.httpClient = httpClient;
         this.logger = logger;
     }
 
@@ -44,6 +51,7 @@ public class BridgeMessageDispatcher {
                 case "OPEN_STAFF_MENU" -> handleOpenStaffMenu(data);
                 case "OPEN_INSPECT_MENU" -> handleOpenInspectMenu(data);
                 case "PROXY_CMD" -> handleProxyCmd(data);
+                case "CREATE_REPORT" -> handleCreateReport(data);
                 default -> logger.debug("[bridge] Unknown action: " + action);
             }
         } catch (Exception e) {
@@ -138,5 +146,39 @@ public class BridgeMessageDispatcher {
         String command = data.readUTF();
         logger.info("[bridge] Executing proxy command: " + command);
         platform.dispatchConsoleCommand(command);
+    }
+
+    private void handleCreateReport(DataInputStream data) throws Exception {
+        String creatorUuid = data.readUTF();
+        String creatorName = data.readUTF();
+        String type = data.readUTF();
+        String subject = data.readUTF();
+        String description = data.readUTF();
+        String reportedPlayerUuid = data.readUTF();
+        String reportedPlayerName = data.readUTF();
+        String tagsJoined = data.readUTF();
+        String priority = data.readUTF();
+        String createdServer = data.readUTF();
+
+        List<String> tags = tagsJoined.isEmpty() ? List.of() : Arrays.asList(tagsJoined.split(","));
+
+        CreateTicketRequest request = new CreateTicketRequest(
+                creatorUuid, type, creatorName, subject, description,
+                reportedPlayerUuid, reportedPlayerName, priority, createdServer,
+                null, tags
+        );
+
+        logger.info("[bridge] Creating report ticket for " + reportedPlayerName + ": " + subject);
+
+        httpClient.createTicket(request).thenAccept(response -> {
+            if (response.isSuccess()) {
+                logger.info("[bridge] Report ticket created: " + response.getTicketId());
+            } else {
+                logger.warning("[bridge] Failed to create report ticket: " + response.getMessage());
+            }
+        }).exceptionally(throwable -> {
+            logger.warning("[bridge] Error creating report ticket: " + throwable.getMessage());
+            return null;
+        });
     }
 }
