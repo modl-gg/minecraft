@@ -109,7 +109,7 @@ public final class VelocityPlugin {
                 pluginLoader.getChatMessageCache(), platform, pluginLoader.getSyncService(),
                 pluginLoader.getLocaleManager(), pluginLoader.getMaintenanceService(),
                 pluginLoader.getStaff2faService(), pluginLoader.getBridgeService(),
-                pluginLoader.getPlayerProfileRegistry(),
+                pluginLoader.getCachedProfileRegistry(),
                 pluginLoader.isDebugMode()));
         server.getEventManager().register(this, new ChatListener(
                 platform, pluginLoader.getCache(), pluginLoader.getChatMessageCache(),

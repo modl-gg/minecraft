@@ -57,7 +57,8 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
     }
 
     private void fetchRoles() {
-        httpClient.getRoles().thenAccept(response -> {
+        try {
+            RolesListResponse response = httpClient.getRoles().join();
             if (response != null && response.getRoles() != null) {
                 roles.clear();
                 for (RolesListResponse.RoleEntry entry : response.getRoles()) {
@@ -72,7 +73,7 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
                     ));
                 }
             }
-        }).exceptionally(e -> null);
+        } catch (Exception ignored) {}
     }
 
     @Override

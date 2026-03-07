@@ -52,24 +52,15 @@ public class NotesCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
-        httpClientHolder.getClient().lookupPlayer(request).thenAccept(response -> {
-            if (response.isSuccess() && response.getData() != null) {
-                UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
-
-                httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
-                    if (profileResponse.getStatus() == 200) {
-                        String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
-                        NotesMenu menu = new NotesMenu(
-                            platform, httpClientHolder.getClient(), senderUuid, senderName,
-                            profileResponse.getProfile(), null
-                        );
-                        CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-                        menu.display(player);
-                    } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
-                }).exceptionally(throwable -> {
-                    CommandUtil.handleException(sender, throwable, localeManager);
-                    return null;
-                });
+        httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
+            if (profileResponse.getStatus() == 200) {
+                String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
+                NotesMenu menu = new NotesMenu(
+                    platform, httpClientHolder.getClient(), senderUuid, senderName,
+                    profileResponse.getProfile(), null
+                );
+                CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+                menu.display(player);
             } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
             CommandUtil.handleException(sender, throwable, localeManager);
@@ -82,20 +73,12 @@ public class NotesCommand extends BaseCommand {
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
 
-        httpClientHolder.getClient().lookupPlayer(request).thenAccept(response -> {
-            if (response.isSuccess() && response.getData() != null) {
-                String playerName = response.getData().getCurrentUsername();
-                UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
-
-                httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
-                    if (profileResponse.getStatus() == 200) {
-                        Account profile = profileResponse.getProfile();
-                        displayNotes(sender, playerName, profile, page);
-                    } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
-                }).exceptionally(throwable -> {
-                    CommandUtil.handleException(sender, throwable, localeManager);
-                    return null;
-                });
+        httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
+            if (profileResponse.getStatus() == 200) {
+                Account profile = profileResponse.getProfile();
+                List<Account.Username> usernames = profile.getUsernames();
+                String playerName = !usernames.isEmpty() ? usernames.get(usernames.size() - 1).getUsername() : playerQuery;
+                displayNotes(sender, playerName, profile, page);
             } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
             CommandUtil.handleException(sender, throwable, localeManager);

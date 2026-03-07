@@ -1,8 +1,8 @@
 package gg.modl.minecraft.core.service;
 
 import gg.modl.minecraft.core.config.ConfigManager.Staff2faConfig;
-import gg.modl.minecraft.core.cache.PlayerProfile;
-import gg.modl.minecraft.core.cache.PlayerProfileRegistry;
+import gg.modl.minecraft.core.cache.CachedProfile;
+import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 import lombok.Setter;
 
 import java.util.UUID;
@@ -17,10 +17,10 @@ public class Staff2faService {
         AUTHENTICATED
     }
 
-    private final PlayerProfileRegistry registry;
+    private final CachedProfileRegistry registry;
     @Setter private volatile Staff2faConfig config;
 
-    public Staff2faService(PlayerProfileRegistry registry, Staff2faConfig config) {
+    public Staff2faService(CachedProfileRegistry registry, Staff2faConfig config) {
         this.registry = registry;
         this.config = config;
     }
@@ -31,7 +31,7 @@ public class Staff2faService {
 
     public boolean isAuthenticated(UUID uuid) {
         if (!isEnabled()) return true;
-        PlayerProfile profile = registry.getProfile(uuid);
+        CachedProfile profile = registry.getProfile(uuid);
         return profile != null && profile.getAuthState() == AuthState.AUTHENTICATED;
     }
 
@@ -40,12 +40,12 @@ public class Staff2faService {
      * otherwise placed in PENDING until the backend session is validated.
      */
     public void onStaffJoin(UUID uuid) {
-        PlayerProfile profile = registry.getProfile(uuid);
+        CachedProfile profile = registry.getProfile(uuid);
         if (profile != null) profile.setAuthState(isEnabled() ? AuthState.PENDING : AuthState.AUTHENTICATED);
     }
 
     public void handleVerification(UUID uuid) {
-        PlayerProfile profile = registry.getProfile(uuid);
+        CachedProfile profile = registry.getProfile(uuid);
         if (profile != null) {
             profile.setAuthState(AuthState.AUTHENTICATED);
             profile.setTwoFaNotified(false);
@@ -54,7 +54,7 @@ public class Staff2faService {
 
     /** @return true if this is the first notification (was not already notified) */
     public boolean markNotified(UUID uuid) {
-        PlayerProfile profile = registry.getProfile(uuid);
+        CachedProfile profile = registry.getProfile(uuid);
         if (profile == null) return false;
         if (profile.isTwoFaNotified()) return false;
         profile.setTwoFaNotified(true);
@@ -62,7 +62,7 @@ public class Staff2faService {
     }
 
     public AuthState getAuthState(UUID uuid) {
-        PlayerProfile profile = registry.getProfile(uuid);
+        CachedProfile profile = registry.getProfile(uuid);
         return profile != null ? profile.getAuthState() : null;
     }
 }

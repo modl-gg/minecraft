@@ -16,12 +16,14 @@ import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
 import gg.modl.minecraft.api.http.response.LinkedAccountsResponse;
 import gg.modl.minecraft.api.http.response.PlayerLookupResponse;
+import gg.modl.minecraft.api.http.response.PlayerProfileResponse;
 import gg.modl.minecraft.api.http.response.PunishmentDetailResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
+import gg.modl.minecraft.core.impl.menus.util.InspectContext;
 import gg.modl.minecraft.core.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
@@ -76,24 +78,20 @@ public class InspectCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
-        httpClientHolder.getClient().lookupPlayer(request).thenAccept(response -> {
-            if (response.isSuccess() && response.getData() != null) {
-                UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
-
-                httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
-                    if (profileResponse.getStatus() == 200) {
-                        String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
-                        InspectMenu menu = new InspectMenu(
-                            platform, httpClientHolder.getClient(), senderUuid, senderName,
-                            profileResponse.getProfile(), null
-                        );
-                        CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-                        menu.display(player);
-                    } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
-                }).exceptionally(throwable -> {
-                    CommandUtil.handleException(sender, throwable, localeManager);
-                    return null;
-                });
+        httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
+            if (profileResponse.getStatus() == 200) {
+                String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
+                InspectContext context = new InspectContext(
+                    profileResponse.getProfile(),
+                    profileResponse.getPunishmentCount(),
+                    profileResponse.getNoteCount()
+                );
+                InspectMenu menu = new InspectMenu(
+                    platform, httpClientHolder.getClient(), senderUuid, senderName,
+                    profileResponse.getProfile(), null, context
+                );
+                CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+                menu.display(player);
             } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
             CommandUtil.handleException(sender, throwable, localeManager);
@@ -199,7 +197,7 @@ public class InspectCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("print.inspect.uuid", Map.of("player", playerName, "uuid", data.getMinecraftUuid())));
 
         UUID playerUuid = UUID.fromString(data.getMinecraftUuid());
-        PlayerProfile targetProfile = cache.getPlayerProfile(playerUuid);
+        CachedProfile targetProfile = cache.getPlayerProfile(playerUuid);
         boolean isBanned = targetProfile != null && targetProfile.isBanned();
         boolean isMuted = targetProfile != null && targetProfile.isMuted();
 
@@ -256,7 +254,7 @@ public class InspectCommand extends BaseCommand {
                     ? account.getUsernames().get(account.getUsernames().size() - 1).getUsername()
                     : Constants.UNKNOWN;
 
-                PlayerProfile accountProfile = account.getMinecraftUuid() != null ? cache.getPlayerProfile(account.getMinecraftUuid()) : null;
+                CachedProfile accountProfile = account.getMinecraftUuid() != null ? cache.getPlayerProfile(account.getMinecraftUuid()) : null;
                 boolean accountBanned = accountProfile != null && accountProfile.isBanned();
                 boolean accountMuted = accountProfile != null && accountProfile.isMuted();
 

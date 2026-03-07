@@ -10,7 +10,7 @@ import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatCommandLogService;
@@ -208,7 +208,7 @@ public class SyncService {
     private List<SyncRequest.OnlinePlayer> buildOnlinePlayersList(Collection<AbstractPlayer> onlinePlayers) {
         return onlinePlayers.stream()
                 .map(player -> {
-                    PlayerProfile profile = cache.getPlayerProfile(player.getUuid());
+                    CachedProfile profile = cache.getPlayerProfile(player.getUuid());
                     long sessionDuration = profile != null ? profile.getSessionDuration() : 0;
                     return new SyncRequest.OnlinePlayer(
                             player.getUuid().toString(),
@@ -245,7 +245,7 @@ public class SyncService {
             } catch (IllegalArgumentException ignored) {}
         }
 
-        for (PlayerProfile profile : cache.getRegistry().getAllProfiles()) {
+        for (CachedProfile profile : cache.getRegistry().getAllProfiles()) {
             if (profile.getStaffMember() != null && !activeStaffUuids.contains(profile.getUuid())) {
                 profile.setStaffMember(null);
                 cache.removeStaffPermissions(profile.getUuid());
@@ -268,7 +268,7 @@ public class SyncService {
                 "Punishment types", this::refreshPunishmentTypes, ts -> lastKnownPunishmentTypesTimestamp = ts);
 
         if (syncCycleCount.incrementAndGet() % MAINTENANCE_CYCLE_INTERVAL == 0) {
-            for (PlayerProfile profile : cache.getRegistry().getAllProfiles()) {
+            for (CachedProfile profile : cache.getRegistry().getAllProfiles()) {
                 profile.cleanupExpiredNotifications();
             }
             platform.getChatInputManager().cleanupExpired();
@@ -448,7 +448,7 @@ public class SyncService {
     }
 
     private void updateStaffMemberCache(UUID uuid, SyncResponse.ActiveStaffMember staffMember) {
-        PlayerProfile profile = cache.getPlayerProfile(uuid);
+        CachedProfile profile = cache.getPlayerProfile(uuid);
         if (profile == null) return;
 
         SyncResponse.ActiveStaffMember existing = profile.getStaffMember();

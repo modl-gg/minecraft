@@ -3,7 +3,7 @@ package gg.modl.minecraft.core.util;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatCommandLogService;
@@ -69,7 +69,7 @@ public final class ChatEventHandler {
             return Result.CANCELLED;
         }
 
-        PlayerProfile senderProfile = cache.getPlayerProfile(senderUuid);
+        CachedProfile senderProfile = cache.getPlayerProfile(senderUuid);
         if (senderProfile != null && senderProfile.isMuted()) {
             sendMessage.accept(PunishmentMessages.getMuteMessage(senderProfile.getActiveMute(), localeManager));
             return Result.CANCELLED;

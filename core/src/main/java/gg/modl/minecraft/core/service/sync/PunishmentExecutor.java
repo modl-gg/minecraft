@@ -9,7 +9,7 @@ import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 
@@ -85,7 +85,7 @@ class PunishmentExecutor {
 
     private boolean executeMute(UUID uuid, String username, SimplePunishment punishment) {
         try {
-            PlayerProfile profile = cache.getPlayerProfile(uuid);
+            CachedProfile profile = cache.getPlayerProfile(uuid);
             if (profile != null) profile.setActiveMute(punishment);
             platform.broadcast(PunishmentMessages.formatPunishmentBroadcast(username, punishment, localeManager));
             if (debugMode) logger.info("Executed mute for " + username + ": " + punishment.getDescription());
@@ -153,7 +153,7 @@ class PunishmentExecutor {
     }
 
     private void handlePardon(UUID uuid, String username, String punishmentId) {
-        PlayerProfile profile = cache.getPlayerProfile(uuid);
+        CachedProfile profile = cache.getPlayerProfile(uuid);
         if (profile != null) {
             boolean matched = removeCachedPunishmentById(profile, punishmentId);
             if (!matched) {
@@ -165,7 +165,7 @@ class PunishmentExecutor {
     }
 
     /** @return true if a cached mute or ban matched the punishment ID and was removed */
-    private boolean removeCachedPunishmentById(PlayerProfile profile, String punishmentId) {
+    private boolean removeCachedPunishmentById(CachedProfile profile, String punishmentId) {
         boolean removed = false;
         SimplePunishment cachedMute = profile.getActiveMute();
         if (cachedMute != null && cachedMute.getId().equals(punishmentId)) {
@@ -185,7 +185,7 @@ class PunishmentExecutor {
         long baseTime = (modificationTimestamp != null) ? modificationTimestamp : System.currentTimeMillis();
         Long newExpiration = (newDuration != null && newDuration > 0) ? baseTime + newDuration : null;
 
-        PlayerProfile profile = cache.getPlayerProfile(uuid);
+        CachedProfile profile = cache.getPlayerProfile(uuid);
         if (profile != null) {
             updateCachedExpiration(profile.getActiveMute(), punishmentId, newExpiration);
             updateCachedExpiration(profile.getActiveBan(), punishmentId, newExpiration);

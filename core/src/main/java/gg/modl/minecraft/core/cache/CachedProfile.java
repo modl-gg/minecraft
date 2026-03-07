@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 12+ separate ConcurrentHashMaps in Cache and various service classes.
  */
 @Getter
-public class PlayerProfile {
+public class CachedProfile {
     private final UUID uuid;
     private final long joinTime = System.currentTimeMillis();
 
@@ -45,7 +45,7 @@ public class PlayerProfile {
     @Setter private volatile long lastChatMessageTime;
     private final CooldownTracker cooldowns = new CooldownTracker();
 
-    public PlayerProfile(UUID uuid) {
+    public CachedProfile(UUID uuid) {
         this.uuid = uuid;
     }
 

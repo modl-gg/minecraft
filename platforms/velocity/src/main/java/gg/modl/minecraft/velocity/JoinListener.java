@@ -12,7 +12,7 @@ import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.cache.PlayerProfileRegistry;
+import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.ChatMessageCache;
@@ -45,7 +45,7 @@ public class JoinListener {
     private final MaintenanceService maintenanceService;
     private final Staff2faService staff2faService;
     private final BridgeService bridgeService;
-    private final PlayerProfileRegistry registry;
+    private final CachedProfileRegistry registry;
     private final boolean debugMode;
 
     /** Buffers login responses between onLogin and onPostLogin so profile exists before caching. */
@@ -57,7 +57,7 @@ public class JoinListener {
                         ChatMessageCache chatMessageCache, Platform platform, SyncService syncService,
                         LocaleManager localeManager, MaintenanceService maintenanceService,
                         Staff2faService staff2faService, BridgeService bridgeService,
-                        PlayerProfileRegistry registry, boolean debugMode) {
+                        CachedProfileRegistry registry, boolean debugMode) {
         this.httpClientHolder = httpClientHolder;
         this.cache = cache;
         this.logger = logger;

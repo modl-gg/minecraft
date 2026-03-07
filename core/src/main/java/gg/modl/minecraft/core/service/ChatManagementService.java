@@ -1,7 +1,7 @@
 package gg.modl.minecraft.core.service;
 
-import gg.modl.minecraft.core.cache.PlayerProfile;
-import gg.modl.minecraft.core.cache.PlayerProfileRegistry;
+import gg.modl.minecraft.core.cache.CachedProfile;
+import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 import lombok.Getter;
 
 import java.util.UUID;
@@ -14,11 +14,11 @@ import java.util.UUID;
 public class ChatManagementService {
     private static final long MILLIS_PER_SECOND = 1000L;
 
-    private final PlayerProfileRegistry registry;
+    private final CachedProfileRegistry registry;
     @Getter private volatile boolean chatEnabled = true;
     private volatile int slowModeSeconds = 0;
 
-    public ChatManagementService(PlayerProfileRegistry registry) {
+    public ChatManagementService(CachedProfileRegistry registry) {
         this.registry = registry;
     }
 
@@ -41,7 +41,7 @@ public class ChatManagementService {
         if (!chatEnabled) return false;
         if (slowModeSeconds <= 0) return true;
 
-        PlayerProfile profile = registry.getProfile(playerUuid);
+        CachedProfile profile = registry.getProfile(playerUuid);
         if (profile == null) return true;
 
         long lastTime = profile.getLastChatMessageTime();
@@ -56,7 +56,7 @@ public class ChatManagementService {
     /** @return seconds remaining before the player can send again, or 0 */
     public int getSlowModeRemaining(UUID playerUuid) {
         if (slowModeSeconds <= 0) return 0;
-        PlayerProfile profile = registry.getProfile(playerUuid);
+        CachedProfile profile = registry.getProfile(playerUuid);
         if (profile == null) return 0;
 
         long lastTime = profile.getLastChatMessageTime();

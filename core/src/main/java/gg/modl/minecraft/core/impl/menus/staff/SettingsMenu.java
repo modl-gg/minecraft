@@ -8,7 +8,7 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -73,7 +73,7 @@ public class SettingsMenu extends BaseStaffMenu {
         ).slot(MenuSlots.SETTINGS_INFO));
 
         Cache cache = platform.getCache();
-        PlayerProfile viewerProfile = cache != null ? cache.getPlayerProfile(viewerUuid) : null;
+        CachedProfile viewerProfile = cache != null ? cache.getPlayerProfile(viewerUuid) : null;
         boolean staffNotificationsEnabled = viewerProfile != null && viewerProfile.isStaffNotificationsEnabled();
         set(CirrusItem.of(
                 staffNotificationsEnabled ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
@@ -157,7 +157,7 @@ public class SettingsMenu extends BaseStaffMenu {
 
     private void handleToggleNotifications(Click click) {
         Cache cache = platform.getCache();
-        PlayerProfile profile = cache != null ? cache.getPlayerProfile(viewerUuid) : null;
+        CachedProfile profile = cache != null ? cache.getPlayerProfile(viewerUuid) : null;
         if (profile != null) {
             boolean currentValue = profile.isStaffNotificationsEnabled();
             profile.setStaffNotificationsEnabled(!currentValue);

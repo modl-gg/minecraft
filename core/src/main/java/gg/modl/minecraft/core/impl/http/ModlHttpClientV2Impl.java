@@ -36,6 +36,8 @@ import gg.modl.minecraft.api.http.response.DashboardStatsResponse;
 import gg.modl.minecraft.api.http.response.EvidenceUploadTokenResponse;
 import gg.modl.minecraft.api.http.response.LinkedAccountsResponse;
 import gg.modl.minecraft.api.http.response.OnlinePlayersResponse;
+import gg.modl.minecraft.api.http.response.PaginatedNotesResponse;
+import gg.modl.minecraft.api.http.response.PaginatedPunishmentsResponse;
 import gg.modl.minecraft.api.http.response.PardonResponse;
 import gg.modl.minecraft.api.http.response.PlayerGetResponse;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
@@ -121,7 +123,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
 
     @NotNull @Override
     public CompletableFuture<PlayerProfileResponse> getPlayerProfile(@NotNull UUID uuid) {
-        return sendAsync(requestBuilder("/minecraft/players/" + uuid)
+        return sendAsync(requestBuilder("/minecraft/players/" + uuid + "?punishmentLimit=14&noteLimit=14")
                 .GET()
                 .build(), PlayerProfileResponse.class);
     }
@@ -267,6 +269,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
                 .build(), PlayerLookupResponse.class);
+    }
+
+    @NotNull @Override
+    public CompletableFuture<PlayerProfileResponse> lookupPlayerProfile(@NotNull PlayerLookupRequest request) {
+        return sendAsync(requestBuilder("/minecraft/players/lookup-profile?punishmentLimit=14&noteLimit=14")
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                .build(), PlayerProfileResponse.class);
     }
 
     @NotNull @Override
@@ -614,6 +624,27 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         return sendAsync(requestBuilder("/minecraft/players/" + playerUuid + "/command-logs?limit=" + limit)
                 .GET()
                 .build(), CommandLogsResponse.class);
+    }
+
+    @NotNull @Override
+    public CompletableFuture<PaginatedPunishmentsResponse> getPlayerPunishments(@NotNull UUID uuid, int page, int limit) {
+        return sendAsync(requestBuilder("/minecraft/players/" + uuid + "/punishments?page=" + page + "&limit=" + limit)
+                .GET()
+                .build(), PaginatedPunishmentsResponse.class);
+    }
+
+    @NotNull @Override
+    public CompletableFuture<PaginatedNotesResponse> getPlayerNotes(@NotNull UUID uuid, int page, int limit) {
+        return sendAsync(requestBuilder("/minecraft/players/" + uuid + "/notes?page=" + page + "&limit=" + limit)
+                .GET()
+                .build(), PaginatedNotesResponse.class);
+    }
+
+    @NotNull @Override
+    public CompletableFuture<LinkedAccountsResponse> getLinkedAccounts(@NotNull UUID uuid, int page, int limit) {
+        return sendAsync(requestBuilder("/minecraft/players/" + uuid + "/linked-accounts?page=" + page + "&limit=" + limit)
+                .GET()
+                .build(), LinkedAccountsResponse.class);
     }
 
     private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {

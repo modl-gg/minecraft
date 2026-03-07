@@ -20,7 +20,7 @@ public class Cache {
     private static final long TEXTURE_TTL_MS = 10 * 60 * 1000;
     private static final int TEXTURE_CACHE_MAX_SIZE = 500;
 
-    @Getter private final PlayerProfileRegistry registry;
+    @Getter private final CachedProfileRegistry registry;
     private final Map<UUID, StaffPermissions> staffPermissionsCache = new ConcurrentHashMap<>();
     private final Map<UUID, CachedTexture> skinTextureCache = new ConcurrentHashMap<>();
     @Getter private volatile PunishmentTypesResponse cachedPunishmentTypes;
@@ -30,7 +30,7 @@ public class Cache {
 
     @Getter @Setter private boolean queryMojang;
 
-    public PlayerProfile getPlayerProfile(UUID uuid) {
+    public CachedProfile getPlayerProfile(UUID uuid) {
         return registry.getProfile(uuid);
     }
 
@@ -73,7 +73,7 @@ public class Cache {
     }
 
     public String getStaffDisplayName(UUID playerUuid) {
-        PlayerProfile profile = registry.getProfile(playerUuid);
+        CachedProfile profile = registry.getProfile(playerUuid);
         if (profile != null) {
             SyncResponse.ActiveStaffMember staff = profile.getStaffMember();
             if (staff != null && !staff.getStaffUsername().isEmpty()) return staff.getStaffUsername();
@@ -85,7 +85,7 @@ public class Cache {
     }
 
     public String getStaffId(UUID playerUuid) {
-        PlayerProfile profile = registry.getProfile(playerUuid);
+        CachedProfile profile = registry.getProfile(playerUuid);
         if (profile != null) {
             SyncResponse.ActiveStaffMember staff = profile.getStaffMember();
             if (staff != null) return staff.getStaffId();
@@ -105,7 +105,7 @@ public class Cache {
         StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
         if (staffPerms != null) return checkRoleAndPermissions(staffPerms.getStaffRole(), staffPerms.getPermissions(), permission);
 
-        PlayerProfile profile = registry.getProfile(playerUuid);
+        CachedProfile profile = registry.getProfile(playerUuid);
         if (profile != null) {
             SyncResponse.ActiveStaffMember staffMember = profile.getStaffMember();
             if (staffMember != null) return checkRoleAndPermissions(staffMember.getStaffRole(), staffMember.getPermissions(), permission);
@@ -155,17 +155,10 @@ public class Cache {
         punishmentTypeItems = null;
     }
 
-    @Getter
+    @Getter @RequiredArgsConstructor
     public static class StaffPermissions {
         private final String staffUsername, staffId, staffRole;
         private final List<String> permissions;
-
-        public StaffPermissions(String staffUsername, String staffId, String staffRole, List<String> permissions) {
-            this.staffUsername = staffUsername;
-            this.staffId = staffId;
-            this.staffRole = staffRole;
-            this.permissions = permissions != null ? permissions : List.of();
-        }
     }
 
     public void cachePunishmentTypes(PunishmentTypesResponse response) {

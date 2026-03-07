@@ -9,7 +9,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.config.ConfigManager;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.LoginCache;
-import gg.modl.minecraft.core.cache.PlayerProfileRegistry;
+import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 import gg.modl.minecraft.core.impl.commands.staff.AltsCommand;
 import gg.modl.minecraft.core.impl.commands.staff.ChatCommand;
 import gg.modl.minecraft.core.impl.commands.staff.ChatLogsCommand;
@@ -78,7 +78,7 @@ import gg.modl.minecraft.core.util.PluginLogger;
 @Getter
 public class PluginLoader {
     private final HttpClientHolder httpClientHolder;
-    private final PlayerProfileRegistry playerProfileRegistry;
+    private final CachedProfileRegistry cachedProfileRegistry;
     private final Cache cache;
     private final SyncService syncService;
     private final UpdateCheckerService updateCheckerService;
@@ -111,8 +111,8 @@ public class PluginLoader {
         this.chatMessageCache = chatMessageCache;
         this.queryMojang = httpManager.isQueryMojang();
         this.asyncCommandExecutor = new AsyncCommandExecutor();
-        playerProfileRegistry = new PlayerProfileRegistry();
-        cache = new Cache(playerProfileRegistry);
+        cachedProfileRegistry = new CachedProfileRegistry();
+        cache = new Cache(cachedProfileRegistry);
         cache.setQueryMojang(httpManager.isQueryMojang());
         loginCache = new LoginCache();
         platform.setCache(cache);
@@ -139,7 +139,7 @@ public class PluginLoader {
 
         DatabaseConfig databaseConfig = loadDatabaseConfig(configYml, dataDirectory, logger);
 
-        this.staff2faService = new Staff2faService(playerProfileRegistry, configManager.getStaff2faConfig());
+        this.staff2faService = new Staff2faService(cachedProfileRegistry, configManager.getStaff2faConfig());
         this.chatCommandLogService = new ChatCommandLogService();
 
         this.syncService = new SyncService(platform, httpClientHolder, cache, logger, this.localeManager,
@@ -228,15 +228,15 @@ public class PluginLoader {
         commandManager.registerCommand(new ReportsCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
         commandManager.registerCommand(new PunishmentActionCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
 
-        this.staffChatService = new StaffChatService(playerProfileRegistry);
-        this.chatManagementService = new ChatManagementService(playerProfileRegistry);
+        this.staffChatService = new StaffChatService(cachedProfileRegistry);
+        this.chatManagementService = new ChatManagementService(cachedProfileRegistry);
         this.maintenanceService = new MaintenanceService();
-        this.networkChatInterceptService = new NetworkChatInterceptService(playerProfileRegistry);
-        this.freezeService = new FreezeService(playerProfileRegistry);
-        this.staffModeService = new StaffModeService(playerProfileRegistry);
+        this.networkChatInterceptService = new NetworkChatInterceptService(cachedProfileRegistry);
+        this.freezeService = new FreezeService(cachedProfileRegistry);
+        this.staffModeService = new StaffModeService(cachedProfileRegistry);
         platform.setStaffModeService(this.staffModeService);
         platform.setStaff2faService(this.staff2faService);
-        this.vanishService = new VanishService(playerProfileRegistry);
+        this.vanishService = new VanishService(cachedProfileRegistry);
         this.bridgeService = new BridgeService();
         platform.setBridgeService(this.bridgeService);
         platform.setChatInputManager(new ChatInputManager(platform));

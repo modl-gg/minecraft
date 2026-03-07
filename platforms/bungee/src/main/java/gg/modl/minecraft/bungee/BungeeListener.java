@@ -7,7 +7,7 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.LoginCache;
-import gg.modl.minecraft.core.cache.PlayerProfileRegistry;
+import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.ChatCommandLogService;
@@ -66,7 +66,7 @@ public class BungeeListener implements Listener {
     private final StaffChatConfig staffChatConfig;
     private final LoginCache loginCache;
     private final BridgeService bridgeService;
-    private final PlayerProfileRegistry registry;
+    private final CachedProfileRegistry registry;
     private final boolean debugMode;
 
     private static final long LOGIN_TIMEOUT_SECONDS = 5;

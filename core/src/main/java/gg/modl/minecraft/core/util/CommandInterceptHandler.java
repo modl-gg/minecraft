@@ -1,7 +1,7 @@
 package gg.modl.minecraft.core.util;
 
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatCommandLogService;
 import gg.modl.minecraft.core.service.FreezeService;
@@ -31,7 +31,7 @@ public final class CommandInterceptHandler {
 
         chatCommandLogService.addCommand(uuid.toString(), username, command, serverName);
 
-        PlayerProfile profile = cache.getPlayerProfile(uuid);
+        CachedProfile profile = cache.getPlayerProfile(uuid);
         if (profile != null && profile.isMuted() && MutedCommandUtil.isBlockedCommand(command, mutedCommands)) {
             return CommandResult.BLOCKED_MUTED;
         }
@@ -47,7 +47,7 @@ public final class CommandInterceptHandler {
         return switch (result) {
             case BLOCKED_FROZEN -> localeManager.getMessage("freeze.command_blocked");
             case BLOCKED_MUTED -> {
-                PlayerProfile profile = cache.getPlayerProfile(uuid);
+                CachedProfile profile = cache.getPlayerProfile(uuid);
                 yield PunishmentMessages.getMuteMessage(profile != null ? profile.getActiveMute() : null, localeManager);
             }
             case ALLOWED -> null;

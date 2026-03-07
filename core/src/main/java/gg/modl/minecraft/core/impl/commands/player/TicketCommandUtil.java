@@ -7,7 +7,7 @@ import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.api.http.response.CreateTicketResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.Map;
@@ -32,7 +32,7 @@ public class TicketCommandUtil {
 
     public boolean checkCooldown(CommandIssuer sender, String ticketType, LocaleManager localeManager) {
         UUID uuid = sender.getUniqueId();
-        PlayerProfile profile = cache.getPlayerProfile(uuid);
+        CachedProfile profile = cache.getPlayerProfile(uuid);
         if (profile == null) return false;
 
         String cooldownKey = "ticket:" + ticketType;
@@ -46,7 +46,7 @@ public class TicketCommandUtil {
     }
 
     private void setCooldown(UUID uuid, String cooldownType) {
-        PlayerProfile profile = cache.getPlayerProfile(uuid);
+        CachedProfile profile = cache.getPlayerProfile(uuid);
         if (profile != null) profile.getCooldowns().set("ticket:" + cooldownType);
     }
 

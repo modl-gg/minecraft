@@ -5,6 +5,7 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.impl.menus.util.InspectContext;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
@@ -21,16 +22,24 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
     protected final Account targetAccount;
     protected final String targetName;
     protected final UUID targetUuid;
+    protected final InspectContext inspectContext;
 
     protected InspectTab activeTab = InspectTab.NONE;
 
     public BaseInspectListMenu(String title, Platform platform, ModlHttpClient httpClient,
                                UUID viewerUuid, String viewerName, Account targetAccount,
                                Consumer<CirrusPlayerWrapper> backAction) {
+        this(title, platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, null);
+    }
+
+    public BaseInspectListMenu(String title, Platform platform, ModlHttpClient httpClient,
+                               UUID viewerUuid, String viewerName, Account targetAccount,
+                               Consumer<CirrusPlayerWrapper> backAction, InspectContext inspectContext) {
         super(title, platform, httpClient, viewerUuid, viewerName, backAction);
         this.targetAccount = targetAccount;
         this.targetName = getPlayerName(targetAccount);
         this.targetUuid = targetAccount.getMinecraftUuid();
+        this.inspectContext = inspectContext;
     }
 
     @Override
@@ -39,7 +48,12 @@ public abstract class BaseInspectListMenu<T> extends BaseListMenu<T> {
         items.put(MenuSlots.INSPECT_PLAYER_HEAD,
                 PlayerHeadItemBuilder.create(platform, targetAccount, targetName, targetUuid)
                         .actionHandler("targetPlayer"));
-        items.putAll(InspectTabItems.createItems(targetAccount, targetName));
+        if (inspectContext != null) {
+            items.putAll(InspectTabItems.createItems(targetAccount, targetName,
+                    inspectContext.punishmentCount(), inspectContext.noteCount()));
+        } else {
+            items.putAll(InspectTabItems.createItems(targetAccount, targetName));
+        }
         return items;
     }
 

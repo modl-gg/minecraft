@@ -81,7 +81,7 @@ public class BungeePlugin extends Plugin {
                 loader.getFreezeService(), loader.getNetworkChatInterceptService(),
                 loader.getChatCommandLogService(), loader.getStaff2faService(),
                 loader.getConfigManager().getStaffChatConfig(), loader.getLoginCache(),
-                loader.getBridgeService(), loader.getPlayerProfileRegistry(),
+                loader.getBridgeService(), loader.getCachedProfileRegistry(),
                 loader.isDebugMode()));
 
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();

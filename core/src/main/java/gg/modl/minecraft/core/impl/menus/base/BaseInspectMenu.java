@@ -59,6 +59,15 @@ public abstract class BaseInspectMenu extends BaseMenu {
         addCompactBackButton();
     }
 
+    protected void buildCompactHeader(int punishmentCount, int noteCount) {
+        set(PlayerHeadItemBuilder.create(platform, targetAccount, targetName, targetUuid)
+                .actionHandler("targetPlayer").slot(MenuSlots.COMPACT_INSPECT_HEAD));
+        for (Map.Entry<Integer, CirrusItem> entry : InspectTabItems.createCompactItems(targetAccount, targetName, punishmentCount, noteCount).entrySet()) {
+            set(entry.getValue().slot(entry.getKey()));
+        }
+        addCompactBackButton();
+    }
+
     @Override
     protected void registerActionHandlers() {
         super.registerActionHandlers();

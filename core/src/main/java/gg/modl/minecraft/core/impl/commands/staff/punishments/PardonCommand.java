@@ -15,7 +15,7 @@ import gg.modl.minecraft.api.http.request.PardonPlayerRequest;
 import gg.modl.minecraft.api.http.request.PardonPunishmentRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
@@ -136,7 +136,7 @@ public class PardonCommand extends BaseCommand {
         try {
             AbstractPlayer player = platform.getAbstractPlayer(playerName, false);
             if (player != null) {
-                PlayerProfile profile = cache.getPlayerProfile(player.getUuid());
+                CachedProfile profile = cache.getPlayerProfile(player.getUuid());
                 if (profile != null) {
                     if ("ban".equals(type)) profile.setActiveBan(null);
                     else if ("mute".equals(type)) profile.setActiveMute(null);

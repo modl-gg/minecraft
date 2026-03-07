@@ -5,7 +5,7 @@ import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.MaintenanceService;
 import gg.modl.minecraft.core.service.sync.SyncService;
@@ -100,7 +100,7 @@ public final class LoginHandler {
 
         if (response == null) return;
 
-        PlayerProfile profile = cache.getPlayerProfile(uuid);
+        CachedProfile profile = cache.getPlayerProfile(uuid);
         if (profile == null) return;
 
         if (response.hasActiveMute()) {

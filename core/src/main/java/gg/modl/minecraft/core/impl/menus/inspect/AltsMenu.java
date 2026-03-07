@@ -12,6 +12,8 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.LinkedAccountsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
+import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource;
+import gg.modl.minecraft.core.impl.menus.util.InspectContext;
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -25,58 +27,109 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 public class AltsMenu extends BaseInspectListMenu<Account> {
     private static final Logger logger = Logger.getLogger(AltsMenu.class.getName());
-    private List<Account> linkedAccounts = new ArrayList<>();
+    private static final int PAGE_SIZE = 7;
+    private static final int INITIAL_LOAD_PAGES = 2;
+
+    private final PaginatedDataSource<Account> dataSource;
 
     public AltsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                     Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
-        super("Alts: " + ReportRenderUtil.getPlayerName(targetAccount), platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
+        this(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, null);
+    }
+
+    public AltsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
+                    Account targetAccount, Consumer<CirrusPlayerWrapper> backAction, InspectContext inspectContext) {
+        super("Alts: " + ReportRenderUtil.getPlayerName(targetAccount), platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
         activeTab = InspectTab.ALTS;
+
+        dataSource = new PaginatedDataSource<>(PAGE_SIZE, (page, limit) -> {
+            CompletableFuture<PaginatedDataSource.FetchResult<Account>> future = new CompletableFuture<>();
+            httpClient.getLinkedAccounts(targetUuid, page, limit).thenAccept(response -> {
+                if (response.getStatus() == 200) {
+                    cacheSkinTextures(response.getLinkedAccounts());
+                    future.complete(new PaginatedDataSource.FetchResult<>(response.getLinkedAccounts(), response.getTotalCount()));
+                } else {
+                    future.complete(new PaginatedDataSource.FetchResult<>(List.of(), 0));
+                }
+            }).exceptionally(e -> {
+                future.complete(new PaginatedDataSource.FetchResult<>(List.of(), 0));
+                return null;
+            });
+            return future;
+        });
 
         loadLinkedAccounts();
     }
 
     private void loadLinkedAccounts() {
         try {
-            LinkedAccountsResponse response = httpClient.getLinkedAccounts(targetUuid).join();
+            LinkedAccountsResponse response = httpClient.getLinkedAccounts(targetUuid, 1, PAGE_SIZE * INITIAL_LOAD_PAGES).join();
             if (response.getStatus() == 200) {
-                linkedAccounts = new ArrayList<>(response.getLinkedAccounts());
-
-                if (platform.getCache() != null) {
-                    List<CompletableFuture<Void>> futures = new ArrayList<>();
-                    for (Account alt : linkedAccounts) {
-                        if (alt.getMinecraftUuid() != null && platform.getCache().getSkinTexture(alt.getMinecraftUuid()) == null) {
-                            final UUID altUuid = alt.getMinecraftUuid();
-                            futures.add(WebPlayer.get(altUuid).thenAccept(wp -> {
-                                if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
-                                    platform.getCache().cacheSkinTexture(altUuid, wp.getTextureValue());
-                                }
-                            }));
-                        }
-                    }
-                    if (!futures.isEmpty()) {
-                        try {
-                            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                                    .get(5, TimeUnit.SECONDS);
-                        } catch (Exception ignored) {}
-                    }
-                }
+                List<Account> initialAccounts = new ArrayList<>(response.getLinkedAccounts());
+                cacheSkinTextures(initialAccounts);
+                dataSource.initialize(initialAccounts, response.getTotalCount());
             }
         } catch (Exception e) {
             logger.log(Level.WARNING, "Failed to fetch linked accounts for " + targetUuid, e);
         }
     }
 
+    private void cacheSkinTextures(List<Account> accounts) {
+        if (platform.getCache() == null) return;
+
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        for (Account alt : accounts) {
+            if (alt.getMinecraftUuid() != null && platform.getCache().getSkinTexture(alt.getMinecraftUuid()) == null) {
+                final UUID altUuid = alt.getMinecraftUuid();
+                futures.add(WebPlayer.get(altUuid).thenAccept(wp -> {
+                    if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
+                        platform.getCache().cacheSkinTexture(altUuid, wp.getTextureValue());
+                    }
+                }));
+            }
+        }
+        if (!futures.isEmpty()) {
+            try {
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                        .get(5, TimeUnit.SECONDS);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    @Override
+    protected boolean interceptNextPage(Click click) {
+        int nextPage = currentPageIndex().get() + 1;
+        if (!dataSource.isPageLoaded(nextPage)) {
+            dataSource.setOnDataLoaded(() -> {
+                AltsMenu newMenu = new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
+                newMenu.dataSource.initialize(dataSource.getAllLoadedItems(), dataSource.getTotalCount());
+                newMenu.display(click.player());
+                newMenu.setInitialPage(nextPage);
+                newMenu.display(click.player());
+            });
+            dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1);
+            return true;
+        }
+        dataSource.prefetchIfNeeded(nextPage);
+        return false;
+    }
+
+    @Override
+    public boolean hasNextPage() {
+        return currentPageIndex().get() < dataSource.getTotalMenuPages() - 1;
+    }
+
     @Override
     protected Collection<Account> elements() {
-        if (linkedAccounts.isEmpty())
+        List<Account> accounts = dataSource.getAllLoadedItems();
+        if (accounts.isEmpty())
             return Collections.singletonList(new Account(null, null,
                     Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
                     Collections.emptyList(), Collections.emptyList(), Collections.emptyMap()));
-        return linkedAccounts;
+        return accounts;
     }
 
     @Override
@@ -223,7 +276,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         if (alt.getMinecraftUuid() == null) return;
 
         Consumer<CirrusPlayerWrapper> backToAlts = player ->
-                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
+                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext)
                         .display(player);
 
         ActionHandlers.openMenu(
@@ -237,7 +290,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
 
         InspectNavigationHandlers.registerAll(
                 this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
+                platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
         registerActionHandler("openAlts", click -> {});
     }
 }

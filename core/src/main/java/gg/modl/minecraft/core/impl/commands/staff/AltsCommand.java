@@ -15,7 +15,7 @@ import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.inspect.AltsMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -56,24 +56,15 @@ public class AltsCommand extends BaseCommand {
         sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
-        httpClientHolder.getClient().lookupPlayer(request).thenAccept(response -> {
-            if (response.isSuccess() && response.getData() != null) {
-                UUID targetUuid = UUID.fromString(response.getData().getMinecraftUuid());
-
-                httpClientHolder.getClient().getPlayerProfile(targetUuid).thenAccept(profileResponse -> {
-                    if (profileResponse.getStatus() == 200) {
-                        String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
-                        AltsMenu menu = new AltsMenu(
-                            platform, httpClientHolder.getClient(), senderUuid, senderName,
-                            profileResponse.getProfile(), null
-                        );
-                        CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-                        menu.display(player);
-                    } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
-                }).exceptionally(throwable -> {
-                    CommandUtil.handleException(sender, throwable, localeManager);
-                    return null;
-                });
+        httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
+            if (profileResponse.getStatus() == 200) {
+                String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
+                AltsMenu menu = new AltsMenu(
+                    platform, httpClientHolder.getClient(), senderUuid, senderName,
+                    profileResponse.getProfile(), null
+                );
+                CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
+                menu.display(player);
             } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
             CommandUtil.handleException(sender, throwable, localeManager);
@@ -119,7 +110,7 @@ public class AltsCommand extends BaseCommand {
                     username = account.getUsernames().get(account.getUsernames().size() - 1).getUsername();
 
                 String uuid = account.getMinecraftUuid() != null ? account.getMinecraftUuid().toString() : Constants.UNKNOWN;
-                PlayerProfile altProfile = account.getMinecraftUuid() != null ? cache.getPlayerProfile(account.getMinecraftUuid()) : null;
+                CachedProfile altProfile = account.getMinecraftUuid() != null ? cache.getPlayerProfile(account.getMinecraftUuid()) : null;
                 boolean isBanned = altProfile != null && altProfile.isBanned();
                 boolean isMuted = altProfile != null && altProfile.isMuted();
 

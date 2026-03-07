@@ -8,8 +8,8 @@ import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.cache.PlayerProfile;
-import gg.modl.minecraft.core.cache.PlayerProfileRegistry;
+import gg.modl.minecraft.core.cache.CachedProfile;
+import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
@@ -124,7 +124,7 @@ public final class ListenerHelper {
 
     /**
      * Simplified disconnect handler. Per-player state is destroyed atomically
-     * via {@link PlayerProfileRegistry#destroyProfile}, no need to call
+     * via {@link CachedProfileRegistry#destroyProfile}, no need to call
      * removePlayer() on each service individually.
      */
     public static void handlePlayerDisconnect(
@@ -133,9 +133,9 @@ public final class ListenerHelper {
             LocaleManager localeManager,
             ChatMessageCache chatMessageCache,
             BridgeService bridgeService,
-            PlayerProfileRegistry registry) {
+            CachedProfileRegistry registry) {
 
-        PlayerProfile profile = registry.getProfile(uuid);
+        CachedProfile profile = registry.getProfile(uuid);
         long sessionDuration = profile != null ? profile.getSessionDuration() : 0;
         httpClient.playerDisconnect(new PlayerDisconnectRequest(uuid.toString(), sessionDuration));
 

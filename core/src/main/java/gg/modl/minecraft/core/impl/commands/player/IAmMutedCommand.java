@@ -10,7 +10,7 @@ import co.aikar.commands.annotation.Syntax;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
 
@@ -40,7 +40,7 @@ public class IAmMutedCommand extends BaseCommand {
 
         UUID senderUuid = sender.getUniqueId();
 
-        PlayerProfile senderProfile = cache.getPlayerProfile(senderUuid);
+        CachedProfile senderProfile = cache.getPlayerProfile(senderUuid);
         if (senderProfile == null || !senderProfile.isMuted()) {
             sender.sendMessage(localeManager.getMessage("iammuted.not_muted"));
             return;
@@ -71,7 +71,7 @@ public class IAmMutedCommand extends BaseCommand {
     }
 
     private boolean checkAndNotifyCooldown(CommandIssuer sender, UUID senderUuid) {
-        PlayerProfile profile = cache.getPlayerProfile(senderUuid);
+        CachedProfile profile = cache.getPlayerProfile(senderUuid);
         if (profile == null) return true;
 
         if (!profile.getCooldowns().isOnCooldown(COOLDOWN_KEY, COOLDOWN_DURATION)) return true;

@@ -76,7 +76,7 @@ public class SpigotPlugin extends JavaPlugin {
                 loader.getFreezeService(), loader.getNetworkChatInterceptService(),
                 loader.getChatCommandLogService(), loader.getStaff2faService(),
                 loader.getConfigManager().getStaffChatConfig(),
-                loader.getBridgeService(), loader.getPlayerProfileRegistry(),
+                loader.getBridgeService(), loader.getCachedProfileRegistry(),
                 loader.isDebugMode()), this);
     }
 

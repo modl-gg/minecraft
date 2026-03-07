@@ -527,11 +527,11 @@ menus:
       - "&f "
       - "&eClick to inspect {player_name}"
     punishment_line_active_true:
-      - "&fActive Punishments ({active_count}): &f"
+      - "&7Active Punishments ({active_count}): &f"
       - "{active_punishment_list}"
     punishment_line_active_false:
-      - "&fActive Punishments: &f0"
-      - "&fInactive Punishments: &f{inactive_count}"
+      - "&7Active Punishments: &f0"
+      - "&7Inactive Punishments: &f{inactive_count}"
     active_punishment_format: "&7- &e#{punishment_id} {punishment_date}: {punishment_type} ({punishment_remaining})"
 
 

@@ -9,7 +9,7 @@ import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.StaffListResponse;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -102,7 +102,7 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
                         } catch (Exception ignored) {}
                     }
 
-                    PlayerProfile staffProfile = uuid != null && cache != null ? cache.getPlayerProfile(uuid) : null;
+                    CachedProfile staffProfile = uuid != null && cache != null ? cache.getPlayerProfile(uuid) : null;
                     boolean online = staffProfile != null;
                     long sessionDuration = online ? staffProfile.getSessionDuration() : 0;
 

@@ -16,6 +16,10 @@ public final class InspectTabItems {
     }
 
     public static Map<Integer, CirrusItem> createItems(Account targetAccount, String targetName) {
+        return createItems(targetAccount, targetName, targetAccount.getPunishments().size(), targetAccount.getNotes().size());
+    }
+
+    public static Map<Integer, CirrusItem> createItems(Account targetAccount, String targetName, int punishmentCount, int noteCount) {
         Map<Integer, CirrusItem> items = new HashMap<>();
 
         items.put(MenuSlots.INSPECT_NOTES, CirrusItem.of(
@@ -23,7 +27,7 @@ public final class InspectTabItems {
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Notes"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View and edit " + targetName + "'s staff notes",
-                        MenuItems.COLOR_GRAY + "(" + targetAccount.getNotes().size() + " notes)"
+                        MenuItems.COLOR_GRAY + "(" + noteCount + " notes)"
                 )
         ).actionHandler("openNotes"));
 
@@ -40,7 +44,7 @@ public final class InspectTabItems {
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "History"),
                 MenuItems.lore(
                         MenuItems.COLOR_GRAY + "View " + targetName + "'s past punishments",
-                        MenuItems.COLOR_GRAY + "(" + targetAccount.getPunishments().size() + " punishments)"
+                        MenuItems.COLOR_GRAY + "(" + punishmentCount + " punishments)"
                 )
         ).actionHandler("openHistory"));
 
@@ -64,13 +68,17 @@ public final class InspectTabItems {
     }
 
     public static Map<Integer, CirrusItem> createCompactItems(Account targetAccount, String targetName) {
+        return createCompactItems(targetAccount, targetName, targetAccount.getPunishments().size(), targetAccount.getNotes().size());
+    }
+
+    public static Map<Integer, CirrusItem> createCompactItems(Account targetAccount, String targetName, int punishmentCount, int noteCount) {
         Map<Integer, CirrusItem> items = new HashMap<>();
 
         items.put(MenuSlots.COMPACT_INSPECT_NOTES, CirrusItem.of(
                 CirrusItemType.PAPER,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Notes"),
                 MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Staff notes (" + targetAccount.getNotes().size() + ")"
+                        MenuItems.COLOR_GRAY + "Staff notes (" + noteCount + ")"
                 )
         ).actionHandler("openNotes"));
 
@@ -86,7 +94,7 @@ public final class InspectTabItems {
                 CirrusItemType.WRITABLE_BOOK,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "History"),
                 MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Punishments (" + targetAccount.getPunishments().size() + ")"
+                        MenuItems.COLOR_GRAY + "Punishments (" + punishmentCount + ")"
                 )
         ).actionHandler("openHistory"));
 

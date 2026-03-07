@@ -25,15 +25,25 @@ public final class InspectNavigationHandlers {
             UUID viewerUuid, String viewerName,
             Account targetAccount,
             Consumer<CirrusPlayerWrapper> backAction) {
+        registerAll(registrar, platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, null);
+    }
+
+    public static void registerAll(
+            BiConsumer<String, Consumer<Click>> registrar,
+            Platform platform, ModlHttpClient httpClient,
+            UUID viewerUuid, String viewerName,
+            Account targetAccount,
+            Consumer<CirrusPlayerWrapper> backAction,
+            InspectContext inspectContext) {
 
         registrar.accept("openNotes", click ->
-                ActionHandlers.openMenu(new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)).handle(click));
+                ActionHandlers.openMenu(new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext)).handle(click));
 
         registrar.accept("openAlts", click ->
-                ActionHandlers.openMenu(new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)).handle(click));
+                ActionHandlers.openMenu(new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext)).handle(click));
 
         registrar.accept("openHistory", click ->
-                ActionHandlers.openMenu(new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)).handle(click));
+                ActionHandlers.openMenu(new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext)).handle(click));
 
         registrar.accept("openReports", click ->
                 ActionHandlers.openMenu(new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)).handle(click));

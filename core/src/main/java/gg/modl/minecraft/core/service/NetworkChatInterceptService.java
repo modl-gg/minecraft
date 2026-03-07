@@ -1,21 +1,21 @@
 package gg.modl.minecraft.core.service;
 
-import gg.modl.minecraft.core.cache.PlayerProfile;
-import gg.modl.minecraft.core.cache.PlayerProfileRegistry;
+import gg.modl.minecraft.core.cache.CachedProfile;
+import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 
 import java.util.Set;
 import java.util.UUID;
 
 public class NetworkChatInterceptService {
-    private final PlayerProfileRegistry registry;
+    private final CachedProfileRegistry registry;
 
-    public NetworkChatInterceptService(PlayerProfileRegistry registry) {
+    public NetworkChatInterceptService(CachedProfileRegistry registry) {
         this.registry = registry;
     }
 
     /** @return true if interception is now enabled, false if disabled */
     public boolean toggle(UUID uuid) {
-        PlayerProfile profile = registry.getProfile(uuid);
+        CachedProfile profile = registry.getProfile(uuid);
         if (profile == null) return false;
         boolean newState = !profile.isInterceptingNetworkChat();
         profile.setInterceptingNetworkChat(newState);

@@ -17,16 +17,16 @@ import java.util.concurrent.ConcurrentHashMap;
  * Destroying a profile atomically removes all per-player state, no need to
  * call removePlayer() on each service individually.
  */
-public class PlayerProfileRegistry {
-    private final Map<UUID, PlayerProfile> profiles = new ConcurrentHashMap<>();
+public class CachedProfileRegistry {
+    private final Map<UUID, CachedProfile> profiles = new ConcurrentHashMap<>();
 
-    public PlayerProfile createProfile(UUID uuid) {
-        PlayerProfile profile = new PlayerProfile(uuid);
+    public CachedProfile createProfile(UUID uuid) {
+        CachedProfile profile = new CachedProfile(uuid);
         profiles.put(uuid, profile);
         return profile;
     }
 
-    public @Nullable PlayerProfile getProfile(UUID uuid) {
+    public @Nullable CachedProfile getProfile(UUID uuid) {
         return profiles.get(uuid);
     }
 
@@ -42,14 +42,14 @@ public class PlayerProfileRegistry {
         return Collections.unmodifiableSet(profiles.keySet());
     }
 
-    public Collection<PlayerProfile> getAllProfiles() {
+    public Collection<CachedProfile> getAllProfiles() {
         return Collections.unmodifiableCollection(profiles.values());
     }
 
     /** Returns all players currently intercepting network chat. */
     public Set<UUID> getInterceptors() {
         Set<UUID> result = ConcurrentHashMap.newKeySet();
-        for (PlayerProfile profile : profiles.values()) {
+        for (CachedProfile profile : profiles.values()) {
             if (profile.isInterceptingNetworkChat()) result.add(profile.getUuid());
         }
         return Collections.unmodifiableSet(result);

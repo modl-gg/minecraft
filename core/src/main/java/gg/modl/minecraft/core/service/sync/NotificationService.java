@@ -7,7 +7,7 @@ import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PluginLogger;
 import lombok.Setter;
@@ -156,7 +156,7 @@ class NotificationService {
         for (AbstractPlayer player : platform.getOnlinePlayers()) {
             try {
                 UUID playerUuid = player.getUuid();
-                PlayerProfile profile = cache.getPlayerProfile(playerUuid);
+                CachedProfile profile = cache.getPlayerProfile(playerUuid);
                 if (profile != null) profile.addNotification(notification);
                 deliverNotificationToPlayerAndCheck(playerUuid, notification);
             } catch (Exception e) {
@@ -167,14 +167,14 @@ class NotificationService {
 
     void deliverPendingNotifications(UUID playerUuid) {
         try {
-            PlayerProfile profile = cache.getPlayerProfile(playerUuid);
+            CachedProfile profile = cache.getPlayerProfile(playerUuid);
             if (profile == null) return;
 
-            List<PlayerProfile.PendingNotification> pending = profile.getPendingNotifications();
-            pending.removeIf(PlayerProfile.PendingNotification::isExpired);
+            List<CachedProfile.PendingNotification> pending = profile.getPendingNotifications();
+            pending.removeIf(CachedProfile.PendingNotification::isExpired);
             if (pending.isEmpty()) return;
 
-            List<PlayerProfile.PendingNotification> toProcess = new ArrayList<>(pending);
+            List<CachedProfile.PendingNotification> toProcess = new ArrayList<>(pending);
             if (debugMode) logger.info("Delivering " + toProcess.size() + " pending notifications to " + playerUuid);
 
             List<String> deliveredIds = new ArrayList<>();
@@ -189,7 +189,7 @@ class NotificationService {
         }
     }
 
-    private void deliverPendingNotificationToPlayer(UUID playerUuid, PlayerProfile.PendingNotification pending) {
+    private void deliverPendingNotificationToPlayer(UUID playerUuid, CachedProfile.PendingNotification pending) {
         AbstractPlayer player = platform.getPlayer(playerUuid);
         if (player == null || !player.isOnline()) return;
 
@@ -205,7 +205,7 @@ class NotificationService {
         }
     }
 
-    private void deliverNotificationsWithDelay(UUID playerUuid, List<PlayerProfile.PendingNotification> notifications,
+    private void deliverNotificationsWithDelay(UUID playerUuid, List<CachedProfile.PendingNotification> notifications,
                                              List<String> deliveredIds, List<String> expiredIds) {
         if (notifications.isEmpty() || executor == null) return;
         executor.schedule(() ->
@@ -214,14 +214,14 @@ class NotificationService {
             NOTIFICATION_INITIAL_DELAY_MS, TimeUnit.MILLISECONDS);
     }
 
-    private void deliverNotificationAtIndex(UUID playerUuid, List<PlayerProfile.PendingNotification> notifications,
+    private void deliverNotificationAtIndex(UUID playerUuid, List<CachedProfile.PendingNotification> notifications,
                                           int index, List<String> deliveredIds, List<String> expiredIds) {
         if (index >= notifications.size()) {
             finalizePendingNotificationDelivery(playerUuid, deliveredIds, expiredIds);
             return;
         }
 
-        PlayerProfile.PendingNotification pending = notifications.get(index);
+        CachedProfile.PendingNotification pending = notifications.get(index);
         try {
             if (pending.isExpired()) {
                 expiredIds.add(pending.getId());
@@ -247,7 +247,7 @@ class NotificationService {
 
     private void finalizePendingNotificationDelivery(UUID playerUuid, List<String> deliveredIds, List<String> expiredIds) {
         try {
-            PlayerProfile profile = cache.getPlayerProfile(playerUuid);
+            CachedProfile profile = cache.getPlayerProfile(playerUuid);
             if (profile != null) {
                 for (String id : expiredIds) profile.removeNotification(id);
                 for (String id : deliveredIds) profile.removeNotification(id);

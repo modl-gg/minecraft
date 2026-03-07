@@ -14,7 +14,7 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ConfigManager;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.cache.PlayerProfile;
+import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.impl.menus.StandingMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +43,7 @@ public class StandingCommand extends BaseCommand {
 
         if (!checkCooldown(sender, uuid)) return;
 
-        PlayerProfile profile = cache.getPlayerProfile(uuid);
+        CachedProfile profile = cache.getPlayerProfile(uuid);
         if (profile != null) profile.getCooldowns().set(COOLDOWN_KEY);
 
         sender.sendMessage(localeManager.getMessage("standing.loading"));
@@ -72,7 +72,7 @@ public class StandingCommand extends BaseCommand {
     }
 
     private boolean checkCooldown(CommandIssuer sender, UUID uuid) {
-        PlayerProfile profile = cache.getPlayerProfile(uuid);
+        CachedProfile profile = cache.getPlayerProfile(uuid);
         if (profile == null) return true;
         if (!profile.getCooldowns().isOnCooldown(COOLDOWN_KEY, COOLDOWN_MS)) return true;
 

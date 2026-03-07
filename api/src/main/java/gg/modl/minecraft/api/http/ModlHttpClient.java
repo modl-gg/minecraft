@@ -33,6 +33,8 @@ import gg.modl.minecraft.api.http.response.DashboardStatsResponse;
 import gg.modl.minecraft.api.http.response.EvidenceUploadTokenResponse;
 import gg.modl.minecraft.api.http.response.LinkedAccountsResponse;
 import gg.modl.minecraft.api.http.response.OnlinePlayersResponse;
+import gg.modl.minecraft.api.http.response.PaginatedNotesResponse;
+import gg.modl.minecraft.api.http.response.PaginatedPunishmentsResponse;
 import gg.modl.minecraft.api.http.response.PardonResponse;
 import gg.modl.minecraft.api.http.response.PlayerGetResponse;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
@@ -208,6 +210,14 @@ public interface ModlHttpClient {
      * @return a future containing the lookup result
      */
     @NotNull CompletableFuture<PlayerLookupResponse> lookupPlayer(@NotNull PlayerLookupRequest request);
+
+    /**
+     * Looks up a player by username or UUID and returns their full profile in a single request.
+     *
+     * @param request the lookup request containing the search query (username or UUID)
+     * @return a future containing the player's profile data
+     */
+    @NotNull CompletableFuture<PlayerProfileResponse> lookupPlayerProfile(@NotNull PlayerLookupRequest request);
 
     /**
      * Pardons (revokes) a specific punishment by its ID.
@@ -500,4 +510,34 @@ public interface ModlHttpClient {
      * @return a future containing the player's command log entries
      */
     @NotNull CompletableFuture<CommandLogsResponse> getCommandLogs(@NotNull String playerUuid, int limit);
+
+    /**
+     * Retrieves a paginated list of punishments for a player, sorted by issued date descending.
+     *
+     * @param uuid the player's Minecraft UUID
+     * @param page the 1-based page number
+     * @param limit the number of punishments per page
+     * @return a future containing the paginated punishments
+     */
+    @NotNull CompletableFuture<PaginatedPunishmentsResponse> getPlayerPunishments(@NotNull UUID uuid, int page, int limit);
+
+    /**
+     * Retrieves a paginated list of notes for a player, sorted by date descending.
+     *
+     * @param uuid the player's Minecraft UUID
+     * @param page the 1-based page number
+     * @param limit the number of notes per page
+     * @return a future containing the paginated notes
+     */
+    @NotNull CompletableFuture<PaginatedNotesResponse> getPlayerNotes(@NotNull UUID uuid, int page, int limit);
+
+    /**
+     * Retrieves a paginated list of linked accounts for a player.
+     *
+     * @param uuid the player's Minecraft UUID
+     * @param page the 1-based page number
+     * @param limit the number of accounts per page
+     * @return a future containing the paginated linked accounts
+     */
+    @NotNull CompletableFuture<LinkedAccountsResponse> getLinkedAccounts(@NotNull UUID uuid, int page, int limit);
 }
