@@ -54,8 +54,8 @@
         <!-- Anticheat APIs (compile-only, provided by their plugins at runtime) -->
         <dependency>
             <groupId>ac.grim.grimac</groupId>
-            <artifactId>grimapi</artifactId>
-            <version>1.0.1-SNAPSHOT</version>
+            <artifactId>GrimAPI</artifactId>
+            <version>1.0.0</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
