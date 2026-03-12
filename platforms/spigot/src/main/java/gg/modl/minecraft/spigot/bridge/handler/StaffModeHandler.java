@@ -13,7 +13,6 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.Container;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -23,7 +22,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -36,7 +34,6 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scoreboard.Criteria;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
@@ -120,7 +117,9 @@ public class StaffModeHandler implements Listener {
 
         Scoreboard sb = Bukkit.getScoreboardManager().getNewScoreboard();
         String title = replacePlaceholders(config.getTitle(), player);
-        Objective obj = sb.registerNewObjective(SCOREBOARD_OBJECTIVE_NAME, Criteria.DUMMY, localeManager.colorize(title));
+        @SuppressWarnings("deprecation")
+        Objective obj = sb.registerNewObjective(SCOREBOARD_OBJECTIVE_NAME, "dummy");
+        obj.setDisplayName(localeManager.colorize(title));
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
         activeScoreboards.put(player.getUniqueId(), sb);
         updateScoreboard(player, sb);
@@ -459,12 +458,12 @@ public class StaffModeHandler implements Listener {
         // silent container open for vanished staff
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK && vanished.contains(uuid)) {
             Block block = event.getClickedBlock();
-            if (block != null && block.getState() instanceof Container container) {
+            if (block != null && block.getState() instanceof org.bukkit.inventory.InventoryHolder holder) {
                 event.setCancelled(true);
                 Inventory copy = Bukkit.createInventory(null,
-                        container.getInventory().getSize(),
+                        holder.getInventory().getSize(),
                         SILENT_CONTAINER_PREFIX + block.getType().name());
-                copy.setContents(container.getInventory().getContents());
+                copy.setContents(holder.getInventory().getContents());
                 player.openInventory(copy);
                 return;
             }
@@ -594,9 +593,10 @@ public class StaffModeHandler implements Listener {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @EventHandler(priority = EventPriority.HIGH)
-    public void onPickup(EntityPickupItemEvent event) {
-        if (event.getEntity() instanceof Player player && staffModeActive.contains(player.getUniqueId())) {
+    public void onPickup(org.bukkit.event.player.PlayerPickupItemEvent event) {
+        if (staffModeActive.contains(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
         }
     }
