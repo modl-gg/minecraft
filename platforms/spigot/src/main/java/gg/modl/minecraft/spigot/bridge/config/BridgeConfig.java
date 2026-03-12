@@ -23,6 +23,7 @@ public class BridgeConfig {
     private static final int DEFAULT_QUERY_PORT = 25590;
 
     @Setter private String apiKey = "";
+    @Setter private boolean debug = false;
     private boolean queryEnabled = true;
     private int queryPort = DEFAULT_QUERY_PORT;
     private List<String> statWipeCommands = new ArrayList<>(List.of("clearstats {player}"));

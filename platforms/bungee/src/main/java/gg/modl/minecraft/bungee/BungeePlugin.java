@@ -39,27 +39,44 @@ public class BungeePlugin extends Plugin {
     private PluginLoader loader;
     private QueryStatWipeExecutor queryStatWipeExecutor;
     private PluginLogger pluginLogger;
+    private BootConfig bootConfig;
 
     @Override
     public synchronized void onEnable() {
         this.pluginLogger = PluginLogger.fromJul(getLogger());
+
+        // Load boot.yml → migration → wizard (first, before everything)
+        bootConfig = loadBootConfig();
+        if (bootConfig == null) {
+            getLogger().info("No configuration found. Starting setup wizard...");
+            new BungeeSetupWizard(this, pluginLogger, this::initializeAfterWizard).start();
+            return;
+        }
+
+        initializePlugin();
+    }
+
+    /**
+     * Called after the setup wizard completes.
+     * Runs full plugin initialization without requiring a proxy restart.
+     */
+    private synchronized void initializeAfterWizard(BootConfig config) {
+        this.bootConfig = config;
+        initializePlugin();
+    }
+
+    private void initializePlugin() {
         loadLibraries();
         initializePacketEvents();
         loadConfig();
         createLocaleFiles();
         mergeDefaultConfigs();
 
-        // Load boot.yml → migration → wizard
-        BootConfig bootConfig = loadOrCreateBootConfig();
-        if (bootConfig == null) {
-            return;
-        }
-
         HttpManager httpManager = new HttpManager(
                 bootConfig.getApiKey(),
                 bootConfig.getPanelUrl(),
                 configuration.getBoolean("api.debug", false),
-                configuration.getBoolean("api.testing-api", false),
+                bootConfig.isTestingApi(),
                 configuration.getBoolean("server.query_mojang", false)
         );
 
@@ -96,9 +113,8 @@ public class BungeePlugin extends Plugin {
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
     }
 
-    private BootConfig loadOrCreateBootConfig() {
+    private BootConfig loadBootConfig() {
         try {
-            // 1. Try loading existing boot.yml
             if (BootConfig.exists(getDataFolder().toPath())) {
                 BootConfig config = BootConfig.load(getDataFolder().toPath());
                 if (config != null && config.isValid()) {
@@ -107,25 +123,12 @@ public class BungeePlugin extends Plugin {
                 }
             }
 
-            // 2. Try migrating from existing config.yml
             Optional<BootConfig> migrated = BootConfigMigrator.migrateFromConfigYml(
                     getDataFolder().toPath(), PlatformType.BUNGEECORD, pluginLogger);
             if (migrated.isPresent()) {
                 return migrated.get();
             }
 
-            // 3. Run setup wizard
-            getLogger().info("No configuration found. Starting setup wizard...");
-            ConsoleInput input = ConsoleInput.system(pluginLogger);
-            SetupWizard wizard = new SetupWizard(pluginLogger, input, PlatformType.BUNGEECORD);
-            BootConfig config = wizard.run();
-
-            if (config != null) {
-                config.save(getDataFolder().toPath());
-                return config;
-            }
-
-            logConfigurationError();
             return null;
         } catch (IOException e) {
             getLogger().severe("Failed to load boot.yml: " + e.getMessage());
@@ -138,17 +141,6 @@ public class BungeePlugin extends Plugin {
                 getDataFolder().toPath().resolve("config.yml"), pluginLogger);
         YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",
                 getDataFolder().toPath().resolve("locale/en_US.yml"), pluginLogger);
-    }
-
-    private void logConfigurationError() {
-        getLogger().severe("===============================================");
-        getLogger().severe("modl.gg CONFIGURATION ERROR");
-        getLogger().severe("===============================================");
-        getLogger().severe("Setup wizard failed or was cancelled.");
-        getLogger().severe("Delete boot.yml and restart to re-run the wizard,");
-        getLogger().severe("or configure boot.yml manually.");
-        getLogger().severe("Plugin will now disable itself.");
-        getLogger().severe("===============================================");
     }
 
     private void configureBridgeExecutor(BungeePlatform platform, HttpManager httpManager, BootConfig bootConfig) {

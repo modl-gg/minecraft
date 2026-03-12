@@ -195,7 +195,7 @@ public class StaffModeHandler implements Listener {
             return result
                     .replace("{target_name}", target.getName())
                     .replace("{target_health}", String.format("%.1f", target.getHealth()))
-                    .replace("{target_ping}", String.valueOf(target.getPing()))
+                    .replace("{target_ping}", String.valueOf(getPlayerPing(target)))
                     .replace("{freeze_status}", freezeHandler.isFrozen(targetUuid) ? localeManager.colorize("&cYes") : localeManager.colorize("&aNo"));
         }
 
@@ -366,6 +366,21 @@ public class StaffModeHandler implements Listener {
         return item;
     }
 
+    private static int getPlayerPing(Player player) {
+        try {
+            // Try modern API first (1.17+)
+            return (int) Player.class.getMethod("getPing").invoke(player);
+        } catch (Exception e) {
+            try {
+                // Fallback: CraftPlayer.getHandle().ping (NMS)
+                Object handle = player.getClass().getMethod("getHandle").invoke(player);
+                return handle.getClass().getField("ping").getInt(handle);
+            } catch (Exception ex) {
+                return -1;
+            }
+        }
+    }
+
     private static Material parseMaterial(String name) {
         try {
             return Material.valueOf(name.replace("minecraft:", "").toUpperCase());
@@ -374,20 +389,22 @@ public class StaffModeHandler implements Listener {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private void vanish(Player staff) {
         vanished.add(staff.getUniqueId());
         for (Player online : Bukkit.getOnlinePlayers()) {
             if (!online.equals(staff) && !staffModeActive.contains(online.getUniqueId())) {
-                online.hidePlayer(plugin, staff);
+                online.hidePlayer(staff);
             }
         }
     }
 
+    @SuppressWarnings("deprecation")
     private void unvanish(Player staff) {
         vanished.remove(staff.getUniqueId());
         for (Player online : Bukkit.getOnlinePlayers()) {
             if (!online.equals(staff)) {
-                online.showPlayer(plugin, staff);
+                online.showPlayer(staff);
             }
         }
     }
@@ -652,6 +669,7 @@ public class StaffModeHandler implements Listener {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player joining = event.getPlayer();
@@ -659,14 +677,14 @@ public class StaffModeHandler implements Listener {
             for (UUID vanishedUuid : vanished) {
                 Player vanishedPlayer = Bukkit.getPlayer(vanishedUuid);
                 if (vanishedPlayer != null && vanishedPlayer.isOnline()) {
-                    joining.hidePlayer(plugin, vanishedPlayer);
+                    joining.hidePlayer(vanishedPlayer);
                 }
             }
         }
         if (vanished.contains(joining.getUniqueId())) {
             for (Player online : Bukkit.getOnlinePlayers()) {
                 if (!online.equals(joining) && !staffModeActive.contains(online.getUniqueId())) {
-                    online.hidePlayer(plugin, joining);
+                    online.hidePlayer(joining);
                 }
             }
         }

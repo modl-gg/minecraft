@@ -12,6 +12,7 @@ public class SetupWizard {
     private final PluginLogger logger;
     private final ConsoleInput input;
     private final PlatformType platformType;
+    private boolean testingApi = false;
 
     public SetupWizard(PluginLogger logger, ConsoleInput input, PlatformType platformType) {
         this.logger = logger;
@@ -30,7 +31,14 @@ public class SetupWizard {
     }
 
     private BootConfig runSpigotWizard() {
-        boolean standalone = input.confirm("Is this a standalone server (no proxy)?");
+        String response = input.readLine("Is this a standalone server (no proxy)? [yes/no]: ");
+        testingApi = response != null && response.contains("--test-mode");
+        if (testingApi) {
+            logger.info("Test mode enabled — using api.modl.top");
+        }
+        boolean standalone = response != null &&
+                (response.replace("--test-mode", "").trim().equalsIgnoreCase("yes") ||
+                 response.replace("--test-mode", "").trim().equalsIgnoreCase("y"));
 
         if (standalone) {
             return runStandaloneWizard();
@@ -44,6 +52,7 @@ public class SetupWizard {
 
         BootConfig config = new BootConfig();
         config.setMode(BootConfig.Mode.STANDALONE);
+        config.setTestingApi(testingApi);
 
         if (hasAccount) {
             String apiKey = input.readLine("Enter your API key: ");
@@ -51,7 +60,7 @@ public class SetupWizard {
             config.setApiKey(apiKey != null ? apiKey.trim() : "");
             config.setPanelUrl(normalizePanelUrl(panelUrl));
         } else {
-            RegistrationResult result = runRegistrationFlow();
+            RegistrationResult result = runRegistrationFlowWithRetry();
             if (result != null) {
                 config.setApiKey(result.apiKey);
                 config.setPanelUrl(result.panelUrl);
@@ -68,6 +77,7 @@ public class SetupWizard {
     private BootConfig runBridgeOnlyWizard() {
         BootConfig config = new BootConfig();
         config.setMode(BootConfig.Mode.BRIDGE_ONLY);
+        config.setTestingApi(testingApi);
 
         String apiKey = input.readLine("Enter your API key (from proxy setup or modl.gg panel): ");
         logger.info("If you don't have one, register using the proxy's setup wizard first.");
@@ -79,10 +89,18 @@ public class SetupWizard {
     }
 
     private BootConfig runProxyWizard() {
-        boolean hasAccount = input.confirm("Have you already registered a server on modl.gg?");
+        String response = input.readLine("Have you already registered a server on modl.gg? [yes/no]: ");
+        testingApi = response != null && response.contains("--test-mode");
+        if (testingApi) {
+            logger.info("Test mode enabled — using api.modl.top");
+        }
+        boolean hasAccount = response != null &&
+                (response.replace("--test-mode", "").trim().equalsIgnoreCase("yes") ||
+                 response.replace("--test-mode", "").trim().equalsIgnoreCase("y"));
 
         BootConfig config = new BootConfig();
         config.setMode(BootConfig.Mode.PROXY);
+        config.setTestingApi(testingApi);
 
         if (hasAccount) {
             String apiKey = input.readLine("Enter your API key: ");
@@ -90,7 +108,7 @@ public class SetupWizard {
             config.setApiKey(apiKey != null ? apiKey.trim() : "");
             config.setPanelUrl(normalizePanelUrl(panelUrl));
         } else {
-            RegistrationResult result = runRegistrationFlow();
+            RegistrationResult result = runRegistrationFlowWithRetry();
             if (result != null) {
                 config.setApiKey(result.apiKey);
                 config.setPanelUrl(result.panelUrl);
@@ -128,6 +146,18 @@ public class SetupWizard {
         config.setBackendBridges(bridges);
     }
 
+    private RegistrationResult runRegistrationFlowWithRetry() {
+        while (true) {
+            RegistrationResult result = runRegistrationFlow();
+            if (result != null) return result;
+
+            if (!input.confirm("Would you like to retry?")) {
+                return null;
+            }
+            logger.info("");
+        }
+    }
+
     private RegistrationResult runRegistrationFlow() {
         String email = input.readLine("Admin email: ");
         String serverName = input.readLine("Server name: ");
@@ -139,7 +169,7 @@ public class SetupWizard {
         }
 
         logger.info("Registering server...");
-        RegistrationClient client = new RegistrationClient();
+        RegistrationClient client = new RegistrationClient(testingApi);
 
         try {
             RegistrationClient.RegisterResponse registerResponse = client.register(
@@ -154,73 +184,55 @@ public class SetupWizard {
                 return null;
             }
 
+            String setupToken = registerResponse.setupToken();
+            if (setupToken == null || setupToken.isBlank()) {
+                logger.severe("Registration succeeded but no setup token was returned.");
+                return null;
+            }
+
             logger.info("Check your email and click the verification link.");
             logger.info("Waiting for verification... (polling every 5s)");
 
-            String autoLoginToken = pollForCompletion(client, subdomain != null ? subdomain.trim() : "");
-            if (autoLoginToken == null) {
+            RegistrationClient.CliStatusResponse statusResponse = pollForCompletion(client, setupToken);
+            if (statusResponse == null) {
                 logger.severe("Setup did not complete in time. Check the panel for your API key.");
                 return null;
             }
 
-            logger.info("Retrieving API key...");
-            RegistrationClient.ApiKeyResponse apiKeyResponse = client.getApiKey(autoLoginToken);
-            if (!apiKeyResponse.success()) {
-                logger.severe("Failed to retrieve API key: " + apiKeyResponse.message());
-                return null;
-            }
-
-            return new RegistrationResult(apiKeyResponse.apiKey(), apiKeyResponse.panelUrl());
+            logger.info("Setup complete!");
+            return new RegistrationResult(statusResponse.apiKey(), statusResponse.message());
         } catch (Exception e) {
             logger.severe("Registration error: " + e.getMessage());
             return null;
         }
     }
 
-    private String pollForCompletion(RegistrationClient client, String subdomain) throws Exception {
+    private RegistrationClient.CliStatusResponse pollForCompletion(RegistrationClient client, String setupToken)
+            throws Exception {
         for (int attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
             Thread.sleep(POLL_INTERVAL_MS);
 
-            // Use the subdomain as part of the token flow — the setup-status uses the auto-login token
-            // which we don't have yet. We poll verify first.
-            // Actually, the register response contains a server but no token.
-            // The token comes from email verification. We need to poll setup-status with the verify token.
-            // Since CLI doesn't have the token until the user verifies email, we need to poll differently.
-            // The verify endpoint returns autoLoginToken when the user clicks the email link.
-            // We'll poll the setup-status endpoint — but we need the token from verify.
+            RegistrationClient.CliStatusResponse status = client.pollCliStatus(setupToken);
 
-            // In practice, the flow is:
-            // 1. User registers -> email sent with verify link
-            // 2. User clicks link -> verify endpoint returns autoLoginToken
-            // 3. We poll setup-status with that token
-            // But we can't get the token without the user visiting the URL...
+            if (status.isFailed()) {
+                logger.severe("Server provisioning failed: " + status.message());
+                return null;
+            }
 
-            // Alternative: we poll the setup-status using the verify token from the GET param.
-            // Since the CLI doesn't open a browser, we need to poll by email verification.
-            // The verify endpoint can be called with POST {token}, but we don't know the token.
+            if (status.isComplete()) {
+                return status;
+            }
 
-            // Simplest approach: poll setup-status by querying with the email's verify token.
-            // But we don't have that token. The server generated it.
-
-            // Actually, looking at the existing flow more carefully:
-            // The register endpoint creates the server and sends verification email.
-            // The verify endpoint is called when user clicks the link, returns autoLoginToken.
-            // setup-status is polled with the autoLoginToken.
-
-            // For CLI, we need to somehow get the autoLoginToken.
-            // The most practical approach: after registration, ask the user to verify email,
-            // then enter the token from the verification page, OR
-            // we just let the backend have a way to poll by server ID.
-
-            // For now, let's implement a simple version where we tell the user
-            // to verify their email and then enter their API key manually from the panel.
-
-            logger.info("  Waiting for email verification... (attempt " + (attempt + 1) + ")");
-
-            // We cannot poll without the autoLoginToken, which requires email verification.
-            // This is a UX limitation of the CLI flow that the /api-key endpoint solves.
-            // The backend needs to support polling by a different mechanism for CLI.
-            // For now, fall back to manual key entry after registration.
+            // Log progress
+            Boolean emailVerified = status.emailVerified();
+            String provisioningStatus = status.provisioningStatus();
+            if (emailVerified != null && emailVerified) {
+                logger.info("  Email verified. Provisioning status: " +
+                        (provisioningStatus != null ? provisioningStatus : "pending") +
+                        " (attempt " + (attempt + 1) + ")");
+            } else {
+                logger.info("  Waiting for email verification... (attempt " + (attempt + 1) + ")");
+            }
         }
 
         return null;

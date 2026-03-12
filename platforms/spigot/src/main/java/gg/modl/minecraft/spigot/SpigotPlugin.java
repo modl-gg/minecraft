@@ -37,31 +37,61 @@ public class SpigotPlugin extends JavaPlugin {
     private QueryStatWipeExecutor queryStatWipeExecutor;
     private BridgeComponent bridgeComponent;
     private PluginLogger pluginLogger;
+    private BootConfig bootConfig;
+    private boolean needsSetup = false;
 
     @Override
     public synchronized void onLoad() {
         this.pluginLogger = PluginLogger.fromJul(getLogger());
-        loadLibraries();
-        initializePacketEvents();
 
-        // Early Polar registration must happen in onLoad
-        // BridgeComponent is created here but only fully enabled in onEnable
-        bridgeComponent = new BridgeComponent(this, "", pluginLogger);
-        bridgeComponent.onLoad();
+        // Try loading existing boot.yml or migrating
+        bootConfig = loadBootConfig();
+        if (bootConfig != null) {
+            loadLibraries();
+            initializePacketEvents();
+
+            // Early Polar registration must happen in onLoad
+            bridgeComponent = new BridgeComponent(this, "", pluginLogger);
+            bridgeComponent.onLoad();
+        } else {
+            needsSetup = true;
+        }
     }
 
     @Override
     public synchronized void onEnable() {
+        if (needsSetup) {
+            getLogger().info("No configuration found. Starting setup wizard...");
+            new SpigotSetupWizard(this, pluginLogger, this::initializeAfterWizard).start();
+            return;
+        }
+
+        initializePlugin();
+    }
+
+    /**
+     * Called on the main thread after the setup wizard completes.
+     * Loads libraries, PacketEvents, and runs full plugin initialization.
+     * Only Polar early registration (onLoad) is skipped — works after restart.
+     */
+    private synchronized void initializeAfterWizard(BootConfig config) {
+        this.bootConfig = config;
+        this.needsSetup = false;
+
+        loadLibraries();
+        initializePacketEvents();
+
+        // BridgeComponent.onLoad() for Polar early registration is skipped on first setup.
+        // Polar integration will work after server restart.
+        bridgeComponent = new BridgeComponent(this, "", pluginLogger);
+
+        initializePlugin();
+    }
+
+    private void initializePlugin() {
         saveDefaultConfig();
         createLocaleFiles();
         mergeDefaultConfigs();
-
-        // Load boot.yml → migration → wizard
-        BootConfig bootConfig = loadOrCreateBootConfig();
-        if (bootConfig == null) {
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
 
         // Re-create BridgeComponent with the real API key
         bridgeComponent = new BridgeComponent(this, bootConfig.getApiKey(), pluginLogger);
@@ -83,7 +113,7 @@ public class SpigotPlugin extends JavaPlugin {
                 bootConfig.getApiKey(),
                 bootConfig.getPanelUrl(),
                 getConfig().getBoolean("api.debug", false),
-                getConfig().getBoolean("api.testing-api", false),
+                bootConfig.isTestingApi(),
                 getConfig().getBoolean("server.query_mojang", false)
         );
 
@@ -178,7 +208,10 @@ public class SpigotPlugin extends JavaPlugin {
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
     }
 
-    private BootConfig loadOrCreateBootConfig() {
+    /**
+     * Loads boot.yml if it exists, or tries migration. Does NOT run the wizard.
+     */
+    private BootConfig loadBootConfig() {
         try {
             // 1. Try loading existing boot.yml
             if (BootConfig.exists(getDataFolder().toPath())) {
@@ -196,18 +229,6 @@ public class SpigotPlugin extends JavaPlugin {
                 return migrated.get();
             }
 
-            // 3. Run setup wizard
-            getLogger().info("No configuration found. Starting setup wizard...");
-            ConsoleInput input = ConsoleInput.system(pluginLogger);
-            SetupWizard wizard = new SetupWizard(pluginLogger, input, PlatformType.SPIGOT);
-            BootConfig config = wizard.run();
-
-            if (config != null) {
-                config.save(getDataFolder().toPath());
-                return config;
-            }
-
-            logConfigurationError();
             return null;
         } catch (IOException e) {
             getLogger().severe("Failed to load boot.yml: " + e.getMessage());
@@ -220,17 +241,6 @@ public class SpigotPlugin extends JavaPlugin {
                 getDataFolder().toPath().resolve("config.yml"), pluginLogger);
         YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",
                 getDataFolder().toPath().resolve("locale/en_US.yml"), pluginLogger);
-    }
-
-    private void logConfigurationError() {
-        getLogger().severe("===============================================");
-        getLogger().severe("modl.gg CONFIGURATION ERROR");
-        getLogger().severe("===============================================");
-        getLogger().severe("Setup wizard failed or was cancelled.");
-        getLogger().severe("Delete boot.yml and restart to re-run the wizard,");
-        getLogger().severe("or configure boot.yml manually.");
-        getLogger().severe("Plugin will now disable itself.");
-        getLogger().severe("===============================================");
     }
 
     private void initializePacketEvents() {

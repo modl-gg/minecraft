@@ -11,17 +11,20 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 public class RegistrationClient {
-    private static final String API_BASE = "https://api.modl.gg/v1/public/registration";
+    private static final String PROD_API_BASE = "https://api.modl.gg/v1/public/registration";
+    private static final String TEST_API_BASE = "https://api.modl.top/v1/public/registration";
     private static final Duration TIMEOUT = Duration.ofSeconds(30);
 
     private final HttpClient httpClient;
     private final Gson gson;
+    private final String apiBase;
 
-    public RegistrationClient() {
+    public RegistrationClient(boolean testingApi) {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(TIMEOUT)
                 .build();
         this.gson = new Gson();
+        this.apiBase = testingApi ? TEST_API_BASE : PROD_API_BASE;
     }
 
     public RegisterResponse register(String email, String serverName, String subdomain, String plan)
@@ -33,7 +36,7 @@ public class RegistrationClient {
         body.addProperty("plan", plan != null ? plan : "free");
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(API_BASE + "/cli"))
+                .uri(URI.create(apiBase + "/cli"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
                 .timeout(TIMEOUT)
@@ -43,50 +46,33 @@ public class RegistrationClient {
         return gson.fromJson(response.body(), RegisterResponse.class);
     }
 
-    public SetupStatusResponse pollSetupStatus(String token) throws IOException, InterruptedException {
+    public CliStatusResponse pollCliStatus(String setupToken) throws IOException, InterruptedException {
         JsonObject body = new JsonObject();
-        body.addProperty("token", token);
+        body.addProperty("token", setupToken);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(API_BASE + "/setup-status"))
+                .uri(URI.create(apiBase + "/cli/status"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
                 .timeout(TIMEOUT)
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        return gson.fromJson(response.body(), SetupStatusResponse.class);
+        return gson.fromJson(response.body(), CliStatusResponse.class);
     }
 
-    public ApiKeyResponse getApiKey(String autoLoginToken) throws IOException, InterruptedException {
-        JsonObject body = new JsonObject();
-        body.addProperty("token", autoLoginToken);
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(API_BASE + "/api-key"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-                .timeout(TIMEOUT)
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        return gson.fromJson(response.body(), ApiKeyResponse.class);
-    }
-
-    public record RegisterResponse(boolean success, String message, ServerInfo server) {
+    public record RegisterResponse(boolean success, String message, ServerInfo server, String setupToken) {
         public record ServerInfo(String id, String name) {}
     }
 
-    public record SetupStatusResponse(String subdomain, String serverName, Boolean emailVerified,
-                                       String provisioningStatus, String message) {
+    public record CliStatusResponse(boolean success, Boolean emailVerified, String provisioningStatus,
+                                     String apiKey, String message) {
         public boolean isComplete() {
-            return "COMPLETED".equals(provisioningStatus);
+            return apiKey != null && !apiKey.isBlank();
         }
 
         public boolean isFailed() {
             return "FAILED".equals(provisioningStatus);
         }
     }
-
-    public record ApiKeyResponse(boolean success, String apiKey, String panelUrl, String message) {}
 }

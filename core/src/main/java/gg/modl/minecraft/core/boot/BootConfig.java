@@ -18,6 +18,7 @@ public class BootConfig {
     private Mode mode = Mode.STANDALONE;
     private String apiKey = "";
     private String panelUrl = "";
+    private boolean testingApi = false;
     private List<BackendBridge> backendBridges = new ArrayList<>();
 
     public enum Mode {
@@ -107,6 +108,7 @@ public class BootConfig {
         config.setMode(Mode.fromString((String) data.get("mode")));
         config.setApiKey(getStr(data, "api-key", ""));
         config.setPanelUrl(getStr(data, "panel-url", ""));
+        config.setTestingApi(getBool(data, "testing-api", false));
 
         Object backendsObj = data.get("backend-bridges");
         if (backendsObj instanceof List<?> list) {
@@ -130,6 +132,7 @@ public class BootConfig {
         map.put("mode", mode.toYaml());
         map.put("api-key", apiKey);
         map.put("panel-url", panelUrl);
+        if (testingApi) map.put("testing-api", true);
 
         if (mode == Mode.PROXY && !backendBridges.isEmpty()) {
             List<Map<String, Object>> backends = new ArrayList<>();
@@ -143,6 +146,33 @@ public class BootConfig {
         }
 
         return map;
+    }
+
+    public static void saveTemplate(Path dataDir) throws IOException {
+        Path file = dataDir.resolve(FILE_NAME);
+        if (!Files.exists(dataDir)) Files.createDirectories(dataDir);
+        try (java.io.Writer writer = Files.newBufferedWriter(file)) {
+            writer.write("# modl.gg Boot Configuration\n");
+            writer.write("# Edit this file and restart the server.\n");
+            writer.write("# To register a new server, visit https://modl.gg/register\n");
+            writer.write("#\n");
+            writer.write("# mode: standalone | bridge-only | proxy\n");
+            writer.write("mode: proxy\n");
+            writer.write("\n");
+            writer.write("# Your API key from the modl.gg panel\n");
+            writer.write("api-key: \"your-api-key-here\"\n");
+            writer.write("\n");
+            writer.write("# Your panel URL (e.g. https://myserver.modl.gg)\n");
+            writer.write("panel-url: \"https://yourserver.modl.gg\"\n");
+            writer.write("\n");
+            writer.write("# Uncomment to use the testing API (api.modl.top)\n");
+            writer.write("# testing-api: true\n");
+            writer.write("\n");
+            writer.write("# Backend server bridges (proxy mode only)\n");
+            writer.write("# backend-bridges:\n");
+            writer.write("#   - host: \"127.0.0.1\"\n");
+            writer.write("#     port: 25590\n");
+        }
     }
 
     private static String getStr(Map<String, Object> map, String key, String def) {

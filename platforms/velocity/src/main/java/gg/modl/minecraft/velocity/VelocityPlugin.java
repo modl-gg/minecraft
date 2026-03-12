@@ -72,17 +72,17 @@ public final class VelocityPlugin {
 
     @Subscribe
     public synchronized void onProxyInitialize(ProxyInitializeEvent event) {
+        // Load boot.yml → migration → wizard (first, before everything)
+        BootConfig bootConfig = loadOrCreateBootConfig();
+        if (bootConfig == null) {
+            return;
+        }
+
         loadLibraries();
         initializePacketEvents();
         loadConfig();
         createLocaleFiles();
         mergeDefaultConfigs();
-
-        // Load boot.yml → migration → wizard
-        BootConfig bootConfig = loadOrCreateBootConfig();
-        if (bootConfig == null) {
-            return;
-        }
 
         VelocityCommandManager commandManager = new VelocityCommandManager(this.server, this);
         new CirrusVelocity(this, server).init();
@@ -91,7 +91,7 @@ public final class VelocityPlugin {
                 bootConfig.getApiKey(),
                 bootConfig.getPanelUrl(),
                 (Boolean) getNestedConfig("api.debug", false),
-                (Boolean) getNestedConfig("api.testing-api", false),
+                bootConfig.isTestingApi(),
                 (Boolean) getNestedConfig("server.query_mojang", false)
         );
 
