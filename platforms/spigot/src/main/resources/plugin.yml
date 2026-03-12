@@ -13,4 +13,9 @@ softdepend:
   - ViaBackwards
   - ViaRewind
   - Geyser-Spigot
-  - modl-bridge
+  - GrimAC
+  - Polar
+commands:
+  proxycmd:
+    description: Forward a command to the proxy plugin via TCP query
+    usage: /proxycmd <command>

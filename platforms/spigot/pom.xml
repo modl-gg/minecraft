@@ -34,10 +34,54 @@
         </plugins>
     </build>
 
+    <repositories>
+        <repository>
+            <id>grim-snapshots</id>
+            <url>https://repo.grim.ac/snapshots</url>
+        </repository>
+        <repository>
+            <id>polar</id>
+            <url>https://repo.polar.top/repository/polar/</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Anticheat APIs (compile-only, provided by their plugins at runtime) -->
+        <dependency>
+            <groupId>ac.grim.grimac</groupId>
+            <artifactId>grimapi</artifactId>
+            <version>1.0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>top.polar</groupId>
+            <artifactId>api</artifactId>
+            <version>2.3.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Netty (provided by Minecraft server) -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.1.97.Final</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Adventure (loaded via libby at runtime) -->
+        <dependency>
+            <groupId>net.kyori</groupId>
+            <artifactId>adventure-text-minimessage</artifactId>
+            <version>4.26.1</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.kyori</groupId>
+            <artifactId>adventure-text-serializer-legacy</artifactId>
+            <version>4.26.1</version>
             <scope>provided</scope>
         </dependency>
         <dependency>

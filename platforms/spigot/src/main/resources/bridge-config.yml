@@ -1,0 +1,22 @@
+# Bridge configuration for modl.gg Spigot plugin.
+
+# Enable the TCP query server for proxy communication
+query-enabled: true
+query-port: 25590
+
+# Commands executed on stat wipe ({player} is replaced with the player name)
+stat-wipe-commands:
+  - "clearstats {player}"
+
+# Display name for the anticheat in reports
+anticheat-name: "Anti-cheat"
+
+# Server name used in bridge communication
+server-name: "Server 1"
+
+# Cooldown in seconds between auto-reports per player
+report-cooldown: 60
+
+# Violation threshold before auto-reporting (per check name, or "default")
+report-violation-threshold:
+  default: 10

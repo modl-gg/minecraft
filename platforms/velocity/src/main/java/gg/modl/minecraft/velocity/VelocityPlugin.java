@@ -15,6 +15,7 @@ import gg.modl.minecraft.api.LibraryRecord;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.core.boot.*;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
 import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
@@ -34,6 +35,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Plugin(id = PluginInfo.ID,
         name = PluginInfo.NAME,
@@ -42,8 +44,7 @@ import java.util.Map;
         description = PluginInfo.DESCRIPTION,
         url = PluginInfo.URL)
 public final class VelocityPlugin {
-    private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg", DEFAULT_BRIDGE_NAME = "bridge";
-    private static final int DEFAULT_BRIDGE_PORT = 25590, MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
+    private static final int MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
 
     private final PluginContainer plugin;
     private final ProxyServer server;
@@ -77,9 +78,9 @@ public final class VelocityPlugin {
         createLocaleFiles();
         mergeDefaultConfigs();
 
-        String apiUrl = getConfigString("api.url", PLACEHOLDER_API_URL);
-        if (PLACEHOLDER_API_URL.equals(apiUrl)) {
-            logConfigurationError();
+        // Load boot.yml → migration → wizard
+        BootConfig bootConfig = loadOrCreateBootConfig();
+        if (bootConfig == null) {
             return;
         }
 
@@ -87,8 +88,8 @@ public final class VelocityPlugin {
         new CirrusVelocity(this, server).init();
 
         HttpManager httpManager = new HttpManager(
-                getConfigString("api.key", "your-api-key-here"),
-                apiUrl,
+                bootConfig.getApiKey(),
+                bootConfig.getPanelUrl(),
                 (Boolean) getNestedConfig("api.debug", false),
                 (Boolean) getNestedConfig("api.testing-api", false),
                 (Boolean) getNestedConfig("server.query_mojang", false)
@@ -99,7 +100,7 @@ public final class VelocityPlugin {
         int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfigInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
 
         this.pluginLoader = new PluginLoader(platform, folder, chatMessageCache, httpManager, syncPollingRate);
-        configureBridgeExecutor(platform, httpManager);
+        configureBridgeExecutor(platform, httpManager, bootConfig);
 
         @SuppressWarnings("unchecked")
         List<String> mutedCommands = (List<String>) getNestedConfig("muted_commands", Collections.emptyList());
@@ -127,6 +128,43 @@ public final class VelocityPlugin {
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
     }
 
+    private BootConfig loadOrCreateBootConfig() {
+        try {
+            // 1. Try loading existing boot.yml
+            if (BootConfig.exists(folder)) {
+                BootConfig config = BootConfig.load(folder);
+                if (config != null && config.isValid()) {
+                    logger.info("Loaded configuration from boot.yml (mode: " + config.getMode().toYaml() + ")");
+                    return config;
+                }
+            }
+
+            // 2. Try migrating from existing config.yml
+            Optional<BootConfig> migrated = BootConfigMigrator.migrateFromConfigYml(
+                    folder, PlatformType.VELOCITY, pluginLogger);
+            if (migrated.isPresent()) {
+                return migrated.get();
+            }
+
+            // 3. Run setup wizard
+            logger.info("No configuration found. Starting setup wizard...");
+            ConsoleInput input = ConsoleInput.system(pluginLogger);
+            SetupWizard wizard = new SetupWizard(pluginLogger, input, PlatformType.VELOCITY);
+            BootConfig config = wizard.run();
+
+            if (config != null) {
+                config.save(folder);
+                return config;
+            }
+
+            logConfigurationError();
+            return null;
+        } catch (IOException e) {
+            logger.error("Failed to load boot.yml: " + e.getMessage());
+            return null;
+        }
+    }
+
     private void mergeDefaultConfigs() {
         YamlMergeUtil.mergeWithDefaults("/config.yml", folder.resolve("config.yml"), pluginLogger);
         YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml", folder.resolve("locale/en_US.yml"), pluginLogger);
@@ -136,21 +174,26 @@ public final class VelocityPlugin {
         logger.error("===============================================");
         logger.error("modl.gg CONFIGURATION ERROR");
         logger.error("===============================================");
-        logger.error("You must configure your API URL in config.yml!");
-        logger.error("Please set 'api.url' to your actual modl.gg panel URL.");
-        logger.error("Example: https://yourserver.modl.gg");
+        logger.error("Setup wizard failed or was cancelled.");
+        logger.error("Delete boot.yml and restart to re-run the wizard,");
+        logger.error("or configure boot.yml manually.");
         logger.error("Plugin initialization stopped due to invalid configuration.");
         logger.error("===============================================");
     }
 
-    private void configureBridgeExecutor(VelocityPlatform platform, HttpManager httpManager) {
-        String bridgeHost = getConfigString("bridge.host", "");
-        if (bridgeHost.isEmpty()) return;
+    private void configureBridgeExecutor(VelocityPlatform platform, HttpManager httpManager, BootConfig bootConfig) {
+        List<BootConfig.BackendBridge> backends = bootConfig.getBackendBridges();
+        if (backends == null || backends.isEmpty()) return;
 
-        int bridgePort = getConfigInt("bridge.port", DEFAULT_BRIDGE_PORT);
-        String apiKey = getConfigString("api.key", "your-api-key-here");
+        String apiKey = bootConfig.getApiKey();
         queryStatWipeExecutor = new QueryStatWipeExecutor(pluginLogger, httpManager.isDebugHttp());
-        queryStatWipeExecutor.addBridge(DEFAULT_BRIDGE_NAME, bridgeHost, bridgePort, apiKey);
+
+        for (int i = 0; i < backends.size(); i++) {
+            BootConfig.BackendBridge bb = backends.get(i);
+            String name = "bridge-" + (i + 1);
+            queryStatWipeExecutor.addBridge(name, bb.getHost(), bb.getPort(), apiKey);
+        }
+
         pluginLoader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
 
         BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(

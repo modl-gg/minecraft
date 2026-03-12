@@ -4,14 +4,18 @@ import co.aikar.commands.BukkitCommandManager;
 import com.github.retrooper.packetevents.PacketEvents;
 import dev.simplix.cirrus.spigot.CirrusSpigot;
 import gg.modl.minecraft.api.LibraryRecord;
+import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.core.boot.*;
 import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
 import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
+import gg.modl.minecraft.spigot.bridge.BridgeComponent;
+import gg.modl.minecraft.spigot.bridge.reporter.TicketCreator;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import net.byteflux.libby.BukkitLibraryManager;
 import net.byteflux.libby.Library;
@@ -23,35 +27,61 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.Optional;
 
 public class SpigotPlugin extends JavaPlugin {
-    private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg", BRIDGE_PLUGIN_NAME = "modl-bridge", DEFAULT_BRIDGE_NAME = "bridge";
     private static final int DEFAULT_BRIDGE_PORT = 25590, MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
+    private static final String DEFAULT_BRIDGE_NAME = "bridge";
 
     private PluginLoader loader;
     private QueryStatWipeExecutor queryStatWipeExecutor;
+    private BridgeComponent bridgeComponent;
     private PluginLogger pluginLogger;
 
     @Override
-    public synchronized void onEnable() {
+    public synchronized void onLoad() {
         this.pluginLogger = PluginLogger.fromJul(getLogger());
         loadLibraries();
         initializePacketEvents();
+
+        // Early Polar registration must happen in onLoad
+        // BridgeComponent is created here but only fully enabled in onEnable
+        bridgeComponent = new BridgeComponent(this, "", pluginLogger);
+        bridgeComponent.onLoad();
+    }
+
+    @Override
+    public synchronized void onEnable() {
         saveDefaultConfig();
         createLocaleFiles();
         mergeDefaultConfigs();
 
-        String apiUrl = getConfig().getString("api.url");
-        if (PLACEHOLDER_API_URL.equals(apiUrl)) {
-            logConfigurationError();
+        // Load boot.yml → migration → wizard
+        BootConfig bootConfig = loadOrCreateBootConfig();
+        if (bootConfig == null) {
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
 
+        // Re-create BridgeComponent with the real API key
+        bridgeComponent = new BridgeComponent(this, bootConfig.getApiKey(), pluginLogger);
+
+        // Branch by mode
+        switch (bootConfig.getMode()) {
+            case STANDALONE -> enableStandaloneMode(bootConfig);
+            case BRIDGE_ONLY -> enableBridgeOnlyMode(bootConfig);
+            case PROXY -> {
+                // Spigot should not run in proxy mode
+                getLogger().severe("boot.yml mode is 'proxy' but this is a Spigot server. Use 'standalone' or 'bridge-only'.");
+                getServer().getPluginManager().disablePlugin(this);
+            }
+        }
+    }
+
+    private void enableStandaloneMode(BootConfig bootConfig) {
         HttpManager httpManager = new HttpManager(
-                getConfig().getString("api.key"),
-                apiUrl,
+                bootConfig.getApiKey(),
+                bootConfig.getPanelUrl(),
                 getConfig().getBoolean("api.debug", false),
                 getConfig().getBoolean("api.testing-api", false),
                 getConfig().getBoolean("server.query_mojang", false)
@@ -60,13 +90,55 @@ public class SpigotPlugin extends JavaPlugin {
         BukkitCommandManager commandManager = new BukkitCommandManager(this);
         new CirrusSpigot(this).init();
 
-        SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger(), getDataFolder(), getConfig().getString("server.name", "Server 1"), this);
+        // Create TicketCreator that calls core HTTP client directly (no reflection)
+        // loader is not created yet, so we capture it via lambda's deferred access
+        TicketCreator ticketCreator = (creatorUuid, creatorName, type, subject, description,
+                                       reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer) -> {
+            List<String> tags = tagsJoined == null || tagsJoined.isEmpty() ? List.of() : Arrays.asList(tagsJoined.split(","));
+            CreateTicketRequest request = new CreateTicketRequest(
+                    creatorUuid, type, creatorName, subject, description,
+                    reportedPlayerUuid, reportedPlayerName, priority, createdServer,
+                    null, tags
+            );
+            loader.getHttpClient().createTicket(request).thenAccept(response -> {
+                if (response.isSuccess()) {
+                    getLogger().info("[bridge] Report ticket created: " + response.getTicketId());
+                } else {
+                    getLogger().warning("[bridge] Failed to create report ticket: " + response.getMessage());
+                }
+            }).exceptionally(throwable -> {
+                getLogger().warning("[bridge] Error creating report ticket: " + throwable.getMessage());
+                return null;
+            });
+        };
+
+        // Enable bridge first so bridge-config.yml is loaded (provides serverName)
+        bridgeComponent.enable(ticketCreator);
+        String serverName = bridgeComponent.getBridgeConfig().getServerName();
+
+        SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger(), getDataFolder(),
+                serverName, this);
         ChatMessageCache chatMessageCache = new ChatMessageCache();
         int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfig().getInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
         List<String> mutedCommands = getConfig().getStringList("muted_commands");
 
         this.loader = new PluginLoader(platform, getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
-        configureStatWipeExecutor(platform, httpManager);
+
+        // Wire DirectStatWipeExecutor (replaces reflection-based SpigotStatWipeExecutor)
+        DirectStatWipeExecutor directExecutor = new DirectStatWipeExecutor(bridgeComponent, serverName);
+        loader.getSyncService().setStatWipeExecutor(directExecutor);
+
+        // Wire BridgeService for direct local dispatch in standalone mode
+        if (bridgeComponent.getQueryServer() != null) {
+            // If query server is running (for multi-backend scenarios), also set up TCP dispatch
+            queryStatWipeExecutor = new QueryStatWipeExecutor(pluginLogger, httpManager.isDebugHttp());
+            BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
+                    platform, loader.getLocaleManager(), loader.getFreezeService(),
+                    loader.getStaffModeService(), loader.getVanishService(),
+                    loader.getHttpClient(), pluginLogger);
+            queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
+            loader.getBridgeService().setExecutor(queryStatWipeExecutor);
+        }
 
         getServer().getPluginManager().registerEvents(new SpigotListener(
                 platform, loader.getCache(), loader.getHttpClientHolder(), loader.getChatMessageCache(),
@@ -80,11 +152,67 @@ public class SpigotPlugin extends JavaPlugin {
                 loader.isDebugMode()), this);
     }
 
+    private void enableBridgeOnlyMode(BootConfig bootConfig) {
+        // Bridge-only: no PluginLoader, no HTTP client, only BridgeComponent
+        // TicketCreator sends via TCP to proxy
+        TicketCreator tcpTicketCreator = (creatorUuid, creatorName, type, subject, description,
+                                          reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer) -> {
+            if (bridgeComponent.getQueryServer() != null) {
+                bridgeComponent.getQueryServer().sendToAllClients("CREATE_REPORT",
+                        creatorUuid, creatorName, type, subject, description,
+                        reportedPlayerUuid, reportedPlayerName,
+                        tagsJoined != null ? tagsJoined : "",
+                        priority, createdServer);
+            }
+        };
+
+        bridgeComponent.enable(tcpTicketCreator);
+        getLogger().info("Running in bridge-only mode (no main plugin features)");
+    }
+
     @Override
     public synchronized void onDisable() {
+        if (bridgeComponent != null) bridgeComponent.disable();
         if (queryStatWipeExecutor != null) queryStatWipeExecutor.shutdown();
         if (loader != null) loader.shutdown();
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
+    }
+
+    private BootConfig loadOrCreateBootConfig() {
+        try {
+            // 1. Try loading existing boot.yml
+            if (BootConfig.exists(getDataFolder().toPath())) {
+                BootConfig config = BootConfig.load(getDataFolder().toPath());
+                if (config != null && config.isValid()) {
+                    getLogger().info("Loaded configuration from boot.yml (mode: " + config.getMode().toYaml() + ")");
+                    return config;
+                }
+            }
+
+            // 2. Try migrating from existing config.yml
+            Optional<BootConfig> migrated = BootConfigMigrator.migrateFromConfigYml(
+                    getDataFolder().toPath(), PlatformType.SPIGOT, pluginLogger);
+            if (migrated.isPresent()) {
+                return migrated.get();
+            }
+
+            // 3. Run setup wizard
+            getLogger().info("No configuration found. Starting setup wizard...");
+            ConsoleInput input = ConsoleInput.system(pluginLogger);
+            SetupWizard wizard = new SetupWizard(pluginLogger, input, PlatformType.SPIGOT);
+            BootConfig config = wizard.run();
+
+            if (config != null) {
+                config.save(getDataFolder().toPath());
+                return config;
+            }
+
+            logConfigurationError();
+            return null;
+        } catch (IOException e) {
+            getLogger().severe("Failed to load boot.yml: " + e.getMessage());
+            return null;
+        }
     }
 
     private void mergeDefaultConfigs() {
@@ -98,71 +226,11 @@ public class SpigotPlugin extends JavaPlugin {
         getLogger().severe("===============================================");
         getLogger().severe("modl.gg CONFIGURATION ERROR");
         getLogger().severe("===============================================");
-        getLogger().severe("You must configure your API URL in config.yml!");
-        getLogger().severe("Please set 'api.url' to your actual modl.gg panel URL.");
-        getLogger().severe("Example: https://yourserver.modl.gg");
+        getLogger().severe("Setup wizard failed or was cancelled.");
+        getLogger().severe("Delete boot.yml and restart to re-run the wizard,");
+        getLogger().severe("or configure boot.yml manually.");
         getLogger().severe("Plugin will now disable itself.");
         getLogger().severe("===============================================");
-    }
-
-    private void configureStatWipeExecutor(SpigotPlatform platform, HttpManager httpManager) {
-        // prefer direct java invocation (same-server bridge), fall back to TCP
-        if (getServer().getPluginManager().getPlugin(BRIDGE_PLUGIN_NAME) != null) {
-            loader.getSyncService().setStatWipeExecutor(new SpigotStatWipeExecutor(pluginLogger, httpManager.isDebugHttp()));
-            return;
-        }
-
-        String bridgeHost = getConfig().getString("bridge.host", "");
-        if (bridgeHost.isEmpty()) {
-            getLogger().warning("modl-bridge plugin not found and bridge.host not configured, stat wipe commands will not execute");
-            return;
-        }
-
-        int bridgePort = getConfig().getInt("bridge.port", DEFAULT_BRIDGE_PORT);
-        String apiKey = getConfig().getString("api.key");
-        queryStatWipeExecutor = new QueryStatWipeExecutor(pluginLogger, httpManager.isDebugHttp());
-        queryStatWipeExecutor.addBridge(DEFAULT_BRIDGE_NAME, bridgeHost, bridgePort, apiKey);
-        loader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
-
-        BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
-                platform, loader.getLocaleManager(), loader.getFreezeService(),
-                loader.getStaffModeService(), loader.getVanishService(),
-                loader.getHttpClient(), pluginLogger);
-        queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
-        loader.getBridgeService().setExecutor(queryStatWipeExecutor);
-    }
-
-    /**
-     * Creates a report ticket via the modl HTTP API. Called by the modl-bridge plugin
-     * via reflection (same-server setup).
-     */
-    public CompletableFuture<Boolean> createTicketFromBridge(
-            String creatorUuid, String creatorName, String type,
-            String subject, String description,
-            String reportedPlayerUuid, String reportedPlayerName,
-            String tagsJoined, String priority, String createdServer) {
-        if (loader == null) return CompletableFuture.completedFuture(false);
-
-        List<String> tags = tagsJoined.isEmpty() ? List.of() : Arrays.asList(tagsJoined.split(","));
-        gg.modl.minecraft.api.http.request.CreateTicketRequest request =
-                new gg.modl.minecraft.api.http.request.CreateTicketRequest(
-                        creatorUuid, type, creatorName, subject, description,
-                        reportedPlayerUuid, reportedPlayerName, priority, createdServer,
-                        null, tags
-                );
-
-        return loader.getHttpClient().createTicket(request).thenApply(response -> {
-            if (response.isSuccess()) {
-                getLogger().info("[bridge] Report ticket created: " + response.getTicketId());
-                return true;
-            } else {
-                getLogger().warning("[bridge] Failed to create report ticket: " + response.getMessage());
-                return false;
-            }
-        }).exceptionally(throwable -> {
-            getLogger().warning("[bridge] Error creating report ticket: " + throwable.getMessage());
-            return false;
-        });
     }
 
     private void initializePacketEvents() {

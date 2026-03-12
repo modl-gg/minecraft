@@ -8,6 +8,7 @@ import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.core.boot.*;
 import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
 import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
 import gg.modl.minecraft.core.service.ChatMessageCache;
@@ -27,12 +28,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Level;
 
 @Getter
 public class BungeePlugin extends Plugin {
-    private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg", DEFAULT_BRIDGE_NAME = "bridge";
-    private static final int DEFAULT_BRIDGE_PORT = 25590, MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
+    private static final int MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
 
     private Configuration configuration;
     private PluginLoader loader;
@@ -48,15 +49,15 @@ public class BungeePlugin extends Plugin {
         createLocaleFiles();
         mergeDefaultConfigs();
 
-        String apiUrl = configuration.getString("api.url");
-        if (PLACEHOLDER_API_URL.equals(apiUrl)) {
-            logConfigurationError();
+        // Load boot.yml → migration → wizard
+        BootConfig bootConfig = loadOrCreateBootConfig();
+        if (bootConfig == null) {
             return;
         }
 
         HttpManager httpManager = new HttpManager(
-                configuration.getString("api.key"),
-                apiUrl,
+                bootConfig.getApiKey(),
+                bootConfig.getPanelUrl(),
                 configuration.getBoolean("api.debug", false),
                 configuration.getBoolean("api.testing-api", false),
                 configuration.getBoolean("server.query_mojang", false)
@@ -70,8 +71,8 @@ public class BungeePlugin extends Plugin {
         int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, configuration.getInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
         List<String> mutedCommands = configuration.getStringList("muted_commands");
 
-        this.loader = new PluginLoader(platform,getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
-        configureBridgeExecutor(platform, httpManager);
+        this.loader = new PluginLoader(platform, getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
+        configureBridgeExecutor(platform, httpManager, bootConfig);
 
         getProxy().getPluginManager().registerListener(this, new BungeeListener(
                 platform, loader.getCache(), loader.getHttpClientHolder(), loader.getChatMessageCache(),
@@ -95,6 +96,43 @@ public class BungeePlugin extends Plugin {
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
     }
 
+    private BootConfig loadOrCreateBootConfig() {
+        try {
+            // 1. Try loading existing boot.yml
+            if (BootConfig.exists(getDataFolder().toPath())) {
+                BootConfig config = BootConfig.load(getDataFolder().toPath());
+                if (config != null && config.isValid()) {
+                    getLogger().info("Loaded configuration from boot.yml (mode: " + config.getMode().toYaml() + ")");
+                    return config;
+                }
+            }
+
+            // 2. Try migrating from existing config.yml
+            Optional<BootConfig> migrated = BootConfigMigrator.migrateFromConfigYml(
+                    getDataFolder().toPath(), PlatformType.BUNGEECORD, pluginLogger);
+            if (migrated.isPresent()) {
+                return migrated.get();
+            }
+
+            // 3. Run setup wizard
+            getLogger().info("No configuration found. Starting setup wizard...");
+            ConsoleInput input = ConsoleInput.system(pluginLogger);
+            SetupWizard wizard = new SetupWizard(pluginLogger, input, PlatformType.BUNGEECORD);
+            BootConfig config = wizard.run();
+
+            if (config != null) {
+                config.save(getDataFolder().toPath());
+                return config;
+            }
+
+            logConfigurationError();
+            return null;
+        } catch (IOException e) {
+            getLogger().severe("Failed to load boot.yml: " + e.getMessage());
+            return null;
+        }
+    }
+
     private void mergeDefaultConfigs() {
         YamlMergeUtil.mergeWithDefaults("/config.yml",
                 getDataFolder().toPath().resolve("config.yml"), pluginLogger);
@@ -106,21 +144,26 @@ public class BungeePlugin extends Plugin {
         getLogger().severe("===============================================");
         getLogger().severe("modl.gg CONFIGURATION ERROR");
         getLogger().severe("===============================================");
-        getLogger().severe("You must configure your API URL in config.yml!");
-        getLogger().severe("Please set 'api.url' to your actual modl.gg panel URL.");
-        getLogger().severe("Example: https://yourserver.modl.gg");
+        getLogger().severe("Setup wizard failed or was cancelled.");
+        getLogger().severe("Delete boot.yml and restart to re-run the wizard,");
+        getLogger().severe("or configure boot.yml manually.");
         getLogger().severe("Plugin will now disable itself.");
         getLogger().severe("===============================================");
     }
 
-    private void configureBridgeExecutor(BungeePlatform platform, HttpManager httpManager) {
-        String bridgeHost = configuration.getString("bridge.host", "");
-        if (bridgeHost.isEmpty()) return;
+    private void configureBridgeExecutor(BungeePlatform platform, HttpManager httpManager, BootConfig bootConfig) {
+        List<BootConfig.BackendBridge> backends = bootConfig.getBackendBridges();
+        if (backends == null || backends.isEmpty()) return;
 
-        int bridgePort = configuration.getInt("bridge.port", DEFAULT_BRIDGE_PORT);
-        String apiKey = configuration.getString("api.key");
+        String apiKey = bootConfig.getApiKey();
         queryStatWipeExecutor = new QueryStatWipeExecutor(pluginLogger, httpManager.isDebugHttp());
-        queryStatWipeExecutor.addBridge(DEFAULT_BRIDGE_NAME, bridgeHost, bridgePort, apiKey);
+
+        for (int i = 0; i < backends.size(); i++) {
+            BootConfig.BackendBridge bb = backends.get(i);
+            String name = "bridge-" + (i + 1);
+            queryStatWipeExecutor.addBridge(name, bb.getHost(), bb.getPort(), apiKey);
+        }
+
         loader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
 
         BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(

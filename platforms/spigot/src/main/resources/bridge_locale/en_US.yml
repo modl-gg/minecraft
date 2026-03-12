@@ -1,0 +1,34 @@
+# ModlBridge Locale File - English (US)
+
+staff_mode:
+  target:
+    cleared: "&aYou are no longer targeting &f{player}&a."
+    now_targeting: "&aYou are now targeting &f{player}&a."
+    disconnected: "&c{player} disconnected. Returning to staff mode."
+  vanish:
+    "on": "&aYou are now vanished."
+    "off": "&aYou are no longer vanished."
+  random_teleport:
+    no_players: "&cNo players available to teleport to."
+    teleported: "&aTeleported to &f{player}&a."
+  freeze:
+    frozen: "&aYou froze &f{player}&a."
+    unfrozen: "&aYou unfroze &f{player}&a."
+  teleport:
+    teleported: "&aTeleported to &f{player}&f."
+    target_offline: "&cTarget is no longer online."
+
+freeze:
+  frozen: "&c&lYou have been frozen by a staff member. Do not disconnect."
+  unfrozen: "&aYou have been unfrozen."
+  chat: "&b[Frozen] &e{player}&f: {message}"
+  no_commands: "&cYou cannot use commands while frozen."
+
+command:
+  proxycmd:
+    console_only: "&cThis command can only be executed from console."
+    usage: "Usage: &a/proxycmd &f<command>"
+    modl_on_spigot: "&cCannot use proxycmd when modl plugin is installed on the same server."
+    not_connected: "&cNot connected to modl plugin. Ensure the proxy plugin is running and connected."
+    sent: "&aForwarded command: {command}"
+    failed: "&cFailed to forward command. No active connections."
