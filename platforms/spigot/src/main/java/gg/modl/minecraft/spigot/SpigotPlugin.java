@@ -48,10 +48,9 @@ public class SpigotPlugin extends JavaPlugin {
         bootConfig = loadBootConfig();
         if (bootConfig != null) {
             loadLibraries();
-            loadPacketEvents();
 
             // Early Polar registration must happen in onLoad
-            bridgeComponent = new BridgeComponent(this, "", "", pluginLogger);
+            bridgeComponent = new BridgeComponent(this, "", "", "", pluginLogger);
             bridgeComponent.onLoad();
         } else {
             needsSetup = true;
@@ -79,16 +78,17 @@ public class SpigotPlugin extends JavaPlugin {
         this.needsSetup = false;
 
         loadLibraries();
-        loadPacketEvents();
 
         // BridgeComponent.onLoad() for Polar early registration is skipped on first setup.
         // Polar integration will work after server restart.
-        bridgeComponent = new BridgeComponent(this, "", "", pluginLogger);
+        bridgeComponent = new BridgeComponent(this, "", "", "", pluginLogger);
 
         initializePlugin();
     }
 
     private void initializePlugin() {
+        loadPacketEventsLibraries();
+        loadPacketEvents();
         initPacketEvents();
 
         saveDefaultConfig();
@@ -97,7 +97,10 @@ public class SpigotPlugin extends JavaPlugin {
 
         // Re-create BridgeComponent with the real API key and backend URL
         String backendUrl = bootConfig.isTestingApi() ? HttpManager.TESTING_API_URL : HttpManager.V2_API_URL;
-        bridgeComponent = new BridgeComponent(this, bootConfig.getApiKey(), backendUrl, pluginLogger);
+        String panelUrl = HttpManager.adjustPanelUrlForEnv(
+                bootConfig.getPanelUrl() != null ? bootConfig.getPanelUrl() : "",
+                bootConfig.isTestingApi());
+        bridgeComponent = new BridgeComponent(this, bootConfig.getApiKey(), backendUrl, panelUrl, pluginLogger);
 
         // Branch by mode
         switch (bootConfig.getMode()) {
@@ -267,8 +270,10 @@ public class SpigotPlugin extends JavaPlugin {
         getLogger().info("PacketEvents initialized successfully");
     }
 
+    private BukkitLibraryManager libraryManager;
+
     private void loadLibraries() {
-        BukkitLibraryManager libraryManager = new BukkitLibraryManager(this);
+        libraryManager = new BukkitLibraryManager(this);
         libraryManager.addMavenCentral();
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
@@ -277,9 +282,6 @@ public class SpigotPlugin extends JavaPlugin {
         loadLibrary(libraryManager, Libraries.ACF_CORE);
         loadLibrary(libraryManager, Libraries.ACF_BUKKIT);
         loadLibrary(libraryManager, Libraries.CIRRUS_SPIGOT);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_SPIGOT);
         loadLibrary(libraryManager, Libraries.EXAMINATION_API);
         loadLibrary(libraryManager, Libraries.EXAMINATION_STRING);
         loadLibrary(libraryManager, Libraries.ADVENTURE_KEY);
@@ -289,6 +291,12 @@ public class SpigotPlugin extends JavaPlugin {
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_GSON);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_MINIMESSAGE);
         getLogger().info("Runtime libraries loaded successfully");
+    }
+
+    private void loadPacketEventsLibraries() {
+        loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
+        loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
+        loadLibrary(libraryManager, Libraries.PACKETEVENTS_SPIGOT);
     }
 
     private void loadLibrary(BukkitLibraryManager libraryManager, LibraryRecord record) {

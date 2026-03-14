@@ -78,7 +78,7 @@ public class SyncService {
 
     public SyncService(@NotNull Platform platform, @NotNull HttpClientHolder httpClientHolder, @NotNull Cache cache,
                        @NotNull PluginLogger logger, @NotNull LocaleManager localeManager, @NotNull String apiUrl,
-                       @NotNull String apiKey, int pollingRateSeconds, @NotNull File dataFolder,
+                       @NotNull String apiKey, @NotNull String panelUrl, int pollingRateSeconds, @NotNull File dataFolder,
                        DatabaseConfig databaseConfig, boolean debugMode, Staff2faService staff2faService,
                        ChatCommandLogService chatCommandLogService) {
         this.platform = platform;
@@ -95,7 +95,7 @@ public class SyncService {
         this.staff2faService = staff2faService;
         this.chatCommandLogService = chatCommandLogService;
         this.punishmentExecutor = new PunishmentExecutor(platform, httpClientHolder, cache, logger, localeManager, debugMode);
-        this.notificationService = new NotificationService(platform, httpClientHolder, cache, logger, localeManager, debugMode);
+        this.notificationService = new NotificationService(platform, httpClientHolder, cache, logger, localeManager, panelUrl, debugMode);
     }
 
     public interface PunishmentTypesRefreshListener {

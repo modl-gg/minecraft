@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import gg.modl.minecraft.core.util.PluginLogger;
+import lombok.Setter;
 
 public class BridgeMessageDispatcher {
     private final Platform platform;
@@ -23,6 +24,7 @@ public class BridgeMessageDispatcher {
     private final VanishService vanishService;
     private final ModlHttpClient httpClient;
     private final PluginLogger logger;
+    @Setter private BridgeReplayService bridgeReplayService;
 
     public BridgeMessageDispatcher(Platform platform, LocaleManager localeManager,
                                     FreezeService freezeService, StaffModeService staffModeService,
@@ -52,6 +54,7 @@ public class BridgeMessageDispatcher {
                 case "OPEN_INSPECT_MENU" -> handleOpenInspectMenu(data);
                 case "PROXY_CMD" -> handleProxyCmd(data);
                 case "CREATE_REPORT" -> handleCreateReport(data);
+                case "CAPTURE_REPLAY_RESPONSE" -> handleCaptureReplayResponse(data);
                 default -> logger.debug("[bridge] Unknown action: " + action);
             }
         } catch (Exception e) {
@@ -148,6 +151,15 @@ public class BridgeMessageDispatcher {
         platform.dispatchConsoleCommand(command);
     }
 
+    private void handleCaptureReplayResponse(DataInputStream data) throws Exception {
+        UUID targetUuid = UUID.fromString(data.readUTF());
+        String replayId = data.readUTF();
+        if (bridgeReplayService != null) {
+            bridgeReplayService.handleCaptureResponse(targetUuid,
+                    replayId.isEmpty() ? null : replayId);
+        }
+    }
+
     private void handleCreateReport(DataInputStream data) throws Exception {
         String creatorUuid = data.readUTF();
         String creatorName = data.readUTF();
@@ -160,15 +172,23 @@ public class BridgeMessageDispatcher {
         String priority = data.readUTF();
         String createdServer = data.readUTF();
 
+        // Read optional replayUrl if present in the stream
+        String replayUrl = null;
+        if (data.available() > 0) {
+            replayUrl = data.readUTF();
+            if (replayUrl.isEmpty()) replayUrl = null;
+        }
+
         List<String> tags = tagsJoined.isEmpty() ? List.of() : Arrays.asList(tagsJoined.split(","));
 
         CreateTicketRequest request = new CreateTicketRequest(
                 creatorUuid, type, creatorName, subject, description,
                 reportedPlayerUuid, reportedPlayerName, priority, createdServer,
-                null, tags
+                null, tags, replayUrl
         );
 
-        logger.info("[bridge] Creating report ticket for " + reportedPlayerName + ": " + subject);
+        logger.info("[bridge] Creating report ticket for " + reportedPlayerName + ": " + subject
+                + (replayUrl != null ? " (replay: " + replayUrl + ")" : ""));
 
         httpClient.createTicket(request).thenAccept(response -> {
             if (response.isSuccess()) {

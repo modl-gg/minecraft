@@ -1,5 +1,6 @@
 package gg.modl.minecraft.spigot.bridge.query;
 
+import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.spigot.bridge.handler.FreezeHandler;
 import gg.modl.minecraft.spigot.bridge.handler.StaffModeHandler;
 import gg.modl.minecraft.spigot.bridge.statwipe.StatWipeHandler;
@@ -7,6 +8,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -31,6 +33,7 @@ public class BridgeQueryHandler extends ChannelInboundHandlerAdapter {
     private final BridgeQueryServer queryServer;
     private final JavaPlugin plugin;
 
+    @Setter private ReplayService replayService;
     private boolean authenticated = false;
 
     @Override
@@ -153,6 +156,11 @@ public class BridgeQueryHandler extends ChannelInboundHandlerAdapter {
                     String serverName = in.readUTF();
                     broadcastMessage(ctx, action, playerUuid, serverName);
                 }
+                case "CAPTURE_REPLAY" -> {
+                    String targetUuid = in.readUTF();
+                    String targetName = in.readUTF();
+                    handleCaptureReplay(ctx, targetUuid, targetName);
+                }
                 default -> plugin.getLogger().info("Received unknown query action: " + action);
             }
         } catch (IOException e) {
@@ -203,6 +211,36 @@ public class BridgeQueryHandler extends ChannelInboundHandlerAdapter {
 
             staffModeHandler.setTarget(staffUuid, targetUuid);
         });
+    }
+
+    private void handleCaptureReplay(ChannelHandlerContext ctx, String targetUuid, String targetName) {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            UUID uuid = UUID.fromString(targetUuid);
+            org.bukkit.entity.Player player = Bukkit.getPlayer(uuid);
+            if (player == null || !player.isOnline()) return; // not on this server, ignore
+
+            if (replayService == null) {
+                sendCaptureResponse(ctx, targetUuid, "");
+                return;
+            }
+
+            replayService.captureReplay(uuid, targetName)
+                    .thenAccept(replayId -> sendCaptureResponse(ctx, targetUuid, replayId != null ? replayId : ""))
+                    .exceptionally(ex -> {
+                        plugin.getLogger().warning("CAPTURE_REPLAY failed for " + targetName + ": " + ex.getMessage());
+                        sendCaptureResponse(ctx, targetUuid, "");
+                        return null;
+                    });
+        });
+    }
+
+    private void sendCaptureResponse(ChannelHandlerContext ctx, String targetUuid, String replayId) {
+        byte[] data = queryServer.buildMessage("CAPTURE_REPLAY_RESPONSE", targetUuid, replayId);
+        if (data != null && ctx.channel().isActive()) {
+            ByteBuf buf = ctx.alloc().buffer(data.length);
+            buf.writeBytes(data);
+            ctx.writeAndFlush(buf);
+        }
     }
 
     @Override

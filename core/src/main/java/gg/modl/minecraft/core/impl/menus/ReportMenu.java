@@ -15,7 +15,6 @@ import gg.modl.minecraft.core.config.ReportGuiConfig;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
-import gg.modl.minecraft.core.service.ReplayService;
 
 import java.util.List;
 import java.util.Map;
@@ -109,7 +108,7 @@ public class ReportMenu extends SimpleMenu {
 
                 // Determine if we need the attachments step
                 boolean showChatStep = finalSlot.isChatReport();
-                boolean showReplayStep = finalSlot.isReplayCapture() && isReplayAvailable();
+                boolean showReplayStep = finalSlot.isReplayCapture();
 
                 if (showChatStep || showReplayStep) {
                     ActionHandlers.openMenu(new ReportChatLogMenu(
@@ -128,8 +127,4 @@ public class ReportMenu extends SimpleMenu {
         }
     }
 
-    private boolean isReplayAvailable() {
-        ReplayService replayService = platform.getReplayService();
-        return replayService != null && replayService.isReplayAvailable(target.getUuid());
-    }
 }

@@ -35,17 +35,19 @@ class NotificationService {
     private final Cache cache;
     private final PluginLogger logger;
     private final LocaleManager localeManager;
+    private final String panelUrl;
     private final boolean debugMode;
 
     @Setter private volatile ScheduledExecutorService executor;
 
     NotificationService(Platform platform, HttpClientHolder httpClientHolder, Cache cache,
-                        PluginLogger logger, LocaleManager localeManager, boolean debugMode) {
+                        PluginLogger logger, LocaleManager localeManager, String panelUrl, boolean debugMode) {
         this.platform = platform;
         this.httpClientHolder = httpClientHolder;
         this.cache = cache;
         this.logger = logger;
         this.localeManager = localeManager;
+        this.panelUrl = panelUrl;
         this.debugMode = debugMode;
     }
 
@@ -64,7 +66,10 @@ class NotificationService {
 
     private void processTicketCreatedNotification(SyncResponse.StaffNotification notification) {
         Map<String, Object> data = notification.getData();
-        String ticketUrl = extractString(data, "ticketUrl");
+        String ticketId = extractString(data, "ticketId");
+        String ticketUrl = ticketId.isEmpty()
+                ? extractString(data, "ticketUrl")
+                : panelUrl + "/panel/tickets/" + ticketId;
         String subject = extractString(data, "subject");
         String firstReply = extractString(data, "firstReplyContent");
         String ticketType = extractString(data, "ticketType");
@@ -147,7 +152,11 @@ class NotificationService {
     }
 
     private void sendClickableTicketNotification(UUID playerUuid, SyncResponse.PlayerNotification notification, Map<String, Object> data) {
-        String json = buildClickableTicketJson(notification.getMessage(), extractString(data, "ticketUrl"), extractString(data, "ticketId"));
+        String ticketId = extractString(data, "ticketId");
+        String ticketUrl = ticketId.isEmpty()
+                ? extractString(data, "ticketUrl")
+                : panelUrl + "/panel/tickets/" + ticketId;
+        String json = buildClickableTicketJson(notification.getMessage(), ticketUrl, ticketId);
         if (debugMode) logger.info("Sending clickable notification JSON: " + json);
         platform.runOnMainThread(() -> platform.sendJsonMessage(playerUuid, json));
     }
@@ -195,8 +204,10 @@ class NotificationService {
 
         Map<String, Object> data = pending.getData();
         if (data != null && data.containsKey("ticketUrl")) {
-            String ticketUrl = extractString(data, "ticketUrl");
             String ticketId = extractString(data, "ticketId");
+            String ticketUrl = ticketId.isEmpty()
+                    ? extractString(data, "ticketUrl")
+                    : panelUrl + "/panel/tickets/" + ticketId;
             String json = buildClickableTicketJson(pending.getMessage(), ticketUrl, ticketId);
             platform.runOnMainThread(() -> platform.sendJsonMessage(playerUuid, json));
         } else {

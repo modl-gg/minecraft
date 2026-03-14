@@ -30,7 +30,7 @@ public class HttpManager {
 
         String normalizedUrl = url.replaceAll("/+$", "");
         if (normalizedUrl.endsWith("/api")) normalizedUrl = normalizedUrl.substring(0, normalizedUrl.length() - 4);
-        this.panelUrl = normalizedUrl;
+        this.panelUrl = adjustPanelUrlForEnv(normalizedUrl, useTestingApi);
 
         this.serverDomain = extractDomain(normalizedUrl);
 
@@ -43,6 +43,18 @@ public class HttpManager {
             logger.info("Base URL: " + apiUrl);
             logger.info("Server Domain: " + this.serverDomain);
             logger.info("Testing API: " + useTestingApi);
+        }
+    }
+
+    /**
+     * Swaps .modl.gg ↔ .modl.top in the panel URL based on the testing API flag.
+     */
+    public static String adjustPanelUrlForEnv(String panelUrl, boolean useTestingApi) {
+        if (panelUrl == null || panelUrl.isEmpty()) return panelUrl;
+        if (useTestingApi) {
+            return panelUrl.replace(".modl.gg", ".modl.top");
+        } else {
+            return panelUrl.replace(".modl.top", ".modl.gg");
         }
     }
 

@@ -18,6 +18,7 @@ import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.boot.*;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
+import gg.modl.minecraft.core.query.BridgeReplayService;
 import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
@@ -202,6 +203,10 @@ public final class VelocityPlugin {
                 pluginLoader.getHttpClient(), pluginLogger);
         queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
         pluginLoader.getBridgeService().setExecutor(queryStatWipeExecutor);
+
+        BridgeReplayService bridgeReplayService = new BridgeReplayService(queryStatWipeExecutor, pluginLogger);
+        dispatcher.setBridgeReplayService(bridgeReplayService);
+        platform.setReplayService(bridgeReplayService);
     }
 
     private void initializePacketEvents() {

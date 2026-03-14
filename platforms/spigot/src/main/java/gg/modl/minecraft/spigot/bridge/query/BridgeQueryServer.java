@@ -1,5 +1,6 @@
 package gg.modl.minecraft.spigot.bridge.query;
 
+import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.spigot.bridge.handler.FreezeHandler;
 import gg.modl.minecraft.spigot.bridge.handler.StaffModeHandler;
 import gg.modl.minecraft.spigot.bridge.statwipe.StatWipeHandler;
@@ -12,6 +13,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.ByteArrayOutputStream;
@@ -35,6 +37,7 @@ public class BridgeQueryServer {
     private final FreezeHandler freezeHandler;
     private final StaffModeHandler staffModeHandler;
     private final JavaPlugin plugin;
+    @Setter private ReplayService replayService;
     private final Map<String, Channel> connectedServers = new ConcurrentHashMap<>();
     private final Set<Channel> authenticatedChannels = ConcurrentHashMap.newKeySet();
     private final Queue<byte[]> pendingMessages = new ConcurrentLinkedQueue<>();
@@ -113,11 +116,13 @@ public class BridgeQueryServer {
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
+                        BridgeQueryHandler handler = new BridgeQueryHandler(secret, statWipeHandler, freezeHandler,
+                                staffModeHandler, BridgeQueryServer.this, plugin);
+                        handler.setReplayService(replayService);
                         ch.pipeline().addLast(
                                 new LengthFieldBasedFrameDecoder(MAX_FRAME_LENGTH, 0, LENGTH_FIELD_LENGTH, 0, LENGTH_FIELD_LENGTH),
                                 new LengthFieldPrepender(LENGTH_FIELD_LENGTH),
-                                new BridgeQueryHandler(secret, statWipeHandler, freezeHandler,
-                                    staffModeHandler, BridgeQueryServer.this, plugin)
+                                handler
                         );
                     }
                 });

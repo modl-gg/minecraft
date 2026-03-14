@@ -143,7 +143,8 @@ public class PluginLoader {
         this.chatCommandLogService = new ChatCommandLogService();
 
         this.syncService = new SyncService(platform, httpClientHolder, cache, logger, this.localeManager,
-                httpManager.getApiUrl(), httpManager.getApiKey(), syncPollingRateSeconds, dataDirectory.toFile(), databaseConfig,
+                httpManager.getApiUrl(), httpManager.getApiKey(), httpManager.getPanelUrl(),
+                syncPollingRateSeconds, dataDirectory.toFile(), databaseConfig,
                 httpManager.isDebugHttp(), this.staff2faService, this.chatCommandLogService);
 
         if (httpManager.isDebugHttp()) {

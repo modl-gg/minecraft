@@ -92,9 +92,8 @@ public class ReportConfirmMenu extends SimpleMenu {
                 MenuItems.lore(locale.getMessageList("messages.report_cancel_lore"))
         ).slot(15).actionHandler("cancel"));
 
-        // Show "Attach Replay" toggle if replay is available for the target
-        ReplayService replayService = platform.getReplayService();
-        if (replayService != null && replayService.isReplayAvailable(target.getUuid())) {
+        // Show "Attach Replay" toggle if this report category supports replay capture
+        if (reportData.isReplayCapture()) {
             boolean replayOn = reportData.isAttachReplay();
             CirrusItem replayItem = CirrusItem.of(
                     CirrusItemType.of("minecraft:ender_eye"),
@@ -196,7 +195,7 @@ public class ReportConfirmMenu extends SimpleMenu {
                     sendMessage(locale.getMessage("messages.success", Map.of("type", "Report")));
                     sendMessage(locale.getMessage("messages.ticket_id", Map.of("ticketId", response.getTicketId())));
 
-                    String ticketUrl = panelUrl + "/ticket/" + response.getTicketId();
+                    String ticketUrl = panelUrl + "/panel/tickets/" + response.getTicketId();
                     sendClickableTicketLink(ticketUrl, response.getTicketId());
                     sendMessage(locale.getMessage("messages.evidence_note"));
                 } else {

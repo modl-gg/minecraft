@@ -22,13 +22,15 @@ public class ModlBackendReplayUploader {
 
     private final String backendUrl;
     private final String apiKey;
+    private final String serverDomain;
     private final Logger logger;
     private final HttpClient httpClient;
     private final Gson gson;
 
-    public ModlBackendReplayUploader(String backendUrl, String apiKey, Logger logger) {
+    public ModlBackendReplayUploader(String backendUrl, String apiKey, String serverDomain, Logger logger) {
         this.backendUrl = backendUrl;
         this.apiKey = apiKey;
+        this.serverDomain = serverDomain;
         this.logger = logger;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
@@ -68,6 +70,7 @@ public class ModlBackendReplayUploader {
                 .uri(URI.create(backendUrl + "/v1/minecraft/replays/upload"))
                 .header("Content-Type", "application/json")
                 .header("X-API-Key", apiKey)
+                .header("X-Server-Domain", serverDomain)
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
                 .timeout(Duration.ofSeconds(30))
                 .build();
@@ -108,6 +111,7 @@ public class ModlBackendReplayUploader {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(backendUrl + "/v1/minecraft/replays/confirm/" + replayId))
                 .header("X-API-Key", apiKey)
+                .header("X-Server-Domain", serverDomain)
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .timeout(Duration.ofSeconds(30))
                 .build();

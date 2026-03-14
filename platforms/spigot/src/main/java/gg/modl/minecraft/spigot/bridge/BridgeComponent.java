@@ -21,7 +21,6 @@ import gg.modl.minecraft.spigot.bridge.statwipe.StatWipeHandler;
 import gg.modl.replay.recording.PacketRecorder;
 import gg.modl.replay.recording.RecordingConfig;
 import gg.modl.replay.recording.RecordingManager;
-import gg.modl.replay.util.BlockSnapshot;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -43,6 +42,7 @@ public class BridgeComponent implements Listener {
     private final JavaPlugin plugin;
     private final String apiKey;
     private final String backendUrl;
+    private final String panelUrl;
     private final PluginLogger logger;
     private final List<AntiCheatHook> hooks = new ArrayList<>();
 
@@ -61,10 +61,11 @@ public class BridgeComponent implements Listener {
     private RecordingManager recordingManager;
     private PacketRecorder packetRecorder;
 
-    public BridgeComponent(JavaPlugin plugin, String apiKey, String backendUrl, PluginLogger logger) {
+    public BridgeComponent(JavaPlugin plugin, String apiKey, String backendUrl, String panelUrl, PluginLogger logger) {
         this.plugin = plugin;
         this.apiKey = apiKey;
         this.backendUrl = backendUrl;
+        this.panelUrl = panelUrl;
         this.logger = logger;
     }
 
@@ -143,6 +144,9 @@ public class BridgeComponent implements Listener {
         if (replayService != null) {
             autoReporter.setReplayService(replayService);
         }
+        if (queryServer != null && replayService != null) {
+            queryServer.setReplayService(replayService);
+        }
         registerAntiCheatHooks();
 
         if (queryServer != null) {
@@ -150,7 +154,7 @@ public class BridgeComponent implements Listener {
         }
 
         if (replayService != null && plugin.getCommand("replay") != null) {
-            ReplayCommand replayCommand = new ReplayCommand(replayService);
+            ReplayCommand replayCommand = new ReplayCommand(replayService, panelUrl);
             plugin.getCommand("replay").setExecutor(replayCommand);
             plugin.getCommand("replay").setTabCompleter(replayCommand);
         }
@@ -251,7 +255,8 @@ public class BridgeComponent implements Listener {
         packetRecorder.register();
 
         // Upload via modl-backend
-        ModlBackendReplayUploader uploader = new ModlBackendReplayUploader(backendUrl, apiKey, plugin.getLogger());
+        String serverDomain = extractDomain(panelUrl);
+        ModlBackendReplayUploader uploader = new ModlBackendReplayUploader(backendUrl, apiKey, serverDomain, plugin.getLogger());
 
         this.replayService = new ReplayService() {
             @Override
@@ -260,33 +265,40 @@ public class BridgeComponent implements Listener {
                     return CompletableFuture.completedFuture(null);
                 }
 
-                // Find the recording and get its output file BEFORE stopping
-                RecordingManager.ActiveRecording recording = findRecording(targetUuid);
-                if (recording == null) {
-                    return CompletableFuture.completedFuture(null);
-                }
-                File replayFile = recording.getOutput().getOutputFile();
-
-                // Stop recording to flush the buffer
-                recordingManager.stopRecording(targetUuid);
                 packetRecorder.cleanupPlayer(targetUuid);
 
-                if (replayFile == null || !replayFile.exists()) {
-                    logger.warning("[bridge] No replay file found for " + targetName + " after stopping recording");
-                    return CompletableFuture.completedFuture(null);
-                }
+                // Stop recording async (drains + flushes on writer thread, no main-thread I/O)
+                return recordingManager.stopRecordingAsync(targetUuid)
+                        .thenCompose(metadata -> {
+                            File replayFile = metadata != null ? metadata.getOutputFile() : null;
 
-                // Upload to modl-backend
-                return uploader.uploadAsync(replayFile, "1.21.4")
-                        .thenApply(replayId -> {
-                            logger.info("[bridge] Replay uploaded for " + targetName + ": " + replayId);
-                            return replayId;
-                        })
-                        .whenComplete((replayId, ex) -> {
-                            if (ex != null) {
-                                logger.warning("[bridge] Replay upload failed for " + targetName + ": " + ex.getMessage());
+                            // Restart recording for this player
+                            if (bridgeConfig.isReplayAutoRecord()) {
+                                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                    Player player = Bukkit.getPlayer(targetUuid);
+                                    if (player != null && player.isOnline()) {
+                                        startRecordingForPlayer(player);
+                                    }
+                                }, 40L);
                             }
-                            replayFile.delete();
+
+                            if (replayFile == null || !replayFile.exists()) {
+                                logger.warning("[bridge] No replay file found for " + targetName + " after stopping recording");
+                                return CompletableFuture.completedFuture(null);
+                            }
+
+                            // Upload to modl-backend
+                            return uploader.uploadAsync(replayFile, "1.21.4")
+                                    .thenApply(replayId -> {
+                                        logger.info("[bridge] Replay uploaded for " + targetName + ": " + replayId);
+                                        return replayId;
+                                    })
+                                    .whenComplete((replayId, ex) -> {
+                                        if (ex != null) {
+                                            logger.warning("[bridge] Replay upload failed for " + targetName + ": " + ex.getMessage());
+                                        }
+                                        replayFile.delete();
+                                    });
                         });
             }
 
@@ -306,13 +318,22 @@ public class BridgeComponent implements Listener {
         logger.info("[bridge] Replay recording initialized (auto-record: " + bridgeConfig.isReplayAutoRecord() + ")");
     }
 
-    private RecordingManager.ActiveRecording findRecording(UUID targetUuid) {
-        for (RecordingManager.ActiveRecording recording : recordingManager.getActiveRecordings()) {
-            if (targetUuid.equals(recording.getTargetUuid())) {
-                return recording;
-            }
+    private static String extractDomain(String url) {
+        if (url == null || url.isEmpty()) return "";
+        String normalized = url.trim();
+        if (!normalized.startsWith("http://") && !normalized.startsWith("https://")) {
+            normalized = "https://" + normalized;
         }
-        return null;
+        try {
+            java.net.URI uri = java.net.URI.create(normalized);
+            String host = uri.getHost();
+            return host != null ? host : url.trim();
+        } catch (Exception e) {
+            String result = normalized.substring(normalized.indexOf("://") + 3);
+            int slashIndex = result.indexOf('/');
+            if (slashIndex > 0) result = result.substring(0, slashIndex);
+            return result;
+        }
     }
 
     private void startRecordingForPlayer(Player player) {
@@ -322,19 +343,30 @@ public class BridgeComponent implements Listener {
         Location loc = player.getLocation();
         int radius = bridgeConfig.getReplayRadius();
 
-        List<BlockSnapshot> snapshot;
-        try {
-            snapshot = packetRecorder.getChunkTracker()
-                    .snapshot(loc.getBlockX(), loc.getBlockZ(), radius);
-        } catch (Exception e) {
-            snapshot = new ArrayList<>();
+        // Seed the target player into their own EntityTracker (they never receive SPAWN_ENTITY for themselves)
+        packetRecorder.trackSelf(player.getUniqueId(), player.getName(), player.getEntityId(),
+                loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
+
+        // Seed nearby players so they're available at stop time
+        // even if SPAWN_ENTITY packets arrived before PacketRecorder was registered
+        double radiusSq = (double) radius * radius;
+        for (Player nearby : Bukkit.getOnlinePlayers()) {
+            if (nearby.equals(player)) continue;
+            if (nearby.getLocation().distanceSquared(loc) > radiusSq) continue;
+            Location nLoc = nearby.getLocation();
+            packetRecorder.getEntityTracker().trackPlayer(
+                    player.getUniqueId(), -1, nearby.getUniqueId(), nearby.getName(),
+                    nLoc.getX(), nLoc.getY(), nLoc.getZ(),
+                    nLoc.getYaw(), nLoc.getPitch());
         }
 
         recordingManager.startRecording(
                 player.getUniqueId(), player.getName(),
-                loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(),
-                snapshot
+                loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()
         );
+
+        // Emit initial equipment from cached inventory state
+        packetRecorder.emitInitialSelfEquipment(player.getUniqueId());
     }
 
     @EventHandler
@@ -355,12 +387,12 @@ public class BridgeComponent implements Listener {
         if (violationTracker != null) violationTracker.resetPlayer(playerId);
         if (autoReporter != null) autoReporter.clearCooldown(playerId);
 
-        // Stop recording for the player
+        // Stop recording async (drain + flush on writer thread, fire-and-forget)
         if (recordingManager != null && recordingManager.isRecording(playerId)) {
-            recordingManager.stopRecording(playerId);
+            recordingManager.stopRecordingAsync(playerId);
         }
         if (packetRecorder != null) {
-            packetRecorder.cleanupPlayer(playerId);
+            packetRecorder.disconnectPlayer(playerId);
         }
     }
 }

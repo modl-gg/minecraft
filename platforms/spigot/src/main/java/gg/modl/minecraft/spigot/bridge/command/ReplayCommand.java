@@ -1,6 +1,8 @@
 package gg.modl.minecraft.spigot.bridge.command;
 
 import gg.modl.minecraft.core.service.ReplayService;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -16,9 +18,11 @@ import java.util.UUID;
 public class ReplayCommand implements CommandExecutor, TabCompleter {
 
     private final ReplayService replayService;
+    private final String panelUrl;
 
-    public ReplayCommand(ReplayService replayService) {
+    public ReplayCommand(ReplayService replayService, String panelUrl) {
         this.replayService = replayService;
+        this.panelUrl = panelUrl;
     }
 
     @Override
@@ -64,7 +68,15 @@ public class ReplayCommand implements CommandExecutor, TabCompleter {
 
         replayService.captureReplay(uuid, name).thenAccept(replayId -> {
             if (replayId != null) {
-                sender.sendMessage(ChatColor.GREEN + "[Replay] Replay captured: " + replayId);
+                String replayLink = panelUrl + "/replay?id=" + replayId;
+                sender.sendMessage(ChatColor.GREEN + "[Replay] Replay captured for " + name);
+                if (sender instanceof Player p) {
+                    TextComponent link = new TextComponent(ChatColor.AQUA + "" + ChatColor.UNDERLINE + replayLink);
+                    link.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, replayLink));
+                    p.spigot().sendMessage(link);
+                } else {
+                    sender.sendMessage(replayLink);
+                }
             } else {
                 sender.sendMessage(ChatColor.RED + "[Replay] Failed to capture replay for " + name);
             }

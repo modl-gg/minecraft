@@ -40,6 +40,7 @@
   item: "minecraft:name_tag"
   title: "Inappropriate Username/Skin"
   chat-report: false
+  replay-capture: true
   description:
     - "&7Offensive username or skin"
     - ""
@@ -107,6 +108,7 @@
   item: "minecraft:paper"
   title: "Other"
   chat-report: false
+  replay-capture: true
   description:
     - "&7Any other rule violation"
     - ""

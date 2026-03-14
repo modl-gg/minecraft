@@ -59,10 +59,7 @@ public class ReportChatLogMenu extends SimpleMenu {
         this.reportData = reportData;
 
         this.showChat = reportData.isChatReport();
-        ReplayService replayService = platform.getReplayService();
-        this.showReplay = reportData.isReplayCapture()
-                && replayService != null
-                && replayService.isReplayAvailable(target.getUuid());
+        this.showReplay = reportData.isReplayCapture();
 
         // Restore toggle state from reportData (for back navigation)
         this.chatToggled = reportData.getChatLog() != null;

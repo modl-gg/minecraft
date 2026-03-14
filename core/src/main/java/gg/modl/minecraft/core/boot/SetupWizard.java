@@ -79,6 +79,9 @@ public class SetupWizard {
         config.setMode(BootConfig.Mode.BRIDGE_ONLY);
         config.setTestingApi(testingApi);
 
+        String panelUrl = input.readLine("Panel domain (e.g. server.modl.gg or support.server.com): ");
+        config.setPanelUrl(normalizePanelUrl(panelUrl));
+
         String apiKey = input.readLine("Enter your API key (from proxy setup or modl.gg panel): ");
         logger.info("If you don't have one, register using the proxy's setup wizard first.");
 
