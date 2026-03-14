@@ -48,7 +48,7 @@ public class SpigotPlugin extends JavaPlugin {
         bootConfig = loadBootConfig();
         if (bootConfig != null) {
             loadLibraries();
-            initializePacketEvents();
+            loadPacketEvents();
 
             // Early Polar registration must happen in onLoad
             bridgeComponent = new BridgeComponent(this, "", pluginLogger);
@@ -79,7 +79,7 @@ public class SpigotPlugin extends JavaPlugin {
         this.needsSetup = false;
 
         loadLibraries();
-        initializePacketEvents();
+        loadPacketEvents();
 
         // BridgeComponent.onLoad() for Polar early registration is skipped on first setup.
         // Polar integration will work after server restart.
@@ -89,6 +89,8 @@ public class SpigotPlugin extends JavaPlugin {
     }
 
     private void initializePlugin() {
+        initPacketEvents();
+
         saveDefaultConfig();
         createLocaleFiles();
         mergeDefaultConfigs();
@@ -254,9 +256,12 @@ public class SpigotPlugin extends JavaPlugin {
                 getDataFolder().toPath().resolve("locale/en_US.yml"), pluginLogger);
     }
 
-    private void initializePacketEvents() {
+    private void loadPacketEvents() {
         PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
         PacketEvents.getAPI().load();
+    }
+
+    private void initPacketEvents() {
         PacketEvents.getAPI().init();
         getLogger().info("PacketEvents initialized successfully");
     }
