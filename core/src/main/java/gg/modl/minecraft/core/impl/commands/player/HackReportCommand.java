@@ -13,9 +13,11 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.service.ReplayService;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @RequiredArgsConstructor
 public class HackReportCommand extends BaseCommand {
@@ -49,20 +51,34 @@ public class HackReportCommand extends BaseCommand {
         String description = details != null && !details.isEmpty() ? details : null;
         String createdServer = platform.getPlayerServer(sender.getUniqueId());
 
-        CreateTicketRequest request = new CreateTicketRequest(
-            reporter.getUuid().toString(),
-            "player",
-            reporter.getUsername(),
-            "Cheating: " + targetPlayer.getUsername(),
-            description,
-            targetPlayer.getUuid().toString(),
-            targetPlayer.getUsername(),
-            "normal",
-            createdServer,
-            null,
-            List.of("report", "cheating")
-        );
+        // Capture replay if available, then submit
+        ReplayService replayService = platform.getReplayService();
+        CompletableFuture<String> replayFuture;
+        if (replayService != null && replayService.isReplayAvailable(targetPlayer.getUuid())) {
+            replayFuture = replayService.captureReplay(targetPlayer.getUuid(), targetPlayer.getUsername());
+        } else {
+            replayFuture = CompletableFuture.completedFuture(null);
+        }
 
-        ticketUtil.submitFinishedTicket(sender, httpClient, platform, localeManager, panelUrl, request, "Report", "player");
+        replayFuture.whenComplete((replayUrl, replayEx) -> {
+            if (replayEx != null) replayUrl = null;
+
+            CreateTicketRequest request = new CreateTicketRequest(
+                reporter.getUuid().toString(),
+                "player",
+                reporter.getUsername(),
+                "Cheating: " + targetPlayer.getUsername(),
+                description,
+                targetPlayer.getUuid().toString(),
+                targetPlayer.getUsername(),
+                "normal",
+                createdServer,
+                null,
+                List.of("report", "cheating"),
+                replayUrl
+            );
+
+            ticketUtil.submitFinishedTicket(sender, httpClient, platform, localeManager, panelUrl, request, "Report", "player");
+        });
     }
 }

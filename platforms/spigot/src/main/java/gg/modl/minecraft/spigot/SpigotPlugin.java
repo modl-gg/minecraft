@@ -123,12 +123,12 @@ public class SpigotPlugin extends JavaPlugin {
         // Create TicketCreator that calls core HTTP client directly (no reflection)
         // loader is not created yet, so we capture it via lambda's deferred access
         TicketCreator ticketCreator = (creatorUuid, creatorName, type, subject, description,
-                                       reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer) -> {
+                                       reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer, replayUrl) -> {
             List<String> tags = tagsJoined == null || tagsJoined.isEmpty() ? List.of() : Arrays.asList(tagsJoined.split(","));
             CreateTicketRequest request = new CreateTicketRequest(
                     creatorUuid, type, creatorName, subject, description,
                     reportedPlayerUuid, reportedPlayerName, priority, createdServer,
-                    null, tags
+                    null, tags, replayUrl
             );
             loader.getHttpClient().createTicket(request).thenAccept(response -> {
                 if (response.isSuccess()) {
@@ -148,6 +148,9 @@ public class SpigotPlugin extends JavaPlugin {
 
         SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger(), getDataFolder(),
                 serverName, this);
+        if (bridgeComponent.getReplayService() != null) {
+            platform.setReplayService(bridgeComponent.getReplayService());
+        }
         ChatMessageCache chatMessageCache = new ChatMessageCache();
         int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfig().getInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
         List<String> mutedCommands = getConfig().getStringList("muted_commands");
@@ -186,13 +189,21 @@ public class SpigotPlugin extends JavaPlugin {
         // Bridge-only: no PluginLoader, no HTTP client, only BridgeComponent
         // TicketCreator sends via TCP to proxy
         TicketCreator tcpTicketCreator = (creatorUuid, creatorName, type, subject, description,
-                                          reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer) -> {
+                                          reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer, replayUrl) -> {
             if (bridgeComponent.getQueryServer() != null) {
-                bridgeComponent.getQueryServer().sendToAllClients("CREATE_REPORT",
-                        creatorUuid, creatorName, type, subject, description,
-                        reportedPlayerUuid, reportedPlayerName,
-                        tagsJoined != null ? tagsJoined : "",
-                        priority, createdServer);
+                if (replayUrl != null && !replayUrl.isEmpty()) {
+                    bridgeComponent.getQueryServer().sendToAllClients("CREATE_REPORT",
+                            creatorUuid, creatorName, type, subject, description,
+                            reportedPlayerUuid, reportedPlayerName,
+                            tagsJoined != null ? tagsJoined : "",
+                            priority, createdServer, replayUrl);
+                } else {
+                    bridgeComponent.getQueryServer().sendToAllClients("CREATE_REPORT",
+                            creatorUuid, creatorName, type, subject, description,
+                            reportedPlayerUuid, reportedPlayerName,
+                            tagsJoined != null ? tagsJoined : "",
+                            priority, createdServer);
+                }
             }
         };
 

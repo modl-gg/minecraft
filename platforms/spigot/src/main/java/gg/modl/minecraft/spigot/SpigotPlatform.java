@@ -11,6 +11,7 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
+import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
@@ -45,6 +46,7 @@ public class SpigotPlatform implements Platform {
     private @Setter BridgeService bridgeService;
     private @Setter Staff2faService staff2faService;
     private @Setter ChatInputManager chatInputManager;
+    private @Setter ReplayService replayService;
 
     private static volatile boolean skinMethodsResolved = false;
     private static volatile Method getPlayerProfileMethod;
@@ -153,6 +155,11 @@ public class SpigotPlatform implements Platform {
     @Override
     public String getServerVersion() {
         return Bukkit.getVersion();
+    }
+
+    @Override
+    public String getPlatformType() {
+        return "spigot";
     }
 
     @Override
@@ -284,5 +291,10 @@ public class SpigotPlatform implements Platform {
     @Override
     public ChatInputManager getChatInputManager() {
         return chatInputManager;
+    }
+
+    @Override
+    public ReplayService getReplayService() {
+        return replayService;
     }
 }

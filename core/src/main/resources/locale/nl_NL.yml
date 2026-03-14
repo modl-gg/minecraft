@@ -89,6 +89,14 @@ validation:
 #     {issuer} - Naam van het personeelslid dat de straf heeft opgelegd
 #     {tense} - "bent" of "wordt" afhankelijk van context
 #     {tense2} - "is" afhankelijk van context
+punishment_words:
+  tense_default: "bent"
+  tense_active: "bent"
+  tense2_default: "is"
+  tense2_active: "is"
+  temporarily: "tijdelijk"
+  permanently: "permanent"
+
 punishment_types:
   ordinal_0: # Kick
     public_notification: "&c{target} is van de server gekickt."

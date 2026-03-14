@@ -99,6 +99,19 @@ validation:
   alt_blocking_not_supported: "&cAlt-blocking flag is not supported for punishment type '{type}'."
   stat_wiping_not_supported: "&cStat-wiping flag is not supported for punishment type '{type}'."
 
+# Punishment placeholder words
+# These are substituted into punishment messages as {tense}, {tense2}, and {temp}
+punishment_words:
+  # {tense} - used in player-facing messages (e.g., "You {tense} banned")
+  tense_default: "have been"
+  tense_active: "are"
+  # {tense2} - used in player-facing messages (e.g., "Your account {tense2} restricted")
+  tense2_default: "has been"
+  tense2_active: "is"
+  # {temp} - used in player-facing messages (e.g., "You have been {temp} banned")
+  temporarily: "temporarily"
+  permanently: "permanently"
+
 # Punishment Type Specific Messages
 # Format: punishment_types.ordinal_<ordinal_number>
 # Manual punishment types (ordinals 0-5):

@@ -29,6 +29,10 @@ public class SyncRequest {
         private @NotNull String serverVersion, timestamp;
 
         private int onlinePlayerCount, maxPlayers;
+
+        private @Nullable String platformType;
+
+        private @Nullable String pluginVersion;
     }
 
     @Data @NoArgsConstructor @AllArgsConstructor

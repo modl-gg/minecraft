@@ -155,6 +155,11 @@ public class BungeePlatform implements Platform {
     }
 
     @Override
+    public String getPlatformType() {
+        return "bungee";
+    }
+
+    @Override
     public void runOnMainThread(Runnable task) {
         // BungeeCord has no main thread; all APIs are thread-safe
         task.run();

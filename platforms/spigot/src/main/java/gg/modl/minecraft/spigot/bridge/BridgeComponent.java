@@ -1,5 +1,6 @@
 package gg.modl.minecraft.spigot.bridge;
 
+import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.spigot.bridge.command.ProxyCmdCommand;
 import gg.modl.minecraft.spigot.bridge.config.BridgeConfig;
@@ -23,9 +24,11 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public class BridgeComponent implements Listener {
     private final JavaPlugin plugin;
@@ -42,6 +45,7 @@ public class BridgeComponent implements Listener {
     private ViolationTracker violationTracker;
     private AutoReporter autoReporter;
     private boolean polarAvailable;
+    @Getter private ReplayService replayService;
 
     public BridgeComponent(JavaPlugin plugin, String apiKey, PluginLogger logger) {
         this.plugin = plugin;
@@ -120,6 +124,7 @@ public class BridgeComponent implements Listener {
         autoReporter = new AutoReporter(plugin, bridgeConfig, ticketCreator, violationTracker);
         Bukkit.getPluginManager().registerEvents(this, plugin);
 
+        initializeReplayService();
         registerAntiCheatHooks();
 
         if (queryServer != null) {
@@ -170,6 +175,58 @@ public class BridgeComponent implements Listener {
         PolarHook polarHook = new PolarHook(plugin, bridgeConfig, violationTracker, autoReporter);
         polarHook.register();
         hooks.add(polarHook);
+    }
+
+    /**
+     * Detects ModlBridge plugin and creates a reflection-based ReplayService
+     * that delegates to its BridgeReplayService.
+     */
+    private void initializeReplayService() {
+        try {
+            org.bukkit.plugin.Plugin bridgePlugin = Bukkit.getPluginManager().getPlugin("ModlBridge");
+            if (bridgePlugin == null) {
+                logger.info("[bridge] ModlBridge plugin not found, replay capture unavailable");
+                return;
+            }
+
+            // Get the BridgeReplayService field from ModlBridgePlugin
+            Method getReplayServiceMethod = bridgePlugin.getClass().getMethod("getReplayService");
+            Object bridgeReplayService = getReplayServiceMethod.invoke(bridgePlugin);
+            if (bridgeReplayService == null) {
+                logger.info("[bridge] ModlBridge replay service not initialized, replay capture unavailable");
+                return;
+            }
+
+            // Cache reflection methods
+            Method captureMethod = bridgeReplayService.getClass().getMethod("captureAndUploadReplay", UUID.class, String.class);
+            Method isAvailableMethod = bridgeReplayService.getClass().getMethod("isReplayAvailable", UUID.class);
+
+            this.replayService = new ReplayService() {
+                @Override
+                @SuppressWarnings("unchecked")
+                public CompletableFuture<String> captureReplay(UUID targetUuid, String targetName) {
+                    try {
+                        return (CompletableFuture<String>) captureMethod.invoke(bridgeReplayService, targetUuid, targetName);
+                    } catch (Exception e) {
+                        logger.warning("[bridge] Failed to capture replay: " + e.getMessage());
+                        return CompletableFuture.completedFuture(null);
+                    }
+                }
+
+                @Override
+                public boolean isReplayAvailable(UUID playerUuid) {
+                    try {
+                        return (boolean) isAvailableMethod.invoke(bridgeReplayService, playerUuid);
+                    } catch (Exception e) {
+                        return false;
+                    }
+                }
+            };
+
+            logger.info("[bridge] Replay capture enabled via ModlBridge plugin");
+        } catch (Exception e) {
+            logger.info("[bridge] Could not initialize replay service: " + e.getMessage());
+        }
     }
 
     @EventHandler

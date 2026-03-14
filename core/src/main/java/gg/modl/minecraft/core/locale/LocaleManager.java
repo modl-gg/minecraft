@@ -204,7 +204,7 @@ public class LocaleManager {
         Map<String, String> variables = new HashMap<>(baseVariables);
         variables.put("tense", getTenseForContext(context));
         variables.put("tense2", getTense2ForContext(context));
-        variables.put("temp", punishment.isPermanent() ? "permanently" : "temporarily");
+        variables.put("temp", punishment.isPermanent() ? getTempPermanent() : getTempTemporary());
         variables.put("duration_formatted", getDurationFormatted(punishment, getPunishmentTypeName(punishmentType)));
         variables.put("mute_duration_formatted", getMuteDurationFormatted(punishment));
 
@@ -282,16 +282,29 @@ public class LocaleManager {
 
     private String getTenseForContext(PunishmentMessages.MessageContext context) {
         return switch (context) {
-            case SYNC, CHAT -> "are";
-            default -> "have been";
+            case SYNC, CHAT -> getRawMessage("punishment_words.tense_active", "are");
+            default -> getRawMessage("punishment_words.tense_default", "have been");
         };
     }
 
     private String getTense2ForContext(PunishmentMessages.MessageContext context) {
         return switch (context) {
-            case SYNC, CHAT -> "is";
-            default -> "has been";
+            case SYNC, CHAT -> getRawMessage("punishment_words.tense2_active", "is");
+            default -> getRawMessage("punishment_words.tense2_default", "has been");
         };
+    }
+
+    private String getTempTemporary() {
+        return getRawMessage("punishment_words.temporarily", "temporarily");
+    }
+
+    private String getTempPermanent() {
+        return getRawMessage("punishment_words.permanently", "permanently");
+    }
+
+    private String getRawMessage(String path, String fallback) {
+        Object value = getNestedValue(messages, path);
+        return value instanceof String s ? s : fallback;
     }
 
     private String getDurationFormatted(SimplePunishment punishment, String punishmentType) {

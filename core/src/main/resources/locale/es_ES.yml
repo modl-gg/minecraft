@@ -54,6 +54,14 @@ validation:
   alt_blocking_not_supported: "&cEl bloqueo de cuentas alternativas no es compatible con el tipo de sanción '{type}'."
   stat_wiping_not_supported: "&cEl borrado de estadísticas no es compatible con el tipo de sanción '{type}'."
 
+punishment_words:
+  tense_default: "Has sido"
+  tense_active: "Estás"
+  tense2_default: "ha sido"
+  tense2_active: "está"
+  temporarily: "temporalmente"
+  permanently: "permanentemente"
+
 punishment_types:
   ordinal_0:
     public_notification: "&c{target} ha sido expulsado."

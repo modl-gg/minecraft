@@ -54,6 +54,14 @@ validation:
   alt_blocking_not_supported: "&cAlt-Blockierung wird für den Strafentyp '{type}' nicht unterstützt."
   stat_wiping_not_supported: "&cStatistik-Zurücksetzung wird für den Strafentyp '{type}' nicht unterstützt."
 
+punishment_words:
+  tense_default: "wurdest"
+  tense_active: "bist"
+  tense2_default: "wurde"
+  tense2_active: "ist"
+  temporarily: "vorübergehend"
+  permanently: "dauerhaft"
+
 punishment_types:
   ordinal_0:
     public_notification: "&c{target} wurde gekickt."

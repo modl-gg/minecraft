@@ -197,6 +197,11 @@ public class VelocityPlatform implements Platform {
     }
 
     @Override
+    public String getPlatformType() {
+        return "velocity";
+    }
+
+    @Override
     public void runOnMainThread(Runnable task) {
         // velo has no main thread, everything is thread-safe
         task.run();

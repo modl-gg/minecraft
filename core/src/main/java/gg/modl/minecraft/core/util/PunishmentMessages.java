@@ -35,7 +35,7 @@ public class PunishmentMessages {
     
     public static String formatBanMessage(SimplePunishment ban, LocaleManager localeManager, MessageContext context) {
         int ordinal = ban.getOrdinal();
-        Map<String, String> variables = buildBasicPunishmentVariables(ban);
+        Map<String, String> variables = buildBasicPunishmentVariables(ban, localeManager);
         return localeManager.getPlayerNotificationMessage(ordinal, ban.getType(), variables, ban, context);
     }
 
@@ -55,7 +55,7 @@ public class PunishmentMessages {
     
     public static String formatMuteMessage(SimplePunishment mute, LocaleManager localeManager, MessageContext context) {
         int ordinal = mute.getOrdinal();
-        Map<String, String> variables = buildBasicPunishmentVariables(mute);
+        Map<String, String> variables = buildBasicPunishmentVariables(mute, localeManager);
         return localeManager.getPlayerNotificationMessage(ordinal, mute.getType(), variables, mute, context);
     }
     
@@ -70,7 +70,7 @@ public class PunishmentMessages {
     
     public static String formatKickMessage(SimplePunishment kick, LocaleManager localeManager, MessageContext context) {
         int ordinal = kick.getOrdinal();
-        Map<String, String> variables = buildBasicPunishmentVariables(kick);
+        Map<String, String> variables = buildBasicPunishmentVariables(kick, localeManager);
         return localeManager.getPlayerNotificationMessage(ordinal, kick.getType(), variables, kick, context);
     }
 
@@ -88,6 +88,9 @@ public class PunishmentMessages {
         variables.put("duration", punishment.isPermanent() ? "permanent" : formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
         variables.put("appeal_url", getAppealUrl());
         variables.put("id", punishment.getId());
+        variables.put("temp", punishment.isPermanent()
+                ? localeManager.getMessage("punishment_words.permanently")
+                : localeManager.getMessage("punishment_words.temporarily"));
 
         return localeManager.getPublicNotificationMessage(ordinal, variables);
     }
@@ -119,7 +122,7 @@ public class PunishmentMessages {
         return TimeUtil.formatTimeMillis(millis);
     }
     
-    private static Map<String, String> buildBasicPunishmentVariables(SimplePunishment punishment) {
+    private static Map<String, String> buildBasicPunishmentVariables(SimplePunishment punishment, LocaleManager localeManager) {
         Map<String, String> variables = new HashMap<>();
         variables.put("target", "You");
         variables.put("reason", punishment.getDescription());
@@ -127,7 +130,9 @@ public class PunishmentMessages {
         variables.put("duration", punishment.isPermanent() ? "permanent" : formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
         variables.put("id", punishment.getId());
         variables.put("appeal_url", getAppealUrl());
-        variables.put("temp", punishment.isPermanent() ? "permanently" : "temporarily");
+        variables.put("temp", punishment.isPermanent()
+                ? localeManager.getMessage("punishment_words.permanently")
+                : localeManager.getMessage("punishment_words.temporarily"));
         variables.put("for_duration", computeForDuration(punishment));
 
         java.util.Date issuedDate = punishment.getIssuedAsDate();

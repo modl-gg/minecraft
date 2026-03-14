@@ -8,6 +8,7 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
+import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffModeService;
 
@@ -33,6 +34,7 @@ public interface Platform {
     AbstractPlayer getPlayer(UUID uuid);
     int getMaxPlayers();
     String getServerVersion();
+    String getPlatformType();
     void runOnMainThread(Runnable task);
 
     default void runOnGameThread(Runnable task) {
@@ -62,5 +64,7 @@ public interface Platform {
     void setStaff2faService(Staff2faService staff2faService);
     ChatInputManager getChatInputManager();
     void setChatInputManager(ChatInputManager chatInputManager);
+    default ReplayService getReplayService() { return null; }
+    default void setReplayService(ReplayService replayService) {}
 }
 

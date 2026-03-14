@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
  */
 @Data @NoArgsConstructor
 public class PunishmentPreviewResponse {
-    private String message, socialStatus, gameplayStatus, offenseLevel, category;
+    private String message, socialStatus, gameplayStatus, offenderStatus, category;
     private SeverityPreview lenient, regular, aggravated, singleSeverity;
     private boolean success, singleSeverityPunishment, permanentUntilUsernameChange, permanentUntilSkinChange,
             canBeAltBlocking, canBeStatWiping;

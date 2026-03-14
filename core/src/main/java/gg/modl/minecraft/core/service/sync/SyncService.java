@@ -225,7 +225,9 @@ public class SyncService {
                 platform.getServerVersion(),
                 Instant.now().toString(),
                 onlinePlayers.size(),
-                platform.getMaxPlayers()
+                platform.getMaxPlayers(),
+                platform.getPlatformType(),
+                gg.modl.minecraft.core.plugin.PluginInfo.VERSION
         );
     }
 

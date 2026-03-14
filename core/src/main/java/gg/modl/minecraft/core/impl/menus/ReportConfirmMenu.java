@@ -18,6 +18,7 @@ import gg.modl.minecraft.core.config.ReportGuiConfig;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.service.ReplayService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +39,7 @@ public class ReportConfirmMenu extends SimpleMenu {
     private final ReportGuiConfig guiConfig;
     private final ChatMessageCache chatMessageCache;
     private final ReportData reportData;
+    private boolean attachReplay = false;
 
     public ReportConfirmMenu(AbstractPlayer reporter, AbstractPlayer target, ModlHttpClient httpClient,
                               LocaleManager locale, Platform platform, String panelUrl,
@@ -90,6 +92,24 @@ public class ReportConfirmMenu extends SimpleMenu {
                 MenuItems.lore(locale.getMessageList("messages.report_cancel_lore"))
         ).slot(15).actionHandler("cancel"));
 
+        // Show "Attach Replay" toggle if replay is available for the target
+        ReplayService replayService = platform.getReplayService();
+        if (replayService != null && replayService.isReplayAvailable(target.getUuid())) {
+            CirrusItem replayItem = CirrusItem.of(
+                    CirrusItemType.of("minecraft:ender_eye"),
+                    CirrusChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Attach Replay"),
+                    MenuItems.lore(List.of(
+                            MenuItems.COLOR_GRAY + "Click to toggle replay attachment",
+                            "",
+                            attachReplay
+                                    ? MenuItems.COLOR_GREEN + "Replay will be attached"
+                                    : MenuItems.COLOR_RED + "Replay will NOT be attached"
+                    ))
+            ).slot(4).actionHandler("toggleReplay");
+            if (attachReplay) replayItem.glow();
+            set(replayItem);
+        }
+
         set(MenuItems.backButton().slot(22));
     }
 
@@ -103,6 +123,12 @@ public class ReportConfirmMenu extends SimpleMenu {
 
         registerActionHandler("cancel", click -> {
             click.clickedMenu().close();
+            return CallResult.DENY_GRABBING;
+        });
+
+        registerActionHandler("toggleReplay", click -> {
+            attachReplay = !attachReplay;
+            buildMenu();
             return CallResult.DENY_GRABBING;
         });
 
@@ -132,44 +158,59 @@ public class ReportConfirmMenu extends SimpleMenu {
 
         String createdServer = platform.getPlayerServer(reporter.getUuid());
 
-        CreateTicketRequest request = new CreateTicketRequest(
-                reporter.getUuid().toString(),
-                ticketType,
-                reporter.getUsername(),
-                subject,
-                description.toString(),
-                target.getUuid().toString(),
-                target.getUsername(),
-                "normal",
-                createdServer,
-                chatMessages,
-                List.of("report")
-        );
-
         sendMessage(locale.getMessage("messages.submitting", Map.of("type", "report")));
 
-        CompletableFuture<CreateTicketResponse> future = httpClient.createTicket(request);
+        // Capture replay if requested, then submit ticket
+        CompletableFuture<String> replayFuture;
+        ReplayService replayService = platform.getReplayService();
+        if (attachReplay && replayService != null && replayService.isReplayAvailable(target.getUuid())) {
+            replayFuture = replayService.captureReplay(target.getUuid(), target.getUsername());
+        } else {
+            replayFuture = CompletableFuture.completedFuture(null);
+        }
 
-        future.thenAccept(response -> {
-            if (response.isSuccess() && response.getTicketId() != null) {
-                sendMessage(locale.getMessage("messages.success", Map.of("type", "Report")));
-                sendMessage(locale.getMessage("messages.ticket_id", Map.of("ticketId", response.getTicketId())));
+        List<String> finalChatMessages = chatMessages;
+        replayFuture.whenComplete((replayUrl, replayEx) -> {
+            if (replayEx != null) replayUrl = null; // proceed without replay on error
 
-                String ticketUrl = panelUrl + "/ticket/" + response.getTicketId();
-                sendClickableTicketLink(ticketUrl, response.getTicketId());
-                sendMessage(locale.getMessage("messages.evidence_note"));
-            } else {
-                sendMessage(locale.getMessage("messages.failed_submit",
-                        Map.of("type", "report", "error", locale.sanitizeErrorMessage(response.getMessage()))));
-            }
-        }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) {
-                sendMessage(locale.getMessage("api_errors.panel_restarting"));
-            } else {
-                sendMessage(locale.getMessage("messages.failed_submit",
-                        Map.of("type", "report", "error", locale.sanitizeErrorMessage(throwable.getMessage()))));
-            }
-            return null;
+            CreateTicketRequest request = new CreateTicketRequest(
+                    reporter.getUuid().toString(),
+                    ticketType,
+                    reporter.getUsername(),
+                    subject,
+                    description.toString(),
+                    target.getUuid().toString(),
+                    target.getUsername(),
+                    "normal",
+                    createdServer,
+                    finalChatMessages,
+                    List.of("report"),
+                    replayUrl
+            );
+
+            CompletableFuture<CreateTicketResponse> future = httpClient.createTicket(request);
+
+            future.thenAccept(response -> {
+                if (response.isSuccess() && response.getTicketId() != null) {
+                    sendMessage(locale.getMessage("messages.success", Map.of("type", "Report")));
+                    sendMessage(locale.getMessage("messages.ticket_id", Map.of("ticketId", response.getTicketId())));
+
+                    String ticketUrl = panelUrl + "/ticket/" + response.getTicketId();
+                    sendClickableTicketLink(ticketUrl, response.getTicketId());
+                    sendMessage(locale.getMessage("messages.evidence_note"));
+                } else {
+                    sendMessage(locale.getMessage("messages.failed_submit",
+                            Map.of("type", "report", "error", locale.sanitizeErrorMessage(response.getMessage()))));
+                }
+            }).exceptionally(throwable -> {
+                if (throwable.getCause() instanceof PanelUnavailableException) {
+                    sendMessage(locale.getMessage("api_errors.panel_restarting"));
+                } else {
+                    sendMessage(locale.getMessage("messages.failed_submit",
+                            Map.of("type", "report", "error", locale.sanitizeErrorMessage(throwable.getMessage()))));
+                }
+                return null;
+            });
         });
     }
 
