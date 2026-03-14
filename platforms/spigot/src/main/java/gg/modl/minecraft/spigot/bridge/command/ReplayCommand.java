@@ -1,7 +1,6 @@
 package gg.modl.minecraft.spigot.bridge.command;
 
 import gg.modl.minecraft.core.service.ReplayService;
-import gg.modl.minecraft.spigot.bridge.locale.BridgeLocaleManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;

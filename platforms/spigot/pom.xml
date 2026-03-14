@@ -116,6 +116,17 @@
             <groupId>com.github.retrooper</groupId>
             <artifactId>packetevents-spigot</artifactId>
         </dependency>
+        <!-- Replay format + recording libraries (local install via publishToMavenLocal) -->
+        <dependency>
+            <groupId>gg.modl.replay</groupId>
+            <artifactId>replay-format</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>gg.modl.replay</groupId>
+            <artifactId>modl-replay-recording</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
         <dependency>
             <groupId>net.kyori</groupId>
             <artifactId>adventure-api</artifactId>
