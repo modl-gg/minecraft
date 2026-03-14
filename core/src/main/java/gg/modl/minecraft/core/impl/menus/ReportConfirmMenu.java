@@ -39,7 +39,6 @@ public class ReportConfirmMenu extends SimpleMenu {
     private final ReportGuiConfig guiConfig;
     private final ChatMessageCache chatMessageCache;
     private final ReportData reportData;
-    private boolean attachReplay = false;
 
     public ReportConfirmMenu(AbstractPlayer reporter, AbstractPlayer target, ModlHttpClient httpClient,
                               LocaleManager locale, Platform platform, String panelUrl,
@@ -66,6 +65,7 @@ public class ReportConfirmMenu extends SimpleMenu {
         confirmLore.add(MenuItems.COLOR_GRAY + "Reason: " + MenuItems.COLOR_WHITE + reportData.getReason());
         if (reportData.getDetails() != null) confirmLore.add(MenuItems.COLOR_GRAY + "Details: " + MenuItems.COLOR_WHITE + reportData.getDetails());
         if (reportData.getChatLog() != null) confirmLore.add(MenuItems.COLOR_GRAY + "Chat Log: " + MenuItems.COLOR_WHITE + "Attached");
+        if (reportData.isAttachReplay()) confirmLore.add(MenuItems.COLOR_GRAY + "Replay: " + MenuItems.COLOR_GREEN + "Will be captured");
         confirmLore.add("");
         confirmLore.addAll(locale.getMessageList("messages.report_confirm_lore"));
 
@@ -95,18 +95,19 @@ public class ReportConfirmMenu extends SimpleMenu {
         // Show "Attach Replay" toggle if replay is available for the target
         ReplayService replayService = platform.getReplayService();
         if (replayService != null && replayService.isReplayAvailable(target.getUuid())) {
+            boolean replayOn = reportData.isAttachReplay();
             CirrusItem replayItem = CirrusItem.of(
                     CirrusItemType.of("minecraft:ender_eye"),
                     CirrusChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Attach Replay"),
                     MenuItems.lore(List.of(
                             MenuItems.COLOR_GRAY + "Click to toggle replay attachment",
                             "",
-                            attachReplay
-                                    ? MenuItems.COLOR_GREEN + "Replay will be attached"
-                                    : MenuItems.COLOR_RED + "Replay will NOT be attached"
+                            replayOn
+                                    ? MenuItems.COLOR_GREEN + "Replay will be captured"
+                                    : MenuItems.COLOR_RED + "Replay will NOT be captured"
                     ))
             ).slot(4).actionHandler("toggleReplay");
-            if (attachReplay) replayItem.glow();
+            if (replayOn) replayItem.glow();
             set(replayItem);
         }
 
@@ -127,7 +128,7 @@ public class ReportConfirmMenu extends SimpleMenu {
         });
 
         registerActionHandler("toggleReplay", click -> {
-            attachReplay = !attachReplay;
+            reportData.setAttachReplay(!reportData.isAttachReplay());
             buildMenu();
             return CallResult.DENY_GRABBING;
         });
@@ -163,7 +164,7 @@ public class ReportConfirmMenu extends SimpleMenu {
         // Capture replay if requested, then submit ticket
         CompletableFuture<String> replayFuture;
         ReplayService replayService = platform.getReplayService();
-        if (attachReplay && replayService != null && replayService.isReplayAvailable(target.getUuid())) {
+        if (reportData.isAttachReplay() && replayService != null && replayService.isReplayAvailable(target.getUuid())) {
             replayFuture = replayService.captureReplay(target.getUuid(), target.getUsername());
         } else {
             replayFuture = CompletableFuture.completedFuture(null);

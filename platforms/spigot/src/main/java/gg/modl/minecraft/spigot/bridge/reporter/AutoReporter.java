@@ -1,10 +1,12 @@
 package gg.modl.minecraft.spigot.bridge.reporter;
 
+import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.spigot.bridge.config.BridgeConfig;
 import gg.modl.minecraft.spigot.bridge.reporter.detection.DetectionSource;
 import gg.modl.minecraft.spigot.bridge.reporter.detection.ViolationRecord;
 import gg.modl.minecraft.spigot.bridge.reporter.detection.ViolationTracker;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
@@ -23,6 +25,8 @@ public class AutoReporter {
     private final BridgeConfig config;
     private final TicketCreator ticketCreator;
     private final ViolationTracker violationTracker;
+
+    @Setter private ReplayService replayService;
 
     private final ConcurrentHashMap<UUID, Long> reportCooldowns = new ConcurrentHashMap<>();
 
@@ -81,10 +85,23 @@ public class AutoReporter {
         plugin.getLogger().info("Auto-report triggered for " + playerName
                 + " (" + source.name() + " " + checkName + " VL: " + vl + ")");
 
-        ticketCreator.createTicket(
-                uuidStr, anticheatName, TICKET_TYPE, subject, description,
-                uuidStr, playerName, null, TICKET_PRIORITY, config.getServerName()
-        );
+        // Capture replay buffer if available, then create ticket
+        if (replayService != null && replayService.isReplayAvailable(uuid)) {
+            replayService.captureReplay(uuid, playerName).thenAccept(replayId -> {
+                if (replayId != null) {
+                    plugin.getLogger().info("[bridge] Replay captured for auto-report: " + playerName + " -> " + replayId);
+                }
+                ticketCreator.createTicket(
+                        uuidStr, anticheatName, TICKET_TYPE, subject, description,
+                        uuidStr, playerName, null, TICKET_PRIORITY, config.getServerName(), replayId
+                );
+            });
+        } else {
+            ticketCreator.createTicket(
+                    uuidStr, anticheatName, TICKET_TYPE, subject, description,
+                    uuidStr, playerName, null, TICKET_PRIORITY, config.getServerName()
+            );
+        }
 
         violationTracker.resetPlayer(uuid);
     }

@@ -21,6 +21,10 @@ public class BridgeConfig {
     private static final int DEFAULT_REPORT_COOLDOWN = 60;
     private static final int DEFAULT_VIOLATION_THRESHOLD = 10;
     private static final int DEFAULT_QUERY_PORT = 25590;
+    private static final int DEFAULT_REPLAY_BUFFER_DURATION = 120;
+    private static final int DEFAULT_REPLAY_RADIUS = 64;
+    private static final int DEFAULT_REPLAY_MOVE_THROTTLE = 50;
+    private static final int DEFAULT_REPLAY_MAX_DURATION = 300;
 
     @Setter private String apiKey = "";
     @Setter private boolean debug = false;
@@ -31,6 +35,14 @@ public class BridgeConfig {
     private String serverName = "Server 1";
     private int reportCooldown = DEFAULT_REPORT_COOLDOWN;
     private Map<String, Integer> reportViolationThresholds = new LinkedHashMap<>(Map.of("default", DEFAULT_VIOLATION_THRESHOLD));
+
+    // Replay configuration
+    private boolean replayEnabled = true;
+    private boolean replayAutoRecord = true;
+    private int replayBufferDuration = DEFAULT_REPLAY_BUFFER_DURATION;
+    private int replayMaxDuration = DEFAULT_REPLAY_MAX_DURATION;
+    private int replayRadius = DEFAULT_REPLAY_RADIUS;
+    private int replayMoveThrottle = DEFAULT_REPLAY_MOVE_THROTTLE;
 
     public int getReportViolationThreshold(String checkName) {
         Integer checkSpecific = reportViolationThresholds.get(checkName.toLowerCase());
@@ -97,6 +109,14 @@ public class BridgeConfig {
             config.reportViolationThresholds = thresholds;
         }
 
+        // Replay config
+        config.replayEnabled = getBool(data, "replay-enabled", true);
+        config.replayAutoRecord = getBool(data, "replay-auto-record", true);
+        config.replayBufferDuration = getInt(data, "replay-buffer-duration", DEFAULT_REPLAY_BUFFER_DURATION);
+        config.replayMaxDuration = getInt(data, "replay-max-duration", DEFAULT_REPLAY_MAX_DURATION);
+        config.replayRadius = getInt(data, "replay-radius", DEFAULT_REPLAY_RADIUS);
+        config.replayMoveThrottle = getInt(data, "replay-move-throttle", DEFAULT_REPLAY_MOVE_THROTTLE);
+
         return config;
     }
 
@@ -109,6 +129,12 @@ public class BridgeConfig {
         map.put("server-name", serverName);
         map.put("report-cooldown", reportCooldown);
         map.put("report-violation-threshold", reportViolationThresholds);
+        map.put("replay-enabled", replayEnabled);
+        map.put("replay-auto-record", replayAutoRecord);
+        map.put("replay-buffer-duration", replayBufferDuration);
+        map.put("replay-max-duration", replayMaxDuration);
+        map.put("replay-radius", replayRadius);
+        map.put("replay-move-throttle", replayMoveThrottle);
         return map;
     }
 

@@ -116,7 +116,7 @@ public class ReportDetailsMenu extends SimpleMenu {
         });
 
         registerActionHandler("back", click -> {
-            if (previousMenu != null && reportData.isChatReport()) {
+            if (previousMenu != null) {
                 ActionHandlers.openMenu(new ReportChatLogMenu(
                         reporter, target, httpClient, locale, platform, panelUrl,
                         guiConfig, chatMessageCache, reportData

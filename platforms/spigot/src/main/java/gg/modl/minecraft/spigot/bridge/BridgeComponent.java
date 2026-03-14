@@ -3,6 +3,7 @@ package gg.modl.minecraft.spigot.bridge;
 import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.spigot.bridge.command.ProxyCmdCommand;
+import gg.modl.minecraft.spigot.bridge.command.ReplayCommand;
 import gg.modl.minecraft.spigot.bridge.config.BridgeConfig;
 import gg.modl.minecraft.spigot.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.spigot.bridge.handler.FreezeHandler;
@@ -10,6 +11,7 @@ import gg.modl.minecraft.spigot.bridge.handler.StaffModeHandler;
 import gg.modl.minecraft.spigot.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.spigot.bridge.query.BridgeQueryServer;
 import gg.modl.minecraft.spigot.bridge.reporter.AutoReporter;
+import gg.modl.minecraft.spigot.bridge.reporter.ModlBackendReplayUploader;
 import gg.modl.minecraft.spigot.bridge.reporter.TicketCreator;
 import gg.modl.minecraft.spigot.bridge.reporter.detection.ViolationTracker;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.AntiCheatHook;
@@ -23,9 +25,11 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -33,6 +37,7 @@ import java.util.concurrent.CompletableFuture;
 public class BridgeComponent implements Listener {
     private final JavaPlugin plugin;
     private final String apiKey;
+    private final String backendUrl;
     private final PluginLogger logger;
     private final List<AntiCheatHook> hooks = new ArrayList<>();
 
@@ -47,9 +52,10 @@ public class BridgeComponent implements Listener {
     private boolean polarAvailable;
     @Getter private ReplayService replayService;
 
-    public BridgeComponent(JavaPlugin plugin, String apiKey, PluginLogger logger) {
+    public BridgeComponent(JavaPlugin plugin, String apiKey, String backendUrl, PluginLogger logger) {
         this.plugin = plugin;
         this.apiKey = apiKey;
+        this.backendUrl = backendUrl;
         this.logger = logger;
     }
 
@@ -125,14 +131,24 @@ public class BridgeComponent implements Listener {
         Bukkit.getPluginManager().registerEvents(this, plugin);
 
         initializeReplayService();
+        if (replayService != null) {
+            autoReporter.setReplayService(replayService);
+        }
         registerAntiCheatHooks();
 
         if (queryServer != null) {
             plugin.getCommand("proxycmd").setExecutor(new ProxyCmdCommand(plugin, localeManager, queryServer));
         }
 
+        if (replayService != null && plugin.getCommand("replay") != null) {
+            ReplayCommand replayCommand = new ReplayCommand(replayService);
+            plugin.getCommand("replay").setExecutor(replayCommand);
+            plugin.getCommand("replay").setTabCompleter(replayCommand);
+        }
+
         logger.info("[bridge] Enabled with " + hooks.size() + " anticheat hook(s)"
-                + (polarAvailable ? " (Polar pending callback)" : ""));
+                + (polarAvailable ? " (Polar pending callback)" : "")
+                + (replayService != null ? " + replay capture" : ""));
     }
 
     public void disable() {
@@ -178,10 +194,15 @@ public class BridgeComponent implements Listener {
     }
 
     /**
-     * Detects ModlBridge plugin and creates a reflection-based ReplayService
-     * that delegates to its BridgeReplayService.
+     * Detects ModlBridge plugin and creates a ReplayService that uses reflection
+     * for recording, but uploads via ModlBackendReplayUploader to modl-backend.
      */
     private void initializeReplayService() {
+        if (backendUrl == null || backendUrl.isEmpty() || apiKey == null || apiKey.isEmpty()) {
+            logger.info("[bridge] Backend URL or API key not configured, replay capture unavailable");
+            return;
+        }
+
         try {
             org.bukkit.plugin.Plugin bridgePlugin = Bukkit.getPluginManager().getPlugin("ModlBridge");
             if (bridgePlugin == null) {
@@ -189,7 +210,7 @@ public class BridgeComponent implements Listener {
                 return;
             }
 
-            // Get the BridgeReplayService field from ModlBridgePlugin
+            // Get the BridgeReplayService from ModlBridgePlugin
             Method getReplayServiceMethod = bridgePlugin.getClass().getMethod("getReplayService");
             Object bridgeReplayService = getReplayServiceMethod.invoke(bridgePlugin);
             if (bridgeReplayService == null) {
@@ -197,16 +218,55 @@ public class BridgeComponent implements Listener {
                 return;
             }
 
-            // Cache reflection methods
-            Method captureMethod = bridgeReplayService.getClass().getMethod("captureAndUploadReplay", UUID.class, String.class);
+            // Cache reflection methods for recording
+            Method getRecordingManagerMethod = bridgeReplayService.getClass().getMethod("getRecordingManager");
             Method isAvailableMethod = bridgeReplayService.getClass().getMethod("isReplayAvailable", UUID.class);
+            Object recordingManager = getRecordingManagerMethod.invoke(bridgeReplayService);
+
+            // Recording manager methods
+            Method isRecordingMethod = recordingManager.getClass().getMethod("isRecording", UUID.class);
+            Method stopRecordingMethod = recordingManager.getClass().getMethod("stopRecording", UUID.class);
+            Method getActiveRecordingsMethod = recordingManager.getClass().getMethod("getActiveRecordings");
+
+            // Upload via modl-backend instead of replay-lite-backend
+            ModlBackendReplayUploader uploader = new ModlBackendReplayUploader(backendUrl, apiKey, plugin.getLogger());
 
             this.replayService = new ReplayService() {
                 @Override
                 @SuppressWarnings("unchecked")
                 public CompletableFuture<String> captureReplay(UUID targetUuid, String targetName) {
                     try {
-                        return (CompletableFuture<String>) captureMethod.invoke(bridgeReplayService, targetUuid, targetName);
+                        if (!(boolean) isRecordingMethod.invoke(recordingManager, targetUuid)) {
+                            return CompletableFuture.completedFuture(null);
+                        }
+
+                        // Find the active recording for this player
+                        File replayFile = findRecordingFile(
+                                (Collection<?>) getActiveRecordingsMethod.invoke(recordingManager), targetUuid);
+                        if (replayFile == null) {
+                            return CompletableFuture.completedFuture(null);
+                        }
+
+                        // Stop recording to flush the buffer
+                        stopRecordingMethod.invoke(recordingManager, targetUuid);
+
+                        if (!replayFile.exists()) {
+                            logger.warning("[bridge] No replay file found for " + targetName + " after stopping recording");
+                            return CompletableFuture.completedFuture(null);
+                        }
+
+                        // Upload to modl-backend
+                        return uploader.uploadAsync(replayFile, "1.21.4")
+                                .thenApply(replayId -> {
+                                    logger.info("[bridge] Replay uploaded for " + targetName + ": " + replayId);
+                                    return replayId;
+                                })
+                                .whenComplete((replayId, ex) -> {
+                                    if (ex != null) {
+                                        logger.warning("[bridge] Replay upload failed for " + targetName + ": " + ex.getMessage());
+                                    }
+                                    replayFile.delete();
+                                });
                     } catch (Exception e) {
                         logger.warning("[bridge] Failed to capture replay: " + e.getMessage());
                         return CompletableFuture.completedFuture(null);
@@ -223,10 +283,31 @@ public class BridgeComponent implements Listener {
                 }
             };
 
-            logger.info("[bridge] Replay capture enabled via ModlBridge plugin");
+            logger.info("[bridge] Replay capture enabled via ModlBridge + modl-backend upload");
         } catch (Exception e) {
             logger.info("[bridge] Could not initialize replay service: " + e.getMessage());
         }
+    }
+
+    /**
+     * Find the output file for a player's active recording via reflection.
+     */
+    private File findRecordingFile(Collection<?> activeRecordings, UUID targetUuid) {
+        try {
+            for (Object recording : activeRecordings) {
+                Method getTargetUuid = recording.getClass().getMethod("getTargetUuid");
+                UUID recUuid = (UUID) getTargetUuid.invoke(recording);
+                if (targetUuid.equals(recUuid)) {
+                    Method getOutput = recording.getClass().getMethod("getOutput");
+                    Object output = getOutput.invoke(recording);
+                    Method getOutputFile = output.getClass().getMethod("getOutputFile");
+                    return (File) getOutputFile.invoke(output);
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("[bridge] Failed to find recording file: " + e.getMessage());
+        }
+        return null;
     }
 
     @EventHandler

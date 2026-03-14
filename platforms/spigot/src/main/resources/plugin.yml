@@ -19,3 +19,7 @@ commands:
   proxycmd:
     description: Forward a command to the proxy plugin via TCP query
     usage: /proxycmd <command>
+  replay:
+    description: Manage replay recordings
+    usage: /replay <status|capture> [player]
+    permission: modl.replay

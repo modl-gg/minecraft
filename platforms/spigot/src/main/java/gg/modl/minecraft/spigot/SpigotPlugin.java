@@ -51,7 +51,7 @@ public class SpigotPlugin extends JavaPlugin {
             loadPacketEvents();
 
             // Early Polar registration must happen in onLoad
-            bridgeComponent = new BridgeComponent(this, "", pluginLogger);
+            bridgeComponent = new BridgeComponent(this, "", "", pluginLogger);
             bridgeComponent.onLoad();
         } else {
             needsSetup = true;
@@ -83,7 +83,7 @@ public class SpigotPlugin extends JavaPlugin {
 
         // BridgeComponent.onLoad() for Polar early registration is skipped on first setup.
         // Polar integration will work after server restart.
-        bridgeComponent = new BridgeComponent(this, "", pluginLogger);
+        bridgeComponent = new BridgeComponent(this, "", "", pluginLogger);
 
         initializePlugin();
     }
@@ -95,8 +95,9 @@ public class SpigotPlugin extends JavaPlugin {
         createLocaleFiles();
         mergeDefaultConfigs();
 
-        // Re-create BridgeComponent with the real API key
-        bridgeComponent = new BridgeComponent(this, bootConfig.getApiKey(), pluginLogger);
+        // Re-create BridgeComponent with the real API key and backend URL
+        String backendUrl = bootConfig.isTestingApi() ? HttpManager.TESTING_API_URL : HttpManager.V2_API_URL;
+        bridgeComponent = new BridgeComponent(this, bootConfig.getApiKey(), backendUrl, pluginLogger);
 
         // Branch by mode
         switch (bootConfig.getMode()) {

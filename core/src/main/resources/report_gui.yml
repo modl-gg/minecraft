@@ -3,6 +3,10 @@
 # Slot numbers 1-14 map to these positions:
 #   Row 3: [19, 20, 21, 22, 23, 24, 25] = slots 1-7
 #   Row 4: [28, 29, 30, 31, 32, 33, 34] = slots 8-14
+#
+# Per-slot options:
+#   chat-report: true/false - show chat log attachment option
+#   replay-capture: true/false - show replay capture option (requires replay recording)
 
 # Slot 1 - Disabled
 1:
@@ -47,6 +51,7 @@
   item: "minecraft:diamond_sword"
   title: "Cheating"
   chat-report: false
+  replay-capture: true
   description:
     - "&7Hacking or using unfair modifications"
     - ""
@@ -58,6 +63,7 @@
   item: "minecraft:book"
   title: "Game Rule Violation"
   chat-report: false
+  replay-capture: true
   description:
     - "&7Violating server-specific game rules"
     - ""
@@ -77,6 +83,7 @@
   item: "minecraft:tnt"
   title: "Exploits"
   chat-report: false
+  replay-capture: true
   description:
     - "&7Abusing bugs or exploits"
     - ""
@@ -88,6 +95,7 @@
   item: "minecraft:experience_bottle"
   title: "Stats Boosting"
   chat-report: false
+  replay-capture: true
   description:
     - "&7Artificially inflating stats"
     - ""
