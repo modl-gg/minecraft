@@ -42,7 +42,7 @@ staff_hotbar:
       - "&7tools menu."
 
 # Target mode hotbar layout
-# Actions: freeze_target, stop_target, inspect_target, open_inventory, teleport_to_target
+# Actions: freeze_target, stop_target, inspect_target, open_inventory, teleport_to_target, hackreport_target
 target_hotbar:
   0:
     item: "minecraft:ender_eye"
@@ -72,6 +72,13 @@ target_hotbar:
     lore:
       - "&7Freeze the targeted"
       - "&7player in place."
+  6:
+    item: "minecraft:book"
+    name: "&cHack Report"
+    action: "hackreport_target"
+    lore:
+      - "&7Report the targeted player"
+      - "&7for cheating and capture a replay."
   7:
     item: "minecraft:lime_dye"
     name: "&aVanish: ON"

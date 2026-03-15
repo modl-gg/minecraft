@@ -66,6 +66,7 @@ public class StaffModeHandler implements Listener {
     private static final String ACTION_INSPECT_TARGET = "inspect_target";
     private static final String ACTION_OPEN_INVENTORY = "open_inventory";
     private static final String ACTION_TELEPORT_TO_TARGET = "teleport_to_target";
+    private static final String ACTION_HACKREPORT_TARGET = "hackreport_target";
     private static final String PLACEHOLDER_NA = "N/A";
 
     private final JavaPlugin plugin;
@@ -505,6 +506,7 @@ public class StaffModeHandler implements Listener {
             case ACTION_INSPECT_TARGET -> handleInspectTarget(player);
             case ACTION_OPEN_INVENTORY -> handleOpenInventory(player);
             case ACTION_TELEPORT_TO_TARGET -> handleTeleportToTarget(player);
+            case ACTION_HACKREPORT_TARGET -> handleHackreportTarget(player);
             default -> {} // ignore
         }
     }
@@ -573,6 +575,13 @@ public class StaffModeHandler implements Listener {
         Player target = resolveTarget(player.getUniqueId());
         if (target != null) {
             player.openInventory(target.getInventory());
+        }
+    }
+
+    private void handleHackreportTarget(Player player) {
+        Player target = resolveTarget(player.getUniqueId());
+        if (target != null) {
+            Bukkit.getScheduler().runTask(plugin, () -> player.performCommand("hackreport " + target.getName()));
         }
     }
 

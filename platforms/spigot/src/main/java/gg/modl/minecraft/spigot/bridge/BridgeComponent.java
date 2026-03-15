@@ -369,6 +369,7 @@ public class BridgeComponent implements Listener {
         double radiusSq = (double) radius * radius;
         for (Player nearby : Bukkit.getOnlinePlayers()) {
             if (nearby.equals(player)) continue;
+            if (!nearby.getWorld().equals(loc.getWorld())) continue;
             if (nearby.getLocation().distanceSquared(loc) > radiusSq) continue;
             Location nLoc = nearby.getLocation();
             packetRecorder.getEntityTracker().trackPlayer(
