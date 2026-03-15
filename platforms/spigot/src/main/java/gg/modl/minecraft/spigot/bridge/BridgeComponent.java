@@ -31,10 +31,16 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -245,6 +251,11 @@ public class BridgeComponent implements Listener {
             @Override public String uploadEndpoint() { return backendUrl; }
             @Override public String uploadApiKey() { return apiKey; }
             @Override public String viewerBaseUrl() { return ""; }
+            @Override public String mcVersion() {
+                String bukkit = Bukkit.getBukkitVersion();
+                int dash = bukkit.indexOf('-');
+                return dash > 0 ? bukkit.substring(0, dash) : bukkit;
+            }
         };
 
         File replaysDir = new File(plugin.getDataFolder(), "replays");
@@ -252,6 +263,7 @@ public class BridgeComponent implements Listener {
 
         recordingManager = new RecordingManager(recordingConfig, replaysDir, plugin.getLogger());
         packetRecorder = new PacketRecorder(recordingManager, recordingConfig, plugin.getLogger());
+        recordingManager.setPacketRecorder(packetRecorder);
         packetRecorder.register();
 
         // Upload via modl-backend
@@ -288,7 +300,7 @@ public class BridgeComponent implements Listener {
                             }
 
                             // Upload to modl-backend
-                            return uploader.uploadAsync(replayFile, "1.21.4")
+                            return uploader.uploadAsync(replayFile, recordingConfig.mcVersion())
                                     .thenApply(replayId -> {
                                         logger.info("[bridge] Replay uploaded for " + targetName + ": " + replayId);
                                         return replayId;
@@ -355,7 +367,7 @@ public class BridgeComponent implements Listener {
             if (nearby.getLocation().distanceSquared(loc) > radiusSq) continue;
             Location nLoc = nearby.getLocation();
             packetRecorder.getEntityTracker().trackPlayer(
-                    player.getUniqueId(), -1, nearby.getUniqueId(), nearby.getName(),
+                    player.getUniqueId(), nearby.getEntityId(), nearby.getUniqueId(), nearby.getName(),
                     nLoc.getX(), nLoc.getY(), nLoc.getZ(),
                     nLoc.getYaw(), nLoc.getPitch());
         }
@@ -365,8 +377,61 @@ public class BridgeComponent implements Listener {
                 loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()
         );
 
+        // Seed inventory cache from Bukkit API so equipment/inventory is available
+        // even if no WINDOW_ITEMS packet has been intercepted yet
+        seedInventoryFromBukkit(player);
         // Emit initial equipment from cached inventory state
         packetRecorder.emitInitialSelfEquipment(player.getUniqueId());
+    }
+
+    /**
+     * Seed the PacketRecorder's inventory cache from Bukkit API.
+     * Maps Bukkit inventory contents to protocol slot indices so equipment/inventory
+     * is available immediately when recording starts, without waiting for WINDOW_ITEMS.
+     */
+    private void seedInventoryFromBukkit(Player player) {
+        PlayerInventory inv = player.getInventory();
+        Map<Integer, String> protocolSlots = new HashMap<>();
+        Map<Integer, Integer> protocolCounts = new HashMap<>();
+
+        // Protocol slot layout for window 0 (player inventory):
+        // 5-8: armor (5=helmet, 6=chestplate, 7=leggings, 8=boots)
+        // 9-35: main inventory
+        // 36-44: hotbar
+        // 45: offhand
+
+        // Bukkit getContents() returns: 0-8=hotbar, 9-35=main inv, 36-39=armor (boots,legs,chest,helm), 40=offhand
+        ItemStack[] contents = inv.getContents();
+        for (int i = 0; i < contents.length && i <= 40; i++) {
+            ItemStack item = contents[i];
+            String name = (item != null && item.getType() != Material.AIR)
+                    ? item.getType().name().toLowerCase() : "air";
+            int amount = (item != null && item.getType() != Material.AIR)
+                    ? item.getAmount() : 0;
+            int protocolSlot;
+            if (i >= 0 && i <= 8) {
+                protocolSlot = 36 + i; // hotbar → protocol 36-44
+            } else if (i >= 9 && i <= 35) {
+                protocolSlot = i; // main inv → same
+            } else if (i == 36) {
+                protocolSlot = 8; // boots
+            } else if (i == 37) {
+                protocolSlot = 7; // leggings
+            } else if (i == 38) {
+                protocolSlot = 6; // chestplate
+            } else if (i == 39) {
+                protocolSlot = 5; // helmet
+            } else if (i == 40) {
+                protocolSlot = 45; // offhand
+            } else {
+                continue;
+            }
+            protocolSlots.put(protocolSlot, name);
+            protocolCounts.put(protocolSlot, amount);
+        }
+
+        packetRecorder.seedInventoryCache(player.getUniqueId(), protocolSlots, protocolCounts);
+        packetRecorder.seedHeldSlot(player.getUniqueId(), inv.getHeldItemSlot());
     }
 
     @EventHandler
