@@ -2,6 +2,7 @@ package gg.modl.minecraft.spigot.bridge;
 
 import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.util.PluginLogger;
+import gg.modl.minecraft.core.util.YamlMergeUtil;
 import gg.modl.minecraft.spigot.bridge.command.ProxyCmdCommand;
 import gg.modl.minecraft.spigot.bridge.command.ReplayCommand;
 import gg.modl.minecraft.spigot.bridge.config.BridgeConfig;
@@ -97,10 +98,12 @@ public class BridgeComponent implements Listener {
      * @param ticketCreator the ticket creator to use (direct HTTP in standalone, TCP in bridge-only)
      */
     public void enable(TicketCreator ticketCreator) {
-        // Save default bridge-config.yml if not present
+        // Save default bridge-config.yml if not present, then merge new keys
         if (!BridgeConfig.exists(plugin.getDataFolder().toPath())) {
             plugin.saveResource("bridge-config.yml", false);
         }
+        YamlMergeUtil.mergeWithDefaults("/bridge-config.yml",
+                plugin.getDataFolder().toPath().resolve("bridge-config.yml"), logger);
 
         try {
             bridgeConfig = BridgeConfig.load(plugin.getDataFolder().toPath());
@@ -112,10 +115,12 @@ public class BridgeComponent implements Listener {
 
         BridgeLocaleManager localeManager = new BridgeLocaleManager(plugin.getLogger());
 
-        // Save default staff_mode.yml if not present
+        // Save default staff_mode.yml if not present, then merge new keys
         if (!plugin.getDataFolder().toPath().resolve("staff_mode.yml").toFile().exists()) {
             plugin.saveResource("staff_mode.yml", false);
         }
+        YamlMergeUtil.mergeWithDefaults("/staff_mode.yml",
+                plugin.getDataFolder().toPath().resolve("staff_mode.yml"), logger);
 
         violationTracker = new ViolationTracker();
         violationTracker.startCleanupTask(plugin);

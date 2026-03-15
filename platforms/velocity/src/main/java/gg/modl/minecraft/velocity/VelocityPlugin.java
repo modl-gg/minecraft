@@ -167,6 +167,7 @@ public final class VelocityPlugin {
     }
 
     private void mergeDefaultConfigs() {
+        YamlMergeUtil.mergeWithDefaults("/boot.yml", folder.resolve("boot.yml"), pluginLogger);
         YamlMergeUtil.mergeWithDefaults("/config.yml", folder.resolve("config.yml"), pluginLogger);
         YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml", folder.resolve("locale/en_US.yml"), pluginLogger);
     }

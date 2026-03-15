@@ -95,7 +95,7 @@ public class SetupWizard {
         String response = input.readLine("Have you already registered a server on modl.gg? [yes/no]: ");
         testingApi = response != null && response.contains("--test-mode");
         if (testingApi) {
-            logger.info("Test mode enabled — using api.modl.top");
+            logger.info("Test mode enabled using api.modl.top");
         }
         boolean hasAccount = response != null &&
                 (response.replace("--test-mode", "").trim().equalsIgnoreCase("yes") ||
@@ -128,7 +128,7 @@ public class SetupWizard {
     }
 
     private void configureBackendBridges(BootConfig config) {
-        boolean localBackends = input.confirm("Are the backend server(s) on this machine?");
+        boolean localBackends = input.confirm("Are the backend server(s) on this machine (say no if using Pterodactyl or docker?");
         List<BootConfig.BackendBridge> bridges = new ArrayList<>();
 
         if (localBackends) {

@@ -31,9 +31,12 @@ public class BootConfigMigrator {
                 return Optional.empty();
             }
 
+            boolean testingApi = getNestedBool(config, "api.testing-api", false);
+
             BootConfig boot = new BootConfig();
             boot.setApiKey(apiKey);
             boot.setPanelUrl(apiUrl);
+            boot.setTestingApi(testingApi);
 
             if (platformType == PlatformType.SPIGOT) {
                 String bridgeHost = getNestedString(config, "bridge.host", "");
@@ -149,6 +152,17 @@ public class BootConfigMigrator {
             else return def;
         }
         return current instanceof Number n ? n.intValue() : def;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean getNestedBool(Map<String, Object> map, String path, boolean def) {
+        String[] parts = path.split("\\.");
+        Object current = map;
+        for (String part : parts) {
+            if (current instanceof Map<?, ?> m) current = m.get(part);
+            else return def;
+        }
+        return current instanceof Boolean b ? b : def;
     }
 
     private static String getString(Map<String, Object> map, String key, String def) {

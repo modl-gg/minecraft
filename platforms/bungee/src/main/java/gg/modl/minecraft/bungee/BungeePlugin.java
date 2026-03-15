@@ -138,6 +138,8 @@ public class BungeePlugin extends Plugin {
     }
 
     private void mergeDefaultConfigs() {
+        YamlMergeUtil.mergeWithDefaults("/boot.yml",
+                getDataFolder().toPath().resolve("boot.yml"), pluginLogger);
         YamlMergeUtil.mergeWithDefaults("/config.yml",
                 getDataFolder().toPath().resolve("config.yml"), pluginLogger);
         YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",

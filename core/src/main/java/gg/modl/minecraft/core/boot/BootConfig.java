@@ -132,7 +132,7 @@ public class BootConfig {
         map.put("mode", mode.toYaml());
         map.put("api-key", apiKey);
         map.put("panel-url", panelUrl);
-        if (testingApi) map.put("testing-api", true);
+        map.put("testing-api", testingApi);
 
         if (mode == Mode.PROXY && !backendBridges.isEmpty()) {
             List<Map<String, Object>> backends = new ArrayList<>();
