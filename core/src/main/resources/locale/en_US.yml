@@ -142,6 +142,11 @@ punishments:
     mute_default: "&c{target} has been muted."
     kick_default: "&c{target} has been kicked."
     default: "&c{target} has been punished."
+  player_notification:
+    ban_default: "&cYou {tense} banned (#{id})."
+    mute_default: "&cYou {tense} muted (#{id})."
+    kick_default: "&cYou have been kicked (#{id})."
+    default: "&cYou {tense} punished (#{id})."
 
 punishment_types:
   ordinal_0: # Kick
