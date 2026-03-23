@@ -3,45 +3,39 @@ package gg.modl.minecraft.spigot.bridge.reporter;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
+import java.io.BufferedReader;
 import java.io.File;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.file.Path;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
-/**
- * Uploads replay files to modl-backend (not replay-lite-backend).
- * Uses the same API key the bridge already has for modl-backend.
- * Returns a replayId (UUID) instead of a viewer URL.
- */
 public class ModlBackendReplayUploader {
 
     private final String backendUrl;
     private final String apiKey;
     private final String serverDomain;
     private final Logger logger;
-    private final HttpClient httpClient;
     private final Gson gson;
+
+    private static final String USER_AGENT = "modl-minecraft";
+    private static final int CONNECT_TIMEOUT_MS = (int) Duration.ofSeconds(10).toMillis();
+    private static final int READ_TIMEOUT_MS = (int) Duration.ofSeconds(30).toMillis();
+    private static final int UPLOAD_READ_TIMEOUT_MS = (int) Duration.ofMinutes(5).toMillis();
 
     public ModlBackendReplayUploader(String backendUrl, String apiKey, String serverDomain, Logger logger) {
         this.backendUrl = backendUrl;
         this.apiKey = apiKey;
         this.serverDomain = serverDomain;
         this.logger = logger;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .build();
         this.gson = new Gson();
     }
 
-    /**
-     * Uploads a replay file to modl-backend.
-     * Returns the replayId (UUID string) on success.
-     */
     public CompletableFuture<String> uploadAsync(File replayFile, String mcVersion) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -66,61 +60,108 @@ public class ModlBackendReplayUploader {
         body.addProperty("mcVersion", mcVersion);
         body.addProperty("fileSize", file.length());
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(backendUrl + "/v1/minecraft/replays/upload"))
-                .header("Content-Type", "application/json")
-                .header("X-API-Key", apiKey)
-                .header("X-Server-Domain", serverDomain)
-                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
-                .timeout(Duration.ofSeconds(30))
-                .build();
+        HttpURLConnection connection = (HttpURLConnection) new URL(backendUrl + "/v1/minecraft/replays/upload").openConnection();
+        try {
+            connection.setRequestMethod("POST");
+            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(READ_TIMEOUT_MS);
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("User-Agent", USER_AGENT);
+            connection.setRequestProperty("X-API-Key", apiKey);
+            connection.setRequestProperty("X-Server-Domain", serverDomain);
+            connection.setDoOutput(true);
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(gson.toJson(body).getBytes(StandardCharsets.UTF_8));
+            }
 
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("Init upload failed (HTTP " + response.statusCode() + "): " + response.body());
+            int statusCode = connection.getResponseCode();
+            String responseBody = readResponseBody(connection);
+
+            if (statusCode != 200) {
+                throw new RuntimeException("Init upload failed (HTTP " + statusCode + "): " + responseBody);
+            }
+
+            JsonObject json = gson.fromJson(responseBody, JsonObject.class);
+            if (json == null || !json.has("replayId") || !json.has("uploadUrl")) {
+                throw new RuntimeException("Malformed init response: " + responseBody);
+            }
+
+            return new InitResponse(
+                    json.get("replayId").getAsString(),
+                    json.get("uploadUrl").getAsString()
+            );
+        } finally {
+            connection.disconnect();
         }
-
-        JsonObject json = gson.fromJson(response.body(), JsonObject.class);
-        if (json == null || !json.has("replayId") || !json.has("uploadUrl")) {
-            throw new RuntimeException("Malformed init response: " + response.body());
-        }
-
-        return new InitResponse(
-                json.get("replayId").getAsString(),
-                json.get("uploadUrl").getAsString()
-        );
     }
 
     private void uploadToStorage(File file, String presignedUrl) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(presignedUrl))
-                .header("Content-Type", "application/octet-stream")
-                .PUT(HttpRequest.BodyPublishers.ofFile(Path.of(file.getAbsolutePath())))
-                .timeout(Duration.ofMinutes(5))
-                .build();
+        HttpURLConnection connection = (HttpURLConnection) new URL(presignedUrl).openConnection();
+        try {
+            connection.setRequestMethod("PUT");
+            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(UPLOAD_READ_TIMEOUT_MS);
+            connection.setRequestProperty("Content-Type", "application/octet-stream");
+            connection.setRequestProperty("User-Agent", USER_AGENT);
+            connection.setDoOutput(true);
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            byte[] fileBytes = Files.readAllBytes(file.toPath());
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(fileBytes);
+            }
 
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new RuntimeException("Storage upload failed (HTTP " + response.statusCode() + "): " + response.body());
+            int statusCode = connection.getResponseCode();
+            if (statusCode < 200 || statusCode >= 300) {
+                String responseBody = readResponseBody(connection);
+                throw new RuntimeException("Storage upload failed (HTTP " + statusCode + "): " + responseBody);
+            }
+        } finally {
+            connection.disconnect();
         }
     }
 
     private void confirmUpload(String replayId) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(backendUrl + "/v1/minecraft/replays/confirm/" + replayId))
-                .header("X-API-Key", apiKey)
-                .header("X-Server-Domain", serverDomain)
-                .POST(HttpRequest.BodyPublishers.noBody())
-                .timeout(Duration.ofSeconds(30))
-                .build();
+        HttpURLConnection connection = (HttpURLConnection) new URL(backendUrl + "/v1/minecraft/replays/confirm/" + replayId).openConnection();
+        try {
+            connection.setRequestMethod("POST");
+            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(READ_TIMEOUT_MS);
+            connection.setRequestProperty("User-Agent", USER_AGENT);
+            connection.setRequestProperty("X-API-Key", apiKey);
+            connection.setRequestProperty("X-Server-Domain", serverDomain);
+            connection.setDoOutput(true);
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(new byte[0]);
+            }
 
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("Confirm upload failed (HTTP " + response.statusCode()
-                    + ") for replay " + replayId + ": " + response.body());
+            int statusCode = connection.getResponseCode();
+            if (statusCode != 200) {
+                String responseBody = readResponseBody(connection);
+                throw new RuntimeException("Confirm upload failed (HTTP " + statusCode
+                        + ") for replay " + replayId + ": " + responseBody);
+            }
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    private String readResponseBody(HttpURLConnection connection) {
+        try {
+            java.io.InputStream stream = connection.getResponseCode() >= 400
+                    ? connection.getErrorStream() : connection.getInputStream();
+            if (stream == null) return "";
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return "";
         }
     }
 

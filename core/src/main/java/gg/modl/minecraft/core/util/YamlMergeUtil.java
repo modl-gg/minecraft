@@ -14,7 +14,9 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 public final class YamlMergeUtil {
+    private YamlMergeUtil() {}
 
     @SuppressWarnings("unchecked")
     public static void mergeWithDefaults(String jarResourcePath, Path externalFile, PluginLogger logger) {
@@ -50,7 +52,7 @@ public final class YamlMergeUtil {
             }
             if (defaults == null) return;
 
-            String userText = Files.readString(externalFile, StandardCharsets.UTF_8);
+            String userText = new String(Files.readAllBytes(externalFile), StandardCharsets.UTF_8);
             userText = userText.replace("\r\n", "\n").replace("\r", "\n");
 
             Map<Object, Object> userValues;
@@ -86,7 +88,7 @@ public final class YamlMergeUtil {
             }
 
             if (inserted > 0) {
-                Files.writeString(externalFile, String.join("\n", userLines), StandardCharsets.UTF_8);
+                Files.write(externalFile, String.join("\n", userLines).getBytes(StandardCharsets.UTF_8));
                 logger.info("Merged " + inserted + " new section(s) into " + externalFile.getFileName());
             }
 

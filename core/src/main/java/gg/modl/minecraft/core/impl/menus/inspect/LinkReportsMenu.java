@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
-import dev.simplix.cirrus.actionhandler.ActionHandler;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -88,8 +87,7 @@ public class LinkReportsMenu extends BaseInspectListMenu<LinkReportsMenu.Report>
                     }
                 }
             }).join();
-        } catch (Exception e) {
-            // fail to fetch, list remains empty
+        } catch (Exception ignored) {
         }
     }
 

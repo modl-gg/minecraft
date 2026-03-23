@@ -1,15 +1,7 @@
 # modl.gg Minecraft Plugin Configuration
-#
-# API Configuration - Get these values from your modl.gg panel
+
 api:
-  # Your API key from the panel
-  key: "your-api-key-here"
-  # Your panel's  URL (e.g., https://yourserver.modl.gg)
-  url: "https://yourserver.modl.gg"
-  # Enable debug HTTP logging (default: false)
   debug: false
-  # Only enable this for development/testing purposes
-  testing-api: false
 
 # Server Configuration
 server:
@@ -34,7 +26,7 @@ staff_chat:
 
 # Staff 2FA Configuration
 # Staff members must verify identity via a panel link before using staff features.
-# Sessions last 7 days (managed by the backend).
+# IP Sessions last 7 days (managed by the backend).
 staff_2fa:
   # Enable/disable staff 2FA
   enabled: false

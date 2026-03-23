@@ -29,6 +29,7 @@ import gg.modl.minecraft.core.impl.commands.staff.StaffChatCommand;
 import gg.modl.minecraft.core.impl.commands.staff.StaffCommand;
 import gg.modl.minecraft.core.impl.commands.staff.StaffListCommand;
 import gg.modl.minecraft.core.impl.commands.staff.StaffModeCommand;
+import gg.modl.minecraft.core.impl.commands.staff.ReplayCommand;
 import gg.modl.minecraft.core.impl.commands.staff.TargetCommand;
 import gg.modl.minecraft.core.impl.commands.player.ApplyCommand;
 import gg.modl.minecraft.core.impl.commands.player.BugReportCommand;
@@ -74,6 +75,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import gg.modl.minecraft.core.util.PluginLogger;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @Getter
 public class PluginLoader {
@@ -122,9 +124,8 @@ public class PluginLoader {
         this.httpClientHolder = httpManager.getHttpClientHolder();
         this.logger = platform.getLogger();
 
-        PluginLogger logger = this.logger;
-        Map<String, Object> configYml = readConfigYml(dataDirectory, logger);
-        String configuredLocale = readLocaleFromConfig(configYml, logger);
+        Map<String, Object> configYml = readConfigYml(dataDirectory, this.logger);
+        String configuredLocale = readLocaleFromConfig(configYml, this.logger);
 
         this.localeManager = new LocaleManager(configuredLocale);
         Path localeFile = dataDirectory.resolve("locale").resolve(configuredLocale + ".yml");
@@ -256,6 +257,7 @@ public class PluginLoader {
         commandManager.registerCommand(new StaffModeCommand(platform, cache, this.localeManager, staffModeService, vanishService, bridgeService));
         commandManager.registerCommand(new VanishCommand(platform, cache, this.localeManager, vanishService, bridgeService));
         commandManager.registerCommand(new TargetCommand(platform, cache, this.localeManager, staffModeService, bridgeService));
+        commandManager.registerCommand(new ReplayCommand(platform, cache, this.localeManager, httpManager.getPanelUrl()));
 
         for (Map.Entry<String, String> entry : commandAliases.entrySet()) {
             if (entry.getKey().equals("modl")) continue;
@@ -298,46 +300,47 @@ public class PluginLoader {
         return "en_US";
     }
 
-    private static final Map<String, String> DEFAULT_COMMAND_ALIASES = Map.ofEntries(
-            Map.entry("modl", "modl"),
-            Map.entry("punish", "punish|p"),
-            Map.entry("ban", "ban"),
-            Map.entry("mute", "mute"),
-            Map.entry("kick", "kick"),
-            Map.entry("blacklist", "blacklist"),
-            Map.entry("pardon", "pardon"),
-            Map.entry("unban", "unban"),
-            Map.entry("unmute", "unmute"),
-            Map.entry("warn", "warn"),
-            Map.entry("inspect", "inspect|ins|check|lookup|look|info"),
-            Map.entry("staffmenu", "staffmenu|sm"),
-            Map.entry("history", "history|hist"),
-            Map.entry("alts", "alts|alt"),
-            Map.entry("notes", "notes"),
-            Map.entry("reports", "reports"),
-            Map.entry("iammuted", "iammuted"),
-            Map.entry("report", "report"),
-            Map.entry("chatreport", "chatreport"),
-            Map.entry("hackreport", "hackreport|hr"),
-            Map.entry("apply", "apply"),
-            Map.entry("bugreport", "bugreport"),
-            Map.entry("support", "support"),
-            Map.entry("tclaim", "tclaim|claimticket"),
-            Map.entry("standing", "standing"),
-            Map.entry("punishment_action", "modl:punishment-action"),
-            Map.entry("staffchat", "staffchat|sc"),
-            Map.entry("localchat", "localchat|lc"),
-            Map.entry("chat", "chat"),
-            Map.entry("stafflist", "stafflist|sl"),
-            Map.entry("freeze", "freeze"),
-            Map.entry("staffmode", "staffmode"),
-            Map.entry("vanish", "vanish|v"),
-            Map.entry("target", "target"),
-            Map.entry("maintenance", "maintenance"),
-            Map.entry("verify", "verify"),
-            Map.entry("interceptnetworkchat", "interceptnetworkchat|inc"),
-            Map.entry("chatlogs", "chatlogs"),
-            Map.entry("commandlogs", "commandlogs")
+    private static final Map<String, String> DEFAULT_COMMAND_ALIASES = mapOfEntries(
+            entry("modl", "modl"),
+            entry("punish", "punish|p"),
+            entry("ban", "ban"),
+            entry("mute", "mute"),
+            entry("kick", "kick"),
+            entry("blacklist", "blacklist"),
+            entry("pardon", "pardon"),
+            entry("unban", "unban"),
+            entry("unmute", "unmute"),
+            entry("warn", "warn"),
+            entry("inspect", "inspect|ins|check|lookup|look|info"),
+            entry("staffmenu", "staffmenu|sm"),
+            entry("history", "history|hist"),
+            entry("alts", "alts|alt"),
+            entry("notes", "notes"),
+            entry("reports", "reports"),
+            entry("iammuted", "iammuted"),
+            entry("report", "report"),
+            entry("chatreport", "chatreport"),
+            entry("hackreport", "hackreport|hr"),
+            entry("apply", "apply"),
+            entry("bugreport", "bugreport"),
+            entry("support", "support"),
+            entry("tclaim", "tclaim|claimticket"),
+            entry("standing", "standing"),
+            entry("punishment_action", "modl:punishment-action"),
+            entry("staffchat", "staffchat|sc"),
+            entry("localchat", "localchat|lc"),
+            entry("chat", "chat"),
+            entry("stafflist", "stafflist|sl"),
+            entry("freeze", "freeze"),
+            entry("staffmode", "staffmode"),
+            entry("vanish", "vanish|v"),
+            entry("target", "target"),
+            entry("maintenance", "maintenance"),
+            entry("verify", "verify"),
+            entry("interceptnetworkchat", "interceptnetworkchat|inc"),
+            entry("chatlogs", "chatlogs"),
+            entry("commandlogs", "commandlogs"),
+            entry("replay", "replay")
     );
 
     @SuppressWarnings("unchecked")
@@ -378,13 +381,11 @@ public class PluginLoader {
                 String dateFormat = this.localeManager.getDateFormatPattern();
                 MenuItems.setDateFormat(dateFormat);
                 DateFormatter.setDateFormat(dateFormat);
-                PunishmentMessages.setDateFormat(dateFormat);
 
                 String timezone = (String) localeConfig.getOrDefault("timezone", "");
                 if (timezone != null && !timezone.isEmpty()) {
                     MenuItems.setTimezone(timezone);
                     DateFormatter.setTimezone(timezone);
-                    PunishmentMessages.setTimezone(timezone);
                 }
             }
         } catch (Exception e) {
@@ -410,7 +411,6 @@ public class PluginLoader {
 
                 DatabaseConfig.DatabaseType dbType = DatabaseConfig.DatabaseType.fromString(type);
 
-                // Try to read table prefix from LiteBans config if it exists
                 String detectedPrefix = detectLiteBansTablePrefix(dataDirectory, logger);
                 if (detectedPrefix != null) {
                     tablePrefix = detectedPrefix;
@@ -435,7 +435,6 @@ public class PluginLoader {
 
     private String detectLiteBansTablePrefix(Path dataDirectory, PluginLogger logger) {
         try {
-            // LiteBans config is in plugins/LiteBans/config.yml
             Path litebansConfig = dataDirectory.getParent().resolve("LiteBans").resolve("config.yml");
 
             if (!Files.exists(litebansConfig)) {
@@ -563,7 +562,7 @@ public class PluginLoader {
                 if (permission.startsWith("punishment.apply.")) {
                     String type = permission.replace("punishment.apply.", "").replace("-", " ");
                     message = localeManager.getPunishmentMessage("general.no_permission_punishment",
-                            Map.of("type", type));
+                            mapOf("type", type));
                 } else message = localeManager.getMessage("general.no_permission");
 
                 throw new ConditionFailedException(message);

@@ -7,10 +7,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-/**
- * Uses reflection to access LiteBans API, avoiding compile-time dependency.
- * LiteBans handles table name token replacement ({bans}, {mutes}, etc.).
- */
 public class LiteBansDatabaseProvider implements DatabaseProvider {
     private static final String LITEBANS_DATABASE_CLASS = "litebans.api.Database";
 

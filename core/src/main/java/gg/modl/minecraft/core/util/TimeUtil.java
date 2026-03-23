@@ -3,7 +3,8 @@ package gg.modl.minecraft.core.util;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class TimeUtil {
+public final class TimeUtil {
+    private TimeUtil() {}
     private static final Pattern DURATION_TOKEN_PATTERN = Pattern.compile("[a-z]+|\\d+");
     private static final long MILLIS_PER_SECOND = 1000L,
             MILLIS_PER_MINUTE = 60 * MILLIS_PER_SECOND,
@@ -54,12 +55,18 @@ public class TimeUtil {
 
             if (time > 0 && type != null) {
                 switch (type) {
-                    case "seconds", "second", "sec", "s" -> duration += time * MILLIS_PER_SECOND;
-                    case "minutes", "minute", "m" -> duration += time * MILLIS_PER_MINUTE;
-                    case "hours", "hrs", "hr", "h" -> duration += time * MILLIS_PER_HOUR;
-                    case "days", "day", "d" -> duration += time * MILLIS_PER_DAY;
-                    case "weeks", "week", "w" -> duration += time * MILLIS_PER_WEEK;
-                    case "months", "month", "mo" -> duration += time * MILLIS_PER_MONTH;
+                    case "seconds": case "second": case "sec": case "s":
+                        duration += time * MILLIS_PER_SECOND; break;
+                    case "minutes": case "minute": case "m":
+                        duration += time * MILLIS_PER_MINUTE; break;
+                    case "hours": case "hrs": case "hr": case "h":
+                        duration += time * MILLIS_PER_HOUR; break;
+                    case "days": case "day": case "d":
+                        duration += time * MILLIS_PER_DAY; break;
+                    case "weeks": case "week": case "w":
+                        duration += time * MILLIS_PER_WEEK; break;
+                    case "months": case "month": case "mo":
+                        duration += time * MILLIS_PER_MONTH; break;
                 }
                 time = -1;
                 type = null;

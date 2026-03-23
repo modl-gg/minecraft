@@ -13,6 +13,8 @@ import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 
+import static gg.modl.minecraft.core.util.Java8Collections.*;
+
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -140,12 +142,10 @@ class PunishmentExecutor {
                 return;
             }
 
-            switch (modType) {
-                case MANUAL_PARDON, SYSTEM_PARDON, APPEAL_ACCEPT ->
-                    handlePardon(uuid, username, punishmentId);
-                case MANUAL_DURATION_CHANGE, APPEAL_DURATION_CHANGE ->
-                    handleDurationChange(uuid, username, punishmentId, modification.getEffectiveDuration(), modification.getTimestamp());
-                default -> {}
+            if (modType == Modification.Type.MANUAL_PARDON || modType == Modification.Type.SYSTEM_PARDON || modType == Modification.Type.APPEAL_ACCEPT) {
+                handlePardon(uuid, username, punishmentId);
+            } else if (modType == Modification.Type.MANUAL_DURATION_CHANGE || modType == Modification.Type.APPEAL_DURATION_CHANGE) {
+                handleDurationChange(uuid, username, punishmentId, modification.getEffectiveDuration(), modification.getTimestamp());
             }
         } catch (Exception e) {
             logger.severe("Error handling punishment modification: " + e.getMessage());
@@ -164,7 +164,6 @@ class PunishmentExecutor {
         if (debugMode) logger.info("Pardoned punishment " + punishmentId + " for " + username);
     }
 
-    /** @return true if a cached mute or ban matched the punishment ID and was removed */
     private boolean removeCachedPunishmentById(CachedProfile profile, String punishmentId) {
         boolean removed = false;
         SimplePunishment cachedMute = profile.getActiveMute();
@@ -207,7 +206,7 @@ class PunishmentExecutor {
         PunishmentAcknowledgeRequest request = new PunishmentAcknowledgeRequest(
                 punishmentId, playerUuid, Instant.now().toString(), null, success);
 
-        httpClientHolder.getClient().acknowledgePunishment(request)
+        orTimeout(httpClientHolder.getClient().acknowledgePunishment(request)
                 .thenAccept(response -> {
                     if (debugMode) logger.info("Acknowledged punishment " + punishmentId + ": " + (success ? "SUCCESS" : "FAILED"));
                 })
@@ -219,7 +218,6 @@ class PunishmentExecutor {
                         logger.warning("Failed to acknowledge punishment " + punishmentId + ": " + throwable.getMessage());
                     }
                     return null;
-                })
-                .orTimeout(ACK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                }), ACK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 }

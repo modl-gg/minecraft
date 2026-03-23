@@ -15,18 +15,10 @@ import gg.modl.minecraft.core.config.ReportGuiConfig;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
-import gg.modl.minecraft.core.service.ReplayService;
-
 import java.util.List;
 import java.util.Map;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
-/**
- * Attachments step in the report flow.
- * Shows available attachment options based on report type and server capabilities:
- * - Chat log attachment (for chat reports)
- * - Replay capture (for gameplay reports when replay recording is available)
- * - Both (for chat reports on servers with replay recording)
- */
 public class ReportChatLogMenu extends SimpleMenu {
 
     private final AbstractPlayer reporter, target;
@@ -61,11 +53,10 @@ public class ReportChatLogMenu extends SimpleMenu {
         this.showChat = reportData.isChatReport();
         this.showReplay = reportData.isReplayCapture();
 
-        // Restore toggle state from reportData (for back navigation)
         this.chatToggled = reportData.getChatLog() != null;
         this.replayToggled = reportData.isAttachReplay();
 
-        title(locale.getMessage("messages.report_gui_title", Map.of("player", target.getUsername())));
+        title(locale.getMessage("messages.report_gui_title", mapOf("player", target.getUsername())));
         type(CirrusInventoryType.GENERIC_9X3);
         buildMenu();
     }
@@ -80,10 +71,6 @@ public class ReportChatLogMenu extends SimpleMenu {
         }
     }
 
-    /**
-     * Both chat and replay options — toggles with a continue button.
-     * Layout: head(4), chat(10), replay(16), continue(22), back(26)
-     */
     private void buildCombinedMenu() {
         set(buildTargetHead("messages.report_skull_chat_log").slot(4));
 
@@ -91,7 +78,7 @@ public class ReportChatLogMenu extends SimpleMenu {
         CirrusItem chatItem = CirrusItem.of(
                 CirrusItemType.of(chatToggled ? "minecraft:lime_terracotta" : "minecraft:orange_terracotta"),
                 CirrusChatElement.ofLegacyText(locale.getMessage("messages.report_attach_chat")),
-                MenuItems.lore(List.of(
+                MenuItems.lore(listOf(
                         chatToggled
                                 ? MenuItems.COLOR_GREEN + "Chat log will be attached"
                                 : MenuItems.COLOR_GRAY + "Click to attach chat log"
@@ -104,7 +91,7 @@ public class ReportChatLogMenu extends SimpleMenu {
         CirrusItem replayItem = CirrusItem.of(
                 CirrusItemType.of("minecraft:ender_eye"),
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Capture Replay"),
-                MenuItems.lore(List.of(
+                MenuItems.lore(listOf(
                         MenuItems.COLOR_GRAY + "Captures recent gameplay recording",
                         "",
                         replayToggled
@@ -119,17 +106,13 @@ public class ReportChatLogMenu extends SimpleMenu {
         set(CirrusItem.of(
                 CirrusItemType.of("minecraft:lime_terracotta"),
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Continue"),
-                MenuItems.lore(List.of(MenuItems.COLOR_GRAY + "Proceed to add details"))
+                MenuItems.lore(listOf(MenuItems.COLOR_GRAY + "Proceed to add details"))
         ).slot(22).actionHandler("continue"));
 
         // Back button
         set(MenuItems.backButton().slot(26));
     }
 
-    /**
-     * Chat only (no replay available) — original behavior.
-     * Layout: chat(11), head(13), skip(15), back(22)
-     */
     private void buildChatOnlyMenu() {
         set(CirrusItem.of(
                 CirrusItemType.of("minecraft:orange_terracotta"),
@@ -148,15 +131,11 @@ public class ReportChatLogMenu extends SimpleMenu {
         set(MenuItems.backButton().slot(22));
     }
 
-    /**
-     * Replay only (non-chat report with replay available).
-     * Layout: replay(11), head(13), skip(15), back(22)
-     */
     private void buildReplayOnlyMenu() {
         set(CirrusItem.of(
                 CirrusItemType.of("minecraft:ender_eye"),
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Capture Replay"),
-                MenuItems.lore(List.of(
+                MenuItems.lore(listOf(
                         MenuItems.COLOR_GRAY + "Captures recent gameplay recording",
                         MenuItems.COLOR_GRAY + "and attaches it to the report",
                         "",
@@ -169,14 +148,14 @@ public class ReportChatLogMenu extends SimpleMenu {
         set(CirrusItem.of(
                 CirrusItemType.of("minecraft:light_blue_terracotta"),
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GRAY + "Skip"),
-                MenuItems.lore(List.of(MenuItems.COLOR_GRAY + "Continue without replay"))
+                MenuItems.lore(listOf(MenuItems.COLOR_GRAY + "Continue without replay"))
         ).slot(15).actionHandler("skipReplay"));
 
         set(MenuItems.backButton().slot(22));
     }
 
     private CirrusItem buildTargetHead(String localeKey) {
-        List<String> skullLines = locale.getMessageList(localeKey, Map.of("player", target.getUsername()));
+        List<String> skullLines = locale.getMessageList(localeKey, mapOf("player", target.getUsername()));
         CirrusItem head = MenuItems.playerHead(
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
@@ -197,8 +176,6 @@ public class ReportChatLogMenu extends SimpleMenu {
 
     @Override
     protected void registerActionHandlers() {
-        // === Chat-only mode handlers ===
-
         registerActionHandler("attachChat", click -> {
             String chatLog = chatMessageCache.getChatLogForReport(
                     target.getUuid().toString(),
@@ -207,7 +184,7 @@ public class ReportChatLogMenu extends SimpleMenu {
 
             if (chatLog.isEmpty()) {
                 platform.sendMessage(reporter.getUuid(),
-                        locale.getMessage("messages.no_chat_logs_available", Map.of("player", target.getUsername())));
+                        locale.getMessage("messages.no_chat_logs_available", mapOf("player", target.getUsername())));
             } else {
                 reportData.setChatLog(chatLog);
             }
@@ -221,8 +198,6 @@ public class ReportChatLogMenu extends SimpleMenu {
             return CallResult.DENY_GRABBING;
         });
 
-        // === Replay-only mode handlers ===
-
         registerActionHandler("captureReplay", click -> {
             reportData.setAttachReplay(true);
             openDetailsMenu(click);
@@ -234,8 +209,6 @@ public class ReportChatLogMenu extends SimpleMenu {
             return CallResult.DENY_GRABBING;
         });
 
-        // === Combined mode handlers (toggles + continue) ===
-
         registerActionHandler("toggleChat", click -> {
             chatToggled = !chatToggled;
             if (chatToggled) {
@@ -245,7 +218,7 @@ public class ReportChatLogMenu extends SimpleMenu {
                 );
                 if (chatLog.isEmpty()) {
                     platform.sendMessage(reporter.getUuid(),
-                            locale.getMessage("messages.no_chat_logs_available", Map.of("player", target.getUsername())));
+                            locale.getMessage("messages.no_chat_logs_available", mapOf("player", target.getUsername())));
                     chatToggled = false;
                 } else {
                     reportData.setChatLog(chatLog);
@@ -268,8 +241,6 @@ public class ReportChatLogMenu extends SimpleMenu {
             openDetailsMenu(click);
             return CallResult.DENY_GRABBING;
         });
-
-        // === Common ===
 
         registerActionHandler("back", click -> {
             ActionHandlers.openMenu(new ReportMenu(

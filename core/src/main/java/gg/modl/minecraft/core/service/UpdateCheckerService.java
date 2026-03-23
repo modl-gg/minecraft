@@ -4,11 +4,12 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -23,7 +24,6 @@ public class UpdateCheckerService {
 
     private final PluginLogger logger;
     private final String currentVersion;
-    private final HttpClient httpClient;
     private final Gson gson = new Gson();
 
     private volatile ScheduledExecutorService scheduler;
@@ -34,15 +34,6 @@ public class UpdateCheckerService {
         this.logger = logger;
         this.debugMode = debugMode;
         this.currentVersion = currentVersion;
-
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(CONNECT_TIMEOUT)
-                .executor(Executors.newCachedThreadPool(r -> {
-                    Thread t = new Thread(r, "modl-update-checker-http");
-                    t.setDaemon(true);
-                    return t;
-                }))
-                .build();
     }
 
     public synchronized void start(boolean enabled, int intervalMinutes) {
@@ -92,32 +83,45 @@ public class UpdateCheckerService {
         }
     }
 
-    private ReleaseInfo fetchLatestRelease() throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(RELEASES_API_URL))
-                .timeout(REQUEST_TIMEOUT)
-                .header("Accept", "application/vnd.github+json")
-                .header("User-Agent", "modl-minecraft/" + currentVersion)
-                .GET()
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() != 200) {
-            if (debugMode) logger.info("[Update Checker] GitHub API returned status " + response.statusCode());
-            return null;
-        }
-
+    private ReleaseInfo fetchLatestRelease() throws IOException {
+        URL url = new URL(RELEASES_API_URL);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         try {
-            JsonObject json = gson.fromJson(response.body(), JsonObject.class);
-            if (json == null || !json.has("tag_name")) return null;
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout((int) CONNECT_TIMEOUT.toMillis());
+            connection.setReadTimeout((int) REQUEST_TIMEOUT.toMillis());
+            connection.setRequestProperty("Accept", "application/vnd.github+json");
+            connection.setRequestProperty("User-Agent", "modl-minecraft/" + currentVersion);
 
-            String tagName = json.get("tag_name").getAsString();
-            String htmlUrl = RELEASES_PAGE_URL;
-            if (json.has("html_url") && !json.get("html_url").isJsonNull()) htmlUrl = json.get("html_url").getAsString();
-            return new ReleaseInfo(tagName, htmlUrl);
-        } catch (JsonSyntaxException e) {
-            if (debugMode) logger.info("[Update Checker] Failed to parse GitHub response: " + e.getMessage());
-            return null;
+            int statusCode = connection.getResponseCode();
+            if (statusCode != 200) {
+                if (debugMode) logger.info("[Update Checker] GitHub API returned status " + statusCode);
+                return null;
+            }
+
+            StringBuilder responseBody = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    responseBody.append(line);
+                }
+            }
+
+            try {
+                JsonObject json = gson.fromJson(responseBody.toString(), JsonObject.class);
+                if (json == null || !json.has("tag_name")) return null;
+
+                String tagName = json.get("tag_name").getAsString();
+                String htmlUrl = RELEASES_PAGE_URL;
+                if (json.has("html_url") && !json.get("html_url").isJsonNull()) htmlUrl = json.get("html_url").getAsString();
+                return new ReleaseInfo(tagName, htmlUrl);
+            } catch (JsonSyntaxException e) {
+                if (debugMode) logger.info("[Update Checker] Failed to parse GitHub response: " + e.getMessage());
+                return null;
+            }
+        } finally {
+            connection.disconnect();
         }
     }
 
@@ -130,7 +134,7 @@ public class UpdateCheckerService {
 
         private ReleaseInfo(String tagName, String downloadUrl) {
             this.tagName = tagName;
-            this.downloadUrl = downloadUrl == null || downloadUrl.isBlank() ? RELEASES_PAGE_URL : downloadUrl;
+            this.downloadUrl = downloadUrl == null || downloadUrl.trim().isEmpty() ? RELEASES_PAGE_URL : downloadUrl;
         }
     }
 }

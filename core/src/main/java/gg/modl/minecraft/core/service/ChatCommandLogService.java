@@ -9,10 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
-/**
- * Buffers chat messages and commands for submission each sync cycle.
- */
 public class ChatCommandLogService {
     private final List<ChatLogEntry> chatBuffer = new ArrayList<>();
     private final List<CommandLogEntry> commandBuffer = new ArrayList<>();
@@ -32,7 +30,7 @@ public class ChatCommandLogService {
     public List<SyncRequest.ChatLogEntry> drainChatBuffer() {
         List<ChatLogEntry> entries;
         synchronized (chatBuffer) {
-            if (chatBuffer.isEmpty()) return List.of();
+            if (chatBuffer.isEmpty()) return listOf();
             entries = new ArrayList<>(chatBuffer);
             chatBuffer.clear();
         }
@@ -44,7 +42,7 @@ public class ChatCommandLogService {
     public List<SyncRequest.CommandLogEntry> drainCommandBuffer() {
         List<CommandLogEntry> entries;
         synchronized (commandBuffer) {
-            if (commandBuffer.isEmpty()) return List.of();
+            if (commandBuffer.isEmpty()) return listOf();
             entries = new ArrayList<>(commandBuffer);
             commandBuffer.clear();
         }
@@ -55,7 +53,7 @@ public class ChatCommandLogService {
 
     public CompletableFuture<List<ChatLogEntry>> getChatLogs(HttpClientHolder httpClientHolder, String uuid, int limit) {
         return httpClientHolder.getClient().getChatLogs(uuid, limit).thenApply(response -> {
-            if (response.getEntries() == null) return List.of();
+            if (response.getEntries() == null) return listOf();
             return response.getEntries().stream()
                     .map(e -> new ChatLogEntry(e.getUuid(), e.getUsername(), e.getMessage(), e.getServer(), e.getTimestamp()))
                     .collect(Collectors.toList());
@@ -64,7 +62,7 @@ public class ChatCommandLogService {
 
     public CompletableFuture<List<CommandLogEntry>> getCommandLogs(HttpClientHolder httpClientHolder, String uuid, int limit) {
         return httpClientHolder.getClient().getCommandLogs(uuid, limit).thenApply(response -> {
-            if (response.getEntries() == null) return List.of();
+            if (response.getEntries() == null) return listOf();
             return response.getEntries().stream()
                     .map(e -> new CommandLogEntry(e.getUuid(), e.getUsername(), e.getCommand(), e.getServer(), e.getTimestamp()))
                     .collect(Collectors.toList());

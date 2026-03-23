@@ -6,9 +6,8 @@ import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * Simplified punishment for API responses with only essential fields.
- */
+import java.util.Date;
+
 @Data @NoArgsConstructor @AllArgsConstructor
 public class SimplePunishment {
     private static final String CATEGORY_BAN = "BAN", CATEGORY_MUTE = "MUTE", CATEGORY_KICK = "KICK";
@@ -24,10 +23,6 @@ public class SimplePunishment {
     private boolean started;
     private int ordinal;
 
-    /**
-     * Backend-provided category is most authoritative (per-punishment, not per-type),
-     * since the registry is per-type across all severity levels.
-     */
     public boolean isBan() {
         if (category != null) return CATEGORY_BAN.equalsIgnoreCase(category);
         if (PunishmentTypeRegistry.isInitialized()) return PunishmentTypeRegistry.isBan(ordinal);
@@ -35,10 +30,6 @@ public class SimplePunishment {
         return CATEGORY_BAN.equalsIgnoreCase(type);
     }
 
-    /**
-     * Backend-provided category is most authoritative (per-punishment, not per-type),
-     * since the registry is per-type across all severity levels.
-     */
     public boolean isMute() {
         if (category != null) return CATEGORY_MUTE.equalsIgnoreCase(category);
         if (PunishmentTypeRegistry.isInitialized()) return PunishmentTypeRegistry.isMute(ordinal);
@@ -58,7 +49,7 @@ public class SimplePunishment {
         return expiration != null && expiration < System.currentTimeMillis();
     }
 
-    public java.util.Date getIssuedAsDate() {
-        return issuedAt != null ? new java.util.Date(issuedAt) : null;
+    public Date getIssuedAsDate() {
+        return issuedAt != null ? new Date(issuedAt) : null;
     }
 }

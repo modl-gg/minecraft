@@ -186,7 +186,6 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
         ).slot(MenuSlots.MODIFY_LINKED_TICKETS).actionHandler("linkedTickets"));
 
         if (isBanType) {
-            punishment.getDataMap();
             boolean statWipe = Boolean.TRUE.equals(punishment.getDataMap().get("wipeAfterExpiry"));
 
             if (canModifyOptions) {
@@ -211,7 +210,6 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                 ).slot(MenuSlots.MODIFY_STAT_WIPE));
             }
 
-            punishment.getDataMap();
             boolean altBlock = Boolean.TRUE.equals(punishment.getDataMap().get("altBlocking"));
 
             if (canModifyOptions) {

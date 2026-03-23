@@ -10,7 +10,6 @@ import java.util.UUID;
 public class MaintenanceService {
     private volatile boolean maintenanceEnabled = false;
 
-    /** Enables maintenance and kicks all non-staff players on the game thread. */
     public void enable(Platform platform, Cache cache, String kickMessage) {
         this.maintenanceEnabled = true;
         for (AbstractPlayer player : platform.getOnlinePlayers()) {

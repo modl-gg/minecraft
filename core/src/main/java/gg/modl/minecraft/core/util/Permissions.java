@@ -1,6 +1,8 @@
 package gg.modl.minecraft.core.util;
 
 public final class Permissions {
+    private Permissions() {}
+
     public static final String ADMIN = "modl.admin",
             MOD_ACTIONS = "staff.modactions",
             CHAT_LOGS = "staff.chatlogs",

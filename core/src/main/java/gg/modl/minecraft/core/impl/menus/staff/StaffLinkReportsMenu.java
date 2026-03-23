@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
-import dev.simplix.cirrus.actionhandler.ActionHandler;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;

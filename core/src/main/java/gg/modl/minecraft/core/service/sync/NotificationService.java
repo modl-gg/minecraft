@@ -19,11 +19,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
-/**
- * Delivers player and staff notifications received from the sync response.
- * Handles delayed delivery for pending notifications and acknowledgement back to the backend.
- */
 class NotificationService {
     private static final String TICKET_CREATED_TYPE = "TICKET_CREATED", TICKET_TYPE_REPORT = "REPORT";
     private static final int MAX_HOVER_TEXT_LENGTH = 200;
@@ -129,7 +126,6 @@ class NotificationService {
         }
     }
 
-    /** @return true if the notification was delivered to an online player */
     private boolean deliverNotificationToPlayerAndCheck(UUID playerUuid, SyncResponse.PlayerNotification notification) {
         AbstractPlayer player = platform.getPlayer(playerUuid);
         if (player == null || !player.isOnline()) {
@@ -142,7 +138,7 @@ class NotificationService {
             sendClickableTicketNotification(playerUuid, notification, data);
         } else {
             String message = localeManager.getMessage(
-                "notification.ticket_reply", Map.of("message", notification.getMessage()));
+                "notification.ticket_reply", mapOf("message", notification.getMessage()));
 
             platform.runOnMainThread(() -> platform.sendMessage(playerUuid, message));
         }
@@ -271,7 +267,7 @@ class NotificationService {
     }
 
     private void acknowledgeNotification(UUID playerUuid, String notificationId) {
-        acknowledgeNotifications(playerUuid, List.of(notificationId));
+        acknowledgeNotifications(playerUuid, listOf(notificationId));
     }
 
     private void acknowledgeNotifications(UUID playerUuid, List<String> notificationIds) {
@@ -279,7 +275,7 @@ class NotificationService {
             NotificationAcknowledgeRequest request = new NotificationAcknowledgeRequest(
                     playerUuid.toString(), Instant.now().toString(), notificationIds);
 
-            httpClientHolder.getClient().acknowledgeNotifications(request)
+            orTimeout(httpClientHolder.getClient().acknowledgeNotifications(request)
                     .thenAccept(response -> {
                         if (debugMode) logger.info("Acknowledged " + notificationIds.size() + " notifications for " + playerUuid);
                     })
@@ -291,8 +287,7 @@ class NotificationService {
                             logger.warning("Failed to acknowledge notifications for " + playerUuid + ": " + throwable.getMessage());
                         }
                         return null;
-                    })
-                    .orTimeout(HTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    }), HTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             logger.severe("Error acknowledging notifications: " + e.getMessage());
         }
@@ -314,7 +309,7 @@ class NotificationService {
         StringBuilder hover = new StringBuilder();
         if (!subject.isEmpty()) hover.append(subject);
         if (!firstReply.isEmpty()) {
-            if (!hover.isEmpty()) hover.append("\n\n");
+            if (hover.length() > 0) hover.append("\n\n");
             hover.append(firstReply.length() > MAX_HOVER_TEXT_LENGTH
                     ? firstReply.substring(0, MAX_HOVER_TEXT_LENGTH) + "..."
                     : firstReply);
@@ -323,7 +318,8 @@ class NotificationService {
     }
 
     private static String extractString(Map<String, Object> data, String key) {
-        return data.get(key) instanceof String s ? s : "";
+        Object val = data.get(key);
+        return val instanceof String ? (String) val : "";
     }
 
     private String escapeJson(String text) {

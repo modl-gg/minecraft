@@ -32,13 +32,7 @@ public class SetupWizard {
 
     private BootConfig runSpigotWizard() {
         String response = input.readLine("Is this a standalone server (no proxy)? [yes/no]: ");
-        testingApi = response != null && response.contains("--test-mode");
-        if (testingApi) {
-            logger.info("Test mode enabled — using api.modl.top");
-        }
-        boolean standalone = response != null &&
-                (response.replace("--test-mode", "").trim().equalsIgnoreCase("yes") ||
-                 response.replace("--test-mode", "").trim().equalsIgnoreCase("y"));
+        boolean standalone = parseResponseWithTestMode(response);
 
         if (standalone) {
             return runStandaloneWizard();
@@ -54,20 +48,8 @@ public class SetupWizard {
         config.setMode(BootConfig.Mode.STANDALONE);
         config.setTestingApi(testingApi);
 
-        if (hasAccount) {
-            String apiKey = input.readLine("Enter your API key: ");
-            String panelUrl = input.readLine("Panel domain (e.g. server.modl.gg or support.server.com): ");
-            config.setApiKey(apiKey != null ? apiKey.trim() : "");
-            config.setPanelUrl(normalizePanelUrl(panelUrl));
-        } else {
-            RegistrationResult result = runRegistrationFlowWithRetry();
-            if (result != null) {
-                config.setApiKey(result.apiKey);
-                config.setPanelUrl(result.panelUrl);
-            } else {
-                logger.warning("Registration failed. You can configure boot.yml manually.");
-                return config;
-            }
+        if (!collectCredentials(config, hasAccount)) {
+            return config;
         }
 
         saveAndPrint(config);
@@ -87,24 +69,32 @@ public class SetupWizard {
 
         config.setApiKey(apiKey != null ? apiKey.trim() : "");
 
+        boolean isVelocity = input.confirm("Is your proxy Velocity? (say no if BungeeCord/Waterfall)");
+        config.setProxyType(isVelocity ? "velocity" : "bungeecord");
+
         saveAndPrint(config);
         return config;
     }
 
     private BootConfig runProxyWizard() {
         String response = input.readLine("Have you already registered a server on modl.gg? [yes/no]: ");
-        testingApi = response != null && response.contains("--test-mode");
-        if (testingApi) {
-            logger.info("Test mode enabled using api.modl.top");
-        }
-        boolean hasAccount = response != null &&
-                (response.replace("--test-mode", "").trim().equalsIgnoreCase("yes") ||
-                 response.replace("--test-mode", "").trim().equalsIgnoreCase("y"));
+        boolean hasAccount = parseResponseWithTestMode(response);
 
         BootConfig config = new BootConfig();
         config.setMode(BootConfig.Mode.PROXY);
         config.setTestingApi(testingApi);
 
+        if (!collectCredentials(config, hasAccount)) {
+            return config;
+        }
+
+        configureBackendBridges(config);
+
+        saveAndPrint(config);
+        return config;
+    }
+
+    private boolean collectCredentials(BootConfig config, boolean hasAccount) {
         if (hasAccount) {
             String apiKey = input.readLine("Enter your API key: ");
             String panelUrl = input.readLine("Panel domain (e.g. server.modl.gg or support.server.com): ");
@@ -117,14 +107,10 @@ public class SetupWizard {
                 config.setPanelUrl(result.panelUrl);
             } else {
                 logger.warning("Registration failed. You can configure boot.yml manually.");
-                return config;
+                return false;
             }
         }
-
-        configureBackendBridges(config);
-
-        saveAndPrint(config);
-        return config;
+        return true;
     }
 
     private void configureBackendBridges(BootConfig config) {
@@ -188,7 +174,7 @@ public class SetupWizard {
             }
 
             String setupToken = registerResponse.setupToken();
-            if (setupToken == null || setupToken.isBlank()) {
+            if (setupToken == null || setupToken.trim().isEmpty()) {
                 logger.severe("Registration succeeded but no setup token was returned.");
                 return null;
             }
@@ -226,7 +212,6 @@ public class SetupWizard {
                 return status;
             }
 
-            // Log progress
             Boolean emailVerified = status.emailVerified();
             String provisioningStatus = status.provisioningStatus();
             if (emailVerified != null && emailVerified) {
@@ -252,6 +237,16 @@ public class SetupWizard {
         logger.info("===========================================");
     }
 
+    private boolean parseResponseWithTestMode(String response) {
+        testingApi = response != null && response.contains("--test-mode");
+        if (testingApi) {
+            logger.info("Test mode enabled — using api.modl.top");
+        }
+        return response != null &&
+                (response.replace("--test-mode", "").trim().equalsIgnoreCase("yes") ||
+                 response.replace("--test-mode", "").trim().equalsIgnoreCase("y"));
+    }
+
     private static String normalizePanelUrl(String url) {
         if (url == null || url.trim().isEmpty()) return "";
         String trimmed = url.trim();
@@ -261,5 +256,13 @@ public class SetupWizard {
         return trimmed.replaceAll("/+$", "");
     }
 
-    private record RegistrationResult(String apiKey, String panelUrl) {}
+    private static class RegistrationResult {
+        final String apiKey;
+        final String panelUrl;
+
+        RegistrationResult(String apiKey, String panelUrl) {
+            this.apiKey = apiKey;
+            this.panelUrl = panelUrl;
+        }
+    }
 }

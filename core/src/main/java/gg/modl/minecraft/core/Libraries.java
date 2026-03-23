@@ -119,29 +119,43 @@ public final class Libraries {
             "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-bungee/0.5.1-SNAPSHOT/acf-bungee-0.5.1-20260118.005649-52.jar",
             "QC6rQuPHfRNWa/qqcM1ly9L3eKhZdGB41f0jYLBkP/s="
     ),
+    SLF4J_API = LibraryRecord.of(
+            "org{}slf4j",
+            "slf4j-api",
+            "2.0.16",
+            "slf4j-api",
+            "oSV43eG6AL2bgW04iguHmSjQC6s8g8JA9wE79BlsV5o="
+    ),
+    SLF4J_SIMPLE = LibraryRecord.of(
+            "org{}slf4j",
+            "slf4j-simple",
+            "2.0.16",
+            "slf4j-simple",
+            "7/wyAYZYvqCdHgjH0QYMytRsCGlg9YPQfdf/6cEXKkc="
+    ),
     CIRRUS_SPIGOT = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-spigot",
-            "4.1.6",
+            "4.1.8",
             "cirrus-spigot",
-            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.6-SNAPSHOT/cirrus-spigot-4.1.6-SNAPSHOT.jar",
-            "xvftiZdPvHcC0Oibsc0c0fJvBTwyqZ2AyV3UPOuowWQ="
+            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.8-SNAPSHOT/cirrus-spigot-4.1.8-SNAPSHOT.jar",
+            "FT4jxzk/+zRAunOWxgZvyuNnNt6jjLcTZPesVJO8FX4="
     ),
     CIRRUS_VELOCITY = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-velocity",
-            "4.1.6",
+            "4.1.8",
             "cirrus-velocity",
-            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.6-SNAPSHOT/cirrus-velocity-4.1.6-SNAPSHOT.jar",
-            "BDAaty99e8NMs1vEDTD6xdKvPx8sZw169W+KMGhdINE="
+            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.8-SNAPSHOT/cirrus-velocity-4.1.8-SNAPSHOT.jar",
+            "/nHY+wjoZZoouGPYagEuQhCx8oSaBb+RHDuatatWZ+I="
     ),
     CIRRUS_BUNGEECORD = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-bungeecord",
-            "4.1.6",
+            "4.1.8",
             "cirrus-bungeecord",
-            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.6-SNAPSHOT/cirrus-bungeecord-4.1.6-SNAPSHOT.jar",
-            "L7QpWfZ/49ErnH9uwE6Pbtbtgm+oJZ7fQLzYiLh+IOM="
+            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.8-SNAPSHOT/cirrus-bungeecord-4.1.8-SNAPSHOT.jar",
+            "+E+zC1dlsL/Wv7Ihx95qK5cQNheK5nDp8rzzCDsyYhE="
     ),
     ADVENTURE_KEY = LibraryRecord.of(
             "net{}kyori",

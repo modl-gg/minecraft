@@ -20,6 +20,7 @@ import gg.modl.minecraft.core.util.CommandUtil;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class WarnCommand extends BaseCommand {
@@ -36,13 +37,13 @@ public class WarnCommand extends BaseCommand {
     @Conditions("staff")
     public void warn(CommandIssuer sender, @Name("target") Account target, @Default() String args) {
         if (target == null) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", Map.of()));
+            sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", mapOf()));
             return;
         }
 
         final WarnArgs warnArgs = parseArguments(args);
         if (warnArgs.reason.isEmpty()) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.invalid_syntax", Map.of()));
+            sender.sendMessage(localeManager.getPunishmentMessage("general.invalid_syntax", mapOf()));
             return;
         }
 
@@ -57,18 +58,18 @@ public class WarnCommand extends BaseCommand {
             String targetName = target.getUsernames().get(0).getUsername();
             notifyTargetIfOnline(target, issuerName, warnArgs.reason);
 
-            sender.sendMessage(localeManager.getMessage("warn.success", Map.of(
+            sender.sendMessage(localeManager.getMessage("warn.success", mapOf(
                 "target", targetName, "reason", warnArgs.reason
             )));
 
             if (!warnArgs.silent) {
-                platform.staffBroadcast(localeManager.getMessage("warn.staff_notification", Map.of(
+                platform.staffBroadcast(localeManager.getMessage("warn.staff_notification", mapOf(
                     "issuer", issuerName, "target", targetName, "reason", warnArgs.reason
                 )));
             }
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-            else sender.sendMessage(localeManager.getMessage("warn.error", Map.of(
+            else sender.sendMessage(localeManager.getMessage("warn.error", mapOf(
                     "error", localeManager.sanitizeErrorMessage(throwable.getMessage())
                 )));
             return null;
@@ -78,7 +79,7 @@ public class WarnCommand extends BaseCommand {
     private void notifyTargetIfOnline(Account target, String issuerName, String reason) {
         AbstractPlayer targetPlayer = platform.getAbstractPlayer(target.getMinecraftUuid(), false);
         if (targetPlayer != null && targetPlayer.isOnline()) {
-            platform.sendMessage(target.getMinecraftUuid(), localeManager.getMessage("warn.player_message", Map.of(
+            platform.sendMessage(target.getMinecraftUuid(), localeManager.getMessage("warn.player_message", mapOf(
                 "issuer", issuerName, "reason", reason
             )));
         }
@@ -92,7 +93,7 @@ public class WarnCommand extends BaseCommand {
         for (String arg : arguments) {
             if (arg.equalsIgnoreCase("-silent") || arg.equalsIgnoreCase("-s")) result.silent = true;
             else {
-                if (!reasonBuilder.isEmpty()) reasonBuilder.append(" ");
+                if (reasonBuilder.length() > 0) reasonBuilder.append(" ");
                 reasonBuilder.append(arg);
             }
         }

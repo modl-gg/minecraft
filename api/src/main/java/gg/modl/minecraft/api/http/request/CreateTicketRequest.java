@@ -15,9 +15,6 @@ public class CreateTicketRequest {
     private @Nullable final List<String> chatMessages, tags;
     private @Nullable final String replayUrl;
 
-    /**
-     * Backwards-compatible constructor without replayUrl.
-     */
     public CreateTicketRequest(@NotNull String creatorUuid, @NotNull String type,
                                @Nullable String creatorName, @Nullable String subject,
                                @Nullable String description, @Nullable String reportedPlayerUuid,

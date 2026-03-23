@@ -11,10 +11,10 @@ import gg.modl.minecraft.core.service.VanishService;
 import java.io.DataInputStream;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import gg.modl.minecraft.core.util.PluginLogger;
 import lombok.Setter;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class BridgeMessageDispatcher {
     private final Platform platform;
@@ -41,21 +41,34 @@ public class BridgeMessageDispatcher {
 
     public void dispatch(String action, DataInputStream data) {
         try {
-            switch (action) {
-                case "FREEZE_PLAYER" -> handleFreezePlayer(data);
-                case "UNFREEZE_PLAYER" -> handleUnfreezePlayer(data);
-                case "FREEZE_LOGOUT" -> handleFreezeLogout(data);
-                case "STAFF_MODE_ENTER" -> handleStaffModeEnter(data);
-                case "STAFF_MODE_EXIT" -> handleStaffModeExit(data);
-                case "VANISH_ENTER" -> handleVanishEnter(data);
-                case "VANISH_EXIT" -> handleVanishExit(data);
-                case "TARGET_RESPONSE" -> handleTargetResponse(data);
-                case "OPEN_STAFF_MENU" -> handleOpenStaffMenu(data);
-                case "OPEN_INSPECT_MENU" -> handleOpenInspectMenu(data);
-                case "PROXY_CMD" -> handleProxyCmd(data);
-                case "CREATE_REPORT" -> handleCreateReport(data);
-                case "CAPTURE_REPLAY_RESPONSE" -> handleCaptureReplayResponse(data);
-                default -> logger.debug("[bridge] Unknown action: " + action);
+            if ("FREEZE_PLAYER".equals(action)) {
+                handleFreezePlayer(data);
+            } else if ("UNFREEZE_PLAYER".equals(action)) {
+                handleUnfreezePlayer(data);
+            } else if ("FREEZE_LOGOUT".equals(action)) {
+                handleFreezeLogout(data);
+            } else if ("STAFF_MODE_ENTER".equals(action)) {
+                handleStaffModeEnter(data);
+            } else if ("STAFF_MODE_EXIT".equals(action)) {
+                handleStaffModeExit(data);
+            } else if ("VANISH_ENTER".equals(action)) {
+                handleVanishEnter(data);
+            } else if ("VANISH_EXIT".equals(action)) {
+                handleVanishExit(data);
+            } else if ("TARGET_RESPONSE".equals(action)) {
+                handleTargetResponse(data);
+            } else if ("OPEN_STAFF_MENU".equals(action)) {
+                handleOpenStaffMenu(data);
+            } else if ("OPEN_INSPECT_MENU".equals(action)) {
+                handleOpenInspectMenu(data);
+            } else if ("PROXY_CMD".equals(action)) {
+                handleProxyCmd(data);
+            } else if ("CREATE_REPORT".equals(action)) {
+                handleCreateReport(data);
+            } else if ("CAPTURE_REPLAY_RESPONSE".equals(action)) {
+                handleCaptureReplayResponse(data);
+            } else {
+                logger.debug("[bridge] Unknown action: " + action);
             }
         } catch (Exception e) {
             logger.warning("[bridge] Error handling " + action + ": " + e.getMessage());
@@ -79,7 +92,7 @@ public class BridgeMessageDispatcher {
 
     private void handleFreezeLogout(DataInputStream data) throws Exception {
         String playerName = data.readUTF();
-        platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification", Map.of(
+        platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification", mapOf(
                 "player", playerName
         )));
         logger.info("[bridge] Frozen player " + playerName + " logged out");
@@ -88,7 +101,7 @@ public class BridgeMessageDispatcher {
     private void handleStaffModeEnter(DataInputStream data) throws Exception {
         String inGameName = data.readUTF();
         String panelName = data.readUTF();
-        platform.staffBroadcast(localeManager.getMessage("staff_mode.enabled_broadcast", Map.of(
+        platform.staffBroadcast(localeManager.getMessage("staff_mode.enabled_broadcast", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
         )));
@@ -97,7 +110,7 @@ public class BridgeMessageDispatcher {
     private void handleStaffModeExit(DataInputStream data) throws Exception {
         String inGameName = data.readUTF();
         String panelName = data.readUTF();
-        platform.staffBroadcast(localeManager.getMessage("staff_mode.disabled_broadcast", Map.of(
+        platform.staffBroadcast(localeManager.getMessage("staff_mode.disabled_broadcast", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
         )));
@@ -108,7 +121,7 @@ public class BridgeMessageDispatcher {
         String inGameName = data.readUTF();
         String panelName = data.readUTF();
         vanishService.vanish(staffUuid);
-        platform.staffBroadcast(localeManager.getMessage("vanish.enabled_broadcast", Map.of(
+        platform.staffBroadcast(localeManager.getMessage("vanish.enabled_broadcast", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
         )));
@@ -119,7 +132,7 @@ public class BridgeMessageDispatcher {
         String inGameName = data.readUTF();
         String panelName = data.readUTF();
         vanishService.unvanish(staffUuid);
-        platform.staffBroadcast(localeManager.getMessage("vanish.disabled_broadcast", Map.of(
+        platform.staffBroadcast(localeManager.getMessage("vanish.disabled_broadcast", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
         )));
@@ -172,14 +185,13 @@ public class BridgeMessageDispatcher {
         String priority = data.readUTF();
         String createdServer = data.readUTF();
 
-        // Read optional replayUrl if present in the stream
         String replayUrl = null;
         if (data.available() > 0) {
             replayUrl = data.readUTF();
             if (replayUrl.isEmpty()) replayUrl = null;
         }
 
-        List<String> tags = tagsJoined.isEmpty() ? List.of() : Arrays.asList(tagsJoined.split(","));
+        List<String> tags = tagsJoined.isEmpty() ? listOf() : Arrays.asList(tagsJoined.split(","));
 
         CreateTicketRequest request = new CreateTicketRequest(
                 creatorUuid, type, creatorName, subject, description,

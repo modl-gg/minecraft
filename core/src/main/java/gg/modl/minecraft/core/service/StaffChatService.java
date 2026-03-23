@@ -22,7 +22,6 @@ public class StaffChatService {
         return profile != null && profile.getChatMode() == ChatMode.STAFF;
     }
 
-    /** @return the new chat mode after toggling */
     public ChatMode toggleStaffChat(UUID playerUuid) {
         CachedProfile profile = registry.getProfile(playerUuid);
         if (profile == null) return ChatMode.NORMAL;

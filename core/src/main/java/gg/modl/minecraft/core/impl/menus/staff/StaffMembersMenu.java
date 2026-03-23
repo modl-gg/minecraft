@@ -32,6 +32,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMemberEntry> {
     @Getter
@@ -178,11 +179,14 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
 
     @Override
     protected Collection<StaffMemberEntry> elements() {
-        List<StaffMemberEntry> filtered = switch (currentFilter) {
-            case "Online" -> staffMembers.stream().filter(StaffMemberEntry::isOnline).collect(Collectors.toList());
-            case "Offline" -> staffMembers.stream().filter(e -> !e.isOnline()).collect(Collectors.toList());
-            default -> new ArrayList<>(staffMembers);
-        };
+        List<StaffMemberEntry> filtered;
+        if ("Online".equals(currentFilter)) {
+            filtered = staffMembers.stream().filter(StaffMemberEntry::isOnline).collect(Collectors.toList());
+        } else if ("Offline".equals(currentFilter)) {
+            filtered = staffMembers.stream().filter(e -> !e.isOnline()).collect(Collectors.toList());
+        } else {
+            filtered = new ArrayList<>(staffMembers);
+        }
 
         if (filtered.isEmpty())
             return Collections.singletonList(new StaffMemberEntry(null, null, null, null, null, null, null, null, 0, false, 0));
@@ -200,7 +204,7 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
         List<String> lore = buildLore(entry);
 
         LocaleManager localeManager = platform.getLocaleManager();
-        String title = localeManager.getMessage("menus.staff_members.title", Map.of(
+        String title = localeManager.getMessage("menus.staff_members.title", mapOf(
                 "panel_name", entry.getPanelName() != null ? entry.getPanelName() : "Unknown"
         ));
 

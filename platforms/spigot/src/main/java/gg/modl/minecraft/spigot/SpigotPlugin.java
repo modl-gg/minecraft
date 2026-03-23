@@ -11,27 +11,32 @@ import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.boot.*;
 import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
 import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
+import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
+
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import gg.modl.minecraft.spigot.bridge.BridgeComponent;
 import gg.modl.minecraft.spigot.bridge.reporter.TicketCreator;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import net.byteflux.libby.BukkitLibraryManager;
 import net.byteflux.libby.Library;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 public class SpigotPlugin extends JavaPlugin {
-    private static final int DEFAULT_BRIDGE_PORT = 25590, MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
-    private static final String DEFAULT_BRIDGE_NAME = "bridge";
+    private static final int MIN_SYNC_POLLING_RATE = 1;
+    private static final int DEFAULT_SYNC_POLLING_RATE = 2;
 
     private PluginLoader loader;
     private QueryStatWipeExecutor queryStatWipeExecutor;
@@ -44,12 +49,10 @@ public class SpigotPlugin extends JavaPlugin {
     public synchronized void onLoad() {
         this.pluginLogger = PluginLogger.fromJul(getLogger());
 
-        // Try loading existing boot.yml or migrating
         bootConfig = loadBootConfig();
         if (bootConfig != null) {
             loadLibraries();
 
-            // Early Polar registration must happen in onLoad
             bridgeComponent = new BridgeComponent(this, "", "", "", pluginLogger);
             bridgeComponent.onLoad();
         } else {
@@ -68,25 +71,20 @@ public class SpigotPlugin extends JavaPlugin {
         initializePlugin();
     }
 
-    /**
-     * Called on the main thread after the setup wizard completes.
-     * Loads libraries, PacketEvents, and runs full plugin initialization.
-     * Only Polar early registration (onLoad) is skipped — works after restart.
-     */
     private synchronized void initializeAfterWizard(BootConfig config) {
         this.bootConfig = config;
         this.needsSetup = false;
 
         loadLibraries();
 
-        // BridgeComponent.onLoad() for Polar early registration is skipped on first setup.
-        // Polar integration will work after server restart.
         bridgeComponent = new BridgeComponent(this, "", "", "", pluginLogger);
 
         initializePlugin();
     }
 
     private void initializePlugin() {
+        ensureSignedVelocity();
+
         loadPacketEventsLibraries();
         loadPacketEvents();
         initPacketEvents();
@@ -95,22 +93,20 @@ public class SpigotPlugin extends JavaPlugin {
         createLocaleFiles();
         mergeDefaultConfigs();
 
-        // Re-create BridgeComponent with the real API key and backend URL
         String backendUrl = bootConfig.isTestingApi() ? HttpManager.TESTING_API_URL : HttpManager.V2_API_URL;
         String panelUrl = HttpManager.adjustPanelUrlForEnv(
                 bootConfig.getPanelUrl() != null ? bootConfig.getPanelUrl() : "",
                 bootConfig.isTestingApi());
         bridgeComponent = new BridgeComponent(this, bootConfig.getApiKey(), backendUrl, panelUrl, pluginLogger);
 
-        // Branch by mode
-        switch (bootConfig.getMode()) {
-            case STANDALONE -> enableStandaloneMode(bootConfig);
-            case BRIDGE_ONLY -> enableBridgeOnlyMode(bootConfig);
-            case PROXY -> {
-                // Spigot should not run in proxy mode
-                getLogger().severe("boot.yml mode is 'proxy' but this is a Spigot server. Use 'standalone' or 'bridge-only'.");
-                getServer().getPluginManager().disablePlugin(this);
-            }
+        BootConfig.Mode mode = bootConfig.getMode();
+        if (mode == BootConfig.Mode.STANDALONE) {
+            enableStandaloneMode(bootConfig);
+        } else if (mode == BootConfig.Mode.BRIDGE_ONLY) {
+            enableBridgeOnlyMode(bootConfig);
+        } else if (mode == BootConfig.Mode.PROXY) {
+            getLogger().severe("boot.yml mode is 'proxy' but this is a Spigot server. Use 'standalone' or 'bridge-only'.");
+            getServer().getPluginManager().disablePlugin(this);
         }
     }
 
@@ -126,11 +122,9 @@ public class SpigotPlugin extends JavaPlugin {
         BukkitCommandManager commandManager = new BukkitCommandManager(this);
         new CirrusSpigot(this).init();
 
-        // Create TicketCreator that calls core HTTP client directly (no reflection)
-        // loader is not created yet, so we capture it via lambda's deferred access
         TicketCreator ticketCreator = (creatorUuid, creatorName, type, subject, description,
                                        reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer, replayUrl) -> {
-            List<String> tags = tagsJoined == null || tagsJoined.isEmpty() ? List.of() : Arrays.asList(tagsJoined.split(","));
+            List<String> tags = tagsJoined == null || tagsJoined.isEmpty() ? listOf() : Arrays.asList(tagsJoined.split(","));
             CreateTicketRequest request = new CreateTicketRequest(
                     creatorUuid, type, creatorName, subject, description,
                     reportedPlayerUuid, reportedPlayerName, priority, createdServer,
@@ -148,7 +142,6 @@ public class SpigotPlugin extends JavaPlugin {
             });
         };
 
-        // Enable bridge first so bridge-config.yml is loaded (provides serverName)
         bridgeComponent.enable(ticketCreator);
         String serverName = bridgeComponent.getBridgeConfig().getServerName();
 
@@ -163,13 +156,10 @@ public class SpigotPlugin extends JavaPlugin {
 
         this.loader = new PluginLoader(platform, getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
 
-        // Wire DirectStatWipeExecutor (replaces reflection-based SpigotStatWipeExecutor)
         DirectStatWipeExecutor directExecutor = new DirectStatWipeExecutor(bridgeComponent, serverName);
         loader.getSyncService().setStatWipeExecutor(directExecutor);
 
-        // Wire BridgeService for direct local dispatch in standalone mode
         if (bridgeComponent.getQueryServer() != null) {
-            // If query server is running (for multi-backend scenarios), also set up TCP dispatch
             queryStatWipeExecutor = new QueryStatWipeExecutor(pluginLogger, httpManager.isDebugHttp());
             BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
                     platform, loader.getLocaleManager(), loader.getFreezeService(),
@@ -178,6 +168,32 @@ public class SpigotPlugin extends JavaPlugin {
             queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
             loader.getBridgeService().setExecutor(queryStatWipeExecutor);
         }
+
+        // Standalone: dispatch bridge actions directly to local handlers
+        // instead of routing through TCP
+        loader.getBridgeService().setLocalHandler(new BridgeService.LocalBridgeHandler() {
+            @Override public void onStaffModeEnter(String staffUuid) {
+                bridgeComponent.getStaffModeHandler().enterStaffMode(staffUuid);
+            }
+            @Override public void onStaffModeExit(String staffUuid) {
+                bridgeComponent.getStaffModeHandler().exitStaffMode(staffUuid);
+            }
+            @Override public void onVanishEnter(String staffUuid) {
+                bridgeComponent.getStaffModeHandler().vanishFromBridge(staffUuid);
+            }
+            @Override public void onVanishExit(String staffUuid) {
+                bridgeComponent.getStaffModeHandler().unvanishFromBridge(staffUuid);
+            }
+            @Override public void onFreezePlayer(String targetUuid, String staffUuid) {
+                bridgeComponent.getFreezeHandler().freeze(targetUuid, staffUuid);
+            }
+            @Override public void onUnfreezePlayer(String targetUuid) {
+                bridgeComponent.getFreezeHandler().unfreeze(targetUuid);
+            }
+            @Override public void onTargetRequest(String staffUuid, String targetUuid) {
+                bridgeComponent.getStaffModeHandler().setTarget(staffUuid, targetUuid);
+            }
+        });
 
         getServer().getPluginManager().registerEvents(new SpigotListener(
                 platform, loader.getCache(), loader.getHttpClientHolder(), loader.getChatMessageCache(),
@@ -192,8 +208,6 @@ public class SpigotPlugin extends JavaPlugin {
     }
 
     private void enableBridgeOnlyMode(BootConfig bootConfig) {
-        // Bridge-only: no PluginLoader, no HTTP client, only BridgeComponent
-        // TicketCreator sends via TCP to proxy
         TicketCreator tcpTicketCreator = (creatorUuid, creatorName, type, subject, description,
                                           reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer, replayUrl) -> {
             if (bridgeComponent.getQueryServer() != null) {
@@ -225,12 +239,29 @@ public class SpigotPlugin extends JavaPlugin {
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
     }
 
-    /**
-     * Loads boot.yml if it exists, or tries migration. Does NOT run the wizard.
-     */
+    private void ensureSignedVelocity() {
+        if (bootConfig.getMode() != BootConfig.Mode.BRIDGE_ONLY) return;
+        if (!"velocity".equalsIgnoreCase(bootConfig.getProxyType())) return;
+        if (getServer().getPluginManager().getPlugin("SignedVelocity") != null) return;
+
+        Path pluginsFolder = getDataFolder().getParentFile().toPath();
+        Path jar = SignedVelocityDownloader.ensureDownloaded(SignedVelocityDownloader.Platform.PAPER, pluginsFolder, pluginLogger);
+        if (jar == null) return;
+
+        try {
+            Plugin sv = getServer().getPluginManager().loadPlugin(jar.toFile());
+            if (sv != null) {
+                getServer().getPluginManager().enablePlugin(sv);
+                getLogger().info("[SignedVelocity] Loaded and enabled");
+            }
+        } catch (Exception e) {
+            getLogger().warning("[SignedVelocity] Runtime load failed: " + e.getMessage());
+            getLogger().warning("[SignedVelocity] It will be active after a server restart.");
+        }
+    }
+
     private BootConfig loadBootConfig() {
         try {
-            // 1. Try loading existing boot.yml
             if (BootConfig.exists(getDataFolder().toPath())) {
                 BootConfig config = BootConfig.load(getDataFolder().toPath());
                 if (config != null && config.isValid()) {
@@ -239,7 +270,6 @@ public class SpigotPlugin extends JavaPlugin {
                 }
             }
 
-            // 2. Try migrating from existing config.yml
             Optional<BootConfig> migrated = BootConfigMigrator.migrateFromConfigYml(
                     getDataFolder().toPath(), PlatformType.SPIGOT, pluginLogger);
             if (migrated.isPresent()) {
@@ -283,6 +313,8 @@ public class SpigotPlugin extends JavaPlugin {
         for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
         loadLibrary(libraryManager, Libraries.ACF_CORE);
         loadLibrary(libraryManager, Libraries.ACF_BUKKIT);
+        loadLibrary(libraryManager, Libraries.SLF4J_API);
+        loadLibrary(libraryManager, Libraries.SLF4J_SIMPLE);
         loadLibrary(libraryManager, Libraries.CIRRUS_SPIGOT);
         loadLibrary(libraryManager, Libraries.EXAMINATION_API);
         loadLibrary(libraryManager, Libraries.EXAMINATION_STRING);

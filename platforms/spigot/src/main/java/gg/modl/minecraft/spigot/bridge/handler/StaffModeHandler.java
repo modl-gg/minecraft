@@ -38,6 +38,8 @@ import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
 
+import static gg.modl.minecraft.core.util.Java8Collections.*;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -473,10 +475,10 @@ public class StaffModeHandler implements Listener {
             return;
         }
 
-        // silent container open for vanished staff
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK && vanished.contains(uuid)) {
             Block block = event.getClickedBlock();
-            if (block != null && block.getState() instanceof org.bukkit.inventory.InventoryHolder holder) {
+            if (block != null && block.getState() instanceof org.bukkit.inventory.InventoryHolder) {
+                org.bukkit.inventory.InventoryHolder holder = (org.bukkit.inventory.InventoryHolder) block.getState();
                 event.setCancelled(true);
                 Inventory copy = Bukkit.createInventory(null,
                         holder.getInventory().getSize(),
@@ -492,22 +494,29 @@ public class StaffModeHandler implements Listener {
 
     private void executeAction(Player player, StaffModeConfig.HotbarItem hotbarItem) {
         UUID uuid = player.getUniqueId();
-        switch (hotbarItem.getAction()) {
-            case ACTION_TARGET_SELECTOR -> {} // Use /target command
-            case ACTION_VANISH_TOGGLE -> toggleVanish(player);
-            case ACTION_STAFF_MENU -> {
-                if (queryServer == null || !queryServer.sendToAllClients("OPEN_STAFF_MENU", uuid.toString())) {
-                    Bukkit.getScheduler().runTask(plugin, () -> player.performCommand("staffmenu"));
-                }
+        String action = hotbarItem.getAction();
+        if (ACTION_TARGET_SELECTOR.equals(action)) {
+            // handled via entity interact
+        } else if (ACTION_VANISH_TOGGLE.equals(action)) {
+            toggleVanish(player);
+        } else if (ACTION_STAFF_MENU.equals(action)) {
+            if (queryServer == null || !queryServer.sendToAllClients("OPEN_STAFF_MENU", uuid.toString())) {
+                Bukkit.getScheduler().runTask(plugin, () -> player.performCommand("staffmenu"));
             }
-            case ACTION_RANDOM_TELEPORT -> handleRandomTeleport(player);
-            case ACTION_FREEZE_TARGET -> handleFreezeTarget(player);
-            case ACTION_STOP_TARGET -> handleStopTarget(player);
-            case ACTION_INSPECT_TARGET -> handleInspectTarget(player);
-            case ACTION_OPEN_INVENTORY -> handleOpenInventory(player);
-            case ACTION_TELEPORT_TO_TARGET -> handleTeleportToTarget(player);
-            case ACTION_HACKREPORT_TARGET -> handleHackreportTarget(player);
-            default -> {} // ignore
+        } else if (ACTION_RANDOM_TELEPORT.equals(action)) {
+            handleRandomTeleport(player);
+        } else if (ACTION_FREEZE_TARGET.equals(action)) {
+            handleFreezeTarget(player);
+        } else if (ACTION_STOP_TARGET.equals(action)) {
+            handleStopTarget(player);
+        } else if (ACTION_INSPECT_TARGET.equals(action)) {
+            handleInspectTarget(player);
+        } else if (ACTION_OPEN_INVENTORY.equals(action)) {
+            handleOpenInventory(player);
+        } else if (ACTION_TELEPORT_TO_TARGET.equals(action)) {
+            handleTeleportToTarget(player);
+        } else if (ACTION_HACKREPORT_TARGET.equals(action)) {
+            handleHackreportTarget(player);
         }
     }
 
@@ -516,7 +525,7 @@ public class StaffModeHandler implements Listener {
         Player target = resolveTarget(uuid);
         String targetName = target != null ? target.getName() : "Unknown";
         clearTarget(uuid);
-        player.sendMessage(localeManager.getMessage("staff_mode.target.cleared", Map.of("player", targetName)));
+        player.sendMessage(localeManager.getMessage("staff_mode.target.cleared", mapOf("player", targetName)));
     }
 
     private void toggleVanish(Player player) {
@@ -543,7 +552,7 @@ public class StaffModeHandler implements Listener {
 
         Player target = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
         player.teleport(target.getLocation());
-        player.sendMessage(localeManager.getMessage("staff_mode.random_teleport.teleported", Map.of("player", target.getName())));
+        player.sendMessage(localeManager.getMessage("staff_mode.random_teleport.teleported", mapOf("player", target.getName())));
     }
 
     private void handleFreezeTarget(Player player) {
@@ -555,10 +564,10 @@ public class StaffModeHandler implements Listener {
 
         if (freezeHandler.isFrozen(targetUuid)) {
             freezeHandler.unfreeze(targetUuid.toString());
-            player.sendMessage(localeManager.getMessage("staff_mode.freeze.unfrozen", Map.of("player", targetName)));
+            player.sendMessage(localeManager.getMessage("staff_mode.freeze.unfrozen", mapOf("player", targetName)));
         } else {
             freezeHandler.freeze(targetUuid.toString(), player.getUniqueId().toString());
-            player.sendMessage(localeManager.getMessage("staff_mode.freeze.frozen", Map.of("player", targetName)));
+            player.sendMessage(localeManager.getMessage("staff_mode.freeze.frozen", mapOf("player", targetName)));
         }
     }
 
@@ -589,7 +598,7 @@ public class StaffModeHandler implements Listener {
         Player target = resolveTarget(player.getUniqueId());
         if (target != null) {
             player.teleport(target.getLocation());
-            player.sendMessage(localeManager.getMessage("staff_mode.teleport.teleported", Map.of("player", target.getName())));
+            player.sendMessage(localeManager.getMessage("staff_mode.teleport.teleported", mapOf("player", target.getName())));
         } else {
             player.sendMessage(localeManager.getMessage("staff_mode.teleport.target_offline"));
         }
@@ -607,15 +616,21 @@ public class StaffModeHandler implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onDamage(EntityDamageEvent event) {
-        if (event.getEntity() instanceof Player player && staffModeActive.contains(player.getUniqueId())) {
-            event.setCancelled(true);
+        if (event.getEntity() instanceof Player) {
+            Player player = (Player) event.getEntity();
+            if (staffModeActive.contains(player.getUniqueId())) {
+                event.setCancelled(true);
+            }
         }
     }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onDamageOther(EntityDamageByEntityEvent event) {
-        if (event.getDamager() instanceof Player player && staffModeActive.contains(player.getUniqueId())) {
-            event.setCancelled(true);
+        if (event.getDamager() instanceof Player) {
+            Player player = (Player) event.getDamager();
+            if (staffModeActive.contains(player.getUniqueId())) {
+                event.setCancelled(true);
+            }
         }
     }
 
@@ -634,14 +649,18 @@ public class StaffModeHandler implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onFoodChange(FoodLevelChangeEvent event) {
-        if (event.getEntity() instanceof Player player && staffModeActive.contains(player.getUniqueId())) {
-            event.setCancelled(true);
+        if (event.getEntity() instanceof Player) {
+            Player player = (Player) event.getEntity();
+            if (staffModeActive.contains(player.getUniqueId())) {
+                event.setCancelled(true);
+            }
         }
     }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onInventoryClick(InventoryClickEvent event) {
-        if (!(event.getWhoClicked() instanceof Player player)) return;
+        if (!(event.getWhoClicked() instanceof Player)) return;
+        Player player = (Player) event.getWhoClicked();
         if (!staffModeActive.contains(player.getUniqueId())) return;
 
         Player target = resolveTarget(player.getUniqueId());
@@ -668,12 +687,13 @@ public class StaffModeHandler implements Listener {
         if (!staffModeActive.contains(uuid)) return;
         event.setCancelled(true);
 
-        if (event.getRightClicked() instanceof Player clicked) {
+        if (event.getRightClicked() instanceof Player) {
+            Player clicked = (Player) event.getRightClicked();
             StaffModeConfig.HotbarItem hotbarItem = getActiveHotbar(uuid).get(player.getInventory().getHeldItemSlot());
 
             if (hotbarItem != null && ACTION_TARGET_SELECTOR.equals(hotbarItem.getAction())) {
                 setTarget(uuid.toString(), clicked.getUniqueId().toString());
-                player.sendMessage(localeManager.getMessage("staff_mode.target.now_targeting", Map.of("player", clicked.getName())));
+                player.sendMessage(localeManager.getMessage("staff_mode.target.now_targeting", mapOf("player", clicked.getName())));
             }
         }
     }
@@ -701,8 +721,11 @@ public class StaffModeHandler implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onEntityTarget(EntityTargetLivingEntityEvent event) {
-        if (event.getTarget() instanceof Player player && vanished.contains(player.getUniqueId())) {
-            event.setCancelled(true);
+        if (event.getTarget() instanceof Player) {
+            Player player = (Player) event.getTarget();
+            if (vanished.contains(player.getUniqueId())) {
+                event.setCancelled(true);
+            }
         }
     }
 
@@ -714,12 +737,12 @@ public class StaffModeHandler implements Listener {
         targetMap.entrySet().stream()
                 .filter(entry -> entry.getValue().equals(uuid))
                 .map(Map.Entry::getKey)
-                .toList()
+                .collect(Collectors.toList())
                 .forEach(staffUuid -> {
                     targetMap.remove(staffUuid);
                     Player staffPlayer = Bukkit.getPlayer(staffUuid);
                     if (staffPlayer != null && staffPlayer.isOnline() && staffModeActive.contains(staffUuid)) {
-                        staffPlayer.sendMessage(localeManager.getMessage("staff_mode.target.disconnected", Map.of("player", player.getName())));
+                        staffPlayer.sendMessage(localeManager.getMessage("staff_mode.target.disconnected", mapOf("player", player.getName())));
                         setupHotbar(staffPlayer, staffModeConfig.getStaffHotbar());
                         refreshScoreboard(staffPlayer);
                     }

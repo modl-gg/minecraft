@@ -110,58 +110,49 @@ public class BridgeQueryHandler extends ChannelInboundHandlerAdapter {
             DataInputStream in = readBuf(buf);
             String action = in.readUTF();
 
-            switch (action) {
-                case "STAT_WIPE" -> handleStatWipe(in);
-                case "FREEZE_PLAYER" -> {
-                    String targetUuid = in.readUTF();
-                    String staffUuid = in.readUTF();
-                    broadcastAndRun(ctx, action, () -> freezeHandler.freeze(targetUuid, staffUuid), targetUuid, staffUuid);
-                }
-                case "UNFREEZE_PLAYER" -> {
-                    String targetUuid = in.readUTF();
-                    broadcastAndRun(ctx, action, () -> freezeHandler.unfreeze(targetUuid), targetUuid);
-                }
-                case "FREEZE_LOGOUT" -> {
-                    String playerUuid = in.readUTF();
-                    String playerName = in.readUTF();
-                    broadcastMessage(ctx, action, playerUuid, playerName);
-                }
-                case "STAFF_MODE_ENTER" -> {
-                    String staffUuid = in.readUTF();
-                    String staffName = in.readUTF();
-                    broadcastAndRun(ctx, action, () -> staffModeHandler.enterStaffMode(staffUuid), staffUuid, staffName);
-                }
-                case "STAFF_MODE_EXIT" -> {
-                    String staffUuid = in.readUTF();
-                    String staffName = in.readUTF();
-                    broadcastAndRun(ctx, action, () -> staffModeHandler.exitStaffMode(staffUuid), staffUuid, staffName);
-                }
-                case "VANISH_ENTER" -> {
-                    String staffUuid = in.readUTF();
-                    String staffName = in.readUTF();
-                    broadcastAndRun(ctx, action, () -> staffModeHandler.vanishFromBridge(staffUuid), staffUuid, staffName);
-                }
-                case "VANISH_EXIT" -> {
-                    String staffUuid = in.readUTF();
-                    String staffName = in.readUTF();
-                    broadcastAndRun(ctx, action, () -> staffModeHandler.unvanishFromBridge(staffUuid), staffUuid, staffName);
-                }
-                case "TARGET_REQUEST" -> {
-                    String staffUuid = in.readUTF();
-                    String targetUuid = in.readUTF();
-                    handleTargetRequest(ctx, staffUuid, targetUuid);
-                }
-                case "CONNECT_SERVER" -> {
-                    String playerUuid = in.readUTF();
-                    String serverName = in.readUTF();
-                    broadcastMessage(ctx, action, playerUuid, serverName);
-                }
-                case "CAPTURE_REPLAY" -> {
-                    String targetUuid = in.readUTF();
-                    String targetName = in.readUTF();
-                    handleCaptureReplay(ctx, targetUuid, targetName);
-                }
-                default -> plugin.getLogger().info("Received unknown query action: " + action);
+            if ("STAT_WIPE".equals(action)) {
+                handleStatWipe(in);
+            } else if ("FREEZE_PLAYER".equals(action)) {
+                String targetUuid = in.readUTF();
+                String staffUuid = in.readUTF();
+                broadcastAndRun(ctx, action, () -> freezeHandler.freeze(targetUuid, staffUuid), targetUuid, staffUuid);
+            } else if ("UNFREEZE_PLAYER".equals(action)) {
+                String targetUuid = in.readUTF();
+                broadcastAndRun(ctx, action, () -> freezeHandler.unfreeze(targetUuid), targetUuid);
+            } else if ("FREEZE_LOGOUT".equals(action)) {
+                String playerUuid = in.readUTF();
+                String playerName = in.readUTF();
+                broadcastMessage(ctx, action, playerUuid, playerName);
+            } else if ("STAFF_MODE_ENTER".equals(action)) {
+                String staffUuid = in.readUTF();
+                String staffName = in.readUTF();
+                broadcastAndRun(ctx, action, () -> staffModeHandler.enterStaffMode(staffUuid), staffUuid, staffName);
+            } else if ("STAFF_MODE_EXIT".equals(action)) {
+                String staffUuid = in.readUTF();
+                String staffName = in.readUTF();
+                broadcastAndRun(ctx, action, () -> staffModeHandler.exitStaffMode(staffUuid), staffUuid, staffName);
+            } else if ("VANISH_ENTER".equals(action)) {
+                String staffUuid = in.readUTF();
+                String staffName = in.readUTF();
+                broadcastAndRun(ctx, action, () -> staffModeHandler.vanishFromBridge(staffUuid), staffUuid, staffName);
+            } else if ("VANISH_EXIT".equals(action)) {
+                String staffUuid = in.readUTF();
+                String staffName = in.readUTF();
+                broadcastAndRun(ctx, action, () -> staffModeHandler.unvanishFromBridge(staffUuid), staffUuid, staffName);
+            } else if ("TARGET_REQUEST".equals(action)) {
+                String staffUuid = in.readUTF();
+                String targetUuid = in.readUTF();
+                handleTargetRequest(ctx, staffUuid, targetUuid);
+            } else if ("CONNECT_SERVER".equals(action)) {
+                String playerUuid = in.readUTF();
+                String serverName = in.readUTF();
+                broadcastMessage(ctx, action, playerUuid, serverName);
+            } else if ("CAPTURE_REPLAY".equals(action)) {
+                String targetUuid = in.readUTF();
+                String targetName = in.readUTF();
+                handleCaptureReplay(ctx, targetUuid, targetName);
+            } else {
+                plugin.getLogger().info("Received unknown query action: " + action);
             }
         } catch (IOException e) {
             plugin.getLogger().warning("Failed to read query message: " + e.getMessage());

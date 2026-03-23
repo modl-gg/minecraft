@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import gg.modl.minecraft.core.util.PluginLogger;
 import java.util.stream.Collectors;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class SyncService {
     private static final int MIN_POLLING_RATE_SECONDS = 1,
@@ -160,8 +161,8 @@ public class SyncService {
                 Collection<AbstractPlayer> onlinePlayers = platform.getOnlinePlayers();
                 SyncRequest request = buildSyncRequest(onlinePlayers);
 
-                SyncResponse response = httpClientHolder.getClient().sync(request)
-                    .orTimeout(SYNC_HTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                SyncResponse response = orTimeout(httpClientHolder.getClient().sync(request),
+                    SYNC_HTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                     .join();
                 handleSyncResponse(response);
             } catch (CompletionException e) {
@@ -235,7 +236,6 @@ public class SyncService {
         this.lastSyncTimestamp = response.getTimestamp();
         SyncResponse.SyncData data = response.getData();
 
-        // Modifications first (pardons, duration changes) so cache is cleared before new punishments
         for (SyncResponse.ModifiedPunishment modified : data.getRecentlyModifiedPunishments()) punishmentExecutor.processModifiedPunishment(modified);
         for (SyncResponse.PendingPunishment pending : data.getPendingPunishments()) punishmentExecutor.processPendingPunishment(pending);
 
@@ -309,16 +309,16 @@ public class SyncService {
         String panelName = cache.getStaffDisplayName(uuid);
         if (panelName == null) panelName = inGameName;
         platform.staffBroadcast(localeManager.getMessage("staff_notifications.verified",
-                Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
+                mapOf("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
     }
 
     private void refreshStaffPermissions() {
-        StaffPermissionLoader.load(httpClientHolder.getClient(), cache, logger, debugMode, true)
-            .orTimeout(SYNC_HTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        orTimeout(StaffPermissionLoader.load(httpClientHolder.getClient(), cache, logger, debugMode, true),
+            SYNC_HTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
     private void refreshPunishmentTypes() {
-        httpClientHolder.getClient().getPunishmentTypes().thenAccept(response -> {
+        orTimeout(httpClientHolder.getClient().getPunishmentTypes().thenAccept(response -> {
             if (!response.isSuccess()) return;
             for (PunishmentTypesRefreshListener listener : punishmentTypesListeners) {
                 try {
@@ -333,7 +333,7 @@ public class SyncService {
             if (cause instanceof PanelUnavailableException) logger.warning("Failed to refresh punishment types: Panel temporarily unavailable");
             else logger.warning("Failed to refresh punishment types: " + throwable.getMessage());
             return null;
-        }).orTimeout(SYNC_HTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        }), SYNC_HTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
     private void processMigrationTask(SyncResponse.MigrationTask migrationTask) {
@@ -446,7 +446,7 @@ public class SyncService {
         String panelName = cache.getStaffDisplayName(uuid);
         if (panelName == null) panelName = inGameName;
         platform.staffBroadcast(localeManager.getMessage("staff_notifications.join",
-                Map.of("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
+                mapOf("staff", panelName, "in-game-name", inGameName, "server", platform.getServerName())));
     }
 
     private void updateStaffMemberCache(UUID uuid, SyncResponse.ActiveStaffMember staffMember) {

@@ -13,13 +13,14 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class ChatMessageCache {
     private static final DateTimeFormatter REPORT_TIME_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault());
     private static final int DEFAULT_MAX_MESSAGES = 100, REPORT_LOOKBACK_MESSAGES = 10, REPORT_FALLBACK_SECONDS = 120;
-    private static final long DEFAULT_MAX_AGE_MS = 600_000, CLEANUP_INTERVAL_MS = 30_000; // 10 minutes, 30 seconds
+    private static final long DEFAULT_MAX_AGE_MS = 600_000, CLEANUP_INTERVAL_MS = 30_000;
 
     private final Map<String, ConcurrentLinkedQueue<ChatMessage>> serverMessages = new ConcurrentHashMap<>();
     private final Map<String, AtomicInteger> serverMessageCounts = new ConcurrentHashMap<>();
@@ -57,10 +58,6 @@ public class ChatMessageCache {
         }
     }
 
-    /**
-     * Returns chat context for a report: all messages on the server from the
-     * reported player's 10th-last message onward (or last 2 minutes if no messages).
-     */
     public String getChatLogForReport(String reportedPlayerUuid, String reporterUuid) {
         String serverName = resolveServerName(reporterUuid, reportedPlayerUuid);
         if (serverName == null) return "";
@@ -76,7 +73,7 @@ public class ChatMessageCache {
         List<ChatMessage> relevantMessages = allMessages.stream()
                 .filter(msg -> !msg.getTimestamp().isBefore(startTimestamp))
                 .sorted(Comparator.comparing(ChatMessage::getTimestamp))
-                .toList();
+                .collect(Collectors.toList());
 
         if (relevantMessages.isEmpty()) return "";
 
@@ -107,7 +104,7 @@ public class ChatMessageCache {
     private Instant determineReportStartTimestamp(List<ChatMessage> allMessages, String reportedPlayerUuid) {
         List<ChatMessage> reportedMessages = allMessages.stream()
                 .filter(msg -> msg.getPlayerUuid().equals(reportedPlayerUuid))
-                .toList();
+                .collect(Collectors.toList());
 
         if (reportedMessages.isEmpty()) {
             return Instant.now().minusSeconds(REPORT_FALLBACK_SECONDS);

@@ -25,12 +25,17 @@ public final class LinkedTicketItems {
         String formattedDate = ticket.getCreatedAt() != null ? MenuItems.formatDate(ticket.getCreatedAt()) : "Unknown";
         String playerName = ticket.getPlayerName() != null ? ticket.getPlayerName() : "Unknown";
 
-        String statusColored = switch (status.toLowerCase()) {
-            case "open" -> MenuItems.COLOR_GREEN + status;
-            case "closed" -> MenuItems.COLOR_RED + status;
-            case "unfinished" -> MenuItems.COLOR_YELLOW + status;
-            default -> MenuItems.COLOR_GRAY + status;
-        };
+        String statusLower = status.toLowerCase();
+        String statusColored;
+        if ("open".equals(statusLower)) {
+            statusColored = MenuItems.COLOR_GREEN + status;
+        } else if ("closed".equals(statusLower)) {
+            statusColored = MenuItems.COLOR_RED + status;
+        } else if ("unfinished".equals(statusLower)) {
+            statusColored = MenuItems.COLOR_YELLOW + status;
+        } else {
+            statusColored = MenuItems.COLOR_GRAY + status;
+        }
 
         String rawContent = ticket.getFirstReplyContent() != null ? ticket.getFirstReplyContent() : "";
         rawContent = StringUtil.unescapeNewlines(rawContent);
@@ -110,13 +115,12 @@ public final class LinkedTicketItems {
 
     public static CirrusItemType getTicketItemType(String type) {
         if (type == null) return CirrusItemType.PAPER;
-        return switch (type.toLowerCase()) {
-            case "gameplay" -> CirrusItemType.DIAMOND_SWORD;
-            case "chat" -> CirrusItemType.PAPER;
-            case "support" -> CirrusItemType.BOOK;
-            case "appeal" -> CirrusItemType.GOLDEN_APPLE;
-            case "bug" -> CirrusItemType.WRITABLE_BOOK;
-            default -> CirrusItemType.PAPER;
-        };
+        String lower = type.toLowerCase();
+        if ("gameplay".equals(lower)) return CirrusItemType.DIAMOND_SWORD;
+        if ("chat".equals(lower)) return CirrusItemType.PAPER;
+        if ("support".equals(lower)) return CirrusItemType.BOOK;
+        if ("appeal".equals(lower)) return CirrusItemType.GOLDEN_APPLE;
+        if ("bug".equals(lower)) return CirrusItemType.WRITABLE_BOOK;
+        return CirrusItemType.PAPER;
     }
 }

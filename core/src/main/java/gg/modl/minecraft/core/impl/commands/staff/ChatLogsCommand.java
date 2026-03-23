@@ -17,6 +17,7 @@ import gg.modl.minecraft.core.util.Permissions;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @CommandAlias("%cmd_chatlogs") @Conditions("staff")
 public class ChatLogsCommand extends AbstractLogCommand<ChatCommandLogService.ChatLogEntry> {
@@ -48,6 +49,6 @@ public class ChatLogsCommand extends AbstractLogCommand<ChatCommandLogService.Ch
 
     @Override
     protected Map<String, String> entryPlaceholders(ChatCommandLogService.ChatLogEntry entry, String playerName, String timestamp, String server) {
-        return Map.of("timestamp", timestamp, "server", server, "message", entry.getMessage() != null ? entry.getMessage() : "");
+        return mapOf("timestamp", timestamp, "server", server, "message", entry.getMessage() != null ? entry.getMessage() : "");
     }
 }

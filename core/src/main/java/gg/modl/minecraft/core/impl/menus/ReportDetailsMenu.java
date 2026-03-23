@@ -19,6 +19,7 @@ import gg.modl.minecraft.core.service.ChatMessageCache;
 
 import java.util.List;
 import java.util.Map;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class ReportDetailsMenu extends SimpleMenu {
     private static final int SLOT_ADD_DETAILS = 11, SLOT_PLAYER_HEAD = 13, SLOT_SKIP_DETAILS = 15, SLOT_BACK = 22;
@@ -48,7 +49,7 @@ public class ReportDetailsMenu extends SimpleMenu {
         this.chatMessageCache = chatMessageCache;
         this.reportData = reportData;
         this.previousMenu = previousMenu;
-        title(locale.getMessage("messages.report_gui_title", Map.of("player", target.getUsername())));
+        title(locale.getMessage("messages.report_gui_title", mapOf("player", target.getUsername())));
         type(CirrusInventoryType.GENERIC_9X3);
         buildMenu();
     }
@@ -72,7 +73,7 @@ public class ReportDetailsMenu extends SimpleMenu {
     }
 
     private CirrusItem buildTargetHead() {
-        List<String> skullLines = locale.getMessageList("messages.report_skull_details", Map.of("player", target.getUsername()));
+        List<String> skullLines = locale.getMessageList("messages.report_skull_details", mapOf("player", target.getUsername()));
         CirrusItem head = MenuItems.playerHead(
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
@@ -93,7 +94,7 @@ public class ReportDetailsMenu extends SimpleMenu {
     protected void registerActionHandlers() {
         registerActionHandler("addDetails", click -> {
             click.clickedMenu().close();
-            String prompt = locale.getMessage("messages.report_details_prompt", Map.of("player", target.getUsername()));
+            String prompt = locale.getMessage("messages.report_details_prompt", mapOf("player", target.getUsername()));
             platform.getChatInputManager().requestInput(reporter.getUuid(), prompt, input -> {
                 reportData.setDetails(input);
                 displayMenu(new ReportConfirmMenu(

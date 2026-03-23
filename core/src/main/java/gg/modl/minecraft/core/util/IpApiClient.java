@@ -12,7 +12,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
-public class IpApiClient {
+public final class IpApiClient {
+    private IpApiClient() {}
     private static final Logger logger = Logger.getLogger(IpApiClient.class.getName());
     private static final String IP_API_URL = "http://ip-api.com/json/%s?fields=status,message,countryCode,regionName,city,as,proxy,hosting";
     private static final Gson gson = new Gson();

@@ -18,8 +18,10 @@ import gg.modl.minecraft.core.service.StaffChatService;
 import gg.modl.minecraft.core.service.StaffChatService.ChatMode;
 import lombok.RequiredArgsConstructor;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor @CommandAlias("%cmd_chat") @Conditions("staff")
 public class ChatCommand extends BaseCommand {
@@ -71,7 +73,7 @@ public class ChatCommand extends BaseCommand {
         String panelName = getPanelName(sender, inGameName);
 
         String messageKey = newState ? "chat_management.chat_toggled_on" : "chat_management.chat_toggled_off";
-        platform.broadcast(localeManager.getMessage(messageKey, Map.of(
+        platform.broadcast(localeManager.getMessage(messageKey, mapOf(
                     "staff", panelName,
                     "in-game-name", inGameName
             )));
@@ -83,11 +85,11 @@ public class ChatCommand extends BaseCommand {
     public void clear(CommandIssuer sender, @Default() String countArg) {
         int lines = parseClearLineCount(countArg);
 
-        platform.broadcast("\n".repeat(Math.max(0, lines)));
+        platform.broadcast(String.join("", Collections.nCopies(Math.max(0, lines), "\n")));
 
         String inGameName = getInGameName(sender);
         String panelName = getPanelName(sender, inGameName);
-        platform.broadcast(localeManager.getMessage("chat_management.chat_cleared", Map.of(
+        platform.broadcast(localeManager.getMessage("chat_management.chat_cleared", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
         )));
@@ -107,7 +109,7 @@ public class ChatCommand extends BaseCommand {
 
         if (secondsArg.equalsIgnoreCase("off") || secondsArg.equals("0")) {
             chatManagementService.disableSlowMode();
-            platform.broadcast(localeManager.getMessage("chat_management.slow_mode_disabled", Map.of(
+            platform.broadcast(localeManager.getMessage("chat_management.slow_mode_disabled", mapOf(
                     "staff", panelName,
                     "in-game-name", inGameName
             )));
@@ -122,7 +124,7 @@ public class ChatCommand extends BaseCommand {
             }
 
             chatManagementService.setSlowMode(seconds);
-            platform.broadcast(localeManager.getMessage("chat_management.slow_mode_enabled", Map.of(
+            platform.broadcast(localeManager.getMessage("chat_management.slow_mode_enabled", mapOf(
                     "staff", panelName,
                     "in-game-name", inGameName,
                     "seconds", String.valueOf(seconds)

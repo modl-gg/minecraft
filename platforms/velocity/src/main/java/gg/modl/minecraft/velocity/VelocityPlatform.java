@@ -205,7 +205,6 @@ public class VelocityPlatform implements Platform {
 
     @Override
     public void runOnMainThread(Runnable task) {
-        // velo has no main thread, everything is thread-safe
         task.run();
     }
 
@@ -235,7 +234,7 @@ public class VelocityPlatform implements Platform {
     @Override
     public DatabaseProvider createLiteBansDatabaseProvider() {
         try {
-            if (server.getPluginManager().getPlugin("litebans").isEmpty()) return null;
+            if (!server.getPluginManager().getPlugin("litebans").isPresent()) return null;
             Class.forName("litebans.api.Database");
             logger.info("LiteBans plugin detected, using LiteBans API");
             return new LiteBansDatabaseProvider();

@@ -23,7 +23,8 @@ public class AsyncCommandInterceptor implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void onChat(ChatEvent event) {
         if (event.isCancelled() || !event.isCommand()) return;
-        if (!(event.getSender() instanceof ProxiedPlayer player)) return;
+        if (!(event.getSender() instanceof ProxiedPlayer)) return;
+        ProxiedPlayer player = (ProxiedPlayer) event.getSender();
         if (event.getMessage().length() <= 1) return;
 
         String stripped = event.getMessage().substring(1).trim();

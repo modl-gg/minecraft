@@ -14,6 +14,9 @@ panel-url: "https://yourserver.modl.gg"
 # Use the testing API (api.modl.top) instead of production
 testing-api: false
 
+# Proxy type (bridge-only mode): velocity | bungeecord
+# proxy-type: velocity
+
 # Backend server bridges (proxy mode only)
 # backend-bridges:
 #   - host: "127.0.0.1"

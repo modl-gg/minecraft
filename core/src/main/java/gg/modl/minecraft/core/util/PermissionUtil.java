@@ -7,7 +7,8 @@ import gg.modl.minecraft.core.cache.CachedProfile;
 
 import java.util.UUID;
 
-public class PermissionUtil {
+public final class PermissionUtil {
+    private PermissionUtil() {}
     public static boolean hasPermission(CommandIssuer issuer, Cache cache, String permission) {
         if (!issuer.isPlayer()) return true;
         return cache.hasPermission(issuer.getUniqueId(), permission);

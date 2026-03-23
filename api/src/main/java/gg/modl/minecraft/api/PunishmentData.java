@@ -33,8 +33,8 @@ public class PunishmentData {
 
         Date linkedBanExpiry = null;
         Object expiry = map.get(KEY_LINKED_BAN_EXPIRY);
-        if (expiry instanceof Long l) linkedBanExpiry = new Date(l);
-        else if (expiry instanceof Date d) linkedBanExpiry = d;
+        if (expiry instanceof Long) linkedBanExpiry = new Date((Long) expiry);
+        else if (expiry instanceof Date) linkedBanExpiry = (Date) expiry;
 
         List<String> chatLog = parseChatLog(map.get(KEY_CHAT_LOG));
 
@@ -53,17 +53,17 @@ public class PunishmentData {
     }
 
     private static List<String> parseChatLog(Object chatLogObj) {
-        if (chatLogObj instanceof List<?> list) {
+        if (chatLogObj instanceof List<?>) {
             @SuppressWarnings("unchecked")
-            List<String> typedList = (List<String>) list;
+            List<String> typedList = (List<String>) chatLogObj;
             return new ArrayList<>(typedList);
         }
         return null;
     }
 
     private static long parseDuration(Object durationObj) {
-        if (durationObj instanceof Long l) return l;
-        if (durationObj instanceof Integer i) return i.longValue();
+        if (durationObj instanceof Long) return (Long) durationObj;
+        if (durationObj instanceof Integer) return ((Integer) durationObj).longValue();
         return NO_DURATION;
     }
 }

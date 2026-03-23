@@ -12,6 +12,7 @@ import gg.modl.minecraft.core.util.WebPlayer;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public final class PlayerHeadItemBuilder {
     private PlayerHeadItemBuilder() {}
@@ -103,7 +104,7 @@ public final class PlayerHeadItemBuilder {
             lore.add(processed);
         }
 
-        String title = locale.getMessage("menus.player_head.title", Map.of("player_name", targetName));
+        String title = locale.getMessage("menus.player_head.title", mapOf("player_name", targetName));
         title = MenuItems.translateColorCodes(title);
 
         CirrusItem headItem = CirrusItem.of(

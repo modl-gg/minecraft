@@ -46,7 +46,6 @@ public class BungeePlatform implements Platform {
     private @Setter ChatInputManager chatInputManager;
     private @Setter ReplayService replayService;
 
-    // Cached reflection methods for getPlayerSkinTexture
     private static volatile boolean skinMethodsResolved = false;
     private static volatile Method getLoginProfileMethod;
     private static volatile Method getPropertiesMethod;
@@ -163,7 +162,6 @@ public class BungeePlatform implements Platform {
 
     @Override
     public void runOnMainThread(Runnable task) {
-        // BungeeCord has no main thread; all APIs are thread-safe
         task.run();
     }
 
@@ -238,7 +236,6 @@ public class BungeePlatform implements Platform {
             }
             if (getLoginProfileMethod == null) return null;
 
-            // Reflection required: getLoginProfile() is internal BungeeCord API
             Object pendingConnection = player.getPendingConnection();
             Object profile = getLoginProfileMethod.invoke(pendingConnection);
             if (profile == null) return null;
@@ -270,7 +267,6 @@ public class BungeePlatform implements Platform {
                 }
             }
         } catch (Exception e) {
-            // method not available, cache null to skip on future calls
             getLoginProfileMethod = null;
         }
         skinMethodsResolved = true;

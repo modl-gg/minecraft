@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
-import dev.simplix.cirrus.actionhandler.ActionHandler;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -256,12 +255,11 @@ public class PunishSeverityMenu extends BaseInspectMenu {
 
     private String getOffenseLevelColor(String offenseLevel) {
         if (offenseLevel == null) return MenuItems.COLOR_GRAY;
-        return switch (offenseLevel.toLowerCase()) {
-            case "low" -> MenuItems.COLOR_GREEN;
-            case "medium" -> MenuItems.COLOR_YELLOW;
-            case "habitual" -> MenuItems.COLOR_RED;
-            default -> MenuItems.COLOR_GRAY;
-        };
+        String lower = offenseLevel.toLowerCase();
+        if ("low".equals(lower)) return MenuItems.COLOR_GREEN;
+        if ("medium".equals(lower)) return MenuItems.COLOR_YELLOW;
+        if ("habitual".equals(lower)) return MenuItems.COLOR_RED;
+        return MenuItems.COLOR_GRAY;
     }
 
     private String capitalizeFirst(String str) {
@@ -383,7 +381,6 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     }
 
     private void handleToggleStatWipe(Click click) {
-        // Refresh menu with toggled stat-wipe state
         ActionHandlers.openMenu(
                 new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, silentMode, altBlocking, !statWipe, linkedReportIds))
                 .handle(click);

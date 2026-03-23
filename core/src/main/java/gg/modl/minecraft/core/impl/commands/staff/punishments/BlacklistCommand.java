@@ -14,6 +14,7 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.Set;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class BlacklistCommand extends AbstractManualPunishmentCommand {
     public BlacklistCommand(HttpClientHolder httpClientHolder, Platform platform, Cache cache, LocaleManager localeManager) {
@@ -23,7 +24,7 @@ public class BlacklistCommand extends AbstractManualPunishmentCommand {
     @Override protected int getOrdinal() { return 5; }
     @Override protected String getTypeName() { return "blacklist"; }
     @Override protected long getDefaultDuration() { return 0; }
-    @Override protected Set<Flag> getSupportedFlags() { return Set.of(Flag.ALT_BLOCKING, Flag.STAT_WIPE); }
+    @Override protected Set<Flag> getSupportedFlags() { return setOf(Flag.ALT_BLOCKING, Flag.STAT_WIPE); }
 
     @CommandCompletion("@players")
     @CommandAlias("%cmd_blacklist")

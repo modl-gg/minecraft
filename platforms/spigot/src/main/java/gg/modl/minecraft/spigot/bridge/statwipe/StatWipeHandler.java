@@ -16,15 +16,6 @@ public class StatWipeHandler {
     private final JavaPlugin plugin;
     private final BridgeConfig config;
 
-    /**
-     * Execute stat-wipe commands for the given player.
-     * Must be called from the main server thread.
-     *
-     * @param username     the player's username
-     * @param uuid         the player's UUID
-     * @param punishmentId the punishment ID (for logging)
-     * @return true if all commands executed successfully
-     */
     public boolean execute(String username, String uuid, String punishmentId) {
         Logger logger = plugin.getLogger();
         List<String> commands = config.getStatWipeCommands();

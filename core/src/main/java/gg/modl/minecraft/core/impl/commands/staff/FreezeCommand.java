@@ -17,8 +17,8 @@ import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
 
-import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @CommandAlias("%cmd_freeze") @Conditions("staff") @RequiredArgsConstructor
 public class FreezeCommand extends BaseCommand {
@@ -52,7 +52,7 @@ public class FreezeCommand extends BaseCommand {
     private void unfreezePlayer(UUID targetUuid, String targetName, String inGameName, String panelName) {
         freezeService.unfreeze(targetUuid);
         platform.sendMessage(targetUuid, localeManager.getMessage("freeze.unfrozen"));
-        platform.staffBroadcast(localeManager.getMessage("freeze.staff_notification_unfreeze", Map.of(
+        platform.staffBroadcast(localeManager.getMessage("freeze.staff_notification_unfreeze", mapOf(
                 "player", targetName,
                 "staff", panelName,
                 "in-game-name", inGameName
@@ -64,7 +64,7 @@ public class FreezeCommand extends BaseCommand {
         UUID staffUuid = sender.isPlayer() ? sender.getUniqueId() : null;
         freezeService.freeze(targetUuid, staffUuid);
         platform.sendMessage(targetUuid, localeManager.getMessage("freeze.frozen_message"));
-        platform.staffBroadcast(localeManager.getMessage("freeze.staff_notification_freeze", Map.of(
+        platform.staffBroadcast(localeManager.getMessage("freeze.staff_notification_freeze", mapOf(
                 "player", targetName,
                 "staff", panelName,
                 "in-game-name", inGameName

@@ -63,7 +63,6 @@ public class SettingsMenu extends BaseStaffMenu {
         if (isAdmin) {
             infoLore.add("");
             infoLore.add(MenuItems.COLOR_GRAY + "modl.gg Status: " + MenuItems.COLOR_GREEN + "Healthy");
-            // TODO: Add actual status from API
         }
 
         set(CirrusItem.of(

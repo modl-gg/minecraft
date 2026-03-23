@@ -12,7 +12,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
 
-import java.util.List;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class ApplyCommand extends BaseCommand {
@@ -41,7 +41,7 @@ public class ApplyCommand extends BaseCommand {
             "normal",
             createdServer,
             null,
-            List.of()
+            listOf()
         );
 
         ticketUtil.submitUnfinishedTicket(sender, httpClient, platform, localeManager, panelUrl, request, "Staff application", "staff");

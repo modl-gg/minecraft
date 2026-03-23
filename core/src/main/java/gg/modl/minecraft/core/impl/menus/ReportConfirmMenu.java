@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.impl.menus;
 
-import dev.simplix.cirrus.actionhandler.ActionHandler;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -25,11 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
-/**
- * Confirmation menu (3x9 layout).
- * Reviews the report and allows the player to confirm or cancel.
- */
 public class ReportConfirmMenu extends SimpleMenu {
     private final AbstractPlayer reporter, target;
     private final ModlHttpClient httpClient;
@@ -55,7 +51,7 @@ public class ReportConfirmMenu extends SimpleMenu {
         this.chatMessageCache = chatMessageCache;
         this.reportData = reportData;
 
-        title(locale.getMessage("messages.report_gui_title", Map.of("player", target.getUsername())));
+        title(locale.getMessage("messages.report_gui_title", mapOf("player", target.getUsername())));
         type(CirrusInventoryType.GENERIC_9X3);
         buildMenu();
     }
@@ -75,7 +71,7 @@ public class ReportConfirmMenu extends SimpleMenu {
                 MenuItems.lore(confirmLore)
         ).slot(11).actionHandler("confirm"));
 
-        List<String> skullLines = locale.getMessageList("messages.report_skull_confirm", Map.of("player", target.getUsername()));
+        List<String> skullLines = locale.getMessageList("messages.report_skull_confirm", mapOf("player", target.getUsername()));
         CirrusItem confirmHead = MenuItems.playerHead(
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
@@ -92,13 +88,12 @@ public class ReportConfirmMenu extends SimpleMenu {
                 MenuItems.lore(locale.getMessageList("messages.report_cancel_lore"))
         ).slot(15).actionHandler("cancel"));
 
-        // Show "Attach Replay" toggle if this report category supports replay capture
         if (reportData.isReplayCapture()) {
             boolean replayOn = reportData.isAttachReplay();
             CirrusItem replayItem = CirrusItem.of(
                     CirrusItemType.of("minecraft:ender_eye"),
                     CirrusChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Attach Replay"),
-                    MenuItems.lore(List.of(
+                    MenuItems.lore(listOf(
                             MenuItems.COLOR_GRAY + "Click to toggle replay attachment",
                             "",
                             replayOn
@@ -154,13 +149,12 @@ public class ReportConfirmMenu extends SimpleMenu {
         String subject = (reportData.isChatReport() ? "Chat Report" : "Player Report") + ": " + target.getUsername();
 
         List<String> chatMessages = null;
-        if (reportData.getChatLog() != null) chatMessages = List.of(reportData.getChatLog().split("\n"));
+        if (reportData.getChatLog() != null) chatMessages = listOf(reportData.getChatLog().split("\n"));
 
         String createdServer = platform.getPlayerServer(reporter.getUuid());
 
-        sendMessage(locale.getMessage("messages.submitting", Map.of("type", "report")));
+        sendMessage(locale.getMessage("messages.submitting", mapOf("type", "report")));
 
-        // Capture replay if requested, then submit ticket
         CompletableFuture<String> replayFuture;
         ReplayService replayService = platform.getReplayService();
         if (reportData.isAttachReplay() && replayService != null && replayService.isReplayAvailable(target.getUuid())) {
@@ -171,7 +165,7 @@ public class ReportConfirmMenu extends SimpleMenu {
 
         List<String> finalChatMessages = chatMessages;
         replayFuture.whenComplete((replayUrl, replayEx) -> {
-            if (replayEx != null) replayUrl = null; // proceed without replay on error
+            if (replayEx != null) replayUrl = null;
 
             CreateTicketRequest request = new CreateTicketRequest(
                     reporter.getUuid().toString(),
@@ -184,7 +178,7 @@ public class ReportConfirmMenu extends SimpleMenu {
                     "normal",
                     createdServer,
                     finalChatMessages,
-                    List.of("report"),
+                    listOf("report"),
                     replayUrl
             );
 
@@ -192,22 +186,22 @@ public class ReportConfirmMenu extends SimpleMenu {
 
             future.thenAccept(response -> {
                 if (response.isSuccess() && response.getTicketId() != null) {
-                    sendMessage(locale.getMessage("messages.success", Map.of("type", "Report")));
-                    sendMessage(locale.getMessage("messages.ticket_id", Map.of("ticketId", response.getTicketId())));
+                    sendMessage(locale.getMessage("messages.success", mapOf("type", "Report")));
+                    sendMessage(locale.getMessage("messages.ticket_id", mapOf("ticketId", response.getTicketId())));
 
                     String ticketUrl = panelUrl + "/panel/tickets/" + response.getTicketId();
                     sendClickableTicketLink(ticketUrl, response.getTicketId());
                     sendMessage(locale.getMessage("messages.evidence_note"));
                 } else {
                     sendMessage(locale.getMessage("messages.failed_submit",
-                            Map.of("type", "report", "error", locale.sanitizeErrorMessage(response.getMessage()))));
+                            mapOf("type", "report", "error", locale.sanitizeErrorMessage(response.getMessage()))));
                 }
             }).exceptionally(throwable -> {
                 if (throwable.getCause() instanceof PanelUnavailableException) {
                     sendMessage(locale.getMessage("api_errors.panel_restarting"));
                 } else {
                     sendMessage(locale.getMessage("messages.failed_submit",
-                            Map.of("type", "report", "error", locale.sanitizeErrorMessage(throwable.getMessage()))));
+                            mapOf("type", "report", "error", locale.sanitizeErrorMessage(throwable.getMessage()))));
                 }
                 return null;
             });

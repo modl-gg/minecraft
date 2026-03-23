@@ -9,6 +9,7 @@ import gg.modl.minecraft.core.util.Permissions;
 
 import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public final class TargetPlayerAction {
     private TargetPlayerAction() {}
@@ -40,7 +41,7 @@ public final class TargetPlayerAction {
         staffModeService.setTarget(viewerUuid, targetUuid);
         BridgeService bridgeService = platform.getBridgeService();
         if (bridgeService != null) bridgeService.sendTargetRequest(viewerUuid.toString(), targetUuid.toString());
-        platform.sendMessage(viewerUuid, platform.getLocaleManager().getMessage("target.targeting", Map.of("player", targetName)));
+        platform.sendMessage(viewerUuid, platform.getLocaleManager().getMessage("target.targeting", mapOf("player", targetName)));
     }
 
     private static void enterStaffMode(Platform platform, StaffModeService staffModeService, UUID viewerUuid) {
@@ -50,7 +51,7 @@ public final class TargetPlayerAction {
         String panelName = platform.getCache() != null ? platform.getCache().getStaffDisplayName(viewerUuid) : null;
         if (panelName == null) panelName = inGameName;
         platform.sendMessage(viewerUuid, platform.getLocaleManager().getMessage("staff_mode.enabled"));
-        platform.staffBroadcast(platform.getLocaleManager().getMessage("staff_mode.enabled_broadcast", Map.of(
+        platform.staffBroadcast(platform.getLocaleManager().getMessage("staff_mode.enabled_broadcast", mapOf(
                 "staff", panelName, "in-game-name", inGameName)));
         BridgeService bridgeService = platform.getBridgeService();
         if (bridgeService != null) bridgeService.sendStaffModeEnter(viewerUuid.toString(), inGameName, panelName);

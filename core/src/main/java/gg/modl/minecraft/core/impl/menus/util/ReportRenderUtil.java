@@ -6,6 +6,7 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.StringUtil;
 
 import java.util.*;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public final class ReportRenderUtil {
 
@@ -13,15 +14,14 @@ public final class ReportRenderUtil {
 
     public static CirrusItemType getReportItemType(String type) {
         if (type == null) return CirrusItemType.PAPER;
-        return switch (type.toLowerCase()) {
-            case "gameplay" -> CirrusItemType.DIAMOND_SWORD;
-            case "chat" -> CirrusItemType.WRITABLE_BOOK;
-            default -> CirrusItemType.PAPER;
-        };
+        String lower = type.toLowerCase();
+        if ("gameplay".equals(lower)) return CirrusItemType.DIAMOND_SWORD;
+        if ("chat".equals(lower)) return CirrusItemType.WRITABLE_BOOK;
+        return CirrusItemType.PAPER;
     }
 
     public static List<String> processContent(String content) {
-        if (content == null || content.isEmpty()) return List.of();
+        if (content == null || content.isEmpty()) return listOf();
 
         content = StringUtil.unescapeNewlines(content);
         content = content.replace("**", "").replace("```", "");

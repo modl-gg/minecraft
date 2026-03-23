@@ -66,7 +66,7 @@ public class StreamingJsonWriter implements AutoCloseable {
             if (ip.asn != null) jsonWriter.name("asn").value(ip.asn);
             if (ip.proxy != null) jsonWriter.name("proxy").value(ip.proxy);
             if (ip.hosting != null) jsonWriter.name("hosting").value(ip.hosting);
-            jsonWriter.name("firstLogin").value(Objects.requireNonNullElse(ip.firstLogin, ""));
+            jsonWriter.name("firstLogin").value(ip.firstLogin != null ? ip.firstLogin : "");
             jsonWriter.name("logins");
             jsonWriter.beginArray();
             if (ip.logins != null) {
@@ -247,4 +247,3 @@ public class StreamingJsonWriter implements AutoCloseable {
         }
     }
 }
-

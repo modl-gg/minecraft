@@ -16,8 +16,8 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ReplayService;
 import lombok.RequiredArgsConstructor;
 
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class HackReportCommand extends BaseCommand {
@@ -51,7 +51,6 @@ public class HackReportCommand extends BaseCommand {
         String description = details != null && !details.isEmpty() ? details : null;
         String createdServer = platform.getPlayerServer(sender.getUniqueId());
 
-        // Capture replay if available, then submit
         ReplayService replayService = platform.getReplayService();
         CompletableFuture<String> replayFuture;
         if (replayService != null && replayService.isReplayAvailable(targetPlayer.getUuid())) {
@@ -74,7 +73,7 @@ public class HackReportCommand extends BaseCommand {
                 "normal",
                 createdServer,
                 null,
-                List.of("report", "cheating"),
+                listOf("report", "cheating"),
                 replayUrl
             );
 

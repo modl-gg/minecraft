@@ -54,7 +54,6 @@ public class PolarHook implements AntiCheatHook {
 
     @Override
     public void unregister() {
-        // polar event system does not require explicit unregistration
     }
 
     private void onDetection(DetectionAlertEvent event) {

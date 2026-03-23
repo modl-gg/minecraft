@@ -6,11 +6,6 @@ import lombok.Getter;
 
 import java.util.UUID;
 
-/**
- * Server-wide chat state: toggle (enable/disable) and slow mode.
- * Staff members bypass both restrictions.
- * Per-player slow mode tracking is stored in PlayerProfile.
- */
 public class ChatManagementService {
     private static final long MILLIS_PER_SECOND = 1000L;
 
@@ -22,7 +17,6 @@ public class ChatManagementService {
         this.registry = registry;
     }
 
-    /** @return the new state (true = enabled) */
     public boolean toggleChat() {
         chatEnabled = !chatEnabled;
         return chatEnabled;
@@ -53,7 +47,6 @@ public class ChatManagementService {
         return true;
     }
 
-    /** @return seconds remaining before the player can send again, or 0 */
     public int getSlowModeRemaining(UUID playerUuid) {
         if (slowModeSeconds <= 0) return 0;
         CachedProfile profile = registry.getProfile(playerUuid);

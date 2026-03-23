@@ -17,12 +17,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Base class for list/browser menus that use AbstractBrowser.
- * Provides the intercept method for static header and footer items.
- *
- * @param <T> The type of elements displayed in the browser
- */
 public abstract class BaseListMenu<T> extends AbstractBrowser<T> {
 
     protected final Platform platform;
@@ -44,10 +38,6 @@ public abstract class BaseListMenu<T> extends AbstractBrowser<T> {
         fixedSize(CirrusInventoryType.GENERIC_9X6);
     }
 
-    /**
-     * Intercept all slots except content area (28-34) so AbstractBrowser only places items there.
-     * Subclasses should call super.intercept() and add their own header items.
-     */
     @Override
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = new HashMap<>();
@@ -66,7 +56,6 @@ public abstract class BaseListMenu<T> extends AbstractBrowser<T> {
         return items;
     }
 
-    /** Creates a placeholder item to prevent Cirrus from shrinking the inventory when the list is empty. */
     protected CirrusItem createEmptyPlaceholder(String message) {
         return CirrusItem.of(
                 CirrusItemType.GRAY_STAINED_GLASS_PANE,

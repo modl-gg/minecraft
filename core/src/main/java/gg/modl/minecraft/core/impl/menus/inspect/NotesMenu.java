@@ -23,6 +23,7 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class NotesMenu extends BaseInspectListMenu<Note> {
     private static final int PAGE_SIZE = 7;
@@ -46,10 +47,10 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
                 if (response.getStatus() == 200) {
                     future.complete(new PaginatedDataSource.FetchResult<>(response.getNotes(), response.getTotalCount()));
                 } else {
-                    future.complete(new PaginatedDataSource.FetchResult<>(List.of(), 0));
+                    future.complete(new PaginatedDataSource.FetchResult<>(listOf(), 0));
                 }
             }).exceptionally(e -> {
-                future.complete(new PaginatedDataSource.FetchResult<>(List.of(), totalCount));
+                future.complete(new PaginatedDataSource.FetchResult<>(listOf(), totalCount));
                 return null;
             });
             return future;
@@ -116,7 +117,7 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
         String author = note.getIssuerName() != null ? note.getIssuerName() : "";
         String content = note.getText();
 
-        Map<String, String> vars = Map.of(
+        Map<String, String> vars = mapOf(
                 "date", formattedDate,
                 "author", author,
                 "content", content

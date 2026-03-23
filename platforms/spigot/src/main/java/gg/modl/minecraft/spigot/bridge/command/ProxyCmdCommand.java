@@ -9,7 +9,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.Map;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class ProxyCmdCommand implements CommandExecutor {
@@ -40,7 +40,7 @@ public class ProxyCmdCommand implements CommandExecutor {
 
         if (queryServer.sendToAllClients(PROXY_CMD_ACTION, fullCommand)) {
             plugin.getLogger().info("Forwarded command to proxy: " + fullCommand);
-            sender.sendMessage(localeManager.getMessage("command.proxycmd.sent", Map.of("command", fullCommand)));
+            sender.sendMessage(localeManager.getMessage("command.proxycmd.sent", mapOf("command", fullCommand)));
         } else {
             sender.sendMessage(localeManager.getMessage("command.proxycmd.failed"));
         }

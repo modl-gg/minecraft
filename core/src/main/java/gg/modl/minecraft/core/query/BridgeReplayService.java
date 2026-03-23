@@ -6,9 +6,6 @@ import gg.modl.minecraft.core.util.PluginLogger;
 import java.util.UUID;
 import java.util.concurrent.*;
 
-/**
- * Proxy-side ReplayService that requests replay capture from backend servers via TCP bridge.
- */
 public class BridgeReplayService implements ReplayService {
     private final ConcurrentHashMap<UUID, CompletableFuture<String>> pendingCaptures = new ConcurrentHashMap<>();
     private final QueryStatWipeExecutor executor;
@@ -32,7 +29,6 @@ public class BridgeReplayService implements ReplayService {
         executor.sendToAllBridges("CAPTURE_REPLAY", targetUuid.toString(), targetName);
         logger.info("[bridge] Sent CAPTURE_REPLAY for " + targetName + " (" + targetUuid + ")");
 
-        // 30s timeout — if no backend responds, complete with null
         scheduler.schedule(() -> {
             if (pendingCaptures.remove(targetUuid, future)) {
                 future.complete(null);
@@ -48,9 +44,6 @@ public class BridgeReplayService implements ReplayService {
         return true; // can't check backend state without round-trip
     }
 
-    /**
-     * Called by BridgeMessageDispatcher when a CAPTURE_REPLAY_RESPONSE arrives from a backend.
-     */
     public void handleCaptureResponse(UUID targetUuid, String replayId) {
         CompletableFuture<String> future = pendingCaptures.remove(targetUuid);
         if (future != null) {

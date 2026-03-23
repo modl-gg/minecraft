@@ -161,12 +161,11 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
 
     private String getStatusColor(String status) {
         if (status == null) return MenuItems.COLOR_GRAY;
-        return switch (status.toLowerCase()) {
-            case "open" -> MenuItems.COLOR_RED;
-            case "unfinished" -> MenuItems.COLOR_YELLOW;
-            case "closed" -> MenuItems.COLOR_GREEN;
-            default -> MenuItems.COLOR_GRAY;
-        };
+        String lower = status.toLowerCase();
+        if ("open".equals(lower)) return MenuItems.COLOR_RED;
+        if ("unfinished".equals(lower)) return MenuItems.COLOR_YELLOW;
+        if ("closed".equals(lower)) return MenuItems.COLOR_GREEN;
+        return MenuItems.COLOR_GRAY;
     }
 
     @Override

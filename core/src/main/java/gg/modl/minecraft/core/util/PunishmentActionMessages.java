@@ -4,7 +4,8 @@ import gg.modl.minecraft.core.Platform;
 
 import java.util.UUID;
 
-public class PunishmentActionMessages {
+public final class PunishmentActionMessages {
+    private PunishmentActionMessages() {}
     public static void sendPunishmentActions(Platform platform, UUID playerUuid, String punishmentId) {
         String json = buildActionButtonsJson(punishmentId);
         platform.sendJsonMessage(playerUuid, json);

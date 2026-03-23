@@ -16,7 +16,6 @@ import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.bungee.factory.BungeePacketEventsBuilder;
-import lombok.Getter;
 import net.byteflux.libby.BungeeLibraryManager;
 import net.byteflux.libby.Library;
 import net.md_5.bungee.api.plugin.Plugin;
@@ -32,7 +31,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Level;
 
-@Getter
 public class BungeePlugin extends Plugin {
     private static final int MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
 
@@ -46,7 +44,6 @@ public class BungeePlugin extends Plugin {
     public synchronized void onEnable() {
         this.pluginLogger = PluginLogger.fromJul(getLogger());
 
-        // Load boot.yml → migration → wizard (first, before everything)
         bootConfig = loadBootConfig();
         if (bootConfig == null) {
             getLogger().info("No configuration found. Starting setup wizard...");
@@ -57,10 +54,6 @@ public class BungeePlugin extends Plugin {
         initializePlugin();
     }
 
-    /**
-     * Called after the setup wizard completes.
-     * Runs full plugin initialization without requiring a proxy restart.
-     */
     private synchronized void initializeAfterWizard(BootConfig config) {
         this.bootConfig = config;
         initializePlugin();

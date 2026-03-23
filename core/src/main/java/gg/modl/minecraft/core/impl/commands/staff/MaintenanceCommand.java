@@ -14,7 +14,7 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.MaintenanceService;
 import lombok.RequiredArgsConstructor;
 
-import java.util.Map;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor @CommandAlias("%cmd_maintenance") @Conditions("staff")
 public class MaintenanceCommand extends BaseCommand {
@@ -36,7 +36,7 @@ public class MaintenanceCommand extends BaseCommand {
 
         String inGameName = getInGameName(sender);
         String panelName = getPanelName(sender, inGameName);
-        platform.staffBroadcast(localeManager.getMessage("maintenance.enabled", Map.of(
+        platform.staffBroadcast(localeManager.getMessage("maintenance.enabled", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
         )));
@@ -55,7 +55,7 @@ public class MaintenanceCommand extends BaseCommand {
 
         String inGameName = getInGameName(sender);
         String panelName = getPanelName(sender, inGameName);
-        platform.staffBroadcast(localeManager.getMessage("maintenance.disabled", Map.of(
+        platform.staffBroadcast(localeManager.getMessage("maintenance.disabled", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
         )));

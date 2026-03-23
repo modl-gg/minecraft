@@ -14,6 +14,7 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.Set;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class BanCommand extends AbstractManualPunishmentCommand {
     public BanCommand(HttpClientHolder httpClientHolder, Platform platform, Cache cache, LocaleManager localeManager) {
@@ -23,7 +24,7 @@ public class BanCommand extends AbstractManualPunishmentCommand {
     @Override protected int getOrdinal() { return 2; }
     @Override protected String getTypeName() { return "ban"; }
     @Override protected long getDefaultDuration() { return 0; }
-    @Override protected Set<Flag> getSupportedFlags() { return Set.of(Flag.DURATION, Flag.ALT_BLOCKING, Flag.STAT_WIPE); }
+    @Override protected Set<Flag> getSupportedFlags() { return setOf(Flag.DURATION, Flag.ALT_BLOCKING, Flag.STAT_WIPE); }
 
     @CommandCompletion("@players")
     @CommandAlias("%cmd_ban")

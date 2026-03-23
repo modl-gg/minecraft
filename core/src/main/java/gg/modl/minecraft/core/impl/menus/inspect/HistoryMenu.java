@@ -26,6 +26,7 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     private static final int PAGE_SIZE = 7;
@@ -53,10 +54,10 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
                 if (response.getStatus() == 200) {
                     future.complete(new PaginatedDataSource.FetchResult<>(response.getPunishments(), response.getTotalCount()));
                 } else {
-                    future.complete(new PaginatedDataSource.FetchResult<>(List.of(), 0));
+                    future.complete(new PaginatedDataSource.FetchResult<>(listOf(), 0));
                 }
             }).exceptionally(e -> {
-                future.complete(new PaginatedDataSource.FetchResult<>(List.of(), totalCount));
+                future.complete(new PaginatedDataSource.FetchResult<>(listOf(), totalCount));
                 return null;
             });
             return future;
@@ -157,7 +158,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
             long pardonedAgo = System.currentTimeMillis() - pardonDate.getTime();
             String pardonedFormatted = MenuItems.formatDuration(pardonedAgo > 0 ? pardonedAgo : 0);
             statusLine = locale.getMessage("menus.history_item.status_pardoned",
-                    Map.of("pardoned", pardonedFormatted));
+                    mapOf("pardoned", pardonedFormatted));
         } else if (punishment.getStarted() == null) {
             statusLine = locale.getMessage("menus.history_item.status_unstarted");
         } else if (isActive) {
@@ -168,7 +169,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
                 long remaining = expiryTime - System.currentTimeMillis();
                 String expiryFormatted = MenuItems.formatDuration(remaining > 0 ? remaining : 0);
                 statusLine = locale.getMessage("menus.history_item.status_active",
-                        Map.of("expiry", expiryFormatted));
+                        mapOf("expiry", expiryFormatted));
             }
         } else {
             if (effectiveDuration != null && effectiveDuration > 0 && punishment.getStarted() != null) {
@@ -176,10 +177,10 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
                 long expiredAgo = System.currentTimeMillis() - expiryTime;
                 String expiredFormatted = MenuItems.formatDuration(expiredAgo > 0 ? expiredAgo : 0);
                 statusLine = locale.getMessage("menus.history_item.status_inactive",
-                        Map.of("expired", expiredFormatted));
+                        mapOf("expired", expiredFormatted));
             } else {
                 statusLine = locale.getMessage("menus.history_item.status_inactive",
-                        Map.of("expired", "N/A"));
+                        mapOf("expired", "N/A"));
             }
         }
 

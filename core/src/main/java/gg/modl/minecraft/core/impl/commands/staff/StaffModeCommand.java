@@ -17,8 +17,8 @@ import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
 
-import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @CommandAlias("%cmd_staffmode") @Conditions("staff|player") @RequiredArgsConstructor
 public class StaffModeCommand extends BaseCommand {
@@ -56,7 +56,7 @@ public class StaffModeCommand extends BaseCommand {
         staffModeService.disable(uuid);
         vanishService.unvanish(uuid);
         sender.sendMessage(localeManager.getMessage("staff_mode.disabled"));
-        platform.staffBroadcast(localeManager.getMessage("staff_mode.disabled_broadcast", Map.of(
+        platform.staffBroadcast(localeManager.getMessage("staff_mode.disabled_broadcast", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
         )));
@@ -67,7 +67,7 @@ public class StaffModeCommand extends BaseCommand {
     private void enableStaffMode(UUID uuid, String inGameName, String panelName, CommandIssuer sender) {
         staffModeService.enable(uuid);
         sender.sendMessage(localeManager.getMessage("staff_mode.enabled"));
-        platform.staffBroadcast(localeManager.getMessage("staff_mode.enabled_broadcast", Map.of(
+        platform.staffBroadcast(localeManager.getMessage("staff_mode.enabled_broadcast", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
         )));

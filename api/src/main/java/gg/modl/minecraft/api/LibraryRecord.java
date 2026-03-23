@@ -3,9 +3,6 @@ package gg.modl.minecraft.api;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-/**
- * Represents a library to be loaded at runtime via libby.
- */
 @Data @AllArgsConstructor
 public class LibraryRecord {
     private final String groupId;

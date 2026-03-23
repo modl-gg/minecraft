@@ -107,7 +107,8 @@ public class JoinListener {
                     getHttpClient(), localeManager, syncService, maintenanceService,
                     cache, debugMode, platform.getLogger());
 
-            if (result instanceof LoginHandler.LoginResult.Denied denied) {
+            if (result instanceof LoginHandler.LoginResult.Denied) {
+                LoginHandler.LoginResult.Denied denied = (LoginHandler.LoginResult.Denied) result;
                 event.setResult(ResultedEvent.ComponentResult.denied(Colors.get(denied.getMessage())));
             } else {
                 pendingLoginData.put(event.getPlayer().getUniqueId(), response);
@@ -116,7 +117,8 @@ public class JoinListener {
             }
         } catch (Exception e) {
             LoginHandler.LoginResult errorResult = LoginHandler.handleLoginError(e);
-            if (errorResult instanceof LoginHandler.LoginResult.Denied denied) {
+            if (errorResult instanceof LoginHandler.LoginResult.Denied) {
+                LoginHandler.LoginResult.Denied denied = (LoginHandler.LoginResult.Denied) errorResult;
                 logger.warn("Login blocked for {}: {}", event.getPlayer().getUsername(), denied.getMessage());
                 event.setResult(ResultedEvent.ComponentResult.denied(
                         Component.text(denied.getMessage()).color(NamedTextColor.RED)));

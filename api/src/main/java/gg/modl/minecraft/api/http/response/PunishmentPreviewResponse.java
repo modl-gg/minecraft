@@ -3,9 +3,6 @@ package gg.modl.minecraft.api.http.response;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Response containing punishment preview calculations.
- */
 @Data @NoArgsConstructor
 public class PunishmentPreviewResponse {
     private String message, socialStatus, gameplayStatus, offenderStatus, category;

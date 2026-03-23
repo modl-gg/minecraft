@@ -24,9 +24,11 @@ import gg.modl.minecraft.core.util.WebPlayer;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class AltsMenu extends BaseInspectListMenu<Account> {
     private static final Logger logger = Logger.getLogger(AltsMenu.class.getName());
@@ -52,10 +54,10 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
                     cacheSkinTextures(response.getLinkedAccounts());
                     future.complete(new PaginatedDataSource.FetchResult<>(response.getLinkedAccounts(), response.getTotalCount()));
                 } else {
-                    future.complete(new PaginatedDataSource.FetchResult<>(List.of(), 0));
+                    future.complete(new PaginatedDataSource.FetchResult<>(listOf(), 0));
                 }
             }).exceptionally(e -> {
-                future.complete(new PaginatedDataSource.FetchResult<>(List.of(), 0));
+                future.complete(new PaginatedDataSource.FetchResult<>(listOf(), 0));
                 return null;
             });
             return future;
@@ -144,7 +146,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
 
         List<Punishment> activePunishments = alt.getPunishments().stream()
                 .filter(Punishment::isActive)
-                .toList();
+                .collect(Collectors.toList());
         long activeCount = activePunishments.size();
         long inactiveCount = alt.getPunishments().size() - activeCount;
 

@@ -7,10 +7,6 @@ import lombok.Setter;
 
 import java.util.UUID;
 
-/**
- * Staff two-factor authentication. Session validity comes from the backend
- * via sync responses, no local session/IP caching.
- */
 public class Staff2faService {
     public enum AuthState {
         PENDING,
@@ -35,10 +31,6 @@ public class Staff2faService {
         return profile != null && profile.getAuthState() == AuthState.AUTHENTICATED;
     }
 
-    /**
-     * If 2FA is disabled the player is immediately authenticated,
-     * otherwise placed in PENDING until the backend session is validated.
-     */
     public void onStaffJoin(UUID uuid) {
         CachedProfile profile = registry.getProfile(uuid);
         if (profile != null) profile.setAuthState(isEnabled() ? AuthState.PENDING : AuthState.AUTHENTICATED);
@@ -52,7 +44,6 @@ public class Staff2faService {
         }
     }
 
-    /** @return true if this is the first notification (was not already notified) */
     public boolean markNotified(UUID uuid) {
         CachedProfile profile = registry.getProfile(uuid);
         if (profile == null) return false;

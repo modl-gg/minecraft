@@ -4,7 +4,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 
-public class DateFormatter {
+public final class DateFormatter {
+    private DateFormatter() {}
     private static volatile String dateFormatPattern = "MM/dd/yyyy HH:mm";
     private static volatile TimeZone timeZone = null;
 

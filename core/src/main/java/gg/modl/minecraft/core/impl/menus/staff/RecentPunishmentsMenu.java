@@ -23,6 +23,7 @@ import lombok.Getter;
 
 import java.util.*;
 import java.util.function.Consumer;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMenu.PunishmentWithPlayer> {
     @Getter
@@ -150,12 +151,12 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         String statusLine;
         Date pardonDate = isKick ? null : findPardonDate(punishment);
         if (isKick) {
-            statusLine = ""; // Don't show status for kicks
+            statusLine = "";
         } else if (pardonDate != null) {
             long pardonedAgo = System.currentTimeMillis() - pardonDate.getTime();
             String pardonedFormatted = MenuItems.formatDuration(pardonedAgo > 0 ? pardonedAgo : 0);
             statusLine = locale.getMessage("menus.history_item.status_pardoned",
-                    Map.of("pardoned", pardonedFormatted));
+                    mapOf("pardoned", pardonedFormatted));
         } else if (punishment.getStarted() == null) {
             statusLine = locale.getMessage("menus.history_item.status_unstarted");
         } else if (isActive) {
@@ -166,7 +167,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
                 long remaining = expiryTime - System.currentTimeMillis();
                 String expiryFormatted = MenuItems.formatDuration(remaining > 0 ? remaining : 0);
                 statusLine = locale.getMessage("menus.history_item.status_active",
-                        Map.of("expiry", expiryFormatted));
+                        mapOf("expiry", expiryFormatted));
             }
         } else {
             if (effectiveDuration != null && effectiveDuration > 0 && punishment.getStarted() != null) {
@@ -174,10 +175,10 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
                 long expiredAgo = System.currentTimeMillis() - expiryTime;
                 String expiredFormatted = MenuItems.formatDuration(expiredAgo > 0 ? expiredAgo : 0);
                 statusLine = locale.getMessage("menus.history_item.status_inactive",
-                        Map.of("expired", expiredFormatted));
+                        mapOf("expired", expiredFormatted));
             } else {
                 statusLine = locale.getMessage("menus.history_item.status_inactive",
-                        Map.of("expired", "N/A"));
+                        mapOf("expired", "N/A"));
             }
         }
 

@@ -17,6 +17,7 @@ import gg.modl.minecraft.core.util.Permissions;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @CommandAlias("%cmd_commandlogs") @Conditions("staff")
 public class CommandLogsCommand extends AbstractLogCommand<ChatCommandLogService.CommandLogEntry> {
@@ -49,7 +50,7 @@ public class CommandLogsCommand extends AbstractLogCommand<ChatCommandLogService
     @Override
     protected Map<String, String> entryPlaceholders(ChatCommandLogService.CommandLogEntry entry,
                                                     String playerName, String timestamp, String server) {
-        return Map.of(
+        return mapOf(
             "timestamp", timestamp, "player", playerName, "server",
             server, "command", entry.getCommand() != null ? entry.getCommand() : "");
     }

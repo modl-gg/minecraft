@@ -12,10 +12,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Base class for Staff Menu screens.
- * Provides the common header with staff navigation items.
- */
 public abstract class BaseStaffMenu extends BaseMenu {
 
     protected StaffTab activeTab = StaffTab.NONE;

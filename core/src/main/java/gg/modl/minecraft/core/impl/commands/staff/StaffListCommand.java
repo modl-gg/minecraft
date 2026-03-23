@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class StaffListCommand extends BaseCommand {
@@ -67,7 +68,7 @@ public class StaffListCommand extends BaseCommand {
     private void printStaffList(CommandIssuer sender, int page) {
         List<StaffEntry> staffEntries = collectOnlineStaff();
 
-        sender.sendMessage(localeManager.getMessage("print.staff_list.header", Map.of(
+        sender.sendMessage(localeManager.getMessage("print.staff_list.header", mapOf(
                 "count", String.valueOf(staffEntries.size())
         )));
 
@@ -78,7 +79,7 @@ public class StaffListCommand extends BaseCommand {
             for (int i = pg.getStart(); i < pg.getEnd(); i++) {
                 StaffEntry entry = staffEntries.get(i);
                 String vanishTag = entry.isVanished() ? localeManager.getMessage("print.staff_list.vanish") : "";
-                sender.sendMessage(localeManager.getMessage("print.staff_list.entry", Map.of(
+                sender.sendMessage(localeManager.getMessage("print.staff_list.entry", mapOf(
                         "role", entry.getRole(),
                         "player", entry.getDisplayName(),
                         "in-game-name", entry.getInGameName(),
@@ -86,7 +87,7 @@ public class StaffListCommand extends BaseCommand {
                         "v", vanishTag
                 )));
             }
-            sender.sendMessage(localeManager.getMessage("print.staff_list.total", Map.of(
+            sender.sendMessage(localeManager.getMessage("print.staff_list.total", mapOf(
                     "count", String.valueOf(staffEntries.size()),
                     "page", String.valueOf(pg.getPage()),
                     "total_pages", String.valueOf(pg.getTotalPages())

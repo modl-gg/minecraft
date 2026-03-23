@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import gg.modl.minecraft.core.util.PluginLogger;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @Data
 public class ReportGuiConfig {
@@ -137,33 +138,33 @@ public class ReportGuiConfig {
     public static ReportGuiConfig createDefault() {
         ReportGuiConfig config = new ReportGuiConfig();
 
-        config.slots.put(1, new ReportSlotConfig("minecraft:paper", "", List.of(), 1, false, false, false));
+        config.slots.put(1, new ReportSlotConfig("minecraft:paper", "", listOf(), 1, false, false, false));
         config.slots.put(2, new ReportSlotConfig("minecraft:feather", "Chat Abuse",
-            List.of("&7Low-quality chat, spam, or inappropriate language", "", "&eClick to report"), 2, true, true, false));
+            listOf("&7Low-quality chat, spam, or inappropriate language", "", "&eClick to report"), 2, true, true, false));
         config.slots.put(3, new ReportSlotConfig("minecraft:pufferfish", "Anti-social",
-            List.of("&7Harassment, threats, or bullying", "", "&eClick to report"), 3, true, true, false));
+            listOf("&7Harassment, threats, or bullying", "", "&eClick to report"), 3, true, true, false));
         config.slots.put(4, new ReportSlotConfig("minecraft:name_tag", "Inappropriate Username/Skin",
-            List.of("&7Offensive username or skin", "", "&eClick to report"), 4, true, false, false));
+            listOf("&7Offensive username or skin", "", "&eClick to report"), 4, true, false, false));
         config.slots.put(5, new ReportSlotConfig("minecraft:diamond_sword", "Cheating",
-            List.of("&7Hacking or using unfair modifications", "", "&eClick to report"), 5, true, false, true));
+            listOf("&7Hacking or using unfair modifications", "", "&eClick to report"), 5, true, false, true));
         config.slots.put(6, new ReportSlotConfig("minecraft:book", "Game Rule Violation",
-            List.of("&7Violating server-specific game rules", "", "&eClick to report"), 6, true, false, true));
-        config.slots.put(7, new ReportSlotConfig("minecraft:paper", "", List.of(), 7, false, false, false));
-        config.slots.put(8, new ReportSlotConfig("minecraft:paper", "", List.of(), 8, false, false, false));
+            listOf("&7Violating server-specific game rules", "", "&eClick to report"), 6, true, false, true));
+        config.slots.put(7, new ReportSlotConfig("minecraft:paper", "", listOf(), 7, false, false, false));
+        config.slots.put(8, new ReportSlotConfig("minecraft:paper", "", listOf(), 8, false, false, false));
         config.slots.put(9, new ReportSlotConfig("minecraft:tnt", "Exploits",
-            List.of("&7Abusing bugs or exploits", "", "&eClick to report"), 9, true, false, true));
+            listOf("&7Abusing bugs or exploits", "", "&eClick to report"), 9, true, false, true));
         config.slots.put(10, new ReportSlotConfig("minecraft:experience_bottle", "Stats Boosting",
-            List.of("&7Artificially inflating stats", "", "&eClick to report"), 10, true, false, true));
+            listOf("&7Artificially inflating stats", "", "&eClick to report"), 10, true, false, true));
         config.slots.put(11, new ReportSlotConfig("minecraft:paper", "Other",
-            List.of("&7Any other rule violation", "", "&eClick to report"), 11, true, false, false));
-        config.slots.put(12, new ReportSlotConfig("minecraft:paper", "", List.of(), 12, false, false, false));
-        config.slots.put(13, new ReportSlotConfig("minecraft:paper", "", List.of(), 13, false, false, false));
-        config.slots.put(14, new ReportSlotConfig("minecraft:paper", "", List.of(), 14, false, false, false));
+            listOf("&7Any other rule violation", "", "&eClick to report"), 11, true, false, false));
+        config.slots.put(12, new ReportSlotConfig("minecraft:paper", "", listOf(), 12, false, false, false));
+        config.slots.put(13, new ReportSlotConfig("minecraft:paper", "", listOf(), 13, false, false, false));
+        config.slots.put(14, new ReportSlotConfig("minecraft:paper", "", listOf(), 14, false, false, false));
 
         InfoConfig infoConfig = new InfoConfig();
         infoConfig.setItem("minecraft:oak_sign");
         infoConfig.setTitle("&eInformation");
-        infoConfig.setDescription(List.of(
+        infoConfig.setDescription(listOf(
             "&7Please review the server rules",
             "&7before submitting a report.",
             "",

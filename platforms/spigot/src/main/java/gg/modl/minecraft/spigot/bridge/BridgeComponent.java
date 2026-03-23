@@ -4,7 +4,6 @@ import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import gg.modl.minecraft.spigot.bridge.command.ProxyCmdCommand;
-import gg.modl.minecraft.spigot.bridge.command.ReplayCommand;
 import gg.modl.minecraft.spigot.bridge.config.BridgeConfig;
 import gg.modl.minecraft.spigot.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.spigot.bridge.handler.FreezeHandler;
@@ -23,11 +22,16 @@ import gg.modl.replay.recording.PacketRecorder;
 import gg.modl.replay.recording.RecordingConfig;
 import gg.modl.replay.recording.RecordingManager;
 import lombok.Getter;
+import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -44,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BridgeComponent implements Listener {
     private final JavaPlugin plugin;
@@ -64,9 +69,9 @@ public class BridgeComponent implements Listener {
     private boolean polarAvailable;
     @Getter private ReplayService replayService;
 
-    // Replay recording (initialized directly, no reflection)
     private RecordingManager recordingManager;
     private PacketRecorder packetRecorder;
+    private final Map<UUID, Integer> worldChangeGeneration = new ConcurrentHashMap<>();
 
     public BridgeComponent(JavaPlugin plugin, String apiKey, String backendUrl, String panelUrl, PluginLogger logger) {
         this.plugin = plugin;
@@ -76,9 +81,6 @@ public class BridgeComponent implements Listener {
         this.logger = logger;
     }
 
-    /**
-     * Called during plugin onLoad() for early registrations (e.g. Polar LoaderApi).
-     */
     public void onLoad() {
         try {
             Class.forName("top.polar.api.loader.LoaderApi");
@@ -92,13 +94,7 @@ public class BridgeComponent implements Listener {
         } catch (ClassNotFoundException ignored) {}
     }
 
-    /**
-     * Enable bridge component.
-     *
-     * @param ticketCreator the ticket creator to use (direct HTTP in standalone, TCP in bridge-only)
-     */
     public void enable(TicketCreator ticketCreator) {
-        // Save default bridge-config.yml if not present, then merge new keys
         if (!BridgeConfig.exists(plugin.getDataFolder().toPath())) {
             plugin.saveResource("bridge-config.yml", false);
         }
@@ -115,7 +111,6 @@ public class BridgeComponent implements Listener {
 
         BridgeLocaleManager localeManager = new BridgeLocaleManager(plugin.getLogger());
 
-        // Save default staff_mode.yml if not present, then merge new keys
         if (!plugin.getDataFolder().toPath().resolve("staff_mode.yml").toFile().exists()) {
             plugin.saveResource("staff_mode.yml", false);
         }
@@ -164,19 +159,12 @@ public class BridgeComponent implements Listener {
             plugin.getCommand("proxycmd").setExecutor(new ProxyCmdCommand(plugin, localeManager, queryServer));
         }
 
-        if (replayService != null && plugin.getCommand("replay") != null) {
-            ReplayCommand replayCommand = new ReplayCommand(replayService, panelUrl);
-            plugin.getCommand("replay").setExecutor(replayCommand);
-            plugin.getCommand("replay").setTabCompleter(replayCommand);
-        }
-
         logger.info("[bridge] Enabled with " + hooks.size() + " anticheat hook(s)"
                 + (polarAvailable ? " (Polar pending callback)" : "")
                 + (replayService != null ? " + replay capture" : ""));
     }
 
     public void disable() {
-        // Stop all replay recordings
         if (recordingManager != null) {
             recordingManager.stopAll();
         }
@@ -225,10 +213,6 @@ public class BridgeComponent implements Listener {
         hooks.add(polarHook);
     }
 
-    /**
-     * Initializes the replay recording system directly using the modl-replay-recording library.
-     * Creates RecordingManager + PacketRecorder, and builds a ReplayService that uploads to modl-backend.
-     */
     private void initializeReplayRecording() {
         if (!bridgeConfig.isReplayEnabled()) {
             logger.info("[bridge] Replay recording disabled in config");
@@ -241,7 +225,6 @@ public class BridgeComponent implements Listener {
         }
 
         try {
-            // Check if PacketEvents is available
             Class.forName("com.github.retrooper.packetevents.PacketEvents");
         } catch (ClassNotFoundException e) {
             logger.warning("[bridge] PacketEvents not found, replay recording disabled");
@@ -271,7 +254,6 @@ public class BridgeComponent implements Listener {
         recordingManager.setPacketRecorder(packetRecorder);
         packetRecorder.register();
 
-        // Upload via modl-backend
         String serverDomain = extractDomain(panelUrl);
         ModlBackendReplayUploader uploader = new ModlBackendReplayUploader(backendUrl, apiKey, serverDomain, plugin.getLogger());
 
@@ -284,12 +266,10 @@ public class BridgeComponent implements Listener {
 
                 packetRecorder.cleanupPlayer(targetUuid);
 
-                // Stop recording async (drains + flushes on writer thread, no main-thread I/O)
                 return recordingManager.stopRecordingAsync(targetUuid)
                         .thenCompose(metadata -> {
                             File replayFile = metadata != null ? metadata.getOutputFile() : null;
 
-                            // Restart recording for this player
                             if (bridgeConfig.isReplayAutoRecord()) {
                                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                                     Player player = Bukkit.getPlayer(targetUuid);
@@ -304,7 +284,6 @@ public class BridgeComponent implements Listener {
                                 return CompletableFuture.completedFuture(null);
                             }
 
-                            // Upload to modl-backend
                             return uploader.uploadAsync(replayFile, recordingConfig.mcVersion())
                                     .thenApply(replayId -> {
                                         logger.info("[bridge] Replay uploaded for " + targetName + ": " + replayId);
@@ -325,7 +304,6 @@ public class BridgeComponent implements Listener {
             }
         };
 
-        // Auto-start recording for all online players
         if (bridgeConfig.isReplayAutoRecord()) {
             for (Player player : Bukkit.getOnlinePlayers()) {
                 startRecordingForPlayer(player);
@@ -360,18 +338,15 @@ public class BridgeComponent implements Listener {
         Location loc = player.getLocation();
         int radius = bridgeConfig.getReplayRadius();
 
-        // Seed the target player into their own EntityTracker (they never receive SPAWN_ENTITY for themselves)
         packetRecorder.trackSelf(player.getUniqueId(), player.getName(), player.getEntityId(),
                 loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
 
-        // Seed nearby players so they're available at stop time
-        // even if SPAWN_ENTITY packets arrived before PacketRecorder was registered
         double radiusSq = (double) radius * radius;
         for (Player nearby : Bukkit.getOnlinePlayers()) {
             if (nearby.equals(player)) continue;
-            if (!nearby.getWorld().equals(loc.getWorld())) continue;
-            if (nearby.getLocation().distanceSquared(loc) > radiusSq) continue;
             Location nLoc = nearby.getLocation();
+            if (!nLoc.getWorld().equals(loc.getWorld())) continue;
+            if (nLoc.distanceSquared(loc) > radiusSq) continue;
             packetRecorder.getEntityTracker().trackPlayer(
                     player.getUniqueId(), nearby.getEntityId(), nearby.getUniqueId(), nearby.getName(),
                     nLoc.getX(), nLoc.getY(), nLoc.getZ(),
@@ -383,30 +358,15 @@ public class BridgeComponent implements Listener {
                 loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()
         );
 
-        // Seed inventory cache from Bukkit API so equipment/inventory is available
-        // even if no WINDOW_ITEMS packet has been intercepted yet
         seedInventoryFromBukkit(player);
-        // Emit initial equipment from cached inventory state
         packetRecorder.emitInitialSelfEquipment(player.getUniqueId());
     }
 
-    /**
-     * Seed the PacketRecorder's inventory cache from Bukkit API.
-     * Maps Bukkit inventory contents to protocol slot indices so equipment/inventory
-     * is available immediately when recording starts, without waiting for WINDOW_ITEMS.
-     */
     private void seedInventoryFromBukkit(Player player) {
         PlayerInventory inv = player.getInventory();
         Map<Integer, String> protocolSlots = new HashMap<>();
         Map<Integer, Integer> protocolCounts = new HashMap<>();
 
-        // Protocol slot layout for window 0 (player inventory):
-        // 5-8: armor (5=helmet, 6=chestplate, 7=leggings, 8=boots)
-        // 9-35: main inventory
-        // 36-44: hotbar
-        // 45: offhand
-
-        // Bukkit getContents() returns: 0-8=hotbar, 9-35=main inv, 36-39=armor (boots,legs,chest,helm), 40=offhand
         ItemStack[] contents = inv.getContents();
         for (int i = 0; i < contents.length && i <= 40; i++) {
             ItemStack item = contents[i];
@@ -415,20 +375,20 @@ public class BridgeComponent implements Listener {
             int amount = (item != null && item.getType() != Material.AIR)
                     ? item.getAmount() : 0;
             int protocolSlot;
-            if (i >= 0 && i <= 8) {
-                protocolSlot = 36 + i; // hotbar → protocol 36-44
-            } else if (i >= 9 && i <= 35) {
-                protocolSlot = i; // main inv → same
+            if (i <= 8) {
+                protocolSlot = 36 + i;
+            } else if (i <= 35) {
+                protocolSlot = i;
             } else if (i == 36) {
-                protocolSlot = 8; // boots
+                protocolSlot = 8;
             } else if (i == 37) {
-                protocolSlot = 7; // leggings
+                protocolSlot = 7;
             } else if (i == 38) {
-                protocolSlot = 6; // chestplate
+                protocolSlot = 6;
             } else if (i == 39) {
-                protocolSlot = 5; // helmet
+                protocolSlot = 5;
             } else if (i == 40) {
-                protocolSlot = 45; // offhand
+                protocolSlot = 45;
             } else {
                 continue;
             }
@@ -443,13 +403,64 @@ public class BridgeComponent implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         if (bridgeConfig.isReplayEnabled() && bridgeConfig.isReplayAutoRecord() && recordingManager != null) {
-            // Delay slightly to allow chunk data to arrive
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (event.getPlayer().isOnline()) {
                     startRecordingForPlayer(event.getPlayer());
                 }
-            }, 40L); // 2 seconds
+            }, 40L);
         }
+    }
+
+    @EventHandler
+    public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
+        if (!bridgeConfig.isReplayEnabled() || !bridgeConfig.isReplayAutoRecord()) return;
+        if (recordingManager == null || packetRecorder == null) return;
+
+        Player player = event.getPlayer();
+        UUID playerId = player.getUniqueId();
+
+        if (recordingManager.isRecording(playerId)) {
+            packetRecorder.cleanupPlayer(playerId);
+            recordingManager.stopRecordingAsync(playerId);
+        }
+
+        packetRecorder.getEntityTracker().clearPlayer(playerId);
+
+        int generation = worldChangeGeneration.merge(playerId, 1, Integer::sum);
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            Integer current = worldChangeGeneration.get(playerId);
+            if (current == null || current != generation) return;
+            worldChangeGeneration.remove(playerId);
+
+            if (player.isOnline() && !recordingManager.isRecording(playerId)) {
+                startRecordingForPlayer(player);
+            }
+        }, 40L);
+    }
+
+    @SuppressWarnings("deprecation")
+    @EventHandler
+    public void onBlockPlace(BlockPlaceEvent event) {
+        if (recordingManager == null) return;
+        Player player = event.getPlayer();
+        Block block = event.getBlockPlaced();
+        int stateId = SpigotConversionUtil.fromBukkitMaterialData(
+                new org.bukkit.material.MaterialData(block.getType(), block.getData())).getGlobalId();
+        recordingManager.enqueueBlockPlace(player.getUniqueId(),
+                block.getX(), (short) block.getY(), block.getZ(), stateId);
+    }
+
+    @SuppressWarnings("deprecation")
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        if (recordingManager == null) return;
+        Player player = event.getPlayer();
+        Block block = event.getBlock();
+        int previousStateId = SpigotConversionUtil.fromBukkitMaterialData(
+                new org.bukkit.material.MaterialData(block.getType(), block.getData())).getGlobalId();
+        recordingManager.enqueueBlockBreak(player.getUniqueId(),
+                block.getX(), (short) block.getY(), block.getZ(), previousStateId);
     }
 
     @EventHandler
@@ -457,8 +468,8 @@ public class BridgeComponent implements Listener {
         UUID playerId = event.getPlayer().getUniqueId();
         if (violationTracker != null) violationTracker.resetPlayer(playerId);
         if (autoReporter != null) autoReporter.clearCooldown(playerId);
+        worldChangeGeneration.remove(playerId);
 
-        // Stop recording async (drain + flush on writer thread, fire-and-forget)
         if (recordingManager != null && recordingManager.isRecording(playerId)) {
             recordingManager.stopRecordingAsync(playerId);
         }

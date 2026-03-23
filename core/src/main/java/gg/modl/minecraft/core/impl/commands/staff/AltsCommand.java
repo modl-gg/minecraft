@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class AltsCommand extends BaseCommand {
@@ -53,7 +54,7 @@ public class AltsCommand extends BaseCommand {
 
         UUID senderUuid = sender.getUniqueId();
 
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
         httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
@@ -73,7 +74,7 @@ public class AltsCommand extends BaseCommand {
     }
 
     private void printAlts(CommandIssuer sender, String playerQuery, int page) {
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
 
@@ -84,7 +85,7 @@ public class AltsCommand extends BaseCommand {
 
                 httpClientHolder.getClient().getLinkedAccounts(targetUuid).thenAccept(linkedResponse -> displayAlts(sender, playerName, linkedResponse.getLinkedAccounts(), page)).exceptionally(throwable -> {
                     if (throwable.getCause() instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-                    else displayAlts(sender, playerName, List.of(), page);
+                    else displayAlts(sender, playerName, listOf(), page);
                     return null;
                 });
             } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
@@ -97,7 +98,7 @@ public class AltsCommand extends BaseCommand {
     private static final int ENTRIES_PER_PAGE = 8;
 
     private void displayAlts(CommandIssuer sender, String playerName, List<Account> linkedAccounts, int page) {
-        sender.sendMessage(localeManager.getMessage("print.alts.header", Map.of("player", playerName)));
+        sender.sendMessage(localeManager.getMessage("print.alts.header", mapOf("player", playerName)));
 
         if (linkedAccounts == null || linkedAccounts.isEmpty()) sender.sendMessage(localeManager.getMessage("print.alts.empty"));
         else {
@@ -122,7 +123,7 @@ public class AltsCommand extends BaseCommand {
 
                 String color = isBanned ? STATUS_COLOR_BANNED : (isMuted ? STATUS_COLOR_MUTED : STATUS_COLOR_CLEAN);
 
-                sender.sendMessage(localeManager.getMessage("print.alts.entry", Map.of(
+                sender.sendMessage(localeManager.getMessage("print.alts.entry", mapOf(
                         "ordinal", String.valueOf(ordinal),
                         "color", color,
                         "username", username,
@@ -130,7 +131,7 @@ public class AltsCommand extends BaseCommand {
                         "status", status
                 )));
             }
-            sender.sendMessage(localeManager.getMessage("print.alts.total", Map.of(
+            sender.sendMessage(localeManager.getMessage("print.alts.total", mapOf(
                     "count", String.valueOf(linkedAccounts.size()),
                     "page", String.valueOf(pg.getPage()),
                     "total_pages", String.valueOf(pg.getTotalPages())

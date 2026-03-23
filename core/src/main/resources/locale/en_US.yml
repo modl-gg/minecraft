@@ -861,6 +861,22 @@ target:
   cannot_target_self: "&cYou cannot target yourself."
   not_online: "&cPlayer is not online."
 
+# Replay
+replay:
+  usage:
+    - "&7[Replay] Usage:"
+    - "&7  /replay status [player] &f- Check recording status"
+    - "&7  /replay capture [player] &f- Capture and upload replay"
+  not_available: "&cReplay recording is not available on this server."
+  status_recording: "&7[Replay] &f{player}: &arecording"
+  status_not_recording: "&7[Replay] &f{player}: &cnot recording"
+  no_active_recording: "&c[Replay] No active recording for {player}"
+  capturing: "&7[Replay] Capturing and uploading replay for {player}..."
+  capture_success: "&a[Replay] Replay captured for {player}"
+  capture_link: "&b{url}"
+  capture_failed: "&c[Replay] Failed to capture replay for {player}"
+  console_specify_player: "&c[Replay] Specify a player name from console."
+
 # Standing GUI (player-facing)
 standing_gui:
   title: "&fYour Standing"

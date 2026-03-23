@@ -48,9 +48,6 @@ public class Punishment {
         return evidence != null ? evidence : Collections.emptyList();
     }
 
-    /**
-     * More reliable than getType() for custom punishment types.
-     */
     public int getTypeOrdinal() {
         if (typeOrdinal != null) return typeOrdinal;
         return type != null ? type.getValue() : 0;
@@ -68,10 +65,6 @@ public class Punishment {
         return PunishmentTypeRegistry.isKick(getTypeOrdinal());
     }
 
-    /**
-     * Returns display-friendly type category name.
-     * Tries dataMap typeName first, then falls back to registry detection.
-     */
     public String getTypeCategory() {
         Object typeName = getDataMap().get(DATA_KEY_TYPE_NAME);
         if (typeName instanceof String && !((String) typeName).isEmpty()) return (String) typeName;
@@ -150,9 +143,6 @@ public class Punishment {
         return false;
     }
 
-    /**
-     * Mirrors the backend's getEffectiveExpiry logic, accounting for duration modifications.
-     */
     public @Nullable Date getEffectiveExpiry() {
         Long duration = null;
         Date durationBase = null;
@@ -192,9 +182,6 @@ public class Punishment {
         return null;
     }
 
-    /**
-     * Returns the last modification's effectiveDuration, or the original duration if unmodified.
-     */
     public Long getEffectiveDuration() {
         Long duration = null;
         for (Modification mod : getModifications()) if (mod.getEffectiveDuration() != null) duration = mod.getEffectiveDuration();

@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class PunishmentActionCommand extends BaseCommand {
@@ -43,21 +44,24 @@ public class PunishmentActionCommand extends BaseCommand {
             return;
         }
 
-        switch (action) {
-            case "modify" -> openModifyMenu(sender, punishmentId);
-            case "link-evidence" -> promptLinkEvidence(sender, punishmentId);
-            case "upload-evidence" -> openUploadPage(sender, punishmentId);
-            default -> sender.sendMessage(localeManager.getMessage("punishment_action.unknown_action", Map.of("action", action)));
+        if ("modify".equals(action)) {
+            openModifyMenu(sender, punishmentId);
+        } else if ("link-evidence".equals(action)) {
+            promptLinkEvidence(sender, punishmentId);
+        } else if ("upload-evidence".equals(action)) {
+            openUploadPage(sender, punishmentId);
+        } else {
+            sender.sendMessage(localeManager.getMessage("punishment_action.unknown_action", mapOf("action", action)));
         }
     }
 
     private void openModifyMenu(CommandIssuer sender, String punishmentId) {
         UUID senderUuid = sender.getUniqueId();
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", "#" + punishmentId)));
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", "#" + punishmentId)));
 
         httpClientHolder.getClient().getPunishmentDetail(punishmentId).thenAccept(response -> {
             if (!response.isSuccess() || response.getPunishment() == null) {
-                sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", Map.of("id", punishmentId)));
+                sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", mapOf("id", punishmentId)));
                 return;
             }
 
@@ -79,7 +83,7 @@ public class PunishmentActionCommand extends BaseCommand {
                     }
 
                 if (punishment == null) {
-                    sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", Map.of("id", punishmentId)));
+                    sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", mapOf("id", punishmentId)));
                     return;
                 }
 
@@ -107,9 +111,9 @@ public class PunishmentActionCommand extends BaseCommand {
         String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
         String issuerId = cache.getStaffId(senderUuid);
         platform.getChatInputManager().requestInput(senderUuid,
-                localeManager.getMessage("punishment_action.enter_evidence_url", Map.of("id", punishmentId)),
+                localeManager.getMessage("punishment_action.enter_evidence_url", mapOf("id", punishmentId)),
                 (url) -> {
-                    if (url == null || url.isBlank()) {
+                    if (url == null || url.trim().isEmpty()) {
                         platform.sendMessage(senderUuid, localeManager.getMessage("punishment_action.no_url"));
                         return;
                     }
@@ -118,8 +122,8 @@ public class PunishmentActionCommand extends BaseCommand {
                             punishmentId, senderName, issuerId, url
                     );
 
-                    httpClientHolder.getClient().addPunishmentEvidence(request).thenAccept(v -> platform.sendMessage(senderUuid, localeManager.getMessage("punishment_action.evidence_linked", Map.of("id", punishmentId)))).exceptionally(throwable -> {
-                        platform.sendMessage(senderUuid, localeManager.getMessage("punishment_action.evidence_link_failed", Map.of("error", throwable.getMessage())));
+                    httpClientHolder.getClient().addPunishmentEvidence(request).thenAccept(v -> platform.sendMessage(senderUuid, localeManager.getMessage("punishment_action.evidence_linked", mapOf("id", punishmentId)))).exceptionally(throwable -> {
+                        platform.sendMessage(senderUuid, localeManager.getMessage("punishment_action.evidence_link_failed", mapOf("error", throwable.getMessage())));
                         return null;
                     });
                 },

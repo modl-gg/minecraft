@@ -16,9 +16,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public abstract class AbstractLogCommand<T> extends BaseCommand {
-    private static final int ENTRIES_PER_PAGE = 10, MAX_ENTRIES = 200;
+    private static final int ENTRIES_PER_PAGE = 10;
 
     protected final HttpClientHolder httpClientHolder;
     protected final Cache cache;
@@ -46,7 +47,7 @@ public abstract class AbstractLogCommand<T> extends BaseCommand {
         final int requestedPage = Pagination.parsePage(pageArg);
         String errorKey = localePrefix() + ".error";
 
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
         httpClientHolder.getClient().lookupPlayer(new PlayerLookupRequest(playerQuery)).thenAccept(response -> {
             if (response.isSuccess() && response.getData() != null) {
@@ -65,7 +66,7 @@ public abstract class AbstractLogCommand<T> extends BaseCommand {
     }
 
     private void displayEntries(CommandIssuer sender, String playerName, List<T> entries, int page) {
-        String header = localeManager.getMessage(localePrefix() + ".header", Map.of("player", playerName));
+        String header = localeManager.getMessage(localePrefix() + ".header", mapOf("player", playerName));
         if (header != null && !header.isEmpty()) sender.sendMessage(header);
 
         if (entries == null || entries.isEmpty()) {
@@ -84,7 +85,7 @@ public abstract class AbstractLogCommand<T> extends BaseCommand {
                     entryPlaceholders(entry, playerName, timestamp, server)));
         }
 
-        sender.sendMessage(localeManager.getMessage(localePrefix() + ".footer", Map.of(
+        sender.sendMessage(localeManager.getMessage(localePrefix() + ".footer", mapOf(
                 "page", String.valueOf(pg.getPage()),
                 "total_pages", String.valueOf(pg.getTotalPages()),
                 "total", String.valueOf(entries.size())

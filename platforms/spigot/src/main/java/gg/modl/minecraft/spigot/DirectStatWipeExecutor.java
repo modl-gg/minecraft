@@ -4,12 +4,7 @@ import gg.modl.minecraft.core.service.sync.StatWipeExecutor;
 import gg.modl.minecraft.spigot.bridge.BridgeComponent;
 import gg.modl.minecraft.spigot.bridge.statwipe.StatWipeHandler;
 import lombok.RequiredArgsConstructor;
-import org.bukkit.Bukkit;
 
-/**
- * Direct stat wipe executor that calls the bridge's StatWipeHandler directly,
- * replacing the reflection-based SpigotStatWipeExecutor.
- */
 @RequiredArgsConstructor
 public class DirectStatWipeExecutor implements StatWipeExecutor {
     private final BridgeComponent bridgeComponent;

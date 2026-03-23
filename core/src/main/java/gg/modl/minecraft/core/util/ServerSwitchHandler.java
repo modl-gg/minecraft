@@ -7,12 +7,10 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
-/**
- * Shared server switch handling logic for proxy platforms (Bungee/Velocity).
- * Updates the backend and broadcasts a staff switch notification.
- */
 public final class ServerSwitchHandler {
+    private ServerSwitchHandler() {}
     public static void handleServerSwitch(
             UUID uuid, String username, String serverName,
             ModlHttpClient httpClient, Cache cache,
@@ -29,6 +27,6 @@ public final class ServerSwitchHandler {
         String panelName = cache.getStaffDisplayName(uuid);
         if (panelName == null) panelName = username;
         platform.staffBroadcast(localeManager.getMessage("staff_notifications.switch",
-                Map.of("staff", panelName, "in-game-name", username, "server", serverName)));
+                mapOf("staff", panelName, "in-game-name", username, "server", serverName)));
     }
 }

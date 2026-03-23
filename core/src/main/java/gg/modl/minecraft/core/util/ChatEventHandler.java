@@ -16,11 +16,10 @@ import gg.modl.minecraft.core.service.StaffChatService;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
-/**
- * Shared chat event processing pipeline used by all platforms.
- */
 public final class ChatEventHandler {
+    private ChatEventHandler() {}
     public enum Result {
         CANCELLED,
         ALLOWED
@@ -64,7 +63,7 @@ public final class ChatEventHandler {
             } else {
                 int remaining = chatManagementService.getSlowModeRemaining(senderUuid);
                 sendMessage.accept(localeManager.getMessage("chat_management.slow_mode_wait",
-                        Map.of("seconds", String.valueOf(remaining))));
+                        mapOf("seconds", String.valueOf(remaining))));
             }
             return Result.CANCELLED;
         }
@@ -77,7 +76,7 @@ public final class ChatEventHandler {
 
         if (freezeService.isFrozen(senderUuid)) {
             platform.staffBroadcast(localeManager.getMessage("freeze.frozen_chat",
-                    Map.of("player", senderName, "message", message)));
+                    mapOf("player", senderName, "message", message)));
             return Result.CANCELLED;
         }
 
@@ -86,7 +85,7 @@ public final class ChatEventHandler {
         for (UUID interceptor : networkChatInterceptService.getInterceptors()) {
             if (!interceptor.equals(senderUuid)) {
                 platform.sendMessage(interceptor, localeManager.getMessage("intercept.message",
-                        Map.of("player", senderName, "message", message)));
+                        mapOf("player", senderName, "message", message)));
             }
         }
 

@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class NotesCommand extends BaseCommand {
@@ -49,7 +50,7 @@ public class NotesCommand extends BaseCommand {
         }
 
         UUID senderUuid = sender.getUniqueId();
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
         httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
@@ -69,7 +70,7 @@ public class NotesCommand extends BaseCommand {
     }
 
     private void printNotes(CommandIssuer sender, String playerQuery, int page) {
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
 
@@ -90,7 +91,7 @@ public class NotesCommand extends BaseCommand {
 
     private void displayNotes(CommandIssuer sender, String playerName, Account profile, int page) {
         List<Note> notes = profile.getNotes();
-        sender.sendMessage(localeManager.getMessage("print.notes.header", Map.of("player", playerName)));
+        sender.sendMessage(localeManager.getMessage("print.notes.header", mapOf("player", playerName)));
 
         if (notes.isEmpty()) sender.sendMessage(localeManager.getMessage("print.notes.empty"));
         else {
@@ -102,14 +103,14 @@ public class NotesCommand extends BaseCommand {
                 String author = note.getIssuerName();
                 String content = note.getText();
 
-                sender.sendMessage(localeManager.getMessage("print.notes.entry", Map.of(
+                sender.sendMessage(localeManager.getMessage("print.notes.entry", mapOf(
                         "ordinal", String.valueOf(ordinal),
                         "date", date,
                         "author", author,
                         "content", content
                 )));
             }
-            sender.sendMessage(localeManager.getMessage("print.notes.total", Map.of(
+            sender.sendMessage(localeManager.getMessage("print.notes.total", mapOf(
                     "count", String.valueOf(notes.size()),
                     "page", String.valueOf(pg.getPage()),
                     "total_pages", String.valueOf(pg.getTotalPages())

@@ -5,16 +5,16 @@ import lombok.Setter;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
+import static gg.modl.minecraft.core.util.Java8Collections.*;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
-/**
- * Bridge configuration, loaded from bridge-config.yml.
- */
 @Getter
 public class BridgeConfig {
     private static final String FILE_NAME = "bridge-config.yml";
@@ -30,13 +30,12 @@ public class BridgeConfig {
     @Setter private boolean debug = false;
     private boolean queryEnabled = true;
     private int queryPort = DEFAULT_QUERY_PORT;
-    private List<String> statWipeCommands = new ArrayList<>(List.of("clearstats {player}"));
+    private List<String> statWipeCommands = new ArrayList<>(listOf("clearstats {player}"));
     private String anticheatName = "Anti-cheat";
     private String serverName = "Server 1";
     private int reportCooldown = DEFAULT_REPORT_COOLDOWN;
-    private Map<String, Integer> reportViolationThresholds = new LinkedHashMap<>(Map.of("default", DEFAULT_VIOLATION_THRESHOLD));
+    private Map<String, Integer> reportViolationThresholds = new LinkedHashMap<>(mapOf("default", DEFAULT_VIOLATION_THRESHOLD));
 
-    // Replay configuration
     private boolean replayEnabled = true;
     private boolean replayAutoRecord = true;
     private int replayBufferDuration = DEFAULT_REPLAY_BUFFER_DURATION;
@@ -94,22 +93,25 @@ public class BridgeConfig {
         config.reportCooldown = getInt(data, "report-cooldown", DEFAULT_REPORT_COOLDOWN);
 
         Object cmds = data.get("stat-wipe-commands");
-        if (cmds instanceof List<?> list) {
-            config.statWipeCommands = list.stream().map(String::valueOf).toList();
+        if (cmds instanceof List<?>) {
+            List<?> list = (List<?>) cmds;
+            List<String> strList = new ArrayList<>();
+            for (Object o : list) strList.add(String.valueOf(o));
+            config.statWipeCommands = strList;
         }
 
         Object threshObj = data.get("report-violation-threshold");
-        if (threshObj instanceof Map<?, ?> threshMap) {
+        if (threshObj instanceof Map<?, ?>) {
+            Map<?, ?> threshMap = (Map<?, ?>) threshObj;
             Map<String, Integer> thresholds = new LinkedHashMap<>();
             for (Map.Entry<?, ?> entry : threshMap.entrySet()) {
                 String key = String.valueOf(entry.getKey());
-                int val = entry.getValue() instanceof Number n ? n.intValue() : DEFAULT_VIOLATION_THRESHOLD;
+                int val = entry.getValue() instanceof Number ? ((Number) entry.getValue()).intValue() : DEFAULT_VIOLATION_THRESHOLD;
                 thresholds.put(key, val);
             }
             config.reportViolationThresholds = thresholds;
         }
 
-        // Replay config
         config.replayEnabled = getBool(data, "replay-enabled", true);
         config.replayAutoRecord = getBool(data, "replay-auto-record", true);
         config.replayBufferDuration = getInt(data, "replay-buffer-duration", DEFAULT_REPLAY_BUFFER_DURATION);
@@ -140,16 +142,16 @@ public class BridgeConfig {
 
     private static String getStr(Map<String, Object> map, String key, String def) {
         Object val = map.get(key);
-        return val instanceof String s ? s : def;
+        return val instanceof String ? (String) val : def;
     }
 
     private static int getInt(Map<String, Object> map, String key, int def) {
         Object val = map.get(key);
-        return val instanceof Number n ? n.intValue() : def;
+        return val instanceof Number ? ((Number) val).intValue() : def;
     }
 
     private static boolean getBool(Map<String, Object> map, String key, boolean def) {
         Object val = map.get(key);
-        return val instanceof Boolean b ? b : def;
+        return val instanceof Boolean ? (Boolean) val : def;
     }
 }

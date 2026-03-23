@@ -34,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class InspectCommand extends BaseCommand {
@@ -75,7 +76,7 @@ public class InspectCommand extends BaseCommand {
         }
 
         UUID senderUuid = sender.getUniqueId();
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
         httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
@@ -100,11 +101,11 @@ public class InspectCommand extends BaseCommand {
     }
 
     private void printPunishmentDetail(CommandIssuer sender, String punishmentId) {
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", "#" + punishmentId)));
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", "#" + punishmentId)));
 
         httpClientHolder.getClient().getPunishmentDetail(punishmentId).thenAccept(response -> {
             if (!response.isSuccess() || response.getPunishment() == null) {
-                sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", Map.of("id", punishmentId)));
+                sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", mapOf("id", punishmentId)));
                 return;
             }
 
@@ -146,17 +147,17 @@ public class InspectCommand extends BaseCommand {
             int notesCount = p.getNotes() != null ? p.getNotes().size() : 0;
             int modsCount = p.getModifications() != null ? p.getModifications().size() : 0;
 
-            sender.sendMessage(localeManager.getMessage("print.punishment_detail.header", Map.of("id", punishmentId)));
-            sender.sendMessage(localeManager.getMessage("print.punishment_detail.type", Map.of("type", typeName)));
-            sender.sendMessage(localeManager.getMessage("print.punishment_detail.player", Map.of("player", playerName)));
-            sender.sendMessage(localeManager.getMessage("print.punishment_detail.issuer", Map.of("issuer", issuerName)));
-            sender.sendMessage(localeManager.getMessage("print.punishment_detail.date", Map.of("date", issued)));
-            sender.sendMessage(localeManager.getMessage("print.punishment_detail.status", Map.of("status", (active ? COLOR_ACTIVE : COLOR_INACTIVE) + status)));
-            sender.sendMessage(localeManager.getMessage("print.punishment_detail.duration", Map.of("duration", duration)));
-            if (!reason.isEmpty()) sender.sendMessage(localeManager.getMessage("print.punishment_detail.reason", Map.of("reason", reason)));
-            sender.sendMessage(localeManager.getMessage("print.punishment_detail.evidence", Map.of("count", String.valueOf(evidenceCount))));
-            sender.sendMessage(localeManager.getMessage("print.punishment_detail.notes", Map.of("count", String.valueOf(notesCount))));
-            sender.sendMessage(localeManager.getMessage("print.punishment_detail.modifications", Map.of("count", String.valueOf(modsCount))));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.header", mapOf("id", punishmentId)));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.type", mapOf("type", typeName)));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.player", mapOf("player", playerName)));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.issuer", mapOf("issuer", issuerName)));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.date", mapOf("date", issued)));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.status", mapOf("status", (active ? COLOR_ACTIVE : COLOR_INACTIVE) + status)));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.duration", mapOf("duration", duration)));
+            if (!reason.isEmpty()) sender.sendMessage(localeManager.getMessage("print.punishment_detail.reason", mapOf("reason", reason)));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.evidence", mapOf("count", String.valueOf(evidenceCount))));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.notes", mapOf("count", String.valueOf(notesCount))));
+            sender.sendMessage(localeManager.getMessage("print.punishment_detail.modifications", mapOf("count", String.valueOf(modsCount))));
             sender.sendMessage(localeManager.getMessage("print.punishment_detail.footer"));
 
             if (sender.isPlayer()) {
@@ -171,7 +172,7 @@ public class InspectCommand extends BaseCommand {
     }
 
     private void printLookup(CommandIssuer sender, String playerQuery) {
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
 
@@ -193,8 +194,8 @@ public class InspectCommand extends BaseCommand {
     private void displayPlayerInfo(CommandIssuer sender, PlayerLookupResponse.PlayerData data, LinkedAccountsResponse linkedResponse) {
         String playerName = data.getCurrentUsername() != null ? data.getCurrentUsername() : Constants.UNKNOWN;
 
-        sender.sendMessage(localeManager.getMessage("print.inspect.header", Map.of("player", playerName)));
-        sender.sendMessage(localeManager.getMessage("print.inspect.uuid", Map.of("player", playerName, "uuid", data.getMinecraftUuid())));
+        sender.sendMessage(localeManager.getMessage("print.inspect.header", mapOf("player", playerName)));
+        sender.sendMessage(localeManager.getMessage("print.inspect.uuid", mapOf("player", playerName, "uuid", data.getMinecraftUuid())));
 
         UUID playerUuid = UUID.fromString(data.getMinecraftUuid());
         CachedProfile targetProfile = cache.getPlayerProfile(playerUuid);
@@ -217,8 +218,8 @@ public class InspectCommand extends BaseCommand {
 
         String bannedStatus = isBanned ? COLOR_YES : COLOR_NO;
         String mutedStatus = isMuted ? COLOR_YES : COLOR_NO;
-        sender.sendMessage(localeManager.getMessage("print.inspect.currently_banned", Map.of("status", bannedStatus)));
-        sender.sendMessage(localeManager.getMessage("print.inspect.currently_muted", Map.of("status", mutedStatus)));
+        sender.sendMessage(localeManager.getMessage("print.inspect.currently_banned", mapOf("status", bannedStatus)));
+        sender.sendMessage(localeManager.getMessage("print.inspect.currently_muted", mapOf("status", mutedStatus)));
 
         sender.sendMessage(localeManager.getMessage("print.inspect.notes_label"));
         boolean hasNotes = false;
@@ -229,7 +230,7 @@ public class InspectCommand extends BaseCommand {
                     int noteOrdinal = 1;
                     for (Note note : account.getNotes()) {
                         if (noteOrdinal > MAX_NOTES_DISPLAYED) break;
-                        sender.sendMessage(localeManager.getMessage("print.inspect.note_entry", Map.of(
+                        sender.sendMessage(localeManager.getMessage("print.inspect.note_entry", mapOf(
                             "ordinal", String.valueOf(noteOrdinal),
                             "text", note.getText(),
                             "issuer", note.getIssuerName()
@@ -243,7 +244,7 @@ public class InspectCommand extends BaseCommand {
 
         int totalPunishments = 0;
         if (data.getPunishmentStats() != null) totalPunishments = data.getPunishmentStats().getTotalPunishments();
-        sender.sendMessage(localeManager.getMessage("print.inspect.total_punishments", Map.of("count", String.valueOf(totalPunishments))));
+        sender.sendMessage(localeManager.getMessage("print.inspect.total_punishments", mapOf("count", String.valueOf(totalPunishments))));
 
         sender.sendMessage(localeManager.getMessage("print.inspect.linked_accounts_label"));
         if (linkedResponse != null && !linkedResponse.getLinkedAccounts().isEmpty()) {
@@ -264,7 +265,7 @@ public class InspectCommand extends BaseCommand {
                 else if (accountMuted) status = localeManager.getMessage("player_lookup.status.muted");
                 else status = localeManager.getMessage("player_lookup.status.no_punishments");
 
-                sender.sendMessage(localeManager.getMessage("print.inspect.linked_account_entry", Map.of(
+                sender.sendMessage(localeManager.getMessage("print.inspect.linked_account_entry", mapOf(
                     "ordinal", String.valueOf(accountOrdinal),
                     "username", currentName,
                     "status", status
@@ -272,14 +273,14 @@ public class InspectCommand extends BaseCommand {
                 accountOrdinal++;
             }
             if (linkedResponse.getLinkedAccounts().size() > MAX_LINKED_ACCOUNTS_DISPLAYED)
-                sender.sendMessage(localeManager.getMessage("print.inspect.linked_account_more", Map.of(
+                sender.sendMessage(localeManager.getMessage("print.inspect.linked_account_more", mapOf(
                     "count", String.valueOf(linkedResponse.getLinkedAccounts().size() - MAX_LINKED_ACCOUNTS_DISPLAYED)
                 )));
         } else sender.sendMessage(localeManager.getMessage("print.inspect.no_linked_accounts"));
 
         int totalTickets = 0;
         if (data.getRecentTickets() != null) totalTickets = data.getRecentTickets().size();
-        sender.sendMessage(localeManager.getMessage("print.inspect.total_tickets", Map.of("count", String.valueOf(totalTickets))));
+        sender.sendMessage(localeManager.getMessage("print.inspect.total_tickets", mapOf("count", String.valueOf(totalTickets))));
 
         sender.sendMessage(localeManager.getMessage("print.inspect.footer"));
 
@@ -291,7 +292,7 @@ public class InspectCommand extends BaseCommand {
                 UUID senderUuid = sender.getUniqueId();
                 platform.runOnMainThread(() -> platform.sendJsonMessage(senderUuid, profileMessage));
             } else {
-                sender.sendMessage(localeManager.getMessage("print.inspect.profile_fallback", Map.of("url", profileUrl)));
+                sender.sendMessage(localeManager.getMessage("print.inspect.profile_fallback", mapOf("url", profileUrl)));
             }
         }
     }

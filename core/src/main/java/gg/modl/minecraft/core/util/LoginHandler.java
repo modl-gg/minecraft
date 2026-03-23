@@ -15,13 +15,9 @@ import lombok.Data;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Shared login response processing logic used by all platforms.
- * Each platform calls the API with its own async pattern, then delegates
- * the allow/deny decision to this handler.
- */
 public final class LoginHandler {
-    public sealed interface LoginResult {
+    private LoginHandler() {}
+    public interface LoginResult {
         @Data @AllArgsConstructor final class Allowed implements LoginResult {
             private final PlayerLoginResponse response;
         }
@@ -30,10 +26,6 @@ public final class LoginHandler {
         }
     }
 
-    /**
-     * Processes a successful login response into an allow/deny decision.
-     * Checks active bans, pending stat wipes, and maintenance mode.
-     */
     public static LoginResult processLoginResponse(
             PlayerLoginResponse response, UUID playerUuid,
             gg.modl.minecraft.api.http.ModlHttpClient httpClient,
@@ -65,11 +57,6 @@ public final class LoginHandler {
         return new LoginResult.Allowed(response);
     }
 
-    /**
-     * Determines the login result when the API call threw an exception.
-     * PanelUnavailableException and TimeoutException block login for safety;
-     * other errors allow login to prevent false kicks.
-     */
     public static LoginResult handleLoginError(Exception error) {
         Throwable cause = error;
         if (error instanceof java.util.concurrent.ExecutionException && error.getCause() != null) {
@@ -84,16 +71,9 @@ public final class LoginHandler {
             return new LoginResult.Denied("Login verification timed out. Please try again.");
         }
 
-        // allow login on other errors to prevent bad kicks
         return null;
     }
 
-    /**
-     * Caches mute and notification data from a login response.
-     * Called after a successful (allowed) login on all platforms.
-     * Notifications are delivered later by {@code SyncService.deliverPendingNotifications}
-     * (triggered from {@code ListenerHelper.handlePlayerJoin}).
-     */
     public static void cacheLoginData(
             UUID uuid, PlayerLoginResponse response,
             Cache cache, PluginLogger logger) {

@@ -8,9 +8,6 @@ public interface TicketCreator {
                       String tagsJoined, String priority, String createdServer,
                       String replayUrl);
 
-    /**
-     * Convenience overload without replayUrl (backwards compatible).
-     */
     default void createTicket(String creatorUuid, String creatorName, String type,
                               String subject, String description,
                               String reportedPlayerUuid, String reportedPlayerName,

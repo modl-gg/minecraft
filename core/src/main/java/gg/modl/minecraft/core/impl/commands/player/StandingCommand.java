@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class StandingCommand extends BaseCommand {
@@ -79,7 +80,7 @@ public class StandingCommand extends BaseCommand {
         long remaining = profile.getCooldowns().getRemainingMs(COOLDOWN_KEY, COOLDOWN_MS);
         int seconds = (int) Math.ceil(remaining / 1000.0);
         sender.sendMessage(localeManager.getMessage("standing.cooldown",
-                Map.of("seconds", String.valueOf(seconds))));
+                mapOf("seconds", String.valueOf(seconds))));
         return false;
     }
 

@@ -41,9 +41,6 @@ public class ChatInputManager {
         platform.sendMessage(playerUuid, "");
     }
 
-    /**
-     * Returns true if the message was consumed as pending input.
-     */
     public boolean handleChat(UUID playerUuid, String message) {
         PendingInput pending = pendingInputs.remove(playerUuid);
         if (pending == null) return false;
@@ -65,7 +62,6 @@ public class ChatInputManager {
         }
     }
 
-    /** Unlike cancelInput, does NOT fire the cancel callback (player is offline). */
     public void clearOnDisconnect(UUID playerUuid) {
         pendingInputs.remove(playerUuid);
     }

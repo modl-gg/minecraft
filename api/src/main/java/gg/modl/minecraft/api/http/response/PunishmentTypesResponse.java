@@ -1,15 +1,17 @@
 package gg.modl.minecraft.api.http.response;
 
 import gg.modl.minecraft.api.PunishmentTypeRegistry;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Data
+@Data @NoArgsConstructor @AllArgsConstructor
 public class PunishmentTypesResponse {
-    private final List<PunishmentTypeData> data;
-    private final int status;
-    
+    private List<PunishmentTypeData> data;
+    private int status;
+
     public boolean isSuccess() {
         return status >= 200 && status < 300;
     }

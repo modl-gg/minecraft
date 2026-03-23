@@ -27,6 +27,7 @@ import lombok.Getter;
 
 import java.util.*;
 import java.util.function.Consumer;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.OnlinePlayer> {
     @Getter
@@ -217,7 +218,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                     }
                     if (reports.size() > 5) {
                         lore.add(localeManager.getMessage("menus.online_players.reports_more",
-                                Map.of("count", String.valueOf(reports.size() - 5))));
+                                mapOf("count", String.valueOf(reports.size() - 5))));
                     }
                 }
             } else {
@@ -273,7 +274,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                 String panelName = platform.getCache() != null ? platform.getCache().getStaffDisplayName(viewerUuid) : null;
                 if (panelName == null) panelName = inGameName;
                 platform.sendMessage(viewerUuid, platform.getLocaleManager().getMessage("staff_mode.enabled"));
-                platform.staffBroadcast(platform.getLocaleManager().getMessage("staff_mode.enabled_broadcast", Map.of(
+                platform.staffBroadcast(platform.getLocaleManager().getMessage("staff_mode.enabled_broadcast", mapOf(
                         "staff", panelName, "in-game-name", inGameName)));
                 BridgeService bridgeService = platform.getBridgeService();
                 if (bridgeService != null) {

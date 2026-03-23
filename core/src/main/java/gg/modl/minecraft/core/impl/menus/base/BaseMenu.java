@@ -12,11 +12,6 @@ import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Base class for all modl.gg menus.
- * Provides common functionality like glass pane borders, back button handling,
- * and access to platform/HTTP client.
- */
 public abstract class BaseMenu extends SimpleMenu {
 
     protected final Platform platform;

@@ -19,12 +19,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 
-/**
- * Spigot setup wizard that intercepts console input via ServerCommandEvent.
- * System.in doesn't work on Spigot because JLine owns it. ServerCommandEvent
- * fires after JLine reads the line, so we capture it reliably.
- * The wizard runs on a background thread and blocks on a queue.
- */
 public class SpigotSetupWizard implements Listener {
     private final JavaPlugin plugin;
     private final PluginLogger logger;
@@ -40,12 +34,9 @@ public class SpigotSetupWizard implements Listener {
 
     public void start() {
         active = true;
-        // Register listener immediately to block joins and capture commands
         Bukkit.getPluginManager().registerEvents(this, plugin);
 
-        // Delay wizard prompts until after server startup finishes (60 ticks = 3s)
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            // Run wizard on a background thread so readLine() can block
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
                 try {
                     ConsoleInput input = new ServerCommandInput();
@@ -93,10 +84,6 @@ public class SpigotSetupWizard implements Listener {
         logger.info("Edit plugins/" + plugin.getName() + "/boot.yml and restart.");
     }
 
-    /**
-     * ConsoleInput backed by ServerCommandEvent — blocks on a queue
-     * until the server operator types something in the console.
-     */
     private class ServerCommandInput implements ConsoleInput {
         @Override
         public String readLine(String prompt) {

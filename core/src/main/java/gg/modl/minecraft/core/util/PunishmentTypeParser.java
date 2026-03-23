@@ -8,7 +8,8 @@ import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 
 import java.util.List;
 
-public class PunishmentTypeParser {
+public final class PunishmentTypeParser {
+    private PunishmentTypeParser() {}
     private static final Gson gson = new Gson();
     private static final String[] SEVERITY_LEVELS = {"low", "regular", "severe"}, OFFENSE_LEVELS = {"first", "medium", "habitual"};
     private static final int MAX_ADMINISTRATIVE_ORDINAL = 5;

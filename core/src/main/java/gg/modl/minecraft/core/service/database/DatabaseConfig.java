@@ -21,7 +21,6 @@ public class DatabaseConfig {
         @Getter private final String driverClass;
         private final String urlFormat;
 
-
         public String buildJdbcUrl(String host, int port, String database) {
             if (this == H2) return String.format(urlFormat, database);
             return String.format(urlFormat, host, port, database);
@@ -43,4 +42,3 @@ public class DatabaseConfig {
         return type.getDriverClass();
     }
 }
-

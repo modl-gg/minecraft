@@ -14,11 +14,13 @@ import java.util.*;
 @Data
 public class BootConfig {
     private static final String FILE_NAME = "boot.yml";
+    static final String PLACEHOLDER_API_KEY = "your-api-key-here";
 
     private Mode mode = Mode.STANDALONE;
     private String apiKey = "";
     private String panelUrl = "";
     private boolean testingApi = false;
+    private String proxyType;
     private List<BackendBridge> backendBridges = new ArrayList<>();
 
     public enum Mode {
@@ -28,19 +30,16 @@ public class BootConfig {
 
         public static Mode fromString(String value) {
             if (value == null) return STANDALONE;
-            return switch (value.toLowerCase().replace("_", "-")) {
-                case "bridge-only", "bridge_only" -> BRIDGE_ONLY;
-                case "proxy" -> PROXY;
-                default -> STANDALONE;
-            };
+            String normalized = value.toLowerCase().replace("_", "-");
+            if ("bridge-only".equals(normalized)) return BRIDGE_ONLY;
+            if ("proxy".equals(normalized)) return PROXY;
+            return STANDALONE;
         }
 
         public String toYaml() {
-            return switch (this) {
-                case STANDALONE -> "standalone";
-                case BRIDGE_ONLY -> "bridge-only";
-                case PROXY -> "proxy";
-            };
+            if (this == STANDALONE) return "standalone";
+            if (this == BRIDGE_ONLY) return "bridge-only";
+            return "proxy";
         }
     }
 
@@ -58,7 +57,7 @@ public class BootConfig {
     }
 
     public boolean isValid() {
-        if (apiKey == null || apiKey.isEmpty() || apiKey.equals("your-api-key-here")) {
+        if (apiKey == null || apiKey.isEmpty() || apiKey.equals(PLACEHOLDER_API_KEY)) {
             return mode == Mode.BRIDGE_ONLY; // bridge-only can work without API key for now
         }
         if (mode != Mode.BRIDGE_ONLY && (panelUrl == null || panelUrl.isEmpty())) {
@@ -109,12 +108,15 @@ public class BootConfig {
         config.setApiKey(getStr(data, "api-key", ""));
         config.setPanelUrl(getStr(data, "panel-url", ""));
         config.setTestingApi(getBool(data, "testing-api", false));
+        config.setProxyType(getStr(data, "proxy-type", null));
 
         Object backendsObj = data.get("backend-bridges");
-        if (backendsObj instanceof List<?> list) {
+        if (backendsObj instanceof List<?>) {
+            List<?> list = (List<?>) backendsObj;
             List<BackendBridge> bridges = new ArrayList<>();
             for (Object item : list) {
-                if (item instanceof Map<?, ?> itemMap) {
+                if (item instanceof Map<?, ?>) {
+                    Map<?, ?> itemMap = (Map<?, ?>) item;
                     BackendBridge bb = new BackendBridge();
                     bb.setHost(getStr((Map<String, Object>) itemMap, "host", "127.0.0.1"));
                     bb.setPort(getInt((Map<String, Object>) itemMap, "port", 25590));
@@ -133,6 +135,7 @@ public class BootConfig {
         map.put("api-key", apiKey);
         map.put("panel-url", panelUrl);
         map.put("testing-api", testingApi);
+        if (proxyType != null) map.put("proxy-type", proxyType);
 
         if (mode == Mode.PROXY && !backendBridges.isEmpty()) {
             List<Map<String, Object>> backends = new ArrayList<>();
@@ -151,7 +154,7 @@ public class BootConfig {
     public static void saveTemplate(Path dataDir) throws IOException {
         Path file = dataDir.resolve(FILE_NAME);
         if (!Files.exists(dataDir)) Files.createDirectories(dataDir);
-        try (java.io.Writer writer = Files.newBufferedWriter(file)) {
+        try (Writer writer = Files.newBufferedWriter(file)) {
             writer.write("# modl.gg Boot Configuration\n");
             writer.write("# Edit this file and restart the server.\n");
             writer.write("# To register a new server, visit https://modl.gg/register\n");
@@ -160,7 +163,7 @@ public class BootConfig {
             writer.write("mode: proxy\n");
             writer.write("\n");
             writer.write("# Your API key from the modl.gg panel\n");
-            writer.write("api-key: \"your-api-key-here\"\n");
+            writer.write("api-key: \"" + PLACEHOLDER_API_KEY + "\"\n");
             writer.write("\n");
             writer.write("# Your panel URL (e.g. https://myserver.modl.gg)\n");
             writer.write("panel-url: \"https://yourserver.modl.gg\"\n");
@@ -177,16 +180,16 @@ public class BootConfig {
 
     private static String getStr(Map<String, Object> map, String key, String def) {
         Object val = map.get(key);
-        return val instanceof String s ? s : def;
+        return val instanceof String ? (String) val : def;
     }
 
     private static int getInt(Map<String, Object> map, String key, int def) {
         Object val = map.get(key);
-        return val instanceof Number n ? n.intValue() : def;
+        return val instanceof Number ? ((Number) val).intValue() : def;
     }
 
     private static boolean getBool(Map<String, Object> map, String key, boolean def) {
         Object val = map.get(key);
-        return val instanceof Boolean b ? b : def;
+        return val instanceof Boolean ? (Boolean) val : def;
     }
 }

@@ -14,9 +14,9 @@ import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
 
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class IAmMutedCommand extends BaseCommand {
@@ -60,10 +60,10 @@ public class IAmMutedCommand extends BaseCommand {
         }
 
         AbstractPlayer senderPlayer = platform.getAbstractPlayer(senderUuid, false);
-        platform.sendMessage(targetPlayer.getUuid(), localeManager.getMessage("iammuted.notification_to_target", Map.of(
+        platform.sendMessage(targetPlayer.getUuid(), localeManager.getMessage("iammuted.notification_to_target", mapOf(
             "sender", senderPlayer.getUsername()
         )));
-        sender.sendMessage(localeManager.getMessage("iammuted.success_message", Map.of(
+        sender.sendMessage(localeManager.getMessage("iammuted.success_message", mapOf(
             "target", targetPlayer.getUsername()
         )));
 
@@ -79,13 +79,10 @@ public class IAmMutedCommand extends BaseCommand {
         long remaining = profile.getCooldowns().getRemainingMs(COOLDOWN_KEY, COOLDOWN_DURATION);
         long remainingMinutes = TimeUnit.MILLISECONDS.toMinutes(remaining);
         long remainingSeconds = TimeUnit.MILLISECONDS.toSeconds(remaining) % SECONDS_PER_MINUTE;
-        sender.sendMessage(localeManager.getMessage("iammuted.cooldown_message", Map.of(
+        sender.sendMessage(localeManager.getMessage("iammuted.cooldown_message", mapOf(
             "minutes", String.valueOf(remainingMinutes),
             "seconds", String.valueOf(remainingSeconds)
         )));
         return false;
     }
-
-    /** @deprecated No cooldown state is destroyed with the player profile on disconnect. */
-    public static void clearOnDisconnect(UUID uuid) {}
 }

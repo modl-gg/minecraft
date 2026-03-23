@@ -23,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
 import java.util.regex.Pattern;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class PardonCommand extends BaseCommand {
@@ -72,7 +73,7 @@ public class PardonCommand extends BaseCommand {
     }
 
     private void pardonByPlayerName(CommandIssuer sender, String playerName, String issuerName, String issuerId, String reason, String type) {
-        sender.sendMessage(localeManager.getMessage("pardon.processing_player", Map.of("player", playerName)));
+        sender.sendMessage(localeManager.getMessage("pardon.processing_player", mapOf("player", playerName)));
 
         String displayType = type != null ? type : "punishment";
 
@@ -81,10 +82,10 @@ public class PardonCommand extends BaseCommand {
         )).thenAccept(response -> {
             if (response.hasPardoned()) {
                 sender.sendMessage(localeManager.getMessage("pardon.success_player",
-                    Map.of("player", playerName, "type", displayType, "count", String.valueOf(response.getPardonedCount()))));
+                    mapOf("player", playerName, "type", displayType, "count", String.valueOf(response.getPardonedCount()))));
                 invalidatePlayerCache(playerName, type);
             } else sender.sendMessage(localeManager.getMessage("pardon.no_active_punishment",
-                    Map.of("player", playerName, "type", displayType)));
+                    mapOf("player", playerName, "type", displayType)));
         }).exceptionally(throwable -> {
             CommandUtil.handleException(sender, throwable, localeManager, "pardon.error");
             return null;
@@ -99,10 +100,10 @@ public class PardonCommand extends BaseCommand {
         httpClientHolder.getClient().pardonPunishment(request).thenAccept(response -> {
             if (response.hasPardoned()) {
                 sender.sendMessage(localeManager.getMessage("pardon.success_id",
-                    Map.of("id", target)));
+                    mapOf("id", target)));
                 cache.clear();
             } else sender.sendMessage(localeManager.getMessage("pardon.already_pardoned_id",
-                    Map.of("id", target)));
+                    mapOf("id", target)));
         }).exceptionally(throwable -> {
             Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
 
@@ -117,13 +118,13 @@ public class PardonCommand extends BaseCommand {
                 pardonByPlayerName(sender, target, issuerName, issuerId, reason, expectedType);
             else if (errorMessage != null && errorMessage.toLowerCase().contains("type")) {
                 if ("ban".equals(expectedType)) sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_ban",
-                        Map.of("id", target)));
+                        mapOf("id", target)));
                 else if ("mute".equals(expectedType)) sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_mute",
-                        Map.of("id", target)));
+                        mapOf("id", target)));
                 else sender.sendMessage(localeManager.getMessage("pardon.error",
-                        Map.of("error", localeManager.sanitizeErrorMessage(errorMessage))));
+                        mapOf("error", localeManager.sanitizeErrorMessage(errorMessage))));
             } else sender.sendMessage(localeManager.getMessage("pardon.error",
-                    Map.of("error", localeManager.sanitizeErrorMessage(errorMessage != null ? errorMessage : "Unknown error"))));
+                    mapOf("error", localeManager.sanitizeErrorMessage(errorMessage != null ? errorMessage : "Unknown error"))));
             return null;
         });
     }

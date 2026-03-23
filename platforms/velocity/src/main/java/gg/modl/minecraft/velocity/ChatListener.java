@@ -51,7 +51,8 @@ public class ChatListener {
 
     @Subscribe(order = PostOrder.LATE)
     public void onCommandExecute(CommandExecuteEvent event) {
-        if (!(event.getCommandSource() instanceof Player player)) return;
+        if (!(event.getCommandSource() instanceof Player)) return;
+        Player player = (Player) event.getCommandSource();
 
         CommandInterceptHandler.CommandResult result = CommandInterceptHandler.handleCommand(
                 player.getUniqueId(), player.getUsername(),

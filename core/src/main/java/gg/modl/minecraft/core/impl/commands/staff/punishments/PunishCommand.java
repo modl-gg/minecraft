@@ -37,10 +37,11 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class PunishCommand extends BaseCommand {
-    private static final Map<String, String> SEVERITY_ALIASES = Map.of(
+    private static final Map<String, String> SEVERITY_ALIASES = mapOf(
         "lenient", "low",
         "normal", "regular",
         "regular", "regular",
@@ -49,7 +50,7 @@ public class PunishCommand extends BaseCommand {
         "low", "low"
     );
 
-    private static final Set<String> VALID_SEVERITIES = Set.of("low", "regular", "severe");
+    private static final Set<String> VALID_SEVERITIES = setOf("low", "regular", "severe");
     private static final String DEFAULT_SEVERITY = "regular";
     private static final int MANUAL_PUNISHMENT_MAX_ORDINAL = 5, MAX_TYPE_WORD_LENGTH = 4;
 
@@ -68,7 +69,7 @@ public class PunishCommand extends BaseCommand {
     @Conditions("staff")
     public void punish(CommandIssuer sender, @Name("target") Account target, @Name("args") @Optional String[] args) {
         if (target == null) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", Map.of()));
+            sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", mapOf()));
             return;
         }
 
@@ -78,12 +79,12 @@ public class PunishCommand extends BaseCommand {
         }
 
         if (args == null || args.length == 0) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.invalid_syntax", Map.of()));
+            sender.sendMessage(localeManager.getPunishmentMessage("general.invalid_syntax", mapOf()));
             return;
         }
 
         if (!cacheInitialized || cachedPunishmentTypes.isEmpty()) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_types_not_loaded", Map.of()));
+            sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_types_not_loaded", mapOf()));
             return;
         }
 
@@ -94,7 +95,7 @@ public class PunishCommand extends BaseCommand {
                     .map(PunishmentTypesResponse.PunishmentTypeData::getName)
                     .collect(Collectors.joining(", "));
             sender.sendMessage(localeManager.getPunishmentMessage("general.invalid_punishment_type",
-                Map.of("types", availableTypes)));
+                mapOf("types", availableTypes)));
             return;
         }
 
@@ -102,7 +103,7 @@ public class PunishCommand extends BaseCommand {
         String punishmentPermission = PermissionUtil.formatPunishmentPermission(punishmentType.getName());
         if (!PermissionUtil.hasPermission(sender, cache, punishmentPermission)) {
             sender.sendMessage(localeManager.getPunishmentMessage("general.no_permission_punishment",
-                Map.of("type", punishmentType.getName())));
+                mapOf("type", punishmentType.getName())));
             return;
         }
 
@@ -162,7 +163,7 @@ public class PunishCommand extends BaseCommand {
                     platform.runOnMainThread(() ->
                         PunishmentActionMessages.sendPunishmentActions(platform, sender.getUniqueId(), response.getPunishmentId()));
             } else sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
-                    Map.of("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
+                    mapOf("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
         }).exceptionally(throwable -> CommandUtil.handleApiError(sender, throwable, localeManager));
     }
 
@@ -233,7 +234,7 @@ public class PunishCommand extends BaseCommand {
             else if (arg.equalsIgnoreCase("-silent") || arg.equalsIgnoreCase("-s")) result.silent = true;
             else if (arg.equalsIgnoreCase("-stat-wipe") || arg.equalsIgnoreCase("-sw")) result.statWipe = true;
             else {
-                if (!reasonBuilder.isEmpty()) reasonBuilder.append(" ");
+                if (reasonBuilder.length() > 0) reasonBuilder.append(" ");
                 reasonBuilder.append(arg);
             }
         }
@@ -281,23 +282,22 @@ public class PunishCommand extends BaseCommand {
     private String validatePunishmentCompatibility(PunishmentArgs args, PunishmentTypesResponse.PunishmentTypeData punishmentType) {
         if (Boolean.TRUE.equals(punishmentType.getSingleSeverityPunishment()) && args.severity != null)
             return localeManager.getPunishmentMessage("validation.single_severity_error",
-                Map.of("type", punishmentType.getName()));
+                mapOf("type", punishmentType.getName()));
         if (Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange()) && args.severity != null)
             return localeManager.getPunishmentMessage("validation.permanent_skin_change_error",
-                Map.of("type", punishmentType.getName()));
+                mapOf("type", punishmentType.getName()));
         if (Boolean.TRUE.equals(punishmentType.getPermanentUntilUsernameChange()) && args.severity != null)
             return localeManager.getPunishmentMessage("validation.permanent_username_change_error",
-                Map.of("type", punishmentType.getName()));
+                mapOf("type", punishmentType.getName()));
         if (args.altBlocking && !Boolean.TRUE.equals(punishmentType.getCanBeAltBlocking()))
             return localeManager.getPunishmentMessage("validation.alt_blocking_not_supported",
-                Map.of("type", punishmentType.getName()));
+                mapOf("type", punishmentType.getName()));
         if (args.statWipe && !Boolean.TRUE.equals(punishmentType.getCanBeStatWiping()))
             return localeManager.getPunishmentMessage("validation.stat_wiping_not_supported",
-                Map.of("type", punishmentType.getName()));
+                mapOf("type", punishmentType.getName()));
         return null;
     }
 
-    /** Matches multi-word punishment types by trying longest-first greedy matching. */
     private ParsedCommand parsePunishmentTypeAndArgs(String[] args, List<PunishmentTypesResponse.PunishmentTypeData> punishmentTypes) {
         for (int i = Math.min(args.length, MAX_TYPE_WORD_LENGTH); i >= 1; i--) {
             String potentialType = String.join(" ", Arrays.copyOfRange(args, 0, i));

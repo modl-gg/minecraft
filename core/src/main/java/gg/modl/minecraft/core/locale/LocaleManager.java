@@ -11,7 +11,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -20,24 +19,25 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class LocaleManager {
     private static final Pattern LEGACY_CODE_PATTERN = Pattern.compile("&([0-9a-fk-orA-FK-OR])");
     private static final Pattern EXCEPTION_PREFIX_PATTERN = Pattern.compile("^[a-zA-Z0-9_.]+Exception: .+");
     private static final Pattern JAVA_PREFIX_PATTERN = Pattern.compile("^java\\.[a-zA-Z0-9_.]+: .+");
     private static final Pattern LOCALE_PATH_PATTERN = Pattern.compile(".*\\.[a-z_]+\\.[a-z_]+.*");
-    private static final Map<Character, String> LEGACY_TO_MINIMESSAGE = Map.ofEntries(
-            Map.entry('0', "<black>"), Map.entry('1', "<dark_blue>"),
-            Map.entry('2', "<dark_green>"), Map.entry('3', "<dark_aqua>"),
-            Map.entry('4', "<dark_red>"), Map.entry('5', "<dark_purple>"),
-            Map.entry('6', "<gold>"), Map.entry('7', "<gray>"),
-            Map.entry('8', "<dark_gray>"), Map.entry('9', "<blue>"),
-            Map.entry('a', "<green>"), Map.entry('b', "<aqua>"),
-            Map.entry('c', "<red>"), Map.entry('d', "<light_purple>"),
-            Map.entry('e', "<yellow>"), Map.entry('f', "<white>"),
-            Map.entry('k', "<obfuscated>"), Map.entry('l', "<bold>"),
-            Map.entry('m', "<strikethrough>"), Map.entry('n', "<underlined>"),
-            Map.entry('o', "<italic>"), Map.entry('r', "<reset>")
+    private static final Map<Character, String> LEGACY_TO_MINIMESSAGE = mapOfEntries(
+            entry('0', "<black>"), entry('1', "<dark_blue>"),
+            entry('2', "<dark_green>"), entry('3', "<dark_aqua>"),
+            entry('4', "<dark_red>"), entry('5', "<dark_purple>"),
+            entry('6', "<gold>"), entry('7', "<gray>"),
+            entry('8', "<dark_gray>"), entry('9', "<blue>"),
+            entry('a', "<green>"), entry('b', "<aqua>"),
+            entry('c', "<red>"), entry('d', "<light_purple>"),
+            entry('e', "<yellow>"), entry('f', "<white>"),
+            entry('k', "<obfuscated>"), entry('l', "<bold>"),
+            entry('m', "<strikethrough>"), entry('n', "<underlined>"),
+            entry('o', "<italic>"), entry('r', "<reset>")
     );
 
     @Getter private Map<String, Object> messages;
@@ -88,7 +88,7 @@ public class LocaleManager {
     }
 
     public String getMessage(String path) {
-        return getMessage(path, Map.of());
+        return getMessage(path, mapOf());
     }
 
     public String getMessage(String path, Map<String, String> placeholders) {
@@ -101,7 +101,8 @@ public class LocaleManager {
             value = getNestedValue(messages, path);
         }
 
-        if (value instanceof String message) {
+        if (value instanceof String) {
+            String message = (String) value;
             for (Map.Entry<String, String> entry : placeholders.entrySet())
                 message = message.replace("{" + entry.getKey() + "}", entry.getValue());
 
@@ -112,7 +113,7 @@ public class LocaleManager {
 
     @SuppressWarnings("unchecked")
     public List<String> getMessageList(String path) {
-        return getMessageList(path, Map.of());
+        return getMessageList(path, mapOf());
     }
 
     @SuppressWarnings("unchecked")
@@ -122,9 +123,9 @@ public class LocaleManager {
             List<String> list = (List<String>) value;
             return list.stream()
                     .map(line -> replacePlaceholders(line, placeholders))
-                    .toList();
+                    .collect(Collectors.toList());
         }
-        return List.of("&cMissing locale list: " + path);
+        return listOf("&cMissing locale list: " + path);
     }
 
     private String resolveAsJoinedLines(String path, Map<String, String> variables) {
@@ -172,7 +173,7 @@ public class LocaleManager {
 
     private String legacyToMiniMessage(String message) {
         Matcher matcher = LEGACY_CODE_PATTERN.matcher(message);
-        StringBuilder sb = new StringBuilder();
+        StringBuffer sb = new StringBuffer();
         while (matcher.find()) {
             String replacement = LEGACY_TO_MINIMESSAGE.get(Character.toLowerCase(matcher.group(1).charAt(0)));
             matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
@@ -216,7 +217,6 @@ public class LocaleManager {
         variables.put("issuer", issuer != null ? issuer : "Staff");
 
         variables.put("will_expire", getWillExpireMessage(punishment));
-        String category = punishment.getCategory();
         return getPlayerNotificationMessageWithCategory(ordinal, punishmentType, variables);
     }
 
@@ -255,12 +255,11 @@ public class LocaleManager {
     private String getDefaultPlayerPathForCategory(String category) {
         if (category == null) return "punishments.player_notifications.default";
 
-        return switch (category.toUpperCase()) {
-            case "KICK" -> "punishments.player_notifications.kick_default";
-            case "MUTE" -> "punishments.player_notifications.mute_default";
-            case "BAN" -> "punishments.player_notifications.ban_default";
-            default -> "punishments.player_notifications.default";
-        };
+        String upper = category.toUpperCase();
+        if ("KICK".equals(upper)) return "punishments.player_notifications.kick_default";
+        if ("MUTE".equals(upper)) return "punishments.player_notifications.mute_default";
+        if ("BAN".equals(upper)) return "punishments.player_notifications.ban_default";
+        return "punishments.player_notifications.default";
     }
 
     private String getDefaultPublicNotification(int ordinal, Map<String, String> variables) {
@@ -273,25 +272,23 @@ public class LocaleManager {
     }
 
     private static String suffixForOrdinal(int ordinal) {
-        return switch (ordinal) {
-            case 0 -> "kick_default";
-            case 1 -> "mute_default";
-            default -> ordinal >= 2 ? "ban_default" : "default";
-        };
+        if (ordinal == 0) return "kick_default";
+        if (ordinal == 1) return "mute_default";
+        return ordinal >= 2 ? "ban_default" : "default";
     }
 
     private String getTenseForContext(PunishmentMessages.MessageContext context) {
-        return switch (context) {
-            case SYNC, CHAT -> getRawMessage("punishment_words.tense_active", "are");
-            default -> getRawMessage("punishment_words.tense_default", "have been");
-        };
+        if (context == PunishmentMessages.MessageContext.SYNC || context == PunishmentMessages.MessageContext.CHAT) {
+            return getRawMessage("punishment_words.tense_active", "are");
+        }
+        return getRawMessage("punishment_words.tense_default", "have been");
     }
 
     private String getTense2ForContext(PunishmentMessages.MessageContext context) {
-        return switch (context) {
-            case SYNC, CHAT -> getRawMessage("punishment_words.tense2_active", "is");
-            default -> getRawMessage("punishment_words.tense2_default", "has been");
-        };
+        if (context == PunishmentMessages.MessageContext.SYNC || context == PunishmentMessages.MessageContext.CHAT) {
+            return getRawMessage("punishment_words.tense2_active", "is");
+        }
+        return getRawMessage("punishment_words.tense2_default", "has been");
     }
 
     private String getTempTemporary() {
@@ -304,7 +301,7 @@ public class LocaleManager {
 
     private String getRawMessage(String path, String fallback) {
         Object value = getNestedValue(messages, path);
-        return value instanceof String s ? s : fallback;
+        return value instanceof String ? (String) value : fallback;
     }
 
     private String getDurationFormatted(SimplePunishment punishment, String punishmentType) {
@@ -342,17 +339,17 @@ public class LocaleManager {
 
         StringBuilder duration = new StringBuilder();
 
-        if (days > 0) duration.append(getMessage("config.duration_format.days", Map.of("days", String.valueOf(days))));
+        if (days > 0) duration.append(getMessage("config.duration_format.days", mapOf("days", String.valueOf(days))));
         if (hours > 0) {
-            if (!duration.isEmpty()) duration.append(" ");
-            duration.append(getMessage("config.duration_format.hours", Map.of("hours", String.valueOf(hours))));
+            if (duration.length() > 0) duration.append(" ");
+            duration.append(getMessage("config.duration_format.hours", mapOf("hours", String.valueOf(hours))));
         }
         if (minutes > 0) {
-            if (!duration.isEmpty()) duration.append(" ");
-            duration.append(getMessage("config.duration_format.minutes", Map.of("minutes", String.valueOf(minutes))));
+            if (duration.length() > 0) duration.append(" ");
+            duration.append(getMessage("config.duration_format.minutes", mapOf("minutes", String.valueOf(minutes))));
         }
-        if (seconds > 0 && duration.isEmpty()) {
-            duration.append(getMessage("config.duration_format.seconds", Map.of("seconds", String.valueOf(seconds))));
+        if (seconds > 0 && duration.length() == 0) {
+            duration.append(getMessage("config.duration_format.seconds", mapOf("seconds", String.valueOf(seconds))));
         }
 
         return duration.toString();
@@ -409,7 +406,6 @@ public class LocaleManager {
         public String get(String path) {
             return localeManager.getPunishmentMessage(path, variables);
         }
-
     }
 
     public void reloadLocale() {

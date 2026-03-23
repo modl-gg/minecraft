@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class ConfigManager {
 
@@ -159,7 +160,6 @@ public class ConfigManager {
                 }
             }
 
-
             if (gui == null) {
                 Path dedicatedFile = dataFolder.resolve("standing_gui.yml");
                 if (Files.exists(dedicatedFile)) try (InputStream is = Files.newInputStream(dedicatedFile)) {
@@ -196,7 +196,7 @@ public class ConfigManager {
         return config;
     }
 
-    public static Map<Integer, String> getDefaultPunishmentTypeItems() {
+    private static Map<Integer, String> getDefaultPunishmentTypeItems() {
         Map<Integer, String> items = new HashMap<>();
         items.put(0, "minecraft:leather_boots");
         items.put(1, "minecraft:paper");
@@ -220,7 +220,7 @@ public class ConfigManager {
     }
 
     @SuppressWarnings("unchecked")
-    public static Map<String, Object> loadSection(Path dataFolder, String fileName, String sectionName, PluginLogger logger) {
+    private static Map<String, Object> loadSection(Path dataFolder, String fileName, String sectionName, PluginLogger logger) {
         Path dedicatedFile = dataFolder.resolve(fileName);
         if (Files.exists(dedicatedFile)) {
             try (InputStream is = Files.newInputStream(dedicatedFile)) {
@@ -273,14 +273,14 @@ public class ConfigManager {
             List<String> lines = Files.readAllLines(configFile, StandardCharsets.UTF_8);
 
             migratePunishGuiSection(lines);
-            migrateSection(lines);
-            List<String> sectionsToRemove = List.of(
+            migrateReportGuiSection(lines);
+            List<String> sectionsToRemove = listOf(
                     "punish_gui", "report_gui",
                     "staff_members_menu"
             );
             List<String> cleaned = removeTopLevelSections(lines, sectionsToRemove);
             if (cleaned.size() < lines.size()) {
-                Files.writeString(configFile, String.join("\n", cleaned) + "\n", StandardCharsets.UTF_8);
+                Files.write(configFile, (String.join("\n", cleaned) + "\n").getBytes(StandardCharsets.UTF_8));
                 logger.info("Removed migrated GUI sections from config.yml");
             }
         } catch (Exception e) { logger.warning("Failed to migrate GUI configs from config.yml: " + e.getMessage()); }
@@ -293,19 +293,19 @@ public class ConfigManager {
         String punishContent = extractAndUnindentSection(lines, "punish_gui");
         if (punishContent == null) return;
 
-        Files.writeString(targetFile, punishContent.stripTrailing() + "\n", StandardCharsets.UTF_8);
+        Files.write(targetFile, (punishContent.replaceAll("\\s+$", "") + "\n").getBytes(StandardCharsets.UTF_8));
         logger.info("Migrated punish GUI config from config.yml to punish_gui.yml");
     }
 
-    private void migrateSection(List<String> lines) throws IOException {
+    private void migrateReportGuiSection(List<String> lines) throws IOException {
         Path targetFile = dataFolder.resolve("report_gui.yml");
         if (Files.exists(targetFile)) return;
 
         String content = extractAndUnindentSection(lines, "report_gui");
         if (content == null) return;
 
-        Files.writeString(targetFile, content.stripTrailing() + "\n", StandardCharsets.UTF_8);
-        logger.info("Migrated " + "report_gui" + " from config.yml to " + "report_gui.yml");
+        Files.write(targetFile, (content.replaceAll("\\s+$", "") + "\n").getBytes(StandardCharsets.UTF_8));
+        logger.info("Migrated report_gui from config.yml to report_gui.yml");
     }
 
     static String extractAndUnindentSection(List<String> lines, String key) {
@@ -321,11 +321,11 @@ public class ConfigManager {
         List<String> content = new ArrayList<>();
         for (int i = start; i < lines.size(); i++) {
             String line = lines.get(i);
-            if (!line.isBlank() && !Character.isWhitespace(line.charAt(0))) break;
+            if (!line.trim().isEmpty() && !Character.isWhitespace(line.charAt(0))) break;
             content.add(line);
         }
 
-        while (!content.isEmpty() && content.get(content.size() - 1).isBlank()) {
+        while (!content.isEmpty() && content.get(content.size() - 1).trim().isEmpty()) {
             content.remove(content.size() - 1);
         }
 
@@ -333,7 +333,7 @@ public class ConfigManager {
 
         int minIndent = Integer.MAX_VALUE;
         for (String line : content) {
-            if (line.isBlank()) continue;
+            if (line.trim().isEmpty()) continue;
             int indent = 0;
             while (indent < line.length() && line.charAt(indent) == ' ') indent++;
             minIndent = Math.min(minIndent, indent);
@@ -342,10 +342,10 @@ public class ConfigManager {
 
         StringBuilder sb = new StringBuilder();
         for (String line : content) {
-            if (line.isBlank()) sb.append("\n");
+            if (line.trim().isEmpty()) sb.append("\n");
             else sb.append(line.substring(Math.min(minIndent, line.length()))).append("\n");
         }
-        return sb.toString().stripTrailing();
+        return sb.toString().replaceAll("\\s+$", "");
     }
 
     static List<String> removeTopLevelSections(List<String> lines, List<String> sectionKeys) {
@@ -363,12 +363,12 @@ public class ConfigManager {
                 i++;
                 while (i < lines.size()) {
                     String line = lines.get(i);
-                    if (!line.isBlank() && !Character.isWhitespace(line.charAt(0))) break;
+                    if (!line.trim().isEmpty() && !Character.isWhitespace(line.charAt(0))) break;
 
                     i++;
                 }
 
-                while (!result.isEmpty() && result.get(result.size() - 1).isBlank()) {
+                while (!result.isEmpty() && result.get(result.size() - 1).trim().isEmpty()) {
                     result.remove(result.size() - 1);
                 }
 
@@ -378,7 +378,7 @@ public class ConfigManager {
             }
         }
 
-        while (!result.isEmpty() && result.get(result.size() - 1).isBlank())
+        while (!result.isEmpty() && result.get(result.size() - 1).trim().isEmpty())
             result.remove(result.size() - 1);
 
         return result;

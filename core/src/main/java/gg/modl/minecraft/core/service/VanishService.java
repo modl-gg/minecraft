@@ -27,7 +27,6 @@ public class VanishService {
         return profile != null && profile.isVanished();
     }
 
-    /** @return true if now vanished, false if now visible */
     public boolean toggle(UUID uuid) {
         CachedProfile profile = registry.getProfile(uuid);
         if (profile == null) return false;

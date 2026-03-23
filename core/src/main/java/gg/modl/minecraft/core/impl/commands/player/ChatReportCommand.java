@@ -16,7 +16,7 @@ import gg.modl.minecraft.core.service.ChatMessageCache;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
-import java.util.Map;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class ChatReportCommand extends BaseCommand {
@@ -48,7 +48,7 @@ public class ChatReportCommand extends BaseCommand {
         );
 
         if (chatLog.isEmpty()) {
-            sender.sendMessage(localeManager.getMessage("messages.no_chat_logs_available", Map.of("player", targetPlayer.getUsername())));
+            sender.sendMessage(localeManager.getMessage("messages.no_chat_logs_available", mapOf("player", targetPlayer.getUsername())));
             return;
         }
 
@@ -68,8 +68,8 @@ public class ChatReportCommand extends BaseCommand {
             targetPlayer.getUsername(),
             "normal",
             createdServer,
-            List.of(chatLog.split("\n")),
-            List.of()
+            listOf(chatLog.split("\n")),
+            listOf()
         );
 
         ticketUtil.submitFinishedTicket(sender, httpClient, platform, localeManager, panelUrl, request, "Chat report", "chat");

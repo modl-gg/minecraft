@@ -18,8 +18,8 @@ import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
 
-import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @CommandAlias("%cmd_target") @Conditions("staff|player") @RequiredArgsConstructor
 public class TargetCommand extends BaseCommand {
@@ -61,7 +61,7 @@ public class TargetCommand extends BaseCommand {
 
         staffModeService.setTarget(staffUuid, targetUuid);
         bridgeService.sendTargetRequest(staffUuid.toString(), targetUuid.toString());
-        sender.sendMessage(localeManager.getMessage("target.targeting", Map.of("player", targetName)));
+        sender.sendMessage(localeManager.getMessage("target.targeting", mapOf("player", targetName)));
     }
 
     private void handleNoTarget(CommandIssuer sender, UUID staffUuid) {
@@ -79,7 +79,7 @@ public class TargetCommand extends BaseCommand {
 
         if (targetServer != null && !targetServer.equals(staffServer)) {
             platform.connectToServer(staffUuid, targetServer);
-            sender.sendMessage(localeManager.getMessage("target.connecting", Map.of(
+            sender.sendMessage(localeManager.getMessage("target.connecting", mapOf(
                     "player", targetName, "server", targetServer
             )));
         }
@@ -96,7 +96,7 @@ public class TargetCommand extends BaseCommand {
         if (panelName == null) panelName = inGameName;
 
         sender.sendMessage(localeManager.getMessage("staff_mode.enabled"));
-        platform.staffBroadcast(localeManager.getMessage("staff_mode.enabled_broadcast", Map.of(
+        platform.staffBroadcast(localeManager.getMessage("staff_mode.enabled_broadcast", mapOf(
                 "staff", panelName, "in-game-name", inGameName
         )));
         bridgeService.sendStaffModeEnter(staffUuid.toString(), inGameName, panelName);

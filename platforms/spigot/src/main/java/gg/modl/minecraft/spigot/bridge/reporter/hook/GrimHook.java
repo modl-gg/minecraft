@@ -13,13 +13,14 @@ import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import static gg.modl.minecraft.core.util.Java8Collections.*;
+
 import java.util.List;
 import java.util.UUID;
 
 @RequiredArgsConstructor
 public class GrimHook implements AntiCheatHook {
     private static final String HOOK_NAME = "GrimAC";
-    private static final String PLUGIN_NAME = "GrimAC";
 
     private final JavaPlugin plugin;
     private final BridgeConfig config;
@@ -33,7 +34,7 @@ public class GrimHook implements AntiCheatHook {
 
     @Override
     public boolean isAvailable() {
-        return Bukkit.getPluginManager().getPlugin(PLUGIN_NAME) != null;
+        return Bukkit.getPluginManager().getPlugin(HOOK_NAME) != null;
     }
 
     @Override
@@ -45,7 +46,7 @@ public class GrimHook implements AntiCheatHook {
                     plugin.getDataFolder(),
                     plugin.getName(),
                     plugin.getDescription().getVersion(),
-                    List.of()
+                    listOf()
             );
             grimApi.getEventBus().subscribe(grimPlugin, FlagEvent.class, this::onFlag);
             plugin.getLogger().info("Hooked into " + HOOK_NAME);
@@ -56,7 +57,6 @@ public class GrimHook implements AntiCheatHook {
 
     @Override
     public void unregister() {
-        // grim event bus does not require explicit unsubscription, plugin disable handles it
     }
 
     private void onFlag(FlagEvent event) {

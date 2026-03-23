@@ -21,6 +21,7 @@ import gg.modl.minecraft.core.service.sync.SyncService;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public final class ListenerHelper {
 
@@ -116,17 +117,12 @@ public final class ListenerHelper {
             String panelName = cache.getStaffDisplayName(uuid);
             if (panelName == null) panelName = playerName;
             platform.staffBroadcast(localeManager.getMessage("staff_notifications.join",
-                    Map.of("staff", panelName, "in-game-name", playerName, "server", platform.getServerName())));
+                    mapOf("staff", panelName, "in-game-name", playerName, "server", platform.getServerName())));
         }
 
         syncService.deliverPendingNotifications(uuid);
     }
 
-    /**
-     * Simplified disconnect handler. Per-player state is destroyed atomically
-     * via {@link CachedProfileRegistry#destroyProfile}, no need to call
-     * removePlayer() on each service individually.
-     */
     public static void handlePlayerDisconnect(
             UUID uuid, String playerName,
             ModlHttpClient httpClient, Cache cache, Platform platform,
@@ -142,13 +138,13 @@ public final class ListenerHelper {
         if (PermissionUtil.isStaff(uuid, cache)) {
             String displayName = cache.getDisplayName(uuid, playerName);
             platform.staffBroadcast(localeManager.getMessage("staff_notifications.leave",
-                    Map.of("staff", displayName, "in-game-name", playerName)));
+                    mapOf("staff", displayName, "in-game-name", playerName)));
             httpClient.reportStaffDisconnect(uuid.toString(), sessionDuration);
         }
 
         if (profile != null && profile.getFrozenByStaff() != null) {
             platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification",
-                    Map.of("player", playerName)));
+                    mapOf("player", playerName)));
         }
 
         if (profile != null && profile.isVanished() && bridgeService != null) {

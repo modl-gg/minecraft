@@ -3,6 +3,8 @@ package gg.modl.minecraft.spigot.bridge.reporter.detection;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
+import static gg.modl.minecraft.core.util.Java8Collections.*;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -42,7 +44,7 @@ public class ViolationTracker {
 
     public List<ViolationRecord> getRecords(UUID uuid) {
         Deque<ViolationRecord> playerRecords = records.get(uuid);
-        if (playerRecords == null) return List.of();
+        if (playerRecords == null) return listOf();
         synchronized (playerRecords) {
             return new ArrayList<>(playerRecords);
         }

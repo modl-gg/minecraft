@@ -11,12 +11,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Base class for Staff Menu list screens (Online Players, Reports, Punishments, Tickets).
- * Provides the common header with staff navigation items.
- *
- * @param <T> The type of elements displayed in the browser
- */
 public abstract class BaseStaffListMenu<T> extends BaseListMenu<T> {
 
     protected StaffTab activeTab = StaffTab.NONE;

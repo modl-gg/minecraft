@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class AbstractManualPunishmentCommand extends BaseCommand {
@@ -38,7 +39,7 @@ public abstract class AbstractManualPunishmentCommand extends BaseCommand {
 
     protected void executePunishment(CommandIssuer sender, Account target, String args) {
         if (target == null) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", Map.of()));
+            sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", mapOf()));
             return;
         }
 
@@ -86,7 +87,7 @@ public abstract class AbstractManualPunishmentCommand extends BaseCommand {
                     platform.runOnMainThread(() ->
                         PunishmentActionMessages.sendPunishmentActions(platform, sender.getUniqueId(), response.getPunishmentId()));
             } else sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
-                    Map.of("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
+                    mapOf("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
         }).exceptionally(throwable -> CommandUtil.handleApiError(sender, throwable, localeManager));
     }
 
@@ -113,7 +114,7 @@ public abstract class AbstractManualPunishmentCommand extends BaseCommand {
     }
 
     private static void appendToReason(StringBuilder builder, String arg) {
-        if (!builder.isEmpty()) builder.append(" ");
+        if (builder.length() > 0) builder.append(" ");
         builder.append(arg);
     }
 

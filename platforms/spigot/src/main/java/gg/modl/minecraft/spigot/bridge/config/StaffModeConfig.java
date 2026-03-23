@@ -62,8 +62,8 @@ public class StaffModeConfig {
 
         for (Map.Entry<?, ?> entry : raw.entrySet()) {
             try {
-                int slot = entry.getKey() instanceof Number num
-                        ? num.intValue()
+                int slot = entry.getKey() instanceof Number
+                        ? ((Number) entry.getKey()).intValue()
                         : Integer.parseInt(entry.getKey().toString());
                 Map<String, Object> itemData = (Map<String, Object>) entry.getValue();
                 HotbarItem item = new HotbarItem();
@@ -81,7 +81,8 @@ public class StaffModeConfig {
     }
 
     private List<String> parseStringList(Object value) {
-        if (value instanceof List<?> list) {
+        if (value instanceof List<?>) {
+            List<?> list = (List<?>) value;
             return list.stream()
                     .map(o -> o != null ? String.valueOf(o) : "")
                     .collect(Collectors.toList());

@@ -77,7 +77,6 @@ public class BungeeListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(LoginEvent event) {
-        // BungeeCord async intent: waits for completion without blocking Netty thread
         event.registerIntent(plugin);
 
         CompletableFuture.runAsync(() -> {
@@ -102,7 +101,6 @@ public class BungeeListener implements Listener {
                 .thenApply(wp -> wp != null && wp.isValid() ? wp.getSkin() : null)
                 .exceptionally(t -> null);
 
-        // getNow() avoids blocking, backend will request IP lookup via pendingIpLookups if null
         Map<String, Object> ipInfo = null;
         String skinHash = null;
         try {
@@ -125,14 +123,16 @@ public class BungeeListener implements Listener {
                 getHttpClient(), localeManager, syncService, maintenanceService,
                 cache, debugMode, platform.getLogger());
 
-        if (result instanceof LoginHandler.LoginResult.Denied denied) {
+        if (result instanceof LoginHandler.LoginResult.Denied) {
+            LoginHandler.LoginResult.Denied denied = (LoginHandler.LoginResult.Denied) result;
             denyLogin(event, denied.getMessage());
         }
     }
 
     private void handleLoginException(LoginEvent event, Exception e) {
         LoginHandler.LoginResult result = LoginHandler.handleLoginError(e);
-        if (result instanceof LoginHandler.LoginResult.Denied denied) {
+        if (result instanceof LoginHandler.LoginResult.Denied) {
+            LoginHandler.LoginResult.Denied denied = (LoginHandler.LoginResult.Denied) result;
             platform.getLogger().warning("Login blocked for " + event.getConnection().getName() + ": " + denied.getMessage());
             denyLogin(event, denied.getMessage());
         } else platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + e.getMessage());
@@ -197,7 +197,8 @@ public class BungeeListener implements Listener {
     }
 
     private void handleCommand(ChatEvent event) {
-        if (!(event.getSender() instanceof ProxiedPlayer sender)) return;
+        if (!(event.getSender() instanceof ProxiedPlayer)) return;
+        ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
 
         CommandInterceptHandler.CommandResult result = CommandInterceptHandler.handleCommand(
                 sender.getUniqueId(), sender.getName(),

@@ -5,10 +5,11 @@ import com.google.gson.JsonParser;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.UUID;
@@ -34,10 +35,6 @@ public class WebPlayer {
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
     private static final long SYNC_TIMEOUT_MS = 10_000;
 
-    private static final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(CONNECT_TIMEOUT)
-            .build();
-
     public static CompletableFuture<WebPlayer> get(String username) {
         return fromUrl(MOJANG_PROFILE_URL + username);
     }
@@ -48,61 +45,69 @@ public class WebPlayer {
 
     private static CompletableFuture<WebPlayer> fromUrl(String rawUrl) {
         try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(rawUrl))
-                    .timeout(REQUEST_TIMEOUT)
-                    .GET()
-                    .build();
+            return CompletableFuture.supplyAsync(() -> {
+                HttpURLConnection connection = null;
+                try {
+                    URL url = new URL(rawUrl);
+                    connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.setConnectTimeout((int) CONNECT_TIMEOUT.toMillis());
+                    connection.setReadTimeout((int) REQUEST_TIMEOUT.toMillis());
 
-            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenApply(response -> {
-                        try {
-                            if (response.statusCode() != 200) {
-                                logger.warning("Mojang API returned status " + response.statusCode() + " for URL: " + rawUrl);
-                                return INVALID;
-                            }
-
-                            String jsonString = response.body();
-                            if (jsonString == null || jsonString.trim().isEmpty()) {
-                                logger.warning("Empty response from Mojang API for URL: " + rawUrl);
-                                return INVALID;
-                            }
-
-                            JsonObject json = JsonParser.parseString(jsonString).getAsJsonObject();
-                            if (json == null) {
-                                logger.warning("Invalid JSON response from Mojang API for URL: " + rawUrl);
-                                return INVALID;
-                            }
-
-                            String name = json.has("name") ? json.get("name").getAsString() : null;
-                            String idString = json.has("id") ? json.get("id").getAsString() : null;
-
-                            if (name == null || idString == null) {
-                                logger.warning("Missing name or id in Mojang API response for URL: " + rawUrl);
-                                return INVALID;
-                            }
-
-                            UUID playerUuid = UUID.fromString(idString.replaceFirst(UUID_REGEX, "$1-$2-$3-$4-$5"));
-
-                            String textureValue = null;
-                            com.google.gson.JsonArray propsArray = json.has("properties") ? json.getAsJsonArray("properties") : null;
-                            if (propsArray != null && !propsArray.isEmpty()) {
-                                JsonObject properties = propsArray.get(0).getAsJsonObject();
-                                if (properties.has("value")) textureValue = properties.get("value").getAsString();
-                            }
-
-                            String skinId = getSkinId(json);
-
-                            return new WebPlayer(name, playerUuid, skinId, textureValue, true);
-                        } catch (Exception e) {
-                            logger.warning("Error parsing Mojang API response for URL " + rawUrl + ": " + e.getMessage());
-                            return INVALID;
-                        }
-                    })
-                    .exceptionally(throwable -> {
-                        logger.warning("Failed to fetch player data from Mojang API for URL " + rawUrl + ": " + throwable.getMessage());
+                    int statusCode = connection.getResponseCode();
+                    if (statusCode != 200) {
+                        logger.warning("Mojang API returned status " + statusCode + " for URL: " + rawUrl);
                         return INVALID;
-                    });
+                    }
+
+                    StringBuilder responseBody = new StringBuilder();
+                    try (BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            responseBody.append(line);
+                        }
+                    }
+
+                    String jsonString = responseBody.toString();
+                    if (jsonString.trim().isEmpty()) {
+                        logger.warning("Empty response from Mojang API for URL: " + rawUrl);
+                        return INVALID;
+                    }
+
+                    JsonObject json = new JsonParser().parse(jsonString).getAsJsonObject();
+                    if (json == null) {
+                        logger.warning("Invalid JSON response from Mojang API for URL: " + rawUrl);
+                        return INVALID;
+                    }
+
+                    String name = json.has("name") ? json.get("name").getAsString() : null;
+                    String idString = json.has("id") ? json.get("id").getAsString() : null;
+
+                    if (name == null || idString == null) {
+                        logger.warning("Missing name or id in Mojang API response for URL: " + rawUrl);
+                        return INVALID;
+                    }
+
+                    UUID playerUuid = UUID.fromString(idString.replaceFirst(UUID_REGEX, "$1-$2-$3-$4-$5"));
+
+                    String textureValue = null;
+                    com.google.gson.JsonArray propsArray = json.has("properties") ? json.getAsJsonArray("properties") : null;
+                    if (propsArray != null && propsArray.size() > 0) {
+                        JsonObject properties = propsArray.get(0).getAsJsonObject();
+                        if (properties.has("value")) textureValue = properties.get("value").getAsString();
+                    }
+
+                    String skinId = getSkinId(json);
+
+                    return new WebPlayer(name, playerUuid, skinId, textureValue, true);
+                } catch (Exception e) {
+                    logger.warning("Failed to fetch player data from Mojang API for URL " + rawUrl + ": " + e.getMessage());
+                    return INVALID;
+                } finally {
+                    if (connection != null) connection.disconnect();
+                }
+            });
         } catch (Exception e) {
             logger.warning("Error creating request for Mojang API URL " + rawUrl + ": " + e.getMessage());
             return CompletableFuture.completedFuture(INVALID);
@@ -112,7 +117,7 @@ public class WebPlayer {
     public static String getSkinId(JsonObject json) {
         try {
             com.google.gson.JsonArray propsArr = json.has("properties") ? json.getAsJsonArray("properties") : null;
-            if (propsArr == null || propsArr.isEmpty()) return null;
+            if (propsArr == null || propsArr.size() == 0) return null;
 
             JsonObject properties = propsArr.get(0).getAsJsonObject();
             if (!properties.has("value")) return null;
@@ -129,7 +134,7 @@ public class WebPlayer {
             if (base64 == null || base64.trim().isEmpty()) return null;
 
             String decodedJson = new String(Base64.getDecoder().decode(base64));
-            JsonObject decodedObject = JsonParser.parseString(decodedJson).getAsJsonObject();
+            JsonObject decodedObject = new JsonParser().parse(decodedJson).getAsJsonObject();
             if (!decodedObject.has("textures")) return null;
 
             JsonObject textures = decodedObject.getAsJsonObject("textures");

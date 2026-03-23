@@ -14,7 +14,7 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.Constants;
 import lombok.RequiredArgsConstructor;
 
-import java.util.Map;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class ClaimTicketCommand extends BaseCommand {
@@ -31,7 +31,7 @@ public class ClaimTicketCommand extends BaseCommand {
     public void claimTicket(CommandIssuer sender, String ticketId) {
         AbstractPlayer player = platform.getAbstractPlayer(sender.getUniqueId(), false);
 
-        sender.sendMessage(localeManager.getMessage("messages.claiming_ticket", Map.of("ticketId", ticketId)));
+        sender.sendMessage(localeManager.getMessage("messages.claiming_ticket", mapOf("ticketId", ticketId)));
 
         ClaimTicketRequest request = new ClaimTicketRequest(
             ticketId,
@@ -42,18 +42,18 @@ public class ClaimTicketCommand extends BaseCommand {
         httpClient.claimTicket(request).thenAccept(response -> {
             if (response.isSuccess()) {
                 sender.sendMessage(localeManager.getMessage("messages.ticket_claimed_success",
-                    Map.of("ticketId", ticketId, "subject", response.getSubject() != null ? response.getSubject() : Constants.UNKNOWN)));
+                    mapOf("ticketId", ticketId, "subject", response.getSubject() != null ? response.getSubject() : Constants.UNKNOWN)));
 
                 String ticketUrl = panelUrl + "/ticket/" + ticketId;
                 ticketUtil.sendClickableTicketMessage(sender, platform, localeManager,
                         localeManager.getMessage("messages.view_ticket_label"), ticketUrl, ticketId);
             } else sender.sendMessage(localeManager.getMessage("messages.ticket_claim_failed",
-                    Map.of("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
+                    mapOf("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
         }).exceptionally(throwable -> {
             String errorMessage = throwable.getMessage();
             if (throwable.getCause() != null) errorMessage = throwable.getCause().getMessage();
             sender.sendMessage(localeManager.getMessage("messages.ticket_claim_failed",
-                Map.of("error", localeManager.sanitizeErrorMessage(errorMessage))));
+                mapOf("error", localeManager.sanitizeErrorMessage(errorMessage))));
             return null;
         });
     }

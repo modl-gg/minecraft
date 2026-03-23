@@ -78,5 +78,12 @@ public class PaginatedDataSource<T> {
         return isFetching;
     }
 
-    public record FetchResult<T>(List<T> items, int totalCount) {}
+    @lombok.Value
+    public static class FetchResult<T> {
+        List<T> items;
+        int totalCount;
+
+        public List<T> items() { return this.items; }
+        public int totalCount() { return this.totalCount; }
+    }
 }

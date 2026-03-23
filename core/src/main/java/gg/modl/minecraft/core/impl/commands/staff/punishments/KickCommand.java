@@ -14,6 +14,7 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.Set;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class KickCommand extends AbstractManualPunishmentCommand {
     public KickCommand(HttpClientHolder httpClientHolder, Platform platform, Cache cache, LocaleManager localeManager) {
@@ -23,7 +24,7 @@ public class KickCommand extends AbstractManualPunishmentCommand {
     @Override protected int getOrdinal() { return 0; }
     @Override protected String getTypeName() { return "kick"; }
     @Override protected long getDefaultDuration() { return 0; }
-    @Override protected Set<Flag> getSupportedFlags() { return Set.of(); }
+    @Override protected Set<Flag> getSupportedFlags() { return setOf(); }
 
     @CommandCompletion("@players")
     @CommandAlias("%cmd_kick")

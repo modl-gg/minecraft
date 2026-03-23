@@ -67,7 +67,6 @@ public class BungeeSetupWizard implements Listener {
             }
         }
 
-        // Delay wizard prompts until after proxy startup finishes (3 seconds)
         plugin.getProxy().getScheduler().schedule(plugin, () -> {
             try {
                 if (useFallbackCommand) {
@@ -122,27 +121,22 @@ public class BungeeSetupWizard implements Listener {
     @SuppressWarnings("unchecked")
     private boolean tryJLineInterceptor() {
         try {
-            // Get the LineReader from BungeeCord (has @Getter on consoleReader field)
             Object proxy = plugin.getProxy();
             Method getConsoleReader = proxy.getClass().getMethod("getConsoleReader");
             Object reader = getConsoleReader.invoke(proxy);
 
-            // Verify it's a JLine 3 LineReader
             Class<?> lineReaderClass = Class.forName("org.jline.reader.LineReader");
             if (!lineReaderClass.isInstance(reader)) return false;
 
             Class<?> widgetClass = Class.forName("org.jline.reader.Widget");
 
-            // Get the mutable widgets map and the accept-line key
             Method getWidgets = lineReaderClass.getMethod("getWidgets");
             Map<String, Object> widgets = (Map<String, Object>) getWidgets.invoke(reader);
             String acceptLineKey = (String) lineReaderClass.getField("ACCEPT_LINE").get(null);
 
-            // Cache reflection methods for use inside the widget
             Method getBuffer = lineReaderClass.getMethod("getBuffer");
             Method getTerminal = lineReaderClass.getMethod("getTerminal");
 
-            // Save the original widget (check user widgets, then builtins)
             Object originalWidget = widgets.get(acceptLineKey);
             if (originalWidget == null) {
                 Method getBuiltins = lineReaderClass.getMethod("getBuiltinWidgets");
@@ -152,13 +146,11 @@ public class BungeeSetupWizard implements Listener {
             final Object savedOriginal = originalWidget;
             final Method widgetApply = widgetClass.getMethod("apply");
 
-            // Create a custom Widget via dynamic proxy
             Object customWidget = Proxy.newProxyInstance(
                     widgetClass.getClassLoader(),
                     new Class<?>[]{ widgetClass },
                     (p, method, args) -> {
                         if (!method.getName().equals("apply")) {
-                            // Default Object method handling
                             if (method.getName().equals("toString")) return "BungeeSetupWizardWidget";
                             if (method.getName().equals("hashCode")) return System.identityHashCode(p);
                             if (method.getName().equals("equals")) return p == (args != null ? args[0] : null);
@@ -166,23 +158,19 @@ public class BungeeSetupWizard implements Listener {
                         }
 
                         if (!active) {
-                            // Setup complete but widget not yet removed — delegate to original
                             return savedOriginal != null ? widgetApply.invoke(savedOriginal) : true;
                         }
 
-                        // Read the current buffer content
                         Object buffer = getBuffer.invoke(reader);
                         String line = buffer.toString();
                         inputQueue.offer(line);
 
-                        // Clear buffer and move terminal to next line
                         buffer.getClass().getMethod("clear").invoke(buffer);
                         Object terminal = getTerminal.invoke(reader);
                         Object writer = terminal.getClass().getMethod("writer").invoke(terminal);
                         writer.getClass().getMethod("println").invoke(writer);
                         writer.getClass().getMethod("flush").invoke(writer);
 
-                        // Return true without setting state=DONE, so readLine() continues
                         return true;
                     }
             );
@@ -271,7 +259,7 @@ public class BungeeSetupWizard implements Listener {
             StringBuilder sb = new StringBuilder();
             if (name != null) sb.append(name);
             for (String arg : args) {
-                if (!sb.isEmpty()) sb.append(" ");
+                if (sb.length() > 0) sb.append(" ");
                 sb.append(arg);
             }
             queue.offer(sb.toString());

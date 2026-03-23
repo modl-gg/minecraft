@@ -8,10 +8,6 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import gg.modl.minecraft.core.util.PluginLogger;
 
-/**
- * Direct JDBC database provider, used when LiteBans API is not available.
- * Replaces LiteBans table tokens ({bans}, {mutes}, etc.) with prefixed table names.
- */
 public class JdbcDatabaseProvider implements DatabaseProvider {
     private static final String[][] TABLE_TOKENS = {
         {"{bans}", "bans"}, {"{mutes}", "mutes"}, {"{warnings}", "warnings"},

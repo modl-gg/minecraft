@@ -14,6 +14,7 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.Set;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class MuteCommand extends AbstractManualPunishmentCommand {
     public MuteCommand(HttpClientHolder httpClientHolder, Platform platform, Cache cache, LocaleManager localeManager) {
@@ -23,7 +24,7 @@ public class MuteCommand extends AbstractManualPunishmentCommand {
     @Override protected int getOrdinal() { return 1; }
     @Override protected String getTypeName() { return "mute"; }
     @Override protected long getDefaultDuration() { return 0; }
-    @Override protected Set<Flag> getSupportedFlags() { return Set.of(Flag.DURATION); }
+    @Override protected Set<Flag> getSupportedFlags() { return setOf(Flag.DURATION); }
 
     @CommandCompletion("@players")
     @CommandAlias("%cmd_mute")

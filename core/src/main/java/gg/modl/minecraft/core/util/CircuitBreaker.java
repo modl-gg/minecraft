@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class CircuitBreaker {
+public final class CircuitBreaker {
     private static final long DEFAULT_TIMEOUT_MS = 60_000, DEFAULT_RETRY_TIMEOUT_MS = 30_000;
     private static final int DEFAULT_FAILURE_THRESHOLD = 5;
 
@@ -34,13 +34,11 @@ public class CircuitBreaker {
         State currentState = state.get();
         long currentTime = System.currentTimeMillis();
 
-        return switch (currentState) {
-            case CLOSED -> true;
-            case OPEN -> {
-                yield currentTime >= nextRetryTime.get() && state.compareAndSet(State.OPEN, State.HALF_OPEN);
-            }
-            case HALF_OPEN -> true;
-        };
+        if (currentState == State.OPEN) {
+            return currentTime >= nextRetryTime.get() && state.compareAndSet(State.OPEN, State.HALF_OPEN);
+        } else {
+            return true;
+        }
     }
 
     public void recordSuccess() {

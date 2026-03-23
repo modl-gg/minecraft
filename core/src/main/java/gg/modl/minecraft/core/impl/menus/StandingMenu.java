@@ -23,6 +23,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class StandingMenu extends BaseListMenu<Punishment> {
     private static final int SOCIAL_SLOT = 11, GAMEPLAY_SLOT = 15;
@@ -110,7 +111,7 @@ public class StandingMenu extends BaseListMenu<Punishment> {
         String status = buildStatusString(punishment, effectiveDuration);
         String reason = getPlayerDescription(punishment);
 
-        Map<String, String> vars = Map.of(
+        Map<String, String> vars = mapOf(
                 "id", id,
                 "date", date,
                 "duration", duration,
@@ -143,7 +144,7 @@ public class StandingMenu extends BaseListMenu<Punishment> {
             displayStatus = status;
         }
 
-        Map<String, String> placeholders = Map.of(
+        Map<String, String> placeholders = mapOf(
                 "status", displayStatus,
                 "points", String.valueOf(points)
         );
@@ -155,7 +156,7 @@ public class StandingMenu extends BaseListMenu<Punishment> {
             String capitalized = status.isEmpty() ? status : status.substring(0, 1).toUpperCase() + status.substring(1).toLowerCase();
             desc = localeManager.getMessageList(localeBasePath + ".description." + capitalized, placeholders);
             if (desc.size() == 1 && desc.get(0).contains("Missing locale list")) {
-                desc = List.of();
+                desc = listOf();
             }
         }
 

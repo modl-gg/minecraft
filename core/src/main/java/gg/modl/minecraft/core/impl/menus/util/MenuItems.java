@@ -174,7 +174,7 @@ public final class MenuItems {
             wordCount++;
         }
 
-        if (!currentLine.isEmpty()) lines.add(COLOR_WHITE + currentLine.toString().trim());
+        if (currentLine.length() > 0) lines.add(COLOR_WHITE + currentLine.toString().trim());
 
         return lines;
     }

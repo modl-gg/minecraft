@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class HistoryCommand extends BaseCommand {
@@ -54,7 +55,7 @@ public class HistoryCommand extends BaseCommand {
         }
 
         UUID senderUuid = sender.getUniqueId();
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
         httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
@@ -74,7 +75,7 @@ public class HistoryCommand extends BaseCommand {
     }
 
     private void printHistory(CommandIssuer sender, String playerQuery, int page) {
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
 
@@ -95,7 +96,7 @@ public class HistoryCommand extends BaseCommand {
 
     private void displayHistory(CommandIssuer sender, String playerName, Account profile, int page) {
         List<Punishment> punishments = profile.getPunishments();
-        sender.sendMessage(localeManager.getMessage("print.history.header", Map.of("player", playerName)));
+        sender.sendMessage(localeManager.getMessage("print.history.header", mapOf("player", playerName)));
 
         if (punishments.isEmpty()) sender.sendMessage(localeManager.getMessage("print.history.empty"));
         else {
@@ -157,7 +158,7 @@ public class HistoryCommand extends BaseCommand {
                     }
                 }
             }
-            sender.sendMessage(localeManager.getMessage("print.history.total", Map.of(
+            sender.sendMessage(localeManager.getMessage("print.history.total", mapOf(
                     "count", String.valueOf(punishments.size()),
                     "page", String.valueOf(pg.getPage()),
                     "total_pages", String.valueOf(pg.getTotalPages())

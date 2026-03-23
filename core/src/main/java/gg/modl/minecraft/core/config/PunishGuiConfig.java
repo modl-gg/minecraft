@@ -8,8 +8,10 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import gg.modl.minecraft.core.util.PluginLogger;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @Data
 public class PunishGuiConfig {
@@ -119,31 +121,31 @@ public class PunishGuiConfig {
         PunishGuiConfig config = new PunishGuiConfig();
 
         config.slots.put(1, new PunishSlotConfig("minecraft:feather", "Chat Abuse",
-            List.of("&7{staff-description}", "", "&fSocial Offender Level: {social-status}", "", "Click to issue new punishment."), 1, true, 6));
+            listOf("&7{staff-description}", "", "&fSocial Offender Level: {social-status}", "", "Click to issue new punishment."), 1, true, 6));
         config.slots.put(2, new PunishSlotConfig("minecraft:pufferfish", "Anti Social",
-            List.of("&7{staff-description}", "", "&fSocial Offender Level: {social-status}", "", "Click to issue new punishment."), 2, true, 7));
+            listOf("&7{staff-description}", "", "&fSocial Offender Level: {social-status}", "", "Click to issue new punishment."), 2, true, 7));
         config.slots.put(3, new PunishSlotConfig("minecraft:creeper_head", "Targeting",
-            List.of("&7{staff-description}", "", "&fSocial Offender Level: {social-status}", "", "Click to issue new punishment."), 3, true, 8));
-        config.slots.put(4, new PunishSlotConfig("minecraft:paper", "", List.of(), 4, false, 0));
+            listOf("&7{staff-description}", "", "&fSocial Offender Level: {social-status}", "", "Click to issue new punishment."), 3, true, 8));
+        config.slots.put(4, new PunishSlotConfig("minecraft:paper", "", listOf(), 4, false, 0));
         config.slots.put(5, new PunishSlotConfig("minecraft:lava_bucket", "Team Abuse",
-            List.of("&7{staff-description}", "", "&fGameplay Offender Level: {gameplay-status}", "", "Click to issue new punishment."), 5, true, 12));
+            listOf("&7{staff-description}", "", "&fGameplay Offender Level: {gameplay-status}", "", "Click to issue new punishment."), 5, true, 12));
         config.slots.put(6, new PunishSlotConfig("minecraft:spider_eye", "Game Abuse",
-            List.of("&7{staff-description}", "", "&fGameplay Offender Level: {gameplay-status}", "", "Click to issue new punishment."), 6, true, 13));
+            listOf("&7{staff-description}", "", "&fGameplay Offender Level: {gameplay-status}", "", "Click to issue new punishment."), 6, true, 13));
         config.slots.put(7, new PunishSlotConfig("minecraft:diamond_sword", "Cheating",
-            List.of("&7{staff-description}", "", "&fGameplay Offender Level: {gameplay-status}", "", "Click to issue new punishment."), 7, true, 14));
+            listOf("&7{staff-description}", "", "&fGameplay Offender Level: {gameplay-status}", "", "Click to issue new punishment."), 7, true, 14));
         config.slots.put(8, new PunishSlotConfig("minecraft:ink_sac", "Bad Content",
-            List.of("&7{staff-description}", "", "&fSocial Offender Level: {social-status}", "", "Click to issue new punishment."), 8, true, 9));
+            listOf("&7{staff-description}", "", "&fSocial Offender Level: {social-status}", "", "Click to issue new punishment."), 8, true, 9));
         config.slots.put(9, new PunishSlotConfig("minecraft:name_tag", "Bad Username",
-            List.of("&7{staff-description}", "", "Click to restrict player until username is changed."), 9, true, 10));
+            listOf("&7{staff-description}", "", "Click to restrict player until username is changed."), 9, true, 10));
         config.slots.put(10, new PunishSlotConfig("minecraft:armor_stand", "Bad Skin",
-            List.of("&7{staff-description}", "", "Click to restrict player until skin is changed."), 10, true, 11));
-        config.slots.put(11, new PunishSlotConfig("minecraft:paper", "", List.of(), 11, false, 0));
+            listOf("&7{staff-description}", "", "Click to restrict player until skin is changed."), 10, true, 11));
+        config.slots.put(11, new PunishSlotConfig("minecraft:paper", "", listOf(), 11, false, 0));
         config.slots.put(12, new PunishSlotConfig("minecraft:gold_ingot", "Game Trading",
-            List.of("&7{staff-description}", "", "&fGameplay Offender Level: {gameplay-status}", "", "Click to issue new punishment."), 12, true, 15));
+            listOf("&7{staff-description}", "", "&fGameplay Offender Level: {gameplay-status}", "", "Click to issue new punishment."), 12, true, 15));
         config.slots.put(13, new PunishSlotConfig("minecraft:experience_bottle", "Account Abuse",
-            List.of("&7{staff-description}", "", "&fGameplay Offender Level: {gameplay-status}", "", "Click to issue new punishment."), 13, true, 16));
+            listOf("&7{staff-description}", "", "&fGameplay Offender Level: {gameplay-status}", "", "Click to issue new punishment."), 13, true, 16));
         config.slots.put(14, new PunishSlotConfig("minecraft:barrier", "Systems Abuse",
-            List.of("&7{staff-description}", "", "&fGameplay Offender Level: {gameplay-status}", "", "Click to issue new punishment."), 14, true, 17));
+            listOf("&7{staff-description}", "", "&fGameplay Offender Level: {gameplay-status}", "", "Click to issue new punishment."), 14, true, 17));
 
         return config;
     }
@@ -152,7 +154,7 @@ public class PunishGuiConfig {
         return slots.values().stream()
                 .filter(PunishSlotConfig::isEnabled)
                 .sorted(Comparator.comparingInt(PunishSlotConfig::getSlotNumber))
-                .toList();
+                .collect(Collectors.toList());
     }
 
     public PunishSlotConfig getSlot(int slotNumber) {

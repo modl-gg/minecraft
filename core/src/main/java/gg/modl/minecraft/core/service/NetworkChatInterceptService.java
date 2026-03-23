@@ -13,7 +13,6 @@ public class NetworkChatInterceptService {
         this.registry = registry;
     }
 
-    /** @return true if interception is now enabled, false if disabled */
     public boolean toggle(UUID uuid) {
         CachedProfile profile = registry.getProfile(uuid);
         if (profile == null) return false;

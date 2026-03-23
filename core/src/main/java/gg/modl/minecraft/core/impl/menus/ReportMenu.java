@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.impl.menus;
 
-import dev.simplix.cirrus.actionhandler.ActionHandler;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -16,8 +15,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 
-import java.util.List;
-import java.util.Map;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class ReportMenu extends SimpleMenu {
     private static final int[] GUI_SLOTS = {19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34};
@@ -43,15 +41,15 @@ public class ReportMenu extends SimpleMenu {
         this.guiConfig = guiConfig;
         this.chatMessageCache = chatMessageCache;
 
-        title(locale.getMessage("messages.report_gui_title", Map.of("player", target.getUsername())));
+        title(locale.getMessage("messages.report_gui_title", mapOf("player", target.getUsername())));
         type(CirrusInventoryType.GENERIC_9X6);
         buildMenu();
     }
 
     private void buildMenu() {
         CirrusItem headItem = MenuItems.playerHead(
-                locale.getMessage("messages.report_gui_title", Map.of("player", target.getUsername())),
-                List.of()
+                locale.getMessage("messages.report_gui_title", mapOf("player", target.getUsername())),
+                listOf()
         );
         if (platform.getCache() != null) {
             String texture = platform.getCache().getSkinTexture(target.getUuid());
@@ -106,11 +104,7 @@ public class ReportMenu extends SimpleMenu {
                 ReportData reportData = new ReportData(finalSlot.getTitle(), finalSlot.isChatReport());
                 reportData.setReplayCapture(finalSlot.isReplayCapture());
 
-                // Determine if we need the attachments step
-                boolean showChatStep = finalSlot.isChatReport();
-                boolean showReplayStep = finalSlot.isReplayCapture();
-
-                if (showChatStep || showReplayStep) {
+                if (finalSlot.isChatReport() || finalSlot.isReplayCapture()) {
                     ActionHandlers.openMenu(new ReportChatLogMenu(
                             reporter, target, httpClient, locale, platform, panelUrl,
                             guiConfig, chatMessageCache, reportData

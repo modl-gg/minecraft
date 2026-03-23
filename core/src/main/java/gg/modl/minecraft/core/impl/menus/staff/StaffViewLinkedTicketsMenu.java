@@ -18,10 +18,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Staff variant of the View Linked Tickets Menu.
- * Uses the staff menu header instead of the inspect menu header.
- */
 public class StaffViewLinkedTicketsMenu extends BaseStaffListMenu<TicketsResponse.Ticket> {
     private final List<TicketsResponse.Ticket> tickets = new ArrayList<>();
     private final String panelUrl;
@@ -41,8 +37,7 @@ public class StaffViewLinkedTicketsMenu extends BaseStaffListMenu<TicketsRespons
                         tickets.addAll(response.getTickets());
                     }
                 }).join();
-            } catch (Exception e) {
-                // Do nothing. failed to fetch, list remains empty
+            } catch (Exception ignored) {
             }
         }
     }

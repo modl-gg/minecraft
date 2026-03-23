@@ -221,15 +221,15 @@ public final class PunishmentModificationActions {
             if (Character.isDigit(c)) {
                 number.append(c);
             } else if (c == 'd' || c == 'h' || c == 'm' || c == 's') {
-                if (number.isEmpty()) continue;
+                if (number.length() == 0) continue;
                 long value = Long.parseLong(number.toString());
                 number.setLength(0);
 
                 switch (c) {
-                    case 'd' -> total += value * MS_PER_DAY;
-                    case 'h' -> total += value * MS_PER_HOUR;
-                    case 'm' -> total += value * MS_PER_MINUTE;
-                    case 's' -> total += value * MS_PER_SECOND;
+                    case 'd': total += value * MS_PER_DAY; break;
+                    case 'h': total += value * MS_PER_HOUR; break;
+                    case 'm': total += value * MS_PER_MINUTE; break;
+                    case 's': total += value * MS_PER_SECOND; break;
                 }
             }
         }

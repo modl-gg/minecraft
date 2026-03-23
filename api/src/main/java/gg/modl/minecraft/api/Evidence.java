@@ -4,8 +4,6 @@ import com.google.gson.annotations.SerializedName;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Date;
 
@@ -13,8 +11,8 @@ import java.util.Date;
 public final class Evidence {
     private static final String DEFAULT_DISPLAY_TEXT = "Evidence";
 
-    private @SerializedName("text") @Getter String text;
-    private @SerializedName("url") @Getter String url;
+    private @SerializedName("text") String text;
+    private @SerializedName("url") String url;
     private @SerializedName("type") String type;
     private @SerializedName("uploadedBy") String uploadedBy;
     private @SerializedName("uploadedAt") Date uploadedAt;

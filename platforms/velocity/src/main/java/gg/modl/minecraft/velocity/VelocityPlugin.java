@@ -6,6 +6,7 @@ import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
+import com.velocitypowered.api.plugin.Dependency;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
@@ -23,6 +24,8 @@ import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
+
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 import io.github.retrooper.packetevents.velocity.factory.VelocityPacketEventsBuilder;
 import net.byteflux.libby.Library;
 import net.byteflux.libby.VelocityLibraryManager;
@@ -43,7 +46,8 @@ import java.util.Optional;
         version = PluginInfo.VERSION,
         authors = { PluginInfo.AUTHOR },
         description = PluginInfo.DESCRIPTION,
-        url = PluginInfo.URL)
+        url = PluginInfo.URL,
+        dependencies = { @Dependency(id = "signedvelocity", optional = true) })
 public final class VelocityPlugin {
     private static final int MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
 
@@ -73,13 +77,13 @@ public final class VelocityPlugin {
 
     @Subscribe
     public synchronized void onProxyInitialize(ProxyInitializeEvent event) {
-        // Load boot.yml → migration → wizard (first, before everything)
         BootConfig bootConfig = loadOrCreateBootConfig();
         if (bootConfig == null) {
             return;
         }
 
         loadLibraries();
+        ensureSignedVelocity();
         initializePacketEvents();
         loadConfig();
         createLocaleFiles();
@@ -129,9 +133,17 @@ public final class VelocityPlugin {
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
     }
 
+    private void ensureSignedVelocity() {
+        if (server.getPluginManager().getPlugin("signedvelocity").isPresent()) return;
+        Path pluginsFolder = folder.getParent();
+        Path jar = SignedVelocityDownloader.ensureDownloaded(SignedVelocityDownloader.Platform.PROXY, pluginsFolder, pluginLogger);
+        if (jar != null) {
+            logger.info("[SignedVelocity] Will be active after a proxy restart.");
+        }
+    }
+
     private BootConfig loadOrCreateBootConfig() {
         try {
-            // 1. Try loading existing boot.yml
             if (BootConfig.exists(folder)) {
                 BootConfig config = BootConfig.load(folder);
                 if (config != null && config.isValid()) {
@@ -140,14 +152,12 @@ public final class VelocityPlugin {
                 }
             }
 
-            // 2. Try migrating from existing config.yml
             Optional<BootConfig> migrated = BootConfigMigrator.migrateFromConfigYml(
                     folder, PlatformType.VELOCITY, pluginLogger);
             if (migrated.isPresent()) {
                 return migrated.get();
             }
 
-            // 3. Run setup wizard
             logger.info("No configuration found. Starting setup wizard...");
             ConsoleInput input = ConsoleInput.system(pluginLogger);
             SetupWizard wizard = new SetupWizard(pluginLogger, input, PlatformType.VELOCITY);
@@ -263,13 +273,13 @@ public final class VelocityPlugin {
                 this.configuration = yaml.load(inputStream);
                 if (this.configuration == null) {
                     logger.warn("Configuration file is empty, using defaults");
-                    this.configuration = Map.of();
+                    this.configuration = mapOf();
                 }
             }
             logger.info("Configuration loaded successfully");
         } catch (IOException e) {
             logger.error("Failed to load configuration", e);
-            this.configuration = Map.of();
+            this.configuration = mapOf();
         }
     }
 

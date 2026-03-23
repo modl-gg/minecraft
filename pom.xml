@@ -53,13 +53,13 @@
     </developers>
 
     <properties>
-        <maven.compiler.source>18</maven.compiler.source>
-        <maven.compiler.target>18</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Internal dependencies -->
         <protocolize.version>2.4.2</protocolize.version>
-        <cirrus.version>4.1.6-SNAPSHOT</cirrus.version>
+        <cirrus.version>4.1.8-SNAPSHOT</cirrus.version>
         <acf.version>0.5.1-SNAPSHOT</acf.version>
         <lombok.version>1.18.34</lombok.version>
         <gson.version>2.12.1</gson.version>
@@ -97,8 +97,7 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <configuration>
-                        <release>17</release>
-                        <testRelease>17</testRelease>
+                        <release>8</release>
                         <annotationProcessorPaths>
                             <path>
                                 <groupId>org.projectlombok</groupId>

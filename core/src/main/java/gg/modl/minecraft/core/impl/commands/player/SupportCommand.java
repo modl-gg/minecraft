@@ -13,7 +13,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
 
-import java.util.List;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
 public class SupportCommand extends BaseCommand {
@@ -42,7 +42,7 @@ public class SupportCommand extends BaseCommand {
             "normal",
             createdServer,
             null,
-            List.of()
+            listOf()
         );
 
         ticketUtil.submitUnfinishedTicket(sender, httpClient, platform, localeManager, panelUrl, request, "Support request", "support");

@@ -18,8 +18,8 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor @CommandAlias("%cmd_modl")
 public class ModlHelpCommand extends BaseCommand {
@@ -102,7 +102,7 @@ public class ModlHelpCommand extends BaseCommand {
         }
 
         sender.sendMessage("");
-        sender.sendMessage(localeManager.getMessage("help.header", Map.of(
+        sender.sendMessage(localeManager.getMessage("help.header", mapOf(
                 "version", PluginInfo.VERSION,
                 "page", String.valueOf(pg.getPage()),
                 "total_pages", String.valueOf(pg.getTotalPages())
@@ -110,14 +110,14 @@ public class ModlHelpCommand extends BaseCommand {
 
         for (int i = pg.getStart(); i < pg.getEnd(); i++) {
             HelpEntry entry = entries.get(i);
-            sender.sendMessage(localeManager.getMessage("help.entry", Map.of(
+            sender.sendMessage(localeManager.getMessage("help.entry", mapOf(
                     "command", entry.getCommand(),
                     "description", entry.getDescription()
             )));
         }
 
         if (pg.hasNextPage())
-            sender.sendMessage(localeManager.getMessage("help.footer", Map.of(
+            sender.sendMessage(localeManager.getMessage("help.footer", mapOf(
                     "page", String.valueOf(pg.getPage()),
                     "total_pages", String.valueOf(pg.getTotalPages()),
                     "next_page", String.valueOf(pg.getPage() + 1)

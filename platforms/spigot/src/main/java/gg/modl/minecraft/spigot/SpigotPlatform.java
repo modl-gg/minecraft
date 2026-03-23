@@ -233,7 +233,6 @@ public class SpigotPlatform implements Platform {
             }
             if (getPlayerProfileMethod == null) return null;
 
-            // reflection required: getPlayerProfile() only available on Spigot 1.18.1+
             Object profile = getPlayerProfileMethod.invoke(player);
             java.util.Collection<?> properties = (java.util.Collection<?>) getPropertiesMethod.invoke(profile);
             for (Object prop : properties) {
@@ -257,7 +256,6 @@ public class SpigotPlatform implements Platform {
                 break;
             }
         } catch (Exception e) {
-            // Methods not available on this server version; cache null to skip on future calls
             getPlayerProfileMethod = null;
         }
         skinMethodsResolved = true;

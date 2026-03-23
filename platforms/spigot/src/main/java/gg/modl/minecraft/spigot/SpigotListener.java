@@ -131,7 +131,8 @@ public class SpigotListener implements Listener {
 
         if (preLoginResult.hasError()) {
             LoginHandler.LoginResult errorResult = LoginHandler.handleLoginError(preLoginResult.getError());
-            if (errorResult instanceof LoginHandler.LoginResult.Denied denied) {
+            if (errorResult instanceof LoginHandler.LoginResult.Denied) {
+                LoginHandler.LoginResult.Denied denied = (LoginHandler.LoginResult.Denied) errorResult;
                 if (preLoginResult.getError() instanceof PanelUnavailableException) {
                     platform.getLogger().warning("Panel 502 during login check for " + event.getPlayer().getName() + " - blocking login for safety");
                 }
@@ -153,7 +154,8 @@ public class SpigotListener implements Listener {
                 getHttpClient(), localeManager, syncService, maintenanceService,
                 cache, debugMode, platform.getLogger());
 
-        if (result instanceof LoginHandler.LoginResult.Denied denied) {
+        if (result instanceof LoginHandler.LoginResult.Denied) {
+            LoginHandler.LoginResult.Denied denied = (LoginHandler.LoginResult.Denied) result;
             event.setResult(PlayerLoginEvent.Result.KICK_BANNED);
             event.setKickMessage(denied.getMessage());
         }
@@ -175,7 +177,6 @@ public class SpigotListener implements Listener {
     }
 
     private void cacheSkinTexture(java.util.UUID uuid) {
-        // native Spigot API first (1.18.1+), fall back to WebPlayer
         String nativeTexture = platform.getPlayerSkinTexture(uuid);
         if (nativeTexture != null) {
             cache.cacheSkinTexture(uuid, nativeTexture);

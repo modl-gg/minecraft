@@ -16,11 +16,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Per-player state container. Created on login, destroyed on disconnect.
- * Consolidates all per-player state that was previously scattered across
- * 12+ separate ConcurrentHashMaps in Cache and various service classes.
- */
 @Getter
 public class CachedProfile {
     private final UUID uuid;

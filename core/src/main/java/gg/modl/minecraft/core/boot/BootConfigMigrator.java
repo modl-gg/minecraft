@@ -12,7 +12,6 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class BootConfigMigrator {
-    private static final String PLACEHOLDER_API_KEY = "your-api-key-here";
     private static final String PLACEHOLDER_API_URL = "https://yourserver.modl.gg";
 
     @SuppressWarnings("unchecked")
@@ -24,10 +23,10 @@ public class BootConfigMigrator {
             Map<String, Object> config = loadYaml(configFile);
             if (config == null) return Optional.empty();
 
-            String apiKey = getNestedString(config, "api.key", PLACEHOLDER_API_KEY);
+            String apiKey = getNestedString(config, "api.key", BootConfig.PLACEHOLDER_API_KEY);
             String apiUrl = getNestedString(config, "api.url", PLACEHOLDER_API_URL);
 
-            if (PLACEHOLDER_API_KEY.equals(apiKey) || PLACEHOLDER_API_URL.equals(apiUrl)) {
+            if (BootConfig.PLACEHOLDER_API_KEY.equals(apiKey) || PLACEHOLDER_API_URL.equals(apiUrl)) {
                 return Optional.empty();
             }
 
@@ -51,7 +50,7 @@ public class BootConfigMigrator {
                 String bridgeHost = getNestedString(config, "bridge.host", "");
                 if (!bridgeHost.isEmpty()) {
                     int bridgePort = getNestedInt(config, "bridge.port", 25590);
-                    boot.setBackendBridges(List.of(new BootConfig.BackendBridge(bridgeHost, bridgePort)));
+                    boot.setBackendBridges(Collections.singletonList(new BootConfig.BackendBridge(bridgeHost, bridgePort)));
                 }
             }
 
@@ -73,16 +72,18 @@ public class BootConfigMigrator {
             Map<String, Object> bridgeYml = loadYaml(bridgeConfigFile);
             if (bridgeYml == null) return;
 
-            // Write bridge settings to bridge-config.yml
             Map<String, Object> bridgeConfigMap = new LinkedHashMap<>();
             bridgeConfigMap.put("query-enabled", getBool(bridgeYml, "query-enabled", true));
             bridgeConfigMap.put("query-port", getInt(bridgeYml, "query-port", 25590));
 
             Object cmds = bridgeYml.get("stat-wipe-commands");
-            if (cmds instanceof List<?> list) {
-                bridgeConfigMap.put("stat-wipe-commands", list.stream().map(String::valueOf).toList());
+            if (cmds instanceof List<?>) {
+                List<?> list = (List<?>) cmds;
+                List<String> strList = new ArrayList<>();
+                for (Object o : list) strList.add(String.valueOf(o));
+                bridgeConfigMap.put("stat-wipe-commands", strList);
             } else {
-                bridgeConfigMap.put("stat-wipe-commands", List.of("clearstats {player}"));
+                bridgeConfigMap.put("stat-wipe-commands", Collections.singletonList("clearstats {player}"));
             }
 
             bridgeConfigMap.put("anticheat-name", getString(bridgeYml, "anticheat-name", "Anti-cheat"));
@@ -91,15 +92,17 @@ public class BootConfigMigrator {
 
             Map<String, Integer> thresholds = new LinkedHashMap<>();
             Object threshObj = bridgeYml.get("report-violation-threshold");
-            if (threshObj instanceof Map<?, ?> threshMap) {
+            if (threshObj instanceof Map<?, ?>) {
+                Map<?, ?> threshMap = (Map<?, ?>) threshObj;
                 for (Map.Entry<?, ?> entry : threshMap.entrySet()) {
                     String key = String.valueOf(entry.getKey());
-                    if (entry.getValue() instanceof Number n) {
-                        thresholds.put(key, n.intValue());
-                    } else if (entry.getValue() instanceof Map<?, ?> checksMap) {
+                    if (entry.getValue() instanceof Number) {
+                        thresholds.put(key, ((Number) entry.getValue()).intValue());
+                    } else if (entry.getValue() instanceof Map<?, ?>) {
+                        Map<?, ?> checksMap = (Map<?, ?>) entry.getValue();
                         for (Map.Entry<?, ?> check : checksMap.entrySet()) {
-                            if (check.getValue() instanceof Number cn) {
-                                thresholds.put(String.valueOf(check.getKey()), cn.intValue());
+                            if (check.getValue() instanceof Number) {
+                                thresholds.put(String.valueOf(check.getKey()), ((Number) check.getValue()).intValue());
                             }
                         }
                     }
@@ -108,7 +111,6 @@ public class BootConfigMigrator {
             if (thresholds.isEmpty()) thresholds.put("default", 10);
             bridgeConfigMap.put("report-violation-threshold", thresholds);
 
-            // Save bridge-config.yml
             DumperOptions options = new DumperOptions();
             options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
             options.setPrettyFlow(true);
@@ -137,10 +139,10 @@ public class BootConfigMigrator {
         String[] parts = path.split("\\.");
         Object current = map;
         for (String part : parts) {
-            if (current instanceof Map<?, ?> m) current = m.get(part);
+            if (current instanceof Map<?, ?>) current = ((Map<?, ?>) current).get(part);
             else return def;
         }
-        return current instanceof String s ? s : def;
+        return current instanceof String ? (String) current : def;
     }
 
     @SuppressWarnings("unchecked")
@@ -148,10 +150,10 @@ public class BootConfigMigrator {
         String[] parts = path.split("\\.");
         Object current = map;
         for (String part : parts) {
-            if (current instanceof Map<?, ?> m) current = m.get(part);
+            if (current instanceof Map<?, ?>) current = ((Map<?, ?>) current).get(part);
             else return def;
         }
-        return current instanceof Number n ? n.intValue() : def;
+        return current instanceof Number ? ((Number) current).intValue() : def;
     }
 
     @SuppressWarnings("unchecked")
@@ -159,24 +161,24 @@ public class BootConfigMigrator {
         String[] parts = path.split("\\.");
         Object current = map;
         for (String part : parts) {
-            if (current instanceof Map<?, ?> m) current = m.get(part);
+            if (current instanceof Map<?, ?>) current = ((Map<?, ?>) current).get(part);
             else return def;
         }
-        return current instanceof Boolean b ? b : def;
+        return current instanceof Boolean ? (Boolean) current : def;
     }
 
     private static String getString(Map<String, Object> map, String key, String def) {
         Object val = map.get(key);
-        return val instanceof String s ? s : def;
+        return val instanceof String ? (String) val : def;
     }
 
     private static int getInt(Map<String, Object> map, String key, int def) {
         Object val = map.get(key);
-        return val instanceof Number n ? n.intValue() : def;
+        return val instanceof Number ? ((Number) val).intValue() : def;
     }
 
     private static boolean getBool(Map<String, Object> map, String key, boolean def) {
         Object val = map.get(key);
-        return val instanceof Boolean b ? b : def;
+        return val instanceof Boolean ? (Boolean) val : def;
     }
 }

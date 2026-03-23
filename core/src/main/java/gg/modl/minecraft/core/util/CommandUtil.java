@@ -9,8 +9,11 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.Map;
 import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public final class CommandUtil {
+    private CommandUtil() {}
+
     public static String resolveIssuerName(CommandIssuer sender, Cache cache, Platform platform) {
         if (!sender.isPlayer()) return "Console";
         String panelName = cache.getStaffDisplayName(sender.getUniqueId());
@@ -45,7 +48,7 @@ public final class CommandUtil {
             sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
         } else {
             sender.sendMessage(localeManager.getMessage(errorKey,
-                    Map.of("error", localeManager.sanitizeErrorMessage(cause.getMessage() != null ? cause.getMessage() : "Unknown error"))));
+                    mapOf("error", localeManager.sanitizeErrorMessage(cause.getMessage() != null ? cause.getMessage() : "Unknown error"))));
         }
         return null;
     }

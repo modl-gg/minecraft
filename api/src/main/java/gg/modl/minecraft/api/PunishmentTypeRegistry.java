@@ -6,10 +6,6 @@ import lombok.Value;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Registry for punishment type classification (ban/mute/kick).
- * Populated from the server's punishment types configuration.
- */
 public class PunishmentTypeRegistry {
     public static final int ORDINAL_KICK = 0, ORDINAL_MUTE = 1, ORDINAL_BAN = 2,
             ORDINAL_SECURITY_BAN = 3, ORDINAL_LINKED_BAN = 4, ORDINAL_BLACKLIST = 5;
@@ -29,7 +25,6 @@ public class PunishmentTypeRegistry {
         register(ORDINAL_SECURITY_BAN, true, false);
         register(ORDINAL_LINKED_BAN, true, false);
         register(ORDINAL_BLACKLIST, true, false);
-        initialized = true;
     }
 
     public static boolean isBan(int ordinal) {

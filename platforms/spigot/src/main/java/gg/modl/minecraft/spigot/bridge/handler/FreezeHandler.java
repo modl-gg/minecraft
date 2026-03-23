@@ -19,6 +19,8 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import static gg.modl.minecraft.core.util.Java8Collections.*;
+
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -72,7 +74,7 @@ public class FreezeHandler implements Listener {
         event.setCancelled(true);
 
         String message = localeManager.getMessage("freeze.chat",
-                Map.of("player", player.getName(), "message", event.getMessage()));
+                mapOf("player", player.getName(), "message", event.getMessage()));
 
         if (staffModeHandler != null) {
             Bukkit.getOnlinePlayers().stream()

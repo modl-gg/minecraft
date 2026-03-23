@@ -9,7 +9,7 @@ import co.aikar.commands.annotation.Subcommand;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
 
-import java.util.Map;
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor @CommandAlias("%cmd_modl")
 public class ModlReloadCommand extends BaseCommand {
@@ -26,7 +26,7 @@ public class ModlReloadCommand extends BaseCommand {
             reloadHook.run();
             sender.sendMessage(localeManager.getMessage("general.reload_success"));
         } catch (Exception e) {
-            sender.sendMessage(localeManager.getMessage("general.reload_error", Map.of("error", e.getMessage())));
+            sender.sendMessage(localeManager.getMessage("general.reload_error", mapOf("error", e.getMessage())));
         }
     }
 }

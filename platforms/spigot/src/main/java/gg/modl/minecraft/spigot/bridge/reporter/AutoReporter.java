@@ -85,7 +85,6 @@ public class AutoReporter {
         plugin.getLogger().info("Auto-report triggered for " + playerName
                 + " (" + source.name() + " " + checkName + " VL: " + vl + ")");
 
-        // Capture replay buffer if available, then create ticket
         if (replayService != null && replayService.isReplayAvailable(uuid)) {
             replayService.captureReplay(uuid, playerName).thenAccept(replayId -> {
                 if (replayId != null) {
