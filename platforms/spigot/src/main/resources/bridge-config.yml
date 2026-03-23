@@ -22,15 +22,20 @@ report-violation-threshold:
   default: 10
 
 # Replay recording settings
-# Enable replay recording (requires ModlBridge plugin with PacketEvents)
+# Enable replay recording
 replay-enabled: true
 # Automatically start recording all players on join
 replay-auto-record: true
 # Buffer duration in seconds (how much history to keep)
-replay-buffer-duration: 120
+replay-buffer-duration: 60
 # Maximum recording duration in seconds
 replay-max-duration: 300
 # Block snapshot radius in blocks
 replay-radius: 64
 # Minimum interval between movement packets in milliseconds
 replay-move-throttle: 50
+# Save replay files to local disk after capture (default: false, files are deleted after upload)
+replay-save-local: false
+# How long to keep local replay files in minutes before auto-deleting (only used if replay-save-local is true)
+# Default 7 days
+replay-local-ttl: 10080

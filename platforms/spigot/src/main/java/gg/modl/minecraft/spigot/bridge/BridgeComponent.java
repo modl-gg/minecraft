@@ -71,6 +71,7 @@ public class BridgeComponent implements Listener {
 
     private RecordingManager recordingManager;
     private PacketRecorder packetRecorder;
+    private int replayCleanupTaskId = -1;
     private final Map<UUID, Integer> worldChangeGeneration = new ConcurrentHashMap<>();
 
     public BridgeComponent(JavaPlugin plugin, String apiKey, String backendUrl, String panelUrl, PluginLogger logger) {
@@ -165,6 +166,9 @@ public class BridgeComponent implements Listener {
     }
 
     public void disable() {
+        if (replayCleanupTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(replayCleanupTaskId);
+        }
         if (recordingManager != null) {
             recordingManager.stopAll();
         }
@@ -293,7 +297,9 @@ public class BridgeComponent implements Listener {
                                         if (ex != null) {
                                             logger.warning("[bridge] Replay upload failed for " + targetName + ": " + ex.getMessage());
                                         }
-                                        replayFile.delete();
+                                        if (!bridgeConfig.isReplaySaveLocal()) {
+                                            replayFile.delete();
+                                        }
                                     });
                         });
             }
@@ -310,7 +316,25 @@ public class BridgeComponent implements Listener {
             }
         }
 
-        logger.info("[bridge] Replay recording initialized (auto-record: " + bridgeConfig.isReplayAutoRecord() + ")");
+        if (bridgeConfig.isReplaySaveLocal()) {
+            long ttlMs = bridgeConfig.getReplayLocalTtl() * 60_000L;
+            long checkIntervalTicks = 20L * 60 * 5; // check every 5 minutes
+            replayCleanupTaskId = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+                File[] files = replaysDir.listFiles();
+                if (files == null) return;
+                long now = System.currentTimeMillis();
+                for (File f : files) {
+                    if (f.isFile() && now - f.lastModified() > ttlMs) {
+                        if (f.delete()) {
+                            logger.info("[bridge] Deleted expired replay file: " + f.getName());
+                        }
+                    }
+                }
+            }, checkIntervalTicks, checkIntervalTicks).getTaskId();
+        }
+
+        logger.info("[bridge] Replay recording initialized (auto-record: " + bridgeConfig.isReplayAutoRecord()
+                + ", save-local: " + bridgeConfig.isReplaySaveLocal() + ")");
     }
 
     private static String extractDomain(String url) {

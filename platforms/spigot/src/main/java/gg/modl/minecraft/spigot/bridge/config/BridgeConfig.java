@@ -25,6 +25,7 @@ public class BridgeConfig {
     private static final int DEFAULT_REPLAY_RADIUS = 64;
     private static final int DEFAULT_REPLAY_MOVE_THROTTLE = 50;
     private static final int DEFAULT_REPLAY_MAX_DURATION = 300;
+    private static final int DEFAULT_REPLAY_LOCAL_TTL = 1440;
 
     @Setter private String apiKey = "";
     @Setter private boolean debug = false;
@@ -42,6 +43,8 @@ public class BridgeConfig {
     private int replayMaxDuration = DEFAULT_REPLAY_MAX_DURATION;
     private int replayRadius = DEFAULT_REPLAY_RADIUS;
     private int replayMoveThrottle = DEFAULT_REPLAY_MOVE_THROTTLE;
+    private boolean replaySaveLocal = false;
+    private int replayLocalTtl = DEFAULT_REPLAY_LOCAL_TTL;
 
     public int getReportViolationThreshold(String checkName) {
         Integer checkSpecific = reportViolationThresholds.get(checkName.toLowerCase());
@@ -118,6 +121,8 @@ public class BridgeConfig {
         config.replayMaxDuration = getInt(data, "replay-max-duration", DEFAULT_REPLAY_MAX_DURATION);
         config.replayRadius = getInt(data, "replay-radius", DEFAULT_REPLAY_RADIUS);
         config.replayMoveThrottle = getInt(data, "replay-move-throttle", DEFAULT_REPLAY_MOVE_THROTTLE);
+        config.replaySaveLocal = getBool(data, "replay-save-local", false);
+        config.replayLocalTtl = getInt(data, "replay-local-ttl", DEFAULT_REPLAY_LOCAL_TTL);
 
         return config;
     }
@@ -137,6 +142,8 @@ public class BridgeConfig {
         map.put("replay-max-duration", replayMaxDuration);
         map.put("replay-radius", replayRadius);
         map.put("replay-move-throttle", replayMoveThrottle);
+        map.put("replay-save-local", replaySaveLocal);
+        map.put("replay-local-ttl", replayLocalTtl);
         return map;
     }
 
