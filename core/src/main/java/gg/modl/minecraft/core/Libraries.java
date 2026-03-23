@@ -9,6 +9,11 @@ public final class Libraries {
 
     private Libraries() {}
 
+    private static final String[][] PACKETEVENTS_RELOCATIONS = {
+            {"com{}github{}retrooper{}packetevents", "gg{}modl{}libs{}packetevents{}api"},
+            {"io{}github{}retrooper{}packetevents", "gg{}modl{}libs{}packetevents{}impl"}
+    };
+
     // Version uses timestamp instead of "-SNAPSHOT" because libby 1.3.1 re-downloads SNAPSHOT versions every startup
     public static final LibraryRecord SNAKEYAML = LibraryRecord.of(
             "org{}yaml",
@@ -50,35 +55,40 @@ public final class Libraries {
             "packetevents-api",
             "2.11.2",
             "packetevents-api",
-            "3iUlwXnzZ8UYPrcUG5inerI6qdtMmpvZ3M9KBvon8OM="
+            "3iUlwXnzZ8UYPrcUG5inerI6qdtMmpvZ3M9KBvon8OM=",
+            PACKETEVENTS_RELOCATIONS
     ),
     PACKETEVENTS_NETTY = LibraryRecord.of(
             "com{}github{}retrooper",
             "packetevents-netty-common",
             "2.11.2",
             "packetevents-netty-common",
-            "iFUyY8j/9ZIJGQI9KNkvS8TBuLIBLqpvt+RQALSipCM="
+            "iFUyY8j/9ZIJGQI9KNkvS8TBuLIBLqpvt+RQALSipCM=",
+            PACKETEVENTS_RELOCATIONS
     ),
     PACKETEVENTS_SPIGOT = LibraryRecord.of(
             "com{}github{}retrooper",
             "packetevents-spigot",
             "2.11.2",
             "packetevents-spigot",
-            "DNgWUMmOnz3rH65hM9MeSFYWWPwrXIU33FvsBxYD/+E="
+            "DNgWUMmOnz3rH65hM9MeSFYWWPwrXIU33FvsBxYD/+E=",
+            PACKETEVENTS_RELOCATIONS
     ),
     PACKETEVENTS_BUNGEE = LibraryRecord.of(
             "com{}github{}retrooper",
             "packetevents-bungeecord",
             "2.11.2",
             "packetevents-bungeecord",
-            "uqfNJPYZEG8ZpvC9VXGKorGs/9e+rDd8RBsLSxOyAGc="
+            "uqfNJPYZEG8ZpvC9VXGKorGs/9e+rDd8RBsLSxOyAGc=",
+            PACKETEVENTS_RELOCATIONS
     ),
     PACKETEVENTS_VELOCITY = LibraryRecord.of(
             "com{}github{}retrooper",
             "packetevents-velocity",
             "2.11.2",
             "packetevents-velocity",
-            "FsSHtExrXGXiXrswQIGAO46DaIZDIiVwKgzZw1BRGXA="
+            "FsSHtExrXGXiXrswQIGAO46DaIZDIiVwKgzZw1BRGXA=",
+            PACKETEVENTS_RELOCATIONS
     ),
     ADVENTURE_NBT = LibraryRecord.of(
             "net{}kyori",

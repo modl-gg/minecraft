@@ -44,6 +44,14 @@
                 </executions>
                 <configuration>
                     <relocations>
+                        <relocation>
+                            <pattern>com.github.retrooper.packetevents</pattern>
+                            <shadedPattern>gg.modl.libs.packetevents.api</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>io.github.retrooper.packetevents</pattern>
+                            <shadedPattern>gg.modl.libs.packetevents.impl</shadedPattern>
+                        </relocation>
                     </relocations>
                     <filters>
                         <filter>

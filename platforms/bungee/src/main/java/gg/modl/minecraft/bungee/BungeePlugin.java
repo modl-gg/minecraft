@@ -205,7 +205,11 @@ public class BungeePlugin extends Plugin {
                 .id(record.getId())
                 .isolatedLoad(false);
 
-        if (record.hasRelocation()) builder.relocate(record.getOldRelocation(), record.getNewRelocation());
+        if (record.hasRelocations()) {
+            for (String[] relocation : record.getRelocations()) {
+                builder.relocate(relocation[0], relocation[1]);
+            }
+        }
         if (record.getUrl() != null) builder.url(record.getUrl());
         if (record.hasChecksum()) builder.checksum(record.getChecksum());
 

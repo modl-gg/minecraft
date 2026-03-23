@@ -18,6 +18,7 @@ import gg.modl.minecraft.spigot.bridge.reporter.hook.AntiCheatHook;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.GrimHook;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.PolarHook;
 import gg.modl.minecraft.spigot.bridge.statwipe.StatWipeHandler;
+import gg.modl.replay.format.events.BlockChangeEvent;
 import gg.modl.replay.recording.PacketRecorder;
 import gg.modl.replay.recording.RecordingConfig;
 import gg.modl.replay.recording.RecordingManager;
@@ -471,8 +472,8 @@ public class BridgeComponent implements Listener {
         Block block = event.getBlockPlaced();
         int stateId = SpigotConversionUtil.fromBukkitMaterialData(
                 new org.bukkit.material.MaterialData(block.getType(), block.getData())).getGlobalId();
-        recordingManager.enqueueBlockPlace(player.getUniqueId(),
-                block.getX(), (short) block.getY(), block.getZ(), stateId);
+        recordingManager.enqueueEvent(player.getUniqueId(),
+                new BlockChangeEvent(0, block.getX(), (short) block.getY(), block.getZ(), stateId));
     }
 
     @SuppressWarnings("deprecation")
@@ -483,8 +484,8 @@ public class BridgeComponent implements Listener {
         Block block = event.getBlock();
         int previousStateId = SpigotConversionUtil.fromBukkitMaterialData(
                 new org.bukkit.material.MaterialData(block.getType(), block.getData())).getGlobalId();
-        recordingManager.enqueueBlockBreak(player.getUniqueId(),
-                block.getX(), (short) block.getY(), block.getZ(), previousStateId);
+        recordingManager.enqueueEvent(player.getUniqueId(),
+                new BlockChangeEvent(0, block.getX(), (short) block.getY(), block.getZ(), previousStateId));
     }
 
     @EventHandler
