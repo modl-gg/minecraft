@@ -149,7 +149,8 @@ public final class Libraries {
             "4.1.8",
             "cirrus-spigot",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.8-SNAPSHOT/cirrus-spigot-4.1.8-SNAPSHOT.jar",
-            "FT4jxzk/+zRAunOWxgZvyuNnNt6jjLcTZPesVJO8FX4="
+            "FT4jxzk/+zRAunOWxgZvyuNnNt6jjLcTZPesVJO8FX4=",
+            PACKETEVENTS_RELOCATIONS
     ),
     CIRRUS_VELOCITY = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
@@ -157,7 +158,8 @@ public final class Libraries {
             "4.1.8",
             "cirrus-velocity",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.8-SNAPSHOT/cirrus-velocity-4.1.8-SNAPSHOT.jar",
-            "/nHY+wjoZZoouGPYagEuQhCx8oSaBb+RHDuatatWZ+I="
+            "/nHY+wjoZZoouGPYagEuQhCx8oSaBb+RHDuatatWZ+I=",
+            PACKETEVENTS_RELOCATIONS
     ),
     CIRRUS_BUNGEECORD = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
@@ -165,7 +167,8 @@ public final class Libraries {
             "4.1.8",
             "cirrus-bungeecord",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.8-SNAPSHOT/cirrus-bungeecord-4.1.8-SNAPSHOT.jar",
-            "+E+zC1dlsL/Wv7Ihx95qK5cQNheK5nDp8rzzCDsyYhE="
+            "+E+zC1dlsL/Wv7Ihx95qK5cQNheK5nDp8rzzCDsyYhE=",
+            PACKETEVENTS_RELOCATIONS
     ),
     ADVENTURE_KEY = LibraryRecord.of(
             "net{}kyori",
