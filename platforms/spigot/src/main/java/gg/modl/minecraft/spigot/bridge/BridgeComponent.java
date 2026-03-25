@@ -9,7 +9,7 @@ import gg.modl.minecraft.spigot.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.spigot.bridge.handler.FreezeHandler;
 import gg.modl.minecraft.spigot.bridge.handler.StaffModeHandler;
 import gg.modl.minecraft.spigot.bridge.locale.BridgeLocaleManager;
-import gg.modl.minecraft.spigot.bridge.query.BridgeQueryServer;
+import gg.modl.minecraft.spigot.bridge.query.BridgeQueryClient;
 import gg.modl.minecraft.spigot.bridge.reporter.AutoReporter;
 import gg.modl.minecraft.spigot.bridge.reporter.ModlBackendReplayUploader;
 import gg.modl.minecraft.spigot.bridge.reporter.TicketCreator;
@@ -63,7 +63,7 @@ public class BridgeComponent implements Listener {
     @Getter private StatWipeHandler statWipeHandler;
     @Getter private FreezeHandler freezeHandler;
     @Getter private StaffModeHandler staffModeHandler;
-    @Getter private BridgeQueryServer queryServer;
+    @Getter private BridgeQueryClient bridgeClient;
 
     private ViolationTracker violationTracker;
     private AutoReporter autoReporter;
@@ -96,7 +96,7 @@ public class BridgeComponent implements Listener {
         } catch (ClassNotFoundException ignored) {}
     }
 
-    public void enable(TicketCreator ticketCreator) {
+    public void enable(TicketCreator ticketCreator, boolean connectToProxy) {
         if (!BridgeConfig.exists(plugin.getDataFolder().toPath())) {
             plugin.saveResource("bridge-config.yml", false);
         }
@@ -131,18 +131,20 @@ public class BridgeComponent implements Listener {
         staffModeHandler.register();
         freezeHandler.setStaffModeHandler(staffModeHandler);
 
-        if (bridgeConfig.isQueryEnabled()) {
-            queryServer = new BridgeQueryServer(
-                    bridgeConfig.getQueryPort(),
+        if (connectToProxy && !bridgeConfig.getProxyHost().isEmpty()) {
+            bridgeClient = new BridgeQueryClient(
+                    bridgeConfig.getProxyHost(),
+                    bridgeConfig.getProxyPort(),
                     bridgeConfig.getApiKey(),
+                    bridgeConfig.getServerName(),
                     statWipeHandler,
                     freezeHandler,
                     staffModeHandler,
                     plugin
             );
-            queryServer.start();
-            staffModeHandler.setQueryServer(queryServer);
-            freezeHandler.setQueryServer(queryServer);
+            bridgeClient.connect();
+            staffModeHandler.setBridgeClient(bridgeClient);
+            freezeHandler.setBridgeClient(bridgeClient);
         }
 
         autoReporter = new AutoReporter(plugin, bridgeConfig, ticketCreator, violationTracker);
@@ -152,18 +154,19 @@ public class BridgeComponent implements Listener {
         if (replayService != null) {
             autoReporter.setReplayService(replayService);
         }
-        if (queryServer != null && replayService != null) {
-            queryServer.setReplayService(replayService);
+        if (bridgeClient != null && replayService != null) {
+            bridgeClient.setReplayService(replayService);
         }
         registerAntiCheatHooks();
 
-        if (queryServer != null) {
-            plugin.getCommand("proxycmd").setExecutor(new ProxyCmdCommand(plugin, localeManager, queryServer));
+        if (bridgeClient != null) {
+            plugin.getCommand("proxycmd").setExecutor(new ProxyCmdCommand(plugin, localeManager, bridgeClient));
         }
 
         logger.info("[bridge] Enabled with " + hooks.size() + " anticheat hook(s)"
                 + (polarAvailable ? " (Polar pending callback)" : "")
-                + (replayService != null ? " + replay capture" : ""));
+                + (replayService != null ? " + replay capture" : "")
+                + (bridgeClient != null ? " + bridge connection" : ""));
     }
 
     public void disable() {
@@ -178,7 +181,7 @@ public class BridgeComponent implements Listener {
         }
 
         if (staffModeHandler != null) staffModeHandler.shutdown();
-        if (queryServer != null) queryServer.shutdown();
+        if (bridgeClient != null) bridgeClient.shutdown();
         if (violationTracker != null) violationTracker.stopCleanupTask();
 
         hooks.forEach(AntiCheatHook::unregister);
@@ -252,7 +255,9 @@ public class BridgeComponent implements Listener {
         };
 
         File replaysDir = new File(plugin.getDataFolder(), "replays");
-        replaysDir.mkdirs();
+        if (bridgeConfig.isReplaySaveLocal()) {
+            replaysDir.mkdirs();
+        }
 
         recordingManager = new RecordingManager(recordingConfig, replaysDir, plugin.getLogger());
         packetRecorder = new PacketRecorder(recordingManager, recordingConfig, plugin.getLogger());

@@ -15,7 +15,6 @@ softdepend:
   - Geyser-Spigot
   - GrimAC
   - Polar
-  - SignedVelocity
 commands:
   proxycmd:
     description: Forward a command to the proxy plugin via TCP query

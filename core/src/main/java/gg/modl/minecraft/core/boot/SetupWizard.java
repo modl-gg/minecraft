@@ -2,8 +2,8 @@ package gg.modl.minecraft.core.boot;
 
 import gg.modl.minecraft.core.util.PluginLogger;
 
-import java.util.ArrayList;
-import java.util.List;
+
+
 
 public class SetupWizard {
     private static final long POLL_INTERVAL_MS = 5000;
@@ -61,6 +61,12 @@ public class SetupWizard {
         config.setMode(BootConfig.Mode.BRIDGE_ONLY);
         config.setTestingApi(testingApi);
 
+        String proxyType = input.readLine("Proxy type (velocity / bungeecord) [velocity]: ");
+        if (proxyType == null || proxyType.trim().isEmpty()) {
+            proxyType = "velocity";
+        }
+        config.setProxyType(proxyType.trim().toLowerCase());
+
         String panelUrl = input.readLine("Panel domain (e.g. server.modl.gg or support.server.com): ");
         config.setPanelUrl(normalizePanelUrl(panelUrl));
 
@@ -69,8 +75,15 @@ public class SetupWizard {
 
         config.setApiKey(apiKey != null ? apiKey.trim() : "");
 
-        boolean isVelocity = input.confirm("Is your proxy Velocity? (say no if BungeeCord/Waterfall)");
-        config.setProxyType(isVelocity ? "velocity" : "bungeecord");
+        String proxyHost = input.readLine("Proxy server address (IP or hostname): ");
+        config.setWizardProxyHost(proxyHost != null ? proxyHost.trim() : "");
+
+        String portStr = input.readLine("Proxy bridge port [25590]: ");
+        int proxyPort = 25590;
+        if (portStr != null && !portStr.trim().isEmpty()) {
+            try { proxyPort = Integer.parseInt(portStr.trim()); } catch (NumberFormatException ignored) {}
+        }
+        config.setWizardProxyPort(proxyPort);
 
         saveAndPrint(config);
         return config;
@@ -88,7 +101,12 @@ public class SetupWizard {
             return config;
         }
 
-        configureBackendBridges(config);
+        String portStr = input.readLine("Bridge listen port [25590]: ");
+        int bridgePort = 25590;
+        if (portStr != null && !portStr.trim().isEmpty()) {
+            try { bridgePort = Integer.parseInt(portStr.trim()); } catch (NumberFormatException ignored) {}
+        }
+        config.setBridgePort(bridgePort);
 
         saveAndPrint(config);
         return config;
@@ -96,10 +114,10 @@ public class SetupWizard {
 
     private boolean collectCredentials(BootConfig config, boolean hasAccount) {
         if (hasAccount) {
-            String apiKey = input.readLine("Enter your API key: ");
             String panelUrl = input.readLine("Panel domain (e.g. server.modl.gg or support.server.com): ");
-            config.setApiKey(apiKey != null ? apiKey.trim() : "");
+            String apiKey = input.readLine("Enter your API key: ");
             config.setPanelUrl(normalizePanelUrl(panelUrl));
+            config.setApiKey(apiKey != null ? apiKey.trim() : "");
         } else {
             RegistrationResult result = runRegistrationFlowWithRetry();
             if (result != null) {
@@ -113,27 +131,7 @@ public class SetupWizard {
         return true;
     }
 
-    private void configureBackendBridges(BootConfig config) {
-        boolean localBackends = input.confirm("Are the backend server(s) on this machine (say no if using Pterodactyl or docker?");
-        List<BootConfig.BackendBridge> bridges = new ArrayList<>();
 
-        if (localBackends) {
-            bridges.add(new BootConfig.BackendBridge("127.0.0.1", 25590));
-        } else {
-            String ipsStr = input.readLine("Enter backend server IPs (comma-separated): ");
-            if (ipsStr != null && !ipsStr.trim().isEmpty()) {
-                for (String ip : ipsStr.split(",")) {
-                    String trimmed = ip.trim();
-                    if (!trimmed.isEmpty()) {
-                        bridges.add(new BootConfig.BackendBridge(trimmed, 25590));
-                        logger.info("Added backend bridge: " + trimmed + ":25590");
-                    }
-                }
-            }
-        }
-
-        config.setBackendBridges(bridges);
-    }
 
     private RegistrationResult runRegistrationFlowWithRetry() {
         while (true) {

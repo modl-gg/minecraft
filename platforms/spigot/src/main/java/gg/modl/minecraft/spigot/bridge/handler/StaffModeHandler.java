@@ -3,7 +3,7 @@ package gg.modl.minecraft.spigot.bridge.handler;
 import gg.modl.minecraft.spigot.bridge.config.BridgeConfig;
 import gg.modl.minecraft.spigot.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.spigot.bridge.locale.BridgeLocaleManager;
-import gg.modl.minecraft.spigot.bridge.query.BridgeQueryServer;
+import gg.modl.minecraft.spigot.bridge.query.BridgeQueryClient;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -76,7 +76,7 @@ public class StaffModeHandler implements Listener {
     private final FreezeHandler freezeHandler;
     private final BridgeLocaleManager localeManager;
     private final StaffModeConfig staffModeConfig;
-    @Setter private BridgeQueryServer queryServer;
+    @Setter private BridgeQueryClient bridgeClient;
 
     private final Set<UUID> staffModeActive = ConcurrentHashMap.newKeySet();
     private final Map<UUID, UUID> targetMap = new ConcurrentHashMap<>();
@@ -500,7 +500,9 @@ public class StaffModeHandler implements Listener {
         } else if (ACTION_VANISH_TOGGLE.equals(action)) {
             toggleVanish(player);
         } else if (ACTION_STAFF_MENU.equals(action)) {
-            if (queryServer == null || !queryServer.sendToAllClients("OPEN_STAFF_MENU", uuid.toString())) {
+            if (bridgeClient != null && bridgeClient.isConnected()) {
+                bridgeClient.sendMessage("OPEN_STAFF_MENU", uuid.toString());
+            } else {
                 Bukkit.getScheduler().runTask(plugin, () -> player.performCommand("staffmenu"));
             }
         } else if (ACTION_RANDOM_TELEPORT.equals(action)) {
@@ -575,7 +577,9 @@ public class StaffModeHandler implements Listener {
         Player target = resolveTarget(player.getUniqueId());
         if (target == null) return;
 
-        if (queryServer == null || !queryServer.sendToAllClients("OPEN_INSPECT_MENU", player.getUniqueId().toString(), target.getName())) {
+        if (bridgeClient != null && bridgeClient.isConnected()) {
+            bridgeClient.sendMessage("OPEN_INSPECT_MENU", player.getUniqueId().toString(), target.getName());
+        } else {
             Bukkit.getScheduler().runTask(plugin, () -> player.performCommand("inspect " + target.getName()));
         }
     }

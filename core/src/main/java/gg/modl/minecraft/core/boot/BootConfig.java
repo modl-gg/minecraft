@@ -21,7 +21,11 @@ public class BootConfig {
     private String panelUrl = "";
     private boolean testingApi = false;
     private String proxyType;
-    private List<BackendBridge> backendBridges = new ArrayList<>();
+    private int bridgePort = 25590;
+
+    // Transient fields set by setup wizard for bridge-only mode — not serialized to boot.yml
+    private transient String wizardProxyHost;
+    private transient int wizardProxyPort = 25590;
 
     public enum Mode {
         STANDALONE,
@@ -40,19 +44,6 @@ public class BootConfig {
             if (this == STANDALONE) return "standalone";
             if (this == BRIDGE_ONLY) return "bridge-only";
             return "proxy";
-        }
-    }
-
-    @Data
-    public static class BackendBridge {
-        private String host = "127.0.0.1";
-        private int port = 25590;
-
-        public BackendBridge() {}
-
-        public BackendBridge(String host, int port) {
-            this.host = host;
-            this.port = port;
         }
     }
 
@@ -109,22 +100,7 @@ public class BootConfig {
         config.setPanelUrl(getStr(data, "panel-url", ""));
         config.setTestingApi(getBool(data, "testing-api", false));
         config.setProxyType(getStr(data, "proxy-type", null));
-
-        Object backendsObj = data.get("backend-bridges");
-        if (backendsObj instanceof List<?>) {
-            List<?> list = (List<?>) backendsObj;
-            List<BackendBridge> bridges = new ArrayList<>();
-            for (Object item : list) {
-                if (item instanceof Map<?, ?>) {
-                    Map<?, ?> itemMap = (Map<?, ?>) item;
-                    BackendBridge bb = new BackendBridge();
-                    bb.setHost(getStr((Map<String, Object>) itemMap, "host", "127.0.0.1"));
-                    bb.setPort(getInt((Map<String, Object>) itemMap, "port", 25590));
-                    bridges.add(bb);
-                }
-            }
-            config.setBackendBridges(bridges);
-        }
+        config.setBridgePort(getInt(data, "bridge-port", 25590));
 
         return config;
     }
@@ -136,17 +112,7 @@ public class BootConfig {
         map.put("panel-url", panelUrl);
         map.put("testing-api", testingApi);
         if (proxyType != null) map.put("proxy-type", proxyType);
-
-        if (mode == Mode.PROXY && !backendBridges.isEmpty()) {
-            List<Map<String, Object>> backends = new ArrayList<>();
-            for (BackendBridge bb : backendBridges) {
-                Map<String, Object> bbMap = new LinkedHashMap<>();
-                bbMap.put("host", bb.getHost());
-                bbMap.put("port", bb.getPort());
-                backends.add(bbMap);
-            }
-            map.put("backend-bridges", backends);
-        }
+        if (mode == Mode.PROXY) map.put("bridge-port", bridgePort);
 
         return map;
     }
@@ -171,10 +137,8 @@ public class BootConfig {
             writer.write("# Uncomment to use the testing API (api.modl.top)\n");
             writer.write("# testing-api: true\n");
             writer.write("\n");
-            writer.write("# Backend server bridges (proxy mode only)\n");
-            writer.write("# backend-bridges:\n");
-            writer.write("#   - host: \"127.0.0.1\"\n");
-            writer.write("#     port: 25590\n");
+            writer.write("# Bridge listen port (proxy mode only — backends connect to this port)\n");
+            writer.write("# bridge-port: 25590\n");
         }
     }
 

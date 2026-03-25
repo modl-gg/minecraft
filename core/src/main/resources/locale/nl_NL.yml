@@ -688,10 +688,10 @@ help:
       usage: "apply"
       description: "Solliciteer als personeelslid"
     bugreport:
-      usage: "bugreport <titel>"
+      usage: "bugreport"
       description: "Meld een bug"
     support:
-      usage: "support <titel>"
+      usage: "support"
       description: "Open een supportticket"
   staff_commands:
     staffmenu:
@@ -736,6 +736,9 @@ help:
     unmute:
       usage: "unmute <speler>"
       description: "Scheld actieve of oudste niet-gestarte mute kwijt"
+    replay:
+      usage: "replay <status|capture> [speler]"
+      description: "Beheer replay-opnames"
     modl_reload:
       usage: "modl reload"
       description: "Herlaad configuratie"
@@ -873,4 +876,19 @@ target:
   connecting: "&eVerbinden met &f{server} &eom &f{player}&e te volgen..."
   cannot_target_self: "&cJe kunt niet op jezelf richten."
   not_online: "&cDe speler is niet online."
+
+# Replay
+replay:
+  usage:
+    - "&f/replay status [speler] &7- Controleer opnamestatus"
+    - "&f/replay capture [speler] &7- Opnemen en uploaden van replay"
+  not_available: "&cReplay-opname is niet beschikbaar op deze server."
+  status_recording: "&a{player} wordt momenteel opgenomen"
+  status_not_recording: "&c{player} wordt niet opgenomen"
+  no_active_recording: "&cGeen actieve opname voor {player}"
+  capturing: "&aReplay wordt opgenomen en geüpload voor {player}..."
+  capture_success: "&aReplay succesvol opgenomen voor {player}"
+  capture_link: "&b{url}"
+  capture_failed: "&cReplay opnemen mislukt voor {player}"
+  console_specify_player: "&cGeef een spelernaam op vanuit de console."
 

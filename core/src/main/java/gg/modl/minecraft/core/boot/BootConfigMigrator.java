@@ -47,11 +47,7 @@ public class BootConfigMigrator {
                 migrateBridgeConfig(dataDir, logger);
             } else {
                 boot.setMode(BootConfig.Mode.PROXY);
-                String bridgeHost = getNestedString(config, "bridge.host", "");
-                if (!bridgeHost.isEmpty()) {
-                    int bridgePort = getNestedInt(config, "bridge.port", 25590);
-                    boot.setBackendBridges(Collections.singletonList(new BootConfig.BackendBridge(bridgeHost, bridgePort)));
-                }
+                boot.setBridgePort(getNestedInt(config, "bridge.port", 25590));
             }
 
             boot.save(dataDir);

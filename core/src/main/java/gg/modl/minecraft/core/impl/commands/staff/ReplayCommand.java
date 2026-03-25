@@ -94,7 +94,18 @@ public class ReplayCommand extends BaseCommand {
             if (replayId != null) {
                 String replayLink = panelUrl + "/replay?id=" + replayId;
                 sender.sendMessage(localeManager.getMessage("replay.capture_success", mapOf("player", resolvedName)));
-                sender.sendMessage(localeManager.getMessage("replay.capture_link", mapOf("url", replayLink)));
+                if (sender.isPlayer()) {
+                    String json = String.format(
+                            "{\"text\":\"\",\"extra\":["
+                            + "{\"text\":\"\uD83C\uDFAC \",\"color\":\"gold\"},"
+                            + "{\"text\":\"[Click to view replay]\",\"color\":\"aqua\",\"underlined\":true,"
+                            + "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"},"
+                            + "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Open replay viewer\"}}]}",
+                            replayLink);
+                    platform.runOnMainThread(() -> platform.sendJsonMessage(sender.getUniqueId(), json));
+                } else {
+                    sender.sendMessage(localeManager.getMessage("replay.capture_link", mapOf("url", replayLink)));
+                }
             } else {
                 sender.sendMessage(localeManager.getMessage("replay.capture_failed", mapOf("player", resolvedName)));
             }

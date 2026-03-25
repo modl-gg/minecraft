@@ -25,9 +25,8 @@ public class SupportCommand extends BaseCommand {
 
     @CommandAlias("%cmd_support")
     @Description("Request support")
-    @Syntax("<title...>")
     @Conditions("player")
-    public void supportRequest(CommandIssuer sender, String title) {
+    public void supportRequest(CommandIssuer sender) {
         if (ticketUtil.checkCooldown(sender, "support", localeManager)) return;
 
         AbstractPlayer requester = platform.getAbstractPlayer(sender.getUniqueId(), false);
@@ -37,7 +36,7 @@ public class SupportCommand extends BaseCommand {
             requester.getUuid().toString(),
             "support",
             requester.getUsername(),
-            title,
+            null,
             null, null, null,
             "normal",
             createdServer,

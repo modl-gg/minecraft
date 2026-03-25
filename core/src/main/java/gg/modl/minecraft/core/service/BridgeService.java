@@ -1,6 +1,6 @@
 package gg.modl.minecraft.core.service;
 
-import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
+import gg.modl.minecraft.core.query.BridgeBroadcaster;
 import lombok.Setter;
 
 @Setter
@@ -13,7 +13,7 @@ public class BridgeService {
             CMD_UNFREEZE_PLAYER = "UNFREEZE_PLAYER",
             CMD_TARGET_REQUEST = "TARGET_REQUEST";
 
-    private volatile QueryStatWipeExecutor executor;
+    private volatile BridgeBroadcaster executor;
     private volatile LocalBridgeHandler localHandler;
 
     public boolean isAvailable() {

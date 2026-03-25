@@ -25,9 +25,8 @@ public class BugReportCommand extends BaseCommand {
 
     @CommandAlias("%cmd_bugreport")
     @Description("Report a bug")
-    @Syntax("<title...>")
     @Conditions("player")
-    public void bugReport(CommandIssuer sender, String title) {
+    public void bugReport(CommandIssuer sender) {
         if (ticketUtil.checkCooldown(sender, "bug", localeManager)) return;
 
         AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
@@ -37,7 +36,7 @@ public class BugReportCommand extends BaseCommand {
             reporter.getUuid().toString(),
             "bug",
             reporter.getUsername(),
-            title,
+            null,
             null, null, null,
             "normal",
             createdServer,

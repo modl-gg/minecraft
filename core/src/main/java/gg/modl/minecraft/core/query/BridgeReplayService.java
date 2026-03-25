@@ -8,7 +8,7 @@ import java.util.concurrent.*;
 
 public class BridgeReplayService implements ReplayService {
     private final ConcurrentHashMap<UUID, CompletableFuture<String>> pendingCaptures = new ConcurrentHashMap<>();
-    private final QueryStatWipeExecutor executor;
+    private final BridgeBroadcaster broadcaster;
     private final PluginLogger logger;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "modl-bridge-replay-timeout");
@@ -16,8 +16,8 @@ public class BridgeReplayService implements ReplayService {
         return t;
     });
 
-    public BridgeReplayService(QueryStatWipeExecutor executor, PluginLogger logger) {
-        this.executor = executor;
+    public BridgeReplayService(BridgeBroadcaster broadcaster, PluginLogger logger) {
+        this.broadcaster = broadcaster;
         this.logger = logger;
     }
 
@@ -26,7 +26,7 @@ public class BridgeReplayService implements ReplayService {
         CompletableFuture<String> future = new CompletableFuture<>();
         pendingCaptures.put(targetUuid, future);
 
-        executor.sendToAllBridges("CAPTURE_REPLAY", targetUuid.toString(), targetName);
+        broadcaster.sendToAllBridges("CAPTURE_REPLAY", targetUuid.toString(), targetName);
         logger.info("[bridge] Sent CAPTURE_REPLAY for " + targetName + " (" + targetUuid + ")");
 
         scheduler.schedule(() -> {

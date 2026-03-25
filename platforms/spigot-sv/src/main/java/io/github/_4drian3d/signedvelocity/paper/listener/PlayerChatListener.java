@@ -1,0 +1,89 @@
+package io.github._4drian3d.signedvelocity.paper.listener;
+
+import io.github._4drian3d.signedvelocity.shared.logger.DebugLogger;
+import io.github._4drian3d.signedvelocity.common.queue.QueuedData;
+import io.github._4drian3d.signedvelocity.common.queue.SignedQueue;
+import io.github._4drian3d.signedvelocity.common.queue.SignedResult;
+import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.Component;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventPriority;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.concurrent.CompletableFuture;
+
+import static net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText;
+
+public final class PlayerChatListener implements EventListener<AsyncChatEvent>, LocalExecutionDetector {
+    private final SignedQueue chatQueue;
+    private final DebugLogger debugLogger;
+
+    public PlayerChatListener(final SignedQueue chatQueue, final DebugLogger debugLogger) {
+        this.chatQueue = chatQueue;
+        this.debugLogger = debugLogger;
+    }
+
+    @Override
+    public @NotNull EventPriority priority() {
+        return EventPriority.LOWEST;
+    }
+
+    @Override
+    public boolean ignoreCancelled() {
+        return false;
+    }
+
+    @Override
+    public void handle(final @NotNull AsyncChatEvent event) {
+        debugLogger.debug(() -> "[CHAT] Init Message Handling | Received on: " + System.currentTimeMillis());
+        if (CHECK_FOR_LOCAL_CHAT && (!event.isAsynchronous() || isLocal())) {
+            debugLogger.debug(() -> "[CHAT] Local Message Executed");
+            return;
+        }
+        final Player player = event.getPlayer();
+        debugLogger.debug(() -> "[CHAT] Queueing Next Result");
+        final QueuedData data = this.chatQueue.dataFrom(player.getUniqueId());
+        final CompletableFuture<SignedResult> nextResult = data.nextResult();
+        debugLogger.debug(() -> "[CHAT] Future Done: " + nextResult.isDone());
+        if (event.isCancelled()) {
+            debugLogger.debug(() -> "[CHAT] Deprecated Event Cancelled");
+            return;
+        }
+
+        debugLogger.debug(() -> "[CHAT] Waiting for next result");
+
+        nextResult.thenAccept(result -> {
+            debugLogger.debug(() -> "[CHAT] Next Result");
+            if (result.cancelled()) {
+                debugLogger.debugMultiple(() -> new String[]{
+                        "[CHAT] Cancelled Message.",
+                        "Original Message: " + plainText().serialize(event.message())
+                });
+                event.setCancelled(true);
+            } else {
+                final String modifiedChat = result.toModify();
+                if (modifiedChat != null) {
+                    debugLogger.debugMultiple(() -> new String[]{
+                            "[CHAT] Modified message",
+                            "Original: " + plainText().serialize(event.message()),
+                            "Message: " + modifiedChat
+                    });
+                    event.message(Component.text(modifiedChat));
+                }
+            }
+            debugLogger.debug(() -> "[CHAT] Result applied");
+        }).join();
+    }
+
+    @Override
+    public @NotNull Class<AsyncChatEvent> eventClass() {
+        return AsyncChatEvent.class;
+    }
+
+    @Override
+    public boolean isLocal() {
+        return WALKER.walk(stream -> stream.limit(20)
+                .map(StackWalker.StackFrame::getMethodName)
+                .noneMatch(method -> method.contains("handleChat")));
+    }
+}

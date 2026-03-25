@@ -11,7 +11,7 @@ import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.boot.*;
 import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
 import gg.modl.minecraft.core.query.BridgeReplayService;
-import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
+import gg.modl.minecraft.core.query.BridgeServer;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
@@ -36,7 +36,7 @@ public class BungeePlugin extends Plugin {
 
     private Configuration configuration;
     private PluginLoader loader;
-    private QueryStatWipeExecutor queryStatWipeExecutor;
+    private BridgeServer bridgeServer;
     private PluginLogger pluginLogger;
     private BootConfig bootConfig;
 
@@ -69,7 +69,7 @@ public class BungeePlugin extends Plugin {
         HttpManager httpManager = new HttpManager(
                 bootConfig.getApiKey(),
                 bootConfig.getPanelUrl(),
-                configuration.getBoolean("api.debug", false),
+                configuration.getBoolean("debug", false),
                 bootConfig.isTestingApi(),
                 configuration.getBoolean("server.query_mojang", false)
         );
@@ -102,7 +102,7 @@ public class BungeePlugin extends Plugin {
 
     @Override
     public synchronized void onDisable() {
-        if (queryStatWipeExecutor != null) queryStatWipeExecutor.shutdown();
+        if (bridgeServer != null) bridgeServer.shutdown();
         if (loader != null) loader.shutdown();
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
     }
@@ -140,28 +140,23 @@ public class BungeePlugin extends Plugin {
     }
 
     private void configureBridgeExecutor(BungeePlatform platform, HttpManager httpManager, BootConfig bootConfig) {
-        List<BootConfig.BackendBridge> backends = bootConfig.getBackendBridges();
-        if (backends == null || backends.isEmpty()) return;
+        if (bootConfig.getMode() != BootConfig.Mode.PROXY) return;
 
+        int bridgePort = bootConfig.getBridgePort();
         String apiKey = bootConfig.getApiKey();
-        queryStatWipeExecutor = new QueryStatWipeExecutor(pluginLogger, httpManager.isDebugHttp());
-
-        for (int i = 0; i < backends.size(); i++) {
-            BootConfig.BackendBridge bb = backends.get(i);
-            String name = "bridge-" + (i + 1);
-            queryStatWipeExecutor.addBridge(name, bb.getHost(), bb.getPort(), apiKey);
-        }
-
-        loader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
 
         BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
                 platform, loader.getLocaleManager(), loader.getFreezeService(),
                 loader.getStaffModeService(), loader.getVanishService(),
                 loader.getHttpClient(), pluginLogger);
-        queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
-        loader.getBridgeService().setExecutor(queryStatWipeExecutor);
 
-        BridgeReplayService bridgeReplayService = new BridgeReplayService(queryStatWipeExecutor, pluginLogger);
+        bridgeServer = new BridgeServer(bridgePort, apiKey, dispatcher, pluginLogger);
+        bridgeServer.start();
+
+        loader.getSyncService().setStatWipeExecutor(bridgeServer);
+        loader.getBridgeService().setExecutor(bridgeServer);
+
+        BridgeReplayService bridgeReplayService = new BridgeReplayService(bridgeServer, pluginLogger);
         dispatcher.setBridgeReplayService(bridgeReplayService);
         platform.setReplayService(bridgeReplayService);
     }

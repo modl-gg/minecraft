@@ -1,7 +1,7 @@
 package gg.modl.minecraft.spigot.bridge.handler;
 
 import gg.modl.minecraft.spigot.bridge.locale.BridgeLocaleManager;
-import gg.modl.minecraft.spigot.bridge.query.BridgeQueryServer;
+import gg.modl.minecraft.spigot.bridge.query.BridgeQueryClient;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.bukkit.Bukkit;
@@ -32,7 +32,7 @@ public class FreezeHandler implements Listener {
     private final Map<UUID, UUID> frozenPlayers = new ConcurrentHashMap<>(); // frozen -> staff
 
     @Setter private StaffModeHandler staffModeHandler;
-    @Setter private BridgeQueryServer queryServer;
+    @Setter private BridgeQueryClient bridgeClient;
 
     public void register() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
@@ -110,8 +110,8 @@ public class FreezeHandler implements Listener {
         String playerName = event.getPlayer().getName();
         plugin.getLogger().warning("Frozen player " + playerName + " logged out!");
 
-        if (queryServer != null) {
-            queryServer.sendToAllClients("FREEZE_LOGOUT", uuid.toString(), playerName);
+        if (bridgeClient != null) {
+            bridgeClient.sendMessage("FREEZE_LOGOUT", uuid.toString(), playerName);
         }
     }
 

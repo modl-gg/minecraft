@@ -1,8 +1,5 @@
 # modl.gg Minecraft Plugin Configuration
 
-api:
-  debug: false
-
 # Server Configuration
 server:
   # Name of this server (used for identification in the panel)
@@ -50,19 +47,6 @@ update_checker:
   # How often to check for updates (in minutes)
   # Default: 60 minutes. Minimum: 1 minute
   interval_minutes: 60
-
-# Bridge Configuration (for stat-wipe execution via direct TCP)
-# The modl-bridge plugin on the backend Spigot server runs a TCP query server.
-# This plugin connects to it to send stat-wipe commands without needing any
-# players online. Authentication uses the API key configured above.
-bridge:
-  # IP/hostname of the server running modl-bridge (leave empty to disable).
-  # Set this to 127.0.0.1 if the bridge is running on the same server as this plugin.
-  host: ""
-  # TCP port the bridge query server listens on (must match bridge config)
-  # There is auth (using API key) so it is technically (kind of) safe to expose this
-  # port to the internet if needed, but it's recommended to firewall/use private network.
-  port: 25590
 
 # Commands that muted players cannot use
 # List command names without the leading slash
@@ -202,3 +186,6 @@ punishment_type_items_by_ordinal:
   15: "minecraft:gold_ingot"
   16: "minecraft:experience_bottle"
   17: "minecraft:barrier"
+
+# Enable this if developer tells you - will spam console logs
+debug: false

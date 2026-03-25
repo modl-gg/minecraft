@@ -17,7 +17,5 @@ testing-api: false
 # Proxy type (bridge-only mode): velocity | bungeecord
 # proxy-type: velocity
 
-# Backend server bridges (proxy mode only)
-# backend-bridges:
-#   - host: "127.0.0.1"
-#     port: 25590
+# Bridge listen port (proxy mode only — backends connect to this port)
+# bridge-port: 25590

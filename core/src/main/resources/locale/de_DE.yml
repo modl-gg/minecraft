@@ -596,10 +596,10 @@ help:
       usage: "apply"
       description: "Sich als Teammitglied bewerben"
     bugreport:
-      usage: "bugreport <titel>"
+      usage: "bugreport"
       description: "Einen Fehler melden"
     support:
-      usage: "support <titel>"
+      usage: "support"
       description: "Support-Ticket öffnen"
   staff_commands:
     staffmenu:
@@ -644,6 +644,9 @@ help:
     unmute:
       usage: "unmute <spieler>"
       description: "Aktive oder älteste ungestartete Stummschaltung begnadigen"
+    replay:
+      usage: "replay <status|capture> [spieler]"
+      description: "Replay-Aufnahmen verwalten"
     modl_reload:
       usage: "modl reload"
       description: "Konfiguration neu laden"
@@ -781,4 +784,19 @@ target:
   connecting: "&eVerbinde mit &f{server} &eum &f{player}&e zu verfolgen..."
   cannot_target_self: "&cDu kannst dich nicht selbst zum Ziel machen."
   not_online: "&cDer Spieler ist nicht online."
+
+# Replay
+replay:
+  usage:
+    - "&f/replay status [spieler] &7- Aufnahmestatus prüfen"
+    - "&f/replay capture [spieler] &7- Replay aufnehmen und hochladen"
+  not_available: "&cReplay-Aufnahme ist auf diesem Server nicht verfügbar."
+  status_recording: "&a{player} wird derzeit aufgenommen"
+  status_not_recording: "&c{player} wird nicht aufgenommen"
+  no_active_recording: "&cKeine aktive Aufnahme für {player}"
+  capturing: "&aReplay wird aufgenommen und hochgeladen für {player}..."
+  capture_success: "&aReplay erfolgreich aufgenommen für {player}"
+  capture_link: "&b{url}"
+  capture_failed: "&cReplay-Aufnahme für {player} fehlgeschlagen"
+  console_specify_player: "&cBitte geben Sie einen Spielernamen von der Konsole an."
 

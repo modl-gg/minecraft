@@ -675,10 +675,10 @@ help:
       usage: "apply"
       description: "Apply for a staff position"
     bugreport:
-      usage: "bugreport <title>"
+      usage: "bugreport"
       description: "Report a bug"
     support:
-      usage: "support <title>"
+      usage: "support"
       description: "Open support ticket"
   staff_commands:
     staffmenu:
@@ -723,6 +723,9 @@ help:
     unmute:
       usage: "unmute <player>"
       description: "Pardon active or oldest unstarted mute"
+    replay:
+      usage: "replay <status|capture> [player]"
+      description: "Manage replay recordings"
     modl_reload:
       usage: "modl reload"
       description: "Reload configuration"
@@ -864,18 +867,17 @@ target:
 # Replay
 replay:
   usage:
-    - "&7[Replay] Usage:"
-    - "&7  /replay status [player] &f- Check recording status"
-    - "&7  /replay capture [player] &f- Capture and upload replay"
+    - "&f/replay status [player] &7- Check recording status"
+    - "&f/replay capture [player] &7- Capture and upload replay"
   not_available: "&cReplay recording is not available on this server."
-  status_recording: "&7[Replay] &f{player}: &arecording"
-  status_not_recording: "&7[Replay] &f{player}: &cnot recording"
-  no_active_recording: "&c[Replay] No active recording for {player}"
-  capturing: "&7[Replay] Capturing and uploading replay for {player}..."
-  capture_success: "&a[Replay] Replay captured for {player}"
+  status_recording: "&a{player} is currently being recorded"
+  status_not_recording: "&c{player} is not being recording"
+  no_active_recording: "&cNo active recording for {player}"
+  capturing: "&aCapturing and uploading replay for {player}..."
+  capture_success: "&aReplay successfully captured for {player}"
   capture_link: "&b{url}"
-  capture_failed: "&c[Replay] Failed to capture replay for {player}"
-  console_specify_player: "&c[Replay] Specify a player name from console."
+  capture_failed: "&cFailed to capture replay for {player}"
+  console_specify_player: "&cSpecify a player name from console."
 
 # Standing GUI (player-facing)
 standing_gui:

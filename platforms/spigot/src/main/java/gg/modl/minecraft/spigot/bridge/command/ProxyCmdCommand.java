@@ -1,7 +1,7 @@
 package gg.modl.minecraft.spigot.bridge.command;
 
 import gg.modl.minecraft.spigot.bridge.locale.BridgeLocaleManager;
-import gg.modl.minecraft.spigot.bridge.query.BridgeQueryServer;
+import gg.modl.minecraft.spigot.bridge.query.BridgeQueryClient;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -17,7 +17,7 @@ public class ProxyCmdCommand implements CommandExecutor {
 
     private final JavaPlugin plugin;
     private final BridgeLocaleManager localeManager;
-    private final BridgeQueryServer queryServer;
+    private final BridgeQueryClient bridgeClient;
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -31,14 +31,15 @@ public class ProxyCmdCommand implements CommandExecutor {
             return true;
         }
 
-        if (!queryServer.hasConnectedClients()) {
+        if (!bridgeClient.isConnected()) {
             sender.sendMessage(localeManager.getMessage("command.proxycmd.not_connected"));
             return true;
         }
 
         String fullCommand = String.join(" ", args);
 
-        if (queryServer.sendToAllClients(PROXY_CMD_ACTION, fullCommand)) {
+        if (bridgeClient.isConnected()) {
+            bridgeClient.sendMessage(PROXY_CMD_ACTION, fullCommand);
             plugin.getLogger().info("Forwarded command to proxy: " + fullCommand);
             sender.sendMessage(localeManager.getMessage("command.proxycmd.sent", mapOf("command", fullCommand)));
         } else {

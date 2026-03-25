@@ -90,6 +90,8 @@ public class ModlHelpCommand extends BaseCommand {
                 addEntry(entries, "staff_commands.unmute");
             }
 
+            addEntry(entries, "staff_commands.replay");
+
             if (isAdmin || !sender.isPlayer()) {
                 addEntry(entries, "staff_commands.modl_reload");
             }

@@ -29,8 +29,8 @@ public class BridgeConfig {
 
     @Setter private String apiKey = "";
     @Setter private boolean debug = false;
-    private boolean queryEnabled = true;
-    private int queryPort = DEFAULT_QUERY_PORT;
+    private String proxyHost = "";
+    private int proxyPort = DEFAULT_QUERY_PORT;
     private List<String> statWipeCommands = new ArrayList<>(listOf("clearstats {player}"));
     private String anticheatName = "Anti-cheat";
     private String serverName = "Server 1";
@@ -89,8 +89,8 @@ public class BridgeConfig {
     @SuppressWarnings("unchecked")
     private static BridgeConfig fromMap(Map<String, Object> data) {
         BridgeConfig config = new BridgeConfig();
-        config.queryEnabled = getBool(data, "query-enabled", true);
-        config.queryPort = getInt(data, "query-port", DEFAULT_QUERY_PORT);
+        config.proxyHost = getStr(data, "proxy-host", "");
+        config.proxyPort = getInt(data, "proxy-port", getInt(data, "query-port", DEFAULT_QUERY_PORT));
         config.anticheatName = getStr(data, "anticheat-name", "Anti-cheat");
         config.serverName = getStr(data, "server-name", "Server 1");
         config.reportCooldown = getInt(data, "report-cooldown", DEFAULT_REPORT_COOLDOWN);
@@ -129,8 +129,8 @@ public class BridgeConfig {
 
     private Map<String, Object> toMap() {
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put("query-enabled", queryEnabled);
-        map.put("query-port", queryPort);
+        map.put("proxy-host", proxyHost);
+        map.put("proxy-port", proxyPort);
         map.put("stat-wipe-commands", statWipeCommands);
         map.put("anticheat-name", anticheatName);
         map.put("server-name", serverName);

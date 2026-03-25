@@ -1,8 +1,10 @@
 # Bridge configuration for modl.gg Spigot plugin.
 
-# Enable the TCP query server for proxy communication
-query-enabled: true
-query-port: 25590
+# Proxy host (IP or hostname of the proxy server)
+# Set this to the proxy's address. Leave empty in standalone mode.
+proxy-host: "127.0.0.1"
+# Proxy bridge port
+proxy-port: 25590
 
 # Commands executed on stat wipe ({player} is replaced with the player name)
 stat-wipe-commands:

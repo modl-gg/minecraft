@@ -6,7 +6,6 @@ import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
-import com.velocitypowered.api.plugin.Dependency;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
@@ -20,7 +19,7 @@ import gg.modl.minecraft.core.boot.*;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
 import gg.modl.minecraft.core.query.BridgeReplayService;
-import gg.modl.minecraft.core.query.QueryStatWipeExecutor;
+import gg.modl.minecraft.core.query.BridgeServer;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
@@ -47,7 +46,7 @@ import java.util.Optional;
         authors = { PluginInfo.AUTHOR },
         description = PluginInfo.DESCRIPTION,
         url = PluginInfo.URL,
-        dependencies = { @Dependency(id = "signedvelocity", optional = true) })
+        dependencies = {})
 public final class VelocityPlugin {
     private static final int MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
 
@@ -59,7 +58,7 @@ public final class VelocityPlugin {
 
     private Map<String, Object> configuration;
     private PluginLoader pluginLoader;
-    private QueryStatWipeExecutor queryStatWipeExecutor;
+    private BridgeServer bridgeServer;
 
     @Inject
     public VelocityPlugin(PluginContainer plugin, ProxyServer server, @DataDirectory Path folder, Logger logger) {
@@ -83,8 +82,8 @@ public final class VelocityPlugin {
         }
 
         loadLibraries();
-        ensureSignedVelocity();
         initializePacketEvents();
+        initSignedVelocity();
         loadConfig();
         createLocaleFiles();
         mergeDefaultConfigs();
@@ -95,7 +94,7 @@ public final class VelocityPlugin {
         HttpManager httpManager = new HttpManager(
                 bootConfig.getApiKey(),
                 bootConfig.getPanelUrl(),
-                (Boolean) getNestedConfig("api.debug", false),
+                (Boolean) getNestedConfig("debug", false),
                 bootConfig.isTestingApi(),
                 (Boolean) getNestedConfig("server.query_mojang", false)
         );
@@ -128,18 +127,20 @@ public final class VelocityPlugin {
 
     @Subscribe
     public synchronized void onProxyShutdown(ProxyShutdownEvent event) {
-        if (queryStatWipeExecutor != null) queryStatWipeExecutor.shutdown();
+        if (bridgeServer != null) bridgeServer.shutdown();
         if (pluginLoader != null) pluginLoader.shutdown();
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
     }
 
-    private void ensureSignedVelocity() {
-        if (server.getPluginManager().getPlugin("signedvelocity").isPresent()) return;
-        Path pluginsFolder = folder.getParent();
-        Path jar = SignedVelocityDownloader.ensureDownloaded(SignedVelocityDownloader.Platform.PROXY, pluginsFolder, pluginLogger);
-        if (jar != null) {
-            logger.info("[SignedVelocity] Will be active after a proxy restart.");
+    private void initSignedVelocity() {
+        if (server.getPluginManager().getPlugin("signedvelocity").isPresent()) {
+            logger.info("[SignedVelocity] Using standalone SignedVelocity plugin");
+            return;
         }
+
+        var sv = new io.github._4drian3d.signedvelocity.velocity.SignedVelocity(server, this, logger);
+        sv.init();
+        logger.info("[SignedVelocity] Embedded listeners registered");
     }
 
     private BootConfig loadOrCreateBootConfig() {
@@ -194,28 +195,23 @@ public final class VelocityPlugin {
     }
 
     private void configureBridgeExecutor(VelocityPlatform platform, HttpManager httpManager, BootConfig bootConfig) {
-        List<BootConfig.BackendBridge> backends = bootConfig.getBackendBridges();
-        if (backends == null || backends.isEmpty()) return;
+        if (bootConfig.getMode() != BootConfig.Mode.PROXY) return;
 
+        int bridgePort = bootConfig.getBridgePort();
         String apiKey = bootConfig.getApiKey();
-        queryStatWipeExecutor = new QueryStatWipeExecutor(pluginLogger, httpManager.isDebugHttp());
-
-        for (int i = 0; i < backends.size(); i++) {
-            BootConfig.BackendBridge bb = backends.get(i);
-            String name = "bridge-" + (i + 1);
-            queryStatWipeExecutor.addBridge(name, bb.getHost(), bb.getPort(), apiKey);
-        }
-
-        pluginLoader.getSyncService().setStatWipeExecutor(queryStatWipeExecutor);
 
         BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
                 platform, pluginLoader.getLocaleManager(), pluginLoader.getFreezeService(),
                 pluginLoader.getStaffModeService(), pluginLoader.getVanishService(),
                 pluginLoader.getHttpClient(), pluginLogger);
-        queryStatWipeExecutor.setBridgeMessageDispatcher(dispatcher);
-        pluginLoader.getBridgeService().setExecutor(queryStatWipeExecutor);
 
-        BridgeReplayService bridgeReplayService = new BridgeReplayService(queryStatWipeExecutor, pluginLogger);
+        bridgeServer = new BridgeServer(bridgePort, apiKey, dispatcher, pluginLogger);
+        bridgeServer.start();
+
+        pluginLoader.getSyncService().setStatWipeExecutor(bridgeServer);
+        pluginLoader.getBridgeService().setExecutor(bridgeServer);
+
+        BridgeReplayService bridgeReplayService = new BridgeReplayService(bridgeServer, pluginLogger);
         dispatcher.setBridgeReplayService(bridgeReplayService);
         platform.setReplayService(bridgeReplayService);
     }
