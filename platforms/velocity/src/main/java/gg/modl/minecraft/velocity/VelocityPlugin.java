@@ -129,7 +129,11 @@ public final class VelocityPlugin {
     public synchronized void onProxyShutdown(ProxyShutdownEvent event) {
         if (bridgeServer != null) bridgeServer.shutdown();
         if (pluginLoader != null) pluginLoader.shutdown();
-        if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
+        if (PacketEvents.getAPI() != null) {
+            try {
+                PacketEvents.getAPI().terminate();
+            } catch (Exception ignored) {}
+        }
     }
 
     private void initSignedVelocity() {
