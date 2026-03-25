@@ -77,11 +77,9 @@ public class BridgeQueryClient {
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
-                        ch.pipeline().addLast(
-                                new LengthFieldBasedFrameDecoder(MAX_FRAME_LENGTH, 0, 4, 0, 4),
-                                new LengthFieldPrepender(4),
-                                new BridgeClientHandler()
-                        );
+                        // No frame codecs yet — handshake uses raw bytes.
+                        // Frame codecs are added after auth succeeds.
+                        ch.pipeline().addLast("handler", new BridgeClientHandler());
                     }
                 });
 
@@ -257,6 +255,11 @@ public class BridgeQueryClient {
                         byte status = buf.readByte();
                         if (status == 0x01) {
                             connected = true;
+                            // Now that auth is done, add frame codecs for length-prefixed messages
+                            ctx.pipeline().addBefore("handler", "frameDecoder",
+                                    new LengthFieldBasedFrameDecoder(MAX_FRAME_LENGTH, 0, 4, 0, 4));
+                            ctx.pipeline().addBefore("handler", "framePrepender",
+                                    new LengthFieldPrepender(4));
                             plugin.getLogger().info("[bridge] Connected to proxy at " + host + ":" + port);
                             sendBridgeHello();
                         } else {

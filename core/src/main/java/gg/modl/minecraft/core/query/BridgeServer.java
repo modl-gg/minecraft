@@ -61,11 +61,9 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
-                        ch.pipeline().addLast(
-                                new LengthFieldBasedFrameDecoder(MAX_FRAME_LENGTH, 0, LENGTH_FIELD_LENGTH, 0, LENGTH_FIELD_LENGTH),
-                                new LengthFieldPrepender(LENGTH_FIELD_LENGTH),
-                                new BridgeServerHandler()
-                        );
+                        // No frame codecs yet — handshake uses raw bytes.
+                        // Frame codecs are added after auth succeeds.
+                        ch.pipeline().addLast("handler", new BridgeServerHandler());
                     }
                 });
 
@@ -234,6 +232,11 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
                 authenticated = true;
                 authenticatedChannels.add(ctx.channel());
                 sendResponse(ctx, AUTH_SUCCESS);
+                // Now that auth is done, add frame codecs for length-prefixed messages
+                ctx.pipeline().addBefore("handler", "frameDecoder",
+                        new LengthFieldBasedFrameDecoder(MAX_FRAME_LENGTH, 0, LENGTH_FIELD_LENGTH, 0, LENGTH_FIELD_LENGTH));
+                ctx.pipeline().addBefore("handler", "framePrepender",
+                        new LengthFieldPrepender(LENGTH_FIELD_LENGTH));
                 logger.info("[bridge] Backend authenticated from " + ctx.channel().remoteAddress());
                 flushPendingMessages();
             } catch (IOException e) {
