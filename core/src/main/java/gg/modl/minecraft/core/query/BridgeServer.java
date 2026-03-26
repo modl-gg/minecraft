@@ -35,6 +35,7 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
     private final String secret;
     private final BridgeMessageDispatcher dispatcher;
     private final PluginLogger logger;
+    private final String panelUrl;
 
     private final Map<String, Channel> connectedServers = new ConcurrentHashMap<>();
     private final Set<Channel> authenticatedChannels = ConcurrentHashMap.newKeySet();
@@ -45,10 +46,15 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
     private Channel serverChannel;
 
     public BridgeServer(int port, String secret, BridgeMessageDispatcher dispatcher, PluginLogger logger) {
+        this(port, secret, dispatcher, logger, "");
+    }
+
+    public BridgeServer(int port, String secret, BridgeMessageDispatcher dispatcher, PluginLogger logger, String panelUrl) {
         this.port = port;
         this.secret = secret;
         this.dispatcher = dispatcher;
         this.logger = logger;
+        this.panelUrl = panelUrl != null ? panelUrl : "";
     }
 
     public void start() {
@@ -177,6 +183,14 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
         channel.writeAndFlush(buf);
     }
 
+    private void sendPanelUrl(Channel channel) {
+        if (panelUrl.isEmpty()) return;
+        byte[] data = buildMessage("PANEL_URL", panelUrl);
+        if (data != null) {
+            sendRaw(channel, data);
+        }
+    }
+
     public void shutdown() {
         if (serverChannel != null) serverChannel.close();
         if (bossGroup != null) bossGroup.shutdownGracefully();
@@ -238,6 +252,7 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
                 ctx.pipeline().addBefore("handler", "framePrepender",
                         new LengthFieldPrepender(LENGTH_FIELD_LENGTH));
                 logger.info("[bridge] Backend authenticated from " + ctx.channel().remoteAddress());
+                sendPanelUrl(ctx.channel());
                 flushPendingMessages();
             } catch (IOException e) {
                 logger.warning("[bridge] Handshake error: " + e.getMessage());

@@ -64,8 +64,9 @@ class NotificationService {
     private void processTicketCreatedNotification(SyncResponse.StaffNotification notification) {
         Map<String, Object> data = notification.getData();
         String ticketId = extractString(data, "ticketId");
+        String rawTicketUrl = extractString(data, "ticketUrl");
         String ticketUrl = ticketId.isEmpty()
-                ? extractString(data, "ticketUrl")
+                ? (rawTicketUrl.startsWith("http") ? rawTicketUrl : panelUrl + rawTicketUrl)
                 : panelUrl + "/panel/tickets/" + ticketId;
         String subject = extractString(data, "subject");
         String firstReply = extractString(data, "firstReplyContent");
@@ -149,8 +150,9 @@ class NotificationService {
 
     private void sendClickableTicketNotification(UUID playerUuid, SyncResponse.PlayerNotification notification, Map<String, Object> data) {
         String ticketId = extractString(data, "ticketId");
+        String rawTicketUrl = extractString(data, "ticketUrl");
         String ticketUrl = ticketId.isEmpty()
-                ? extractString(data, "ticketUrl")
+                ? (rawTicketUrl.startsWith("http") ? rawTicketUrl : panelUrl + rawTicketUrl)
                 : panelUrl + "/panel/tickets/" + ticketId;
         String json = buildClickableTicketJson(notification.getMessage(), ticketUrl, ticketId);
         if (debugMode) logger.info("Sending clickable notification JSON: " + json);
@@ -201,8 +203,9 @@ class NotificationService {
         Map<String, Object> data = pending.getData();
         if (data != null && data.containsKey("ticketUrl")) {
             String ticketId = extractString(data, "ticketId");
+            String rawTicketUrl = extractString(data, "ticketUrl");
             String ticketUrl = ticketId.isEmpty()
-                    ? extractString(data, "ticketUrl")
+                    ? (rawTicketUrl.startsWith("http") ? rawTicketUrl : panelUrl + rawTicketUrl)
                     : panelUrl + "/panel/tickets/" + ticketId;
             String json = buildClickableTicketJson(pending.getMessage(), ticketUrl, ticketId);
             platform.runOnMainThread(() -> platform.sendJsonMessage(playerUuid, json));

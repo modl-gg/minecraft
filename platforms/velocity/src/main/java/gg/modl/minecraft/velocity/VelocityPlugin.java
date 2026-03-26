@@ -15,6 +15,7 @@ import gg.modl.minecraft.api.LibraryRecord;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.api.http.request.StartupRequest;
 import gg.modl.minecraft.core.boot.*;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
@@ -88,12 +89,22 @@ public final class VelocityPlugin {
         createLocaleFiles();
         mergeDefaultConfigs();
 
+        String panelUrl = StartupClient.callStartupWithRetry(
+                bootConfig.getApiKey(), bootConfig.isTestingApi(),
+                new StartupRequest(PluginInfo.VERSION, "VELOCITY",
+                        server.getVersion().getVersion(), server.getConfiguration().getShowMaxPlayers()),
+                pluginLogger);
+        if (panelUrl == null) {
+            logger.error("Failed to connect to modl.gg. Check your API key and network connection.");
+            return;
+        }
+
         VelocityCommandManager commandManager = new VelocityCommandManager(this.server, this);
         new CirrusVelocity(this, server).init();
 
         HttpManager httpManager = new HttpManager(
                 bootConfig.getApiKey(),
-                bootConfig.getPanelUrl(),
+                panelUrl,
                 (Boolean) getNestedConfig("debug", false),
                 bootConfig.isTestingApi(),
                 (Boolean) getNestedConfig("server.query_mojang", false)
@@ -104,7 +115,7 @@ public final class VelocityPlugin {
         int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfigInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
 
         this.pluginLoader = new PluginLoader(platform, folder, chatMessageCache, httpManager, syncPollingRate);
-        configureBridgeExecutor(platform, httpManager, bootConfig);
+        configureBridgeExecutor(platform, httpManager, bootConfig, panelUrl);
 
         @SuppressWarnings("unchecked")
         List<String> mutedCommands = (List<String>) getNestedConfig("muted_commands", Collections.emptyList());
@@ -198,7 +209,7 @@ public final class VelocityPlugin {
         logger.error("===============================================");
     }
 
-    private void configureBridgeExecutor(VelocityPlatform platform, HttpManager httpManager, BootConfig bootConfig) {
+    private void configureBridgeExecutor(VelocityPlatform platform, HttpManager httpManager, BootConfig bootConfig, String panelUrl) {
         if (bootConfig.getMode() != BootConfig.Mode.PROXY) return;
 
         int bridgePort = bootConfig.getBridgePort();
@@ -209,7 +220,7 @@ public final class VelocityPlugin {
                 pluginLoader.getStaffModeService(), pluginLoader.getVanishService(),
                 pluginLoader.getHttpClient(), pluginLogger);
 
-        bridgeServer = new BridgeServer(bridgePort, apiKey, dispatcher, pluginLogger);
+        bridgeServer = new BridgeServer(bridgePort, apiKey, dispatcher, pluginLogger, panelUrl);
         bridgeServer.start();
 
         pluginLoader.getSyncService().setStatWipeExecutor(bridgeServer);

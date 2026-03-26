@@ -17,6 +17,7 @@ import gg.modl.minecraft.spigot.bridge.reporter.detection.ViolationTracker;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.AntiCheatHook;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.GrimHook;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.PolarHook;
+import gg.modl.minecraft.spigot.bridge.reporter.hook.VulcanHook;
 import gg.modl.minecraft.spigot.bridge.statwipe.StatWipeHandler;
 import gg.modl.replay.format.events.BlockChangeEvent;
 import gg.modl.replay.recording.PacketRecorder;
@@ -197,6 +198,12 @@ public class BridgeComponent implements Listener {
             hooks.add(grimHook);
         }
 
+        if (Bukkit.getPluginManager().getPlugin("Vulcan") != null) {
+            VulcanHook vulcanHook = new VulcanHook(plugin, bridgeConfig, violationTracker, autoReporter);
+            vulcanHook.register();
+            hooks.add(vulcanHook);
+        }
+
         if (!polarAvailable) {
             PolarHook polarHook = new PolarHook(plugin, bridgeConfig, violationTracker, autoReporter);
             if (polarHook.isAvailable()) {
@@ -206,7 +213,7 @@ public class BridgeComponent implements Listener {
         }
 
         if (hooks.isEmpty() && !polarAvailable) {
-            logger.warning("[bridge] No anticheat plugins detected. Install GrimAC or Polar for anticheat reporting.");
+            logger.warning("[bridge] No anticheat plugins detected. Install GrimAC, Vulcan, or Polar for anticheat reporting.");
         }
     }
 

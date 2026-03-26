@@ -218,4 +218,7 @@ buildNumber.properties
 
 .env
 
+# Allow local anticheat API JARs
+!**/libs/*.jar
+
 # End of https://www.toptal.com/developers/gitignore/api/java,windows,macos,visualstudiocode,intellij+all,maven

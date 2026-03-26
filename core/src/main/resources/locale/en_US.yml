@@ -23,6 +23,8 @@ messages:
   no_chat_logs_available: "&cNo recent chat messages found for {player}. Cannot create chat report without chat logs."
   view_ticket_label: "View your ticket"
   complete_form_label: "Complete your {type}"
+  click_to_view: "[Click to view]"
+  click_to_view_hover: "Click to view ticket {ticketId}"
   console_ticket_url: "&6{message}: &b{url}"
   claiming_ticket: "&eLinking ticket &f{ticketId}&e to your account..."
   ticket_claimed_success: "&aTicket &f{ticketId}&a successfully linked to your account!"
@@ -877,6 +879,8 @@ replay:
   capture_success: "&aReplay successfully captured for {player}"
   capture_link: "&b{url}"
   capture_failed: "&cFailed to capture replay for {player}"
+  click_to_view: "[Click to view replay]"
+  click_to_view_hover: "Open replay viewer"
   console_specify_player: "&cSpecify a player name from console."
 
 # Standing GUI (player-facing)

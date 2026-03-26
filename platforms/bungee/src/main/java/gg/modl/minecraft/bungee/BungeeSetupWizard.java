@@ -73,8 +73,7 @@ public class BungeeSetupWizard implements Listener {
                     logger.info("Respond to prompts by typing: setup <answer>");
                     logger.info("Example: setup yes");
                 } else {
-                    logger.info("Type your answers in the proxy console.");
-                    logger.info("Append --test-mode to the first answer to use the testing API.");
+                    logger.info("Type your answers in the console below.");
                 }
                 logger.info("");
 

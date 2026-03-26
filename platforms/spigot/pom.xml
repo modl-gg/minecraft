@@ -64,6 +64,13 @@
             <version>2.3.0</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>me.frep.vulcan</groupId>
+            <artifactId>VulcanAPI</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/VulcanAPI.jar</systemPath>
+        </dependency>
         <!-- Netty (provided by Minecraft server) -->
         <dependency>
             <groupId>io.netty</groupId>

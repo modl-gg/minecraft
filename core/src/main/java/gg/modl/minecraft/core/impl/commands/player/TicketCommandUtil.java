@@ -16,13 +16,6 @@ import java.util.concurrent.CompletableFuture;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class TicketCommandUtil {
-    private static final String CLICKABLE_TICKET_JSON =
-            "{\"text\":\"\",\"extra\":[" +
-            "{\"text\":\"\uD83D\uDCCB \",\"color\":\"gold\"}," +
-            "{\"text\":\"%s: \",\"color\":\"gray\"}," +
-            "{\"text\":\"[Click to view]\",\"color\":\"aqua\",\"underlined\":true," +
-            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket %s\"}}]}";
     private static final long COOLDOWN_MS = 60_000;
 
     private final Cache cache;
@@ -119,8 +112,25 @@ public class TicketCommandUtil {
             return;
         }
 
-        String clickableMessage = String.format(CLICKABLE_TICKET_JSON, message, ticketUrl, ticketId);
+        String clickText = localeManager.getMessage("messages.click_to_view");
+        String hoverText = localeManager.getMessage("messages.click_to_view_hover", mapOf("ticketId", ticketId));
+        String json = String.format(
+            "{\"text\":\"\",\"extra\":[" +
+            "{\"text\":\"\",\"color\":\"gold\"}," +
+            "{\"text\":\"%s: \",\"color\":\"gray\"}," +
+            "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
+            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"%s\"}}]}",
+            escapeJson(message), escapeJson(clickText), ticketUrl, escapeJson(hoverText));
         UUID senderUuid = sender.getUniqueId();
-        platform.runOnMainThread(() -> platform.sendJsonMessage(senderUuid, clickableMessage));
+        platform.runOnMainThread(() -> platform.sendJsonMessage(senderUuid, json));
+    }
+
+    private static String escapeJson(String text) {
+        return text.replace("\\", "\\\\")
+                   .replace("\"", "\\\"")
+                   .replace("\n", "\\n")
+                   .replace("\r", "")
+                   .replace("\t", "\\t");
     }
 }

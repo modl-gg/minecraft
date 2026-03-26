@@ -8,7 +8,9 @@ import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.api.http.request.StartupRequest;
 import gg.modl.minecraft.core.boot.*;
+import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
 import gg.modl.minecraft.core.query.BridgeReplayService;
 import gg.modl.minecraft.core.query.BridgeServer;
@@ -66,9 +68,19 @@ public class BungeePlugin extends Plugin {
         createLocaleFiles();
         mergeDefaultConfigs();
 
+        String panelUrl = StartupClient.callStartupWithRetry(
+                bootConfig.getApiKey(), bootConfig.isTestingApi(),
+                new StartupRequest(PluginInfo.VERSION, "BUNGEECORD",
+                        getProxy().getVersion(), getProxy().getConfig().getPlayerLimit()),
+                pluginLogger);
+        if (panelUrl == null) {
+            getLogger().severe("Failed to connect to modl.gg. Check your API key and network connection.");
+            return;
+        }
+
         HttpManager httpManager = new HttpManager(
                 bootConfig.getApiKey(),
-                bootConfig.getPanelUrl(),
+                panelUrl,
                 configuration.getBoolean("debug", false),
                 bootConfig.isTestingApi(),
                 configuration.getBoolean("server.query_mojang", false)
@@ -83,7 +95,7 @@ public class BungeePlugin extends Plugin {
         List<String> mutedCommands = configuration.getStringList("muted_commands");
 
         this.loader = new PluginLoader(platform, getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
-        configureBridgeExecutor(platform, httpManager, bootConfig);
+        configureBridgeExecutor(platform, httpManager, bootConfig, panelUrl);
 
         getProxy().getPluginManager().registerListener(this, new BungeeListener(
                 platform, loader.getCache(), loader.getHttpClientHolder(), loader.getChatMessageCache(),
@@ -139,7 +151,7 @@ public class BungeePlugin extends Plugin {
                 getDataFolder().toPath().resolve("locale/en_US.yml"), pluginLogger);
     }
 
-    private void configureBridgeExecutor(BungeePlatform platform, HttpManager httpManager, BootConfig bootConfig) {
+    private void configureBridgeExecutor(BungeePlatform platform, HttpManager httpManager, BootConfig bootConfig, String panelUrl) {
         if (bootConfig.getMode() != BootConfig.Mode.PROXY) return;
 
         int bridgePort = bootConfig.getBridgePort();
@@ -150,7 +162,7 @@ public class BungeePlugin extends Plugin {
                 loader.getStaffModeService(), loader.getVanishService(),
                 loader.getHttpClient(), pluginLogger);
 
-        bridgeServer = new BridgeServer(bridgePort, apiKey, dispatcher, pluginLogger);
+        bridgeServer = new BridgeServer(bridgePort, apiKey, dispatcher, pluginLogger, panelUrl);
         bridgeServer.start();
 
         loader.getSyncService().setStatWipeExecutor(bridgeServer);

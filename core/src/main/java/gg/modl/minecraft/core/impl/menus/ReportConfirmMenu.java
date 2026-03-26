@@ -211,7 +211,7 @@ public class ReportConfirmMenu extends SimpleMenu {
     private void sendClickableTicketLink(String ticketUrl, String ticketId) {
         String clickableMessage = String.format(
                 "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"\uD83D\uDCCB \",\"color\":\"gold\"}," +
+                "{\"text\":\"\",\"color\":\"gold\"}," +
                 "{\"text\":\"View your ticket: \",\"color\":\"gray\"}," +
                 "{\"text\":\"[Click to view]\",\"color\":\"aqua\",\"underlined\":true," +
                 "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +

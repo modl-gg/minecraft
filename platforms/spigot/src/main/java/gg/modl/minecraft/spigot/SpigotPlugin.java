@@ -8,7 +8,9 @@ import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.api.http.request.StartupRequest;
 import gg.modl.minecraft.core.boot.*;
+import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
@@ -83,20 +85,32 @@ public class SpigotPlugin extends JavaPlugin {
         loadPacketEvents();
         initPacketEvents();
 
+        BootConfig.Mode mode = bootConfig.getMode();
+
+        String panelUrl = "";
+        if (mode == BootConfig.Mode.STANDALONE || mode == BootConfig.Mode.PROXY) {
+            panelUrl = StartupClient.callStartupWithRetry(
+                    bootConfig.getApiKey(), bootConfig.isTestingApi(),
+                    new StartupRequest(PluginInfo.VERSION, "SPIGOT",
+                            getServer().getVersion(), getServer().getMaxPlayers()),
+                    pluginLogger);
+            if (panelUrl == null) {
+                getLogger().severe("Failed to connect to modl.gg. Check your API key and network connection.");
+                getServer().getPluginManager().disablePlugin(this);
+                return;
+            }
+        }
+
         String backendUrl = bootConfig.isTestingApi() ? HttpManager.TESTING_API_URL : HttpManager.V2_API_URL;
-        String panelUrl = HttpManager.adjustPanelUrlForEnv(
-                bootConfig.getPanelUrl() != null ? bootConfig.getPanelUrl() : "",
-                bootConfig.isTestingApi());
         bridgeComponent = new BridgeComponent(this, bootConfig.getApiKey(), backendUrl, panelUrl, pluginLogger);
 
         initSignedVelocity();
 
-        BootConfig.Mode mode = bootConfig.getMode();
         if (mode == BootConfig.Mode.STANDALONE) {
             saveDefaultConfig();
             createLocaleFiles();
             mergeDefaultConfigs();
-            enableStandaloneMode(bootConfig);
+            enableStandaloneMode(bootConfig, panelUrl);
         } else if (mode == BootConfig.Mode.BRIDGE_ONLY) {
             mergeBootConfig();
             enableBridgeOnlyMode(bootConfig);
@@ -106,10 +120,10 @@ public class SpigotPlugin extends JavaPlugin {
         }
     }
 
-    private void enableStandaloneMode(BootConfig bootConfig) {
+    private void enableStandaloneMode(BootConfig bootConfig, String panelUrl) {
         HttpManager httpManager = new HttpManager(
                 bootConfig.getApiKey(),
-                bootConfig.getPanelUrl(),
+                panelUrl,
                 getConfig().getBoolean("debug", false),
                 bootConfig.isTestingApi(),
                 getConfig().getBoolean("server.query_mojang", false)

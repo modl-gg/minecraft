@@ -25,6 +25,18 @@ public class RegistrationClient {
         this.apiBase = testingApi ? TEST_API_BASE : PROD_API_BASE;
     }
 
+    public AvailabilityResponse checkAvailability(String email, String serverName, String subdomain)
+            throws IOException {
+        JsonObject body = new JsonObject();
+        if (email != null && !email.isEmpty()) body.addProperty("email", email);
+        if (serverName != null && !serverName.isEmpty()) body.addProperty("serverName", serverName);
+        if (subdomain != null && !subdomain.isEmpty()) body.addProperty("customDomain", subdomain);
+
+        String baseUrl = apiBase.replace("/registration", "/server");
+        String responseBody = sendPost(baseUrl + "/check-availability", body.toString());
+        return gson.fromJson(responseBody, AvailabilityResponse.class);
+    }
+
     public RegisterResponse register(String email, String serverName, String subdomain, String plan)
             throws IOException {
         JsonObject body = new JsonObject();
@@ -118,6 +130,25 @@ public class RegistrationClient {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    public static class AvailabilityResponse {
+        private final boolean emailAvailable;
+        private final boolean nameAvailable;
+        private final boolean subdomainAvailable;
+        private final String message;
+
+        public AvailabilityResponse(boolean emailAvailable, boolean nameAvailable, boolean subdomainAvailable, String message) {
+            this.emailAvailable = emailAvailable;
+            this.nameAvailable = nameAvailable;
+            this.subdomainAvailable = subdomainAvailable;
+            this.message = message;
+        }
+
+        public boolean emailAvailable() { return emailAvailable; }
+        public boolean nameAvailable() { return nameAvailable; }
+        public boolean subdomainAvailable() { return subdomainAvailable; }
+        public String message() { return message; }
     }
 
     public static class RegisterResponse {

@@ -18,7 +18,6 @@ public class BootConfig {
 
     private Mode mode = Mode.STANDALONE;
     private String apiKey = "";
-    private String panelUrl = "";
     private boolean testingApi = false;
     private String proxyType;
     private int bridgePort = 25590;
@@ -50,9 +49,6 @@ public class BootConfig {
     public boolean isValid() {
         if (apiKey == null || apiKey.isEmpty() || apiKey.equals(PLACEHOLDER_API_KEY)) {
             return mode == Mode.BRIDGE_ONLY; // bridge-only can work without API key for now
-        }
-        if (mode != Mode.BRIDGE_ONLY && (panelUrl == null || panelUrl.isEmpty())) {
-            return false;
         }
         return true;
     }
@@ -97,7 +93,6 @@ public class BootConfig {
         BootConfig config = new BootConfig();
         config.setMode(Mode.fromString((String) data.get("mode")));
         config.setApiKey(getStr(data, "api-key", ""));
-        config.setPanelUrl(getStr(data, "panel-url", ""));
         config.setTestingApi(getBool(data, "testing-api", false));
         config.setProxyType(getStr(data, "proxy-type", null));
         config.setBridgePort(getInt(data, "bridge-port", 25590));
@@ -109,7 +104,6 @@ public class BootConfig {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("mode", mode.toYaml());
         map.put("api-key", apiKey);
-        map.put("panel-url", panelUrl);
         map.put("testing-api", testingApi);
         if (proxyType != null) map.put("proxy-type", proxyType);
         if (mode == Mode.PROXY) map.put("bridge-port", bridgePort);
@@ -130,9 +124,6 @@ public class BootConfig {
             writer.write("\n");
             writer.write("# Your API key from the modl.gg panel\n");
             writer.write("api-key: \"" + PLACEHOLDER_API_KEY + "\"\n");
-            writer.write("\n");
-            writer.write("# Your panel URL (e.g. https://myserver.modl.gg)\n");
-            writer.write("panel-url: \"https://yourserver.modl.gg\"\n");
             writer.write("\n");
             writer.write("# Uncomment to use the testing API (api.modl.top)\n");
             writer.write("# testing-api: true\n");

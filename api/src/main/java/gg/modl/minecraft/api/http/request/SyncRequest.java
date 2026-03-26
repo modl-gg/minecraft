@@ -12,7 +12,6 @@ import java.util.List;
 public class SyncRequest {
     private @NotNull String lastSyncTimestamp;
     private @NotNull List<OnlinePlayer> onlinePlayers;
-    private @NotNull ServerStatus serverStatus;
     private @Nullable String serverName;
     private transient @Nullable List<ChatLogEntry> chatLogs;
     private transient @Nullable List<CommandLogEntry> commandLogs;
@@ -22,17 +21,6 @@ public class SyncRequest {
         private @NotNull String uuid, username, ipAddress;
 
         private long sessionDurationMs;
-    }
-    
-    @Data @NoArgsConstructor @AllArgsConstructor
-    public static class ServerStatus {
-        private @NotNull String serverVersion, timestamp;
-
-        private int onlinePlayerCount, maxPlayers;
-
-        private @Nullable String platformType;
-
-        private @Nullable String pluginVersion;
     }
 
     @Data @NoArgsConstructor @AllArgsConstructor

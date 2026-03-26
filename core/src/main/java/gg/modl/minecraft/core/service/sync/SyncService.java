@@ -190,7 +190,6 @@ public class SyncService {
         SyncRequest request = new SyncRequest();
         request.setLastSyncTimestamp(lastSyncTimestamp);
         request.setOnlinePlayers(buildOnlinePlayersList(onlinePlayers));
-        request.setServerStatus(buildServerStatus(onlinePlayers));
         request.setServerName(platform.getServerName());
         if (chatCommandLogService != null) {
             request.setChatLogs(chatCommandLogService.drainChatBuffer());
@@ -219,17 +218,6 @@ public class SyncService {
                     );
                 })
                 .collect(Collectors.toList());
-    }
-
-    private SyncRequest.ServerStatus buildServerStatus(Collection<AbstractPlayer> onlinePlayers) {
-        return new SyncRequest.ServerStatus(
-                platform.getServerVersion(),
-                Instant.now().toString(),
-                onlinePlayers.size(),
-                platform.getMaxPlayers(),
-                platform.getPlatformType(),
-                gg.modl.minecraft.core.plugin.PluginInfo.VERSION
-        );
     }
 
     private void handleSyncResponse(SyncResponse response) {

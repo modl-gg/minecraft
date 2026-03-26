@@ -46,6 +46,7 @@ public class BridgeQueryClient {
     private Channel channel;
     private volatile boolean connected = false;
     private volatile boolean shuttingDown = false;
+    private volatile String cachedPanelUrl = "";
     private int reconnectAttempt = 0;
 
     public BridgeQueryClient(String host, int port, String secret, String serverName,
@@ -158,10 +159,18 @@ public class BridgeQueryClient {
         group.shutdownGracefully();
     }
 
+    public String getCachedPanelUrl() {
+        return cachedPanelUrl;
+    }
+
     private void handleMessage(DataInputStream in) throws IOException {
         String action = in.readUTF();
 
-        if ("STAT_WIPE".equals(action)) {
+        if ("PANEL_URL".equals(action)) {
+            cachedPanelUrl = in.readUTF();
+            plugin.getLogger().info("[bridge] Received panel URL from proxy");
+            return;
+        } else if ("STAT_WIPE".equals(action)) {
             handleStatWipe(in);
         } else if ("FREEZE_PLAYER".equals(action)) {
             String targetUuid = in.readUTF();

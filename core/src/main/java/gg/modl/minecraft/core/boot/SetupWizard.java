@@ -2,12 +2,35 @@ package gg.modl.minecraft.core.boot;
 
 import gg.modl.minecraft.core.util.PluginLogger;
 
-
-
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 public class SetupWizard {
     private static final long POLL_INTERVAL_MS = 5000;
     private static final int MAX_POLL_ATTEMPTS = 120; // 10 minutes
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+    private static final Pattern SUBDOMAIN_PATTERN = Pattern.compile("^[a-z0-9-]+$");
+    private static final Pattern SERVER_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9 -]+$");
+    private static final Pattern IP_PATTERN = Pattern.compile(
+            "^((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$"
+            + "|^[a-zA-Z0-9]([a-zA-Z0-9\\-]*[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]*[a-zA-Z0-9])?)*$");
+    private static final int API_KEY_MIN_LENGTH = 40;
+    private static final int API_KEY_MAX_LENGTH = 60;
+
+    private static final Set<String> RESERVED_SUBDOMAINS = new HashSet<>(Arrays.asList(
+            "payments", "payment", "api", "app",
+            "status", "mail", "www", "discord",
+            "admin", "twitter", "demo", "panel",
+            "ftp", "sftp", "www2", "www3",
+            "billing", "stripe", "test", "staging",
+            "root", "internal", "administrator", "mod",
+            "beta", "dev", "portal", "dashboard",
+            "modl", "support", "help", "email",
+            "docs", "secure", "alpha", "cdn"
+    ));
 
     private final PluginLogger logger;
     private final ConsoleInput input;
@@ -20,19 +43,226 @@ public class SetupWizard {
         this.platformType = platformType;
     }
 
-    public BootConfig run() {
-        printBanner();
+    private static class RestartWizardException extends RuntimeException {}
 
-        if (platformType == PlatformType.SPIGOT) {
-            return runSpigotWizard();
-        } else {
-            return runProxyWizard();
+    public BootConfig run() {
+        while (true) {
+            try {
+                printBanner();
+                BootConfig config;
+                if (platformType == PlatformType.SPIGOT) {
+                    config = runSpigotWizard();
+                } else {
+                    config = runProxyWizard();
+                }
+                if (config != null && confirmSetup(config)) {
+                    return config;
+                }
+                logger.info("Restarting setup wizard...");
+                logger.info("");
+            } catch (RestartWizardException e) {
+                logger.info("");
+                logger.info("Setup wizard restarted.");
+                logger.info("");
+                testingApi = false;
+            }
         }
     }
 
+    // ── Input helpers ──
+
+    private String readLine(String prompt) {
+        String response = input.readLine(prompt);
+        if (response != null && response.trim().equalsIgnoreCase("clear")) {
+            throw new RestartWizardException();
+        }
+        return response;
+    }
+
+    private boolean askYesNo(String prompt) {
+        while (true) {
+            String response = readLine(prompt + " [yes/no]: ");
+            if (response == null) return false;
+            String trimmed = response.trim();
+            if (trimmed.equalsIgnoreCase("yes") || trimmed.equalsIgnoreCase("y")) return true;
+            if (trimmed.equalsIgnoreCase("no") || trimmed.equalsIgnoreCase("n")) return false;
+            logger.info("Please enter 'yes' or 'no'.");
+        }
+    }
+
+    private String askChoice(String prompt, String[] validOptions, String defaultOption) {
+        while (true) {
+            String response = readLine(prompt);
+            if (response == null || response.trim().isEmpty()) {
+                if (defaultOption != null) return defaultOption;
+                logger.info("Please enter a value.");
+                continue;
+            }
+            String trimmed = response.trim().toLowerCase();
+            for (String option : validOptions) {
+                if (option.equalsIgnoreCase(trimmed)) return option;
+            }
+            logger.info("Invalid option. Valid choices: " + String.join(", ", validOptions));
+        }
+    }
+
+    private String askNonEmpty(String prompt) {
+        while (true) {
+            String response = readLine(prompt);
+            if (response != null && !response.trim().isEmpty()) return response.trim();
+            logger.info("This field cannot be empty. Please enter a value.");
+        }
+    }
+
+    private int askPort(String prompt, int defaultPort) {
+        while (true) {
+            String response = readLine(prompt);
+            if (response == null || response.trim().isEmpty()) return defaultPort;
+            try {
+                int port = Integer.parseInt(response.trim());
+                if (port >= 1 && port <= 65535) return port;
+                logger.info("Port must be between 1 and 65535.");
+            } catch (NumberFormatException e) {
+                logger.info("Invalid port number. Please enter a number.");
+            }
+        }
+    }
+
+    private String askEmail(String prompt) {
+        while (true) {
+            String response = askNonEmpty(prompt);
+            if (response.length() > 254) {
+                logger.info("Email is too long (max 254 characters).");
+                continue;
+            }
+            if (!EMAIL_PATTERN.matcher(response).matches()) {
+                logger.info("Invalid email format. Please enter a valid email address.");
+                continue;
+            }
+            return response;
+        }
+    }
+
+    private String askServerName(String prompt) {
+        while (true) {
+            String response = askNonEmpty(prompt);
+            if (response.length() < 3) {
+                logger.info("Server name must be at least 3 characters.");
+                continue;
+            }
+            if (response.length() > 100) {
+                logger.info("Server name must be 100 characters or less.");
+                continue;
+            }
+            if (!SERVER_NAME_PATTERN.matcher(response).matches()) {
+                logger.info("Server name can only contain letters, numbers, spaces, and hyphens.");
+                continue;
+            }
+            return response;
+        }
+    }
+
+    private String askSubdomain(String prompt) {
+        while (true) {
+            String response = askNonEmpty(prompt).toLowerCase();
+            if (response.length() < 3) {
+                logger.info("Subdomain must be at least 3 characters.");
+                continue;
+            }
+            if (response.length() > 50) {
+                logger.info("Subdomain must be 50 characters or less.");
+                continue;
+            }
+            if (!SUBDOMAIN_PATTERN.matcher(response).matches()) {
+                logger.info("Subdomain can only contain lowercase letters, numbers, and hyphens.");
+                continue;
+            }
+            if (RESERVED_SUBDOMAINS.contains(response)) {
+                logger.info("'" + response + "' is a reserved subdomain. Please choose a different one.");
+                continue;
+            }
+            return response;
+        }
+    }
+
+    private String askApiKey(String prompt) {
+        while (true) {
+            String response = askNonEmpty(prompt);
+            if (response.length() < API_KEY_MIN_LENGTH || response.length() > API_KEY_MAX_LENGTH) {
+                logger.info("Invalid API key length. Keys are typically ~48 characters starting with 'modl_'.");
+                continue;
+            }
+            if (!response.startsWith("modl_")) {
+                logger.info("API key should start with 'modl_'. Please check and try again.");
+                continue;
+            }
+            return response;
+        }
+    }
+
+    private String askHostAddress(String prompt) {
+        while (true) {
+            String response = askNonEmpty(prompt);
+            if (!IP_PATTERN.matcher(response).matches()) {
+                logger.info("Invalid address. Enter a valid IP (e.g. 127.0.0.1) or hostname.");
+                continue;
+            }
+            return response;
+        }
+    }
+
+    private String askAvailableEmail(RegistrationClient client) {
+        while (true) {
+            String email = askEmail("Admin email: ");
+            try {
+                RegistrationClient.AvailabilityResponse resp = client.checkAvailability(email, null, null);
+                if (!resp.emailAvailable()) {
+                    logger.info("This email is already registered. Please use a different email.");
+                    continue;
+                }
+            } catch (Exception e) {
+                // If the check fails, proceed anyway — the registration call will catch it
+            }
+            return email;
+        }
+    }
+
+    private String askAvailableServerName(RegistrationClient client) {
+        while (true) {
+            String name = askServerName("Server name: ");
+            try {
+                RegistrationClient.AvailabilityResponse resp = client.checkAvailability(null, name, null);
+                if (!resp.nameAvailable()) {
+                    logger.info("This server name is already taken. Please choose a different one.");
+                    continue;
+                }
+            } catch (Exception e) {
+                // If the check fails, proceed anyway
+            }
+            return name;
+        }
+    }
+
+    private String askAvailableSubdomain(RegistrationClient client) {
+        while (true) {
+            String subdomain = askSubdomain("Panel subdomain (e.g. \"myserver\" for myserver.modl.gg): ");
+            try {
+                RegistrationClient.AvailabilityResponse resp = client.checkAvailability(null, null, subdomain);
+                if (!resp.subdomainAvailable()) {
+                    logger.info("This subdomain is already in use or reserved. Please choose a different one.");
+                    continue;
+                }
+            } catch (Exception e) {
+                // If the check fails, proceed anyway
+            }
+            return subdomain;
+        }
+    }
+
+    // ── Wizard flows ──
+
     private BootConfig runSpigotWizard() {
-        String response = input.readLine("Is this a standalone server (no proxy)? [yes/no]: ");
-        boolean standalone = parseResponseWithTestMode(response);
+        boolean standalone = askYesNo("Is this a standalone server (no proxy)?");
 
         if (standalone) {
             return runStandaloneWizard();
@@ -42,7 +272,7 @@ public class SetupWizard {
     }
 
     private BootConfig runStandaloneWizard() {
-        boolean hasAccount = input.confirm("Have you already registered a server on modl.gg?");
+        boolean hasAccount = askYesNo("Have you already registered a server on modl.gg?");
 
         BootConfig config = new BootConfig();
         config.setMode(BootConfig.Mode.STANDALONE);
@@ -52,7 +282,6 @@ public class SetupWizard {
             return config;
         }
 
-        saveAndPrint(config);
         return config;
     }
 
@@ -61,37 +290,30 @@ public class SetupWizard {
         config.setMode(BootConfig.Mode.BRIDGE_ONLY);
         config.setTestingApi(testingApi);
 
-        String proxyType = input.readLine("Proxy type (velocity / bungeecord) [velocity]: ");
-        if (proxyType == null || proxyType.trim().isEmpty()) {
-            proxyType = "velocity";
-        }
-        config.setProxyType(proxyType.trim().toLowerCase());
+        String proxyType = askChoice("Proxy type (velocity / bungeecord) [velocity]: ",
+                new String[]{"velocity", "bungeecord"}, "velocity");
+        config.setProxyType(proxyType);
 
-        String panelUrl = input.readLine("Panel domain (e.g. server.modl.gg or support.server.com): ");
-        config.setPanelUrl(normalizePanelUrl(panelUrl));
+        logger.info("API key is found in proxy plugin's boot.yml, make sure to setup modl on proxy first then come back here!");
+        String apiKey = askApiKey("Enter your API key (from proxy setup or modl.gg panel): ");
+        config.setApiKey(apiKey);
 
-        String apiKey = input.readLine("Enter your API key (from proxy setup or modl.gg panel): ");
-        logger.info("If you don't have one, register using the proxy's setup wizard first.");
+        String proxyHost = askHostAddress("Proxy server address (if local, use 127.0.0.1; if using Pterodactyl, use internal IP): ");
+        config.setWizardProxyHost(proxyHost);
 
-        config.setApiKey(apiKey != null ? apiKey.trim() : "");
-
-        String proxyHost = input.readLine("Proxy server address (IP or hostname): ");
-        config.setWizardProxyHost(proxyHost != null ? proxyHost.trim() : "");
-
-        String portStr = input.readLine("Proxy bridge port [25590]: ");
-        int proxyPort = 25590;
-        if (portStr != null && !portStr.trim().isEmpty()) {
-            try { proxyPort = Integer.parseInt(portStr.trim()); } catch (NumberFormatException ignored) {}
-        }
+        int proxyPort = askPort("Proxy bridge port [25590]: ", 25590);
         config.setWizardProxyPort(proxyPort);
 
-        saveAndPrint(config);
+        logger.info("");
+        logger.info("NOTE: If you are using Pterodactyl, you must allocate port " + proxyPort);
+        logger.info("to the proxy server in the Pterodactyl admin panel.");
+        logger.info("The bridge will not connect unless the port is allocated.");
+
         return config;
     }
 
     private BootConfig runProxyWizard() {
-        String response = input.readLine("Have you already registered a server on modl.gg? [yes/no]: ");
-        boolean hasAccount = parseResponseWithTestMode(response);
+        boolean hasAccount = askYesNo("Have you already registered a server on modl.gg?");
 
         BootConfig config = new BootConfig();
         config.setMode(BootConfig.Mode.PROXY);
@@ -101,28 +323,25 @@ public class SetupWizard {
             return config;
         }
 
-        String portStr = input.readLine("Bridge listen port [25590]: ");
-        int bridgePort = 25590;
-        if (portStr != null && !portStr.trim().isEmpty()) {
-            try { bridgePort = Integer.parseInt(portStr.trim()); } catch (NumberFormatException ignored) {}
-        }
+        int bridgePort = askPort("Set a port to bind TCP Query server to (communication channel between proxy and Spigot servers) [Default: 25590]: ", 25590);
         config.setBridgePort(bridgePort);
 
-        saveAndPrint(config);
+        logger.info("");
+        logger.info("NOTE: If you are using Pterodactyl, you must allocate port " + bridgePort);
+        logger.info("to the proxy server in the Pterodactyl admin panel.");
+        logger.info("The bridge will not connect unless the port is allocated.");
+
         return config;
     }
 
     private boolean collectCredentials(BootConfig config, boolean hasAccount) {
         if (hasAccount) {
-            String panelUrl = input.readLine("Panel domain (e.g. server.modl.gg or support.server.com): ");
-            String apiKey = input.readLine("Enter your API key: ");
-            config.setPanelUrl(normalizePanelUrl(panelUrl));
-            config.setApiKey(apiKey != null ? apiKey.trim() : "");
+            String apiKey = askApiKey("Enter your API key: ");
+            config.setApiKey(apiKey);
         } else {
             RegistrationResult result = runRegistrationFlowWithRetry();
             if (result != null) {
                 config.setApiKey(result.apiKey);
-                config.setPanelUrl(result.panelUrl);
             } else {
                 logger.warning("Registration failed. You can configure boot.yml manually.");
                 return false;
@@ -131,14 +350,40 @@ public class SetupWizard {
         return true;
     }
 
+    private boolean confirmSetup(BootConfig config) {
+        logger.info("");
+        logger.info("===========================================");
+        logger.info(" Setup Summary");
+        logger.info("===========================================");
+        logger.info("  Mode: " + config.getMode().toYaml());
+        if (config.getApiKey() != null && !config.getApiKey().isEmpty()) {
+            String key = config.getApiKey();
+            String masked = key.length() > 8 ? key.substring(0, 8) + "..." : "***";
+            logger.info("  API Key: " + masked);
+        }
+        if (config.getMode() == BootConfig.Mode.BRIDGE_ONLY) {
+            logger.info("  Proxy Type: " + (config.getProxyType() != null ? config.getProxyType() : "velocity"));
+            logger.info("  Proxy Host: " + (config.getWizardProxyHost() != null ? config.getWizardProxyHost() : ""));
+            logger.info("  Proxy Port: " + config.getWizardProxyPort());
+        }
+        if (config.getMode() == BootConfig.Mode.PROXY) {
+            logger.info("  Bridge Port: " + config.getBridgePort());
+        }
+        logger.info("  Testing API: " + config.isTestingApi());
+        logger.info("===========================================");
+        logger.info("");
 
+        return askYesNo("Save this configuration?");
+    }
+
+    // ── Registration flow ──
 
     private RegistrationResult runRegistrationFlowWithRetry() {
         while (true) {
             RegistrationResult result = runRegistrationFlow();
             if (result != null) return result;
 
-            if (!input.confirm("Would you like to retry?")) {
+            if (!askYesNo("Would you like to retry?")) {
                 return null;
             }
             logger.info("");
@@ -146,24 +391,22 @@ public class SetupWizard {
     }
 
     private RegistrationResult runRegistrationFlow() {
-        String email = input.readLine("Admin email: ");
-        String serverName = input.readLine("Server name: ");
-        String subdomain = input.readLine("Panel subdomain (e.g. \"myserver\" for myserver.modl.gg): ");
+        RegistrationClient client = new RegistrationClient(testingApi);
 
-        if (!input.confirm("Do you agree to the Terms of Service? (https://modl.gg/terms)")) {
+        String email = askAvailableEmail(client);
+        String serverName = askAvailableServerName(client);
+        String subdomain = askAvailableSubdomain(client);
+
+        if (!askYesNo("Do you agree to the Terms of Service? (https://modl.gg/terms)")) {
             logger.info("You must agree to the Terms of Service to register.");
             return null;
         }
 
         logger.info("Registering server...");
-        RegistrationClient client = new RegistrationClient(testingApi);
 
         try {
             RegistrationClient.RegisterResponse registerResponse = client.register(
-                    email != null ? email.trim() : "",
-                    serverName != null ? serverName.trim() : "",
-                    subdomain != null ? subdomain.trim() : "",
-                    "free"
+                    email, serverName, subdomain, "free"
             );
 
             if (!registerResponse.success()) {
@@ -186,8 +429,8 @@ public class SetupWizard {
                 return null;
             }
 
-            logger.info("Setup complete!");
-            return new RegistrationResult(statusResponse.apiKey(), statusResponse.message());
+            logger.info("Registration complete!");
+            return new RegistrationResult(statusResponse.apiKey());
         } catch (Exception e) {
             logger.severe("Registration error: " + e.getMessage());
             return null;
@@ -224,43 +467,21 @@ public class SetupWizard {
         return null;
     }
 
+    // ── Utilities ──
+
     private void printBanner() {
         logger.info("===========================================");
-        logger.info("  modl.gg Setup Wizard");
+        logger.info(" modl.gg Setup Wizard");
         logger.info("===========================================");
-    }
-
-    private void saveAndPrint(BootConfig config) {
-        logger.info("Configuration saved to boot.yml.");
+        logger.info(" Type 'clear' at any prompt to restart.");
         logger.info("===========================================");
-    }
-
-    private boolean parseResponseWithTestMode(String response) {
-        testingApi = response != null && response.contains("--test-mode");
-        if (testingApi) {
-            logger.info("Test mode enabled — using api.modl.top");
-        }
-        return response != null &&
-                (response.replace("--test-mode", "").trim().equalsIgnoreCase("yes") ||
-                 response.replace("--test-mode", "").trim().equalsIgnoreCase("y"));
-    }
-
-    private static String normalizePanelUrl(String url) {
-        if (url == null || url.trim().isEmpty()) return "";
-        String trimmed = url.trim();
-        if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
-            trimmed = "https://" + trimmed;
-        }
-        return trimmed.replaceAll("/+$", "");
     }
 
     private static class RegistrationResult {
         final String apiKey;
-        final String panelUrl;
 
-        RegistrationResult(String apiKey, String panelUrl) {
+        RegistrationResult(String apiKey) {
             this.apiKey = apiKey;
-            this.panelUrl = panelUrl;
         }
     }
 }

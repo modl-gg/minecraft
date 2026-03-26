@@ -142,6 +142,13 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
             headers.put("User-Agent", "modl-minecraft/" + gg.modl.minecraft.core.plugin.PluginInfo.VERSION);
         }
 
+        RequestBuilder(String absoluteUrl, boolean absolute) {
+            this.url = absoluteUrl;
+            headers.put(HEADER_API_KEY, apiKey);
+            headers.put(HEADER_SERVER_DOMAIN, serverDomain);
+            headers.put("User-Agent", "modl-minecraft/" + gg.modl.minecraft.core.plugin.PluginInfo.VERSION);
+        }
+
         RequestBuilder header(String name, String value) {
             headers.put(name, value);
             return this;
@@ -286,7 +293,9 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         String requestBody = gson.toJson(request);
         if (debugMode) logger.info(String.format("[V2] Sync request body: %s", requestBody));
 
-        return sendAsync(requestBuilder("/minecraft/players/sync")
+        String v2BaseUrl = baseUrl.substring(0, baseUrl.lastIndexOf("/v1")) + "/v2";
+        String v2SyncUrl = v2BaseUrl + "/minecraft/players/sync";
+        return sendAsync(new RequestBuilder(v2SyncUrl, true)
                 .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .timeout(SYNC_TIMEOUT)
                 .POST(requestBody)

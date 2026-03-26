@@ -34,7 +34,6 @@ public class BootConfigMigrator {
 
             BootConfig boot = new BootConfig();
             boot.setApiKey(apiKey);
-            boot.setPanelUrl(apiUrl);
             boot.setTestingApi(testingApi);
 
             if (platformType == PlatformType.SPIGOT) {

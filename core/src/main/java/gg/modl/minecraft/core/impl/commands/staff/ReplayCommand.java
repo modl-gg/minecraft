@@ -95,13 +95,15 @@ public class ReplayCommand extends BaseCommand {
                 String replayLink = panelUrl + "/replay?id=" + replayId;
                 sender.sendMessage(localeManager.getMessage("replay.capture_success", mapOf("player", resolvedName)));
                 if (sender.isPlayer()) {
+                    String clickText = localeManager.getMessage("replay.click_to_view");
+                    String hoverText = localeManager.getMessage("replay.click_to_view_hover");
                     String json = String.format(
                             "{\"text\":\"\",\"extra\":["
-                            + "{\"text\":\"\uD83C\uDFAC \",\"color\":\"gold\"},"
-                            + "{\"text\":\"[Click to view replay]\",\"color\":\"aqua\",\"underlined\":true,"
+                            + "{\"text\":\"\",\"color\":\"gold\"},"
+                            + "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true,"
                             + "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"},"
-                            + "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Open replay viewer\"}}]}",
-                            replayLink);
+                            + "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"%s\"}}]}",
+                            clickText.replace("\"", "\\\""), replayLink, hoverText.replace("\"", "\\\""));
                     platform.runOnMainThread(() -> platform.sendJsonMessage(sender.getUniqueId(), json));
                 } else {
                     sender.sendMessage(localeManager.getMessage("replay.capture_link", mapOf("url", replayLink)));
