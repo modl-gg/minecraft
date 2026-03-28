@@ -50,44 +50,49 @@ public final class Libraries {
             "httpcore5-h2",
             "3BqV5z6wTbk0UVM9OQzgLFOzAaENw0PQjIYvKTSz0w4="
     ),
-    PACKETEVENTS_API = LibraryRecord.of(
+    PACKETEVENTS_API = LibraryRecord.ofUrl(
             "com{}github{}retrooper",
             "packetevents-api",
-            "2.11.2",
+            "2.12.0-20260325.191550-1",
             "packetevents-api",
-            "3iUlwXnzZ8UYPrcUG5inerI6qdtMmpvZ3M9KBvon8OM=",
+            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-api/2.12.0-SNAPSHOT/packetevents-api-2.12.0-20260325.191550-1.jar",
+            "ev+a7kQ2Q8x3TTOOn/8oBqcNfUj/YWNAEC5OCuilNBU=",
             PACKETEVENTS_RELOCATIONS
     ),
-    PACKETEVENTS_NETTY = LibraryRecord.of(
+    PACKETEVENTS_NETTY = LibraryRecord.ofUrl(
             "com{}github{}retrooper",
             "packetevents-netty-common",
-            "2.11.2",
+            "2.12.0-20260325.191550-1",
             "packetevents-netty-common",
-            "iFUyY8j/9ZIJGQI9KNkvS8TBuLIBLqpvt+RQALSipCM=",
+            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-netty-common/2.12.0-SNAPSHOT/packetevents-netty-common-2.12.0-20260325.191550-1.jar",
+            "ZRDK6i8usKpg2FyXfjGYiOcBQukJk3WicD7RTeESGgI=",
             PACKETEVENTS_RELOCATIONS
     ),
-    PACKETEVENTS_SPIGOT = LibraryRecord.of(
+    PACKETEVENTS_SPIGOT = LibraryRecord.ofUrl(
             "com{}github{}retrooper",
             "packetevents-spigot",
-            "2.11.2",
+            "2.12.0-20260325.191550-1",
             "packetevents-spigot",
-            "DNgWUMmOnz3rH65hM9MeSFYWWPwrXIU33FvsBxYD/+E=",
+            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-spigot/2.12.0-SNAPSHOT/packetevents-spigot-2.12.0-20260325.191550-1.jar",
+            "yfezhceaLO5mq9si8p57cbLroOUVkx2KeNUCdeiytWs=",
             PACKETEVENTS_RELOCATIONS
     ),
-    PACKETEVENTS_BUNGEE = LibraryRecord.of(
+    PACKETEVENTS_BUNGEE = LibraryRecord.ofUrl(
             "com{}github{}retrooper",
             "packetevents-bungeecord",
-            "2.11.2",
+            "2.12.0-20260325.191550-1",
             "packetevents-bungeecord",
-            "uqfNJPYZEG8ZpvC9VXGKorGs/9e+rDd8RBsLSxOyAGc=",
+            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-bungeecord/2.12.0-SNAPSHOT/packetevents-bungeecord-2.12.0-20260325.191550-1.jar",
+            "mbqurwkNQEzPQ79blYIUcWeNnOhHclQuJnuO/1JlXog=",
             PACKETEVENTS_RELOCATIONS
     ),
-    PACKETEVENTS_VELOCITY = LibraryRecord.of(
+    PACKETEVENTS_VELOCITY = LibraryRecord.ofUrl(
             "com{}github{}retrooper",
             "packetevents-velocity",
-            "2.11.2",
+            "2.12.0-20260325.191550-1",
             "packetevents-velocity",
-            "FsSHtExrXGXiXrswQIGAO46DaIZDIiVwKgzZw1BRGXA=",
+            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-velocity/2.12.0-SNAPSHOT/packetevents-velocity-2.12.0-20260325.191550-1.jar",
+            "yxcjeuiCWsXi+RdV2jmnzLtOpwFEX9s+4CAYHt/Nesw=",
             PACKETEVENTS_RELOCATIONS
     ),
     ADVENTURE_NBT = LibraryRecord.of(
