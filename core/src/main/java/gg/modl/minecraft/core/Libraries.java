@@ -151,28 +151,28 @@ public final class Libraries {
     CIRRUS_SPIGOT = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-spigot",
-            "4.1.8",
+            "4.2.0",
             "cirrus-spigot",
-            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.8-SNAPSHOT/cirrus-spigot-4.1.8-SNAPSHOT.jar",
-            "FT4jxzk/+zRAunOWxgZvyuNnNt6jjLcTZPesVJO8FX4=",
+            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.2.0-SNAPSHOT/cirrus-spigot-4.2.0-SNAPSHOT.jar",
+            "P7eYW4uCkGceBOBDomVK3UsH/befhpB5kNWUsBLpSxw=",
             PACKETEVENTS_RELOCATIONS
     ),
     CIRRUS_VELOCITY = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-velocity",
-            "4.1.8",
+            "4.2.0",
             "cirrus-velocity",
-            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.8-SNAPSHOT/cirrus-velocity-4.1.8-SNAPSHOT.jar",
-            "/nHY+wjoZZoouGPYagEuQhCx8oSaBb+RHDuatatWZ+I=",
+            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.2.0-SNAPSHOT/cirrus-velocity-4.2.0-SNAPSHOT.jar",
+            "gxT2N25T95+JoOT5hTULa3I8xfIpgyhqYcrnyQ6TBWM=",
             PACKETEVENTS_RELOCATIONS
     ),
     CIRRUS_BUNGEECORD = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-bungeecord",
-            "4.1.8",
+            "4.2.0",
             "cirrus-bungeecord",
-            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.1.8-SNAPSHOT/cirrus-bungeecord-4.1.8-SNAPSHOT.jar",
-            "+E+zC1dlsL/Wv7Ihx95qK5cQNheK5nDp8rzzCDsyYhE=",
+            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.2.0-SNAPSHOT/cirrus-bungeecord-4.2.0-SNAPSHOT.jar",
+            "ErQzAvHrDFUk+DObG49KyBAhVal1zZORAlKuW5Bs8QI=",
             PACKETEVENTS_RELOCATIONS
     ),
     ADVENTURE_KEY = LibraryRecord.of(

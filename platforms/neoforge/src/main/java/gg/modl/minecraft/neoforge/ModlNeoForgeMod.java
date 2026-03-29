@@ -1,5 +1,6 @@
 package gg.modl.minecraft.neoforge;
 
+import dev.simplix.cirrus.neoforge.CirrusNeoForge;
 import gg.modl.minecraft.bridge.config.BridgeConfig;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -18,6 +19,7 @@ public class ModlNeoForgeMod {
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
     private NeoForgeBridgeComponent bridgeComponent;
+    private CirrusNeoForge cirrus;
 
     public ModlNeoForgeMod() {
         NeoForge.EVENT_BUS.register(this);
@@ -33,6 +35,13 @@ public class ModlNeoForgeMod {
         bridgeComponent = new NeoForgeBridgeComponent(context, server);
 
         try {
+            cirrus = new CirrusNeoForge(server);
+            cirrus.init();
+        } catch (Exception e) {
+            LOGGER.warn("[modl] Cirrus menu system unavailable: {}", e.getMessage());
+        }
+
+        try {
             BridgeConfig config = BridgeConfig.load(dataFolder);
             boolean connectToProxy = !config.getProxyHost().isEmpty();
             bridgeComponent.enable(null, connectToProxy);
@@ -43,8 +52,7 @@ public class ModlNeoForgeMod {
 
     @SubscribeEvent
     public void onServerStopping(ServerStoppingEvent event) {
-        if (bridgeComponent != null) {
-            bridgeComponent.disable();
-        }
+        if (cirrus != null) cirrus.shutdown();
+        if (bridgeComponent != null) bridgeComponent.disable();
     }
 }

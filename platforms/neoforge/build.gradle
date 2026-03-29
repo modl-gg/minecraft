@@ -30,6 +30,11 @@ dependencies {
     implementation "gg.modl:core:${project.mod_version}"
     implementation "gg.modl:api:${project.mod_version}"
 
+    // Cirrus menu system (from Maven local)
+    implementation "gg.modl.minecraft.cirrus:cirrus-neoforge:4.2.0-SNAPSHOT"
+    implementation "gg.modl.minecraft.cirrus:cirrus-api:4.2.0-SNAPSHOT"
+    implementation "gg.modl.minecraft.cirrus:cirrus-common:4.2.0-SNAPSHOT"
+
     // Replay recording (platform-agnostic, uses PacketEvents API)
     implementation "gg.modl.replay:modl-replay-recording:1.0.0-SNAPSHOT"
     implementation "gg.modl.replay:replay-format:1.0.0-SNAPSHOT"

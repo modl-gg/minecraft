@@ -1,5 +1,6 @@
 package gg.modl.minecraft.fabric;
 
+import dev.simplix.cirrus.fabric.CirrusFabric;
 import gg.modl.minecraft.bridge.config.BridgeConfig;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -14,7 +15,7 @@ public class ModlFabricMod implements DedicatedServerModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
     private FabricBridgeComponent bridgeComponent;
-    private MinecraftServer server;
+    private CirrusFabric cirrus;
 
     @Override
     public void onInitializeServer() {
@@ -25,14 +26,19 @@ public class ModlFabricMod implements DedicatedServerModInitializer {
     }
 
     private void onServerStarted(MinecraftServer server) {
-        this.server = server;
         Path dataFolder = server.getRunDirectory().toPath().resolve("config").resolve("modl");
         dataFolder.toFile().mkdirs();
 
         FabricBridgePluginContext context = new FabricBridgePluginContext(server, dataFolder);
         bridgeComponent = new FabricBridgeComponent(context, server);
 
-        // Load config to check if bridge should connect
+        try {
+            cirrus = new CirrusFabric(server);
+            cirrus.init();
+        } catch (Exception e) {
+            LOGGER.warn("[modl] Cirrus menu system unavailable: {}", e.getMessage());
+        }
+
         try {
             BridgeConfig config = BridgeConfig.load(dataFolder);
             boolean connectToProxy = !config.getProxyHost().isEmpty();
@@ -43,8 +49,7 @@ public class ModlFabricMod implements DedicatedServerModInitializer {
     }
 
     private void onServerStopping(MinecraftServer server) {
-        if (bridgeComponent != null) {
-            bridgeComponent.disable();
-        }
+        if (cirrus != null) cirrus.shutdown();
+        if (bridgeComponent != null) bridgeComponent.disable();
     }
 }
