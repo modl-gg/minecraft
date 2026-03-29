@@ -1,7 +1,8 @@
 package gg.modl.minecraft.spigot.bridge.handler;
 
-import gg.modl.minecraft.spigot.bridge.locale.BridgeLocaleManager;
-import gg.modl.minecraft.spigot.bridge.query.BridgeQueryClient;
+import gg.modl.minecraft.bridge.BridgeScheduler;
+import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
+import gg.modl.minecraft.bridge.query.BridgeQueryClient;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.bukkit.Bukkit;
@@ -29,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FreezeHandler implements Listener {
     private final JavaPlugin plugin;
     private final BridgeLocaleManager localeManager;
+    private final BridgeScheduler scheduler;
     private final Map<UUID, UUID> frozenPlayers = new ConcurrentHashMap<>(); // frozen -> staff
 
     @Setter private StaffModeHandler staffModeHandler;
@@ -122,7 +124,7 @@ public class FreezeHandler implements Listener {
     }
 
     private void notifyPlayer(UUID target, String messageKey) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        scheduler.runForPlayer(target, () -> {
             Player player = Bukkit.getPlayer(target);
             if (player != null) {
                 player.sendMessage(localeManager.getMessage(messageKey));

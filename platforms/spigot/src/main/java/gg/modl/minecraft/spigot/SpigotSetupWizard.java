@@ -5,6 +5,7 @@ import gg.modl.minecraft.core.boot.ConsoleInput;
 import gg.modl.minecraft.core.boot.PlatformType;
 import gg.modl.minecraft.core.boot.SetupWizard;
 import gg.modl.minecraft.core.util.PluginLogger;
+import gg.modl.minecraft.spigot.bridge.folia.FoliaSchedulerHelper;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -16,7 +17,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class SpigotSetupWizard implements Listener {
@@ -36,30 +40,59 @@ public class SpigotSetupWizard implements Listener {
         active = true;
         Bukkit.getPluginManager().registerEvents(this, plugin);
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                try {
-                    ConsoleInput input = new ServerCommandInput();
-                    SetupWizard wizard = new SetupWizard(logger, input, PlatformType.SPIGOT);
-                    BootConfig config = wizard.run();
+        if (FoliaSchedulerHelper.isFolia()) {
+            startFolia();
+        } else {
+            startBukkit();
+        }
+    }
 
-                    if (config != null) {
-                        config.save(plugin.getDataFolder().toPath());
-                        logger.info("Configuration saved to boot.yml.");
-                        logger.info("Initializing plugin...");
-                        Bukkit.getScheduler().runTask(plugin, () -> onComplete.accept(config));
-                    } else {
-                        fallbackToTemplate();
-                    }
-                } catch (Exception e) {
-                    logger.severe("Setup wizard error: " + e.getMessage());
-                    fallbackToTemplate();
-                } finally {
-                    active = false;
-                    Bukkit.getScheduler().runTask(plugin, () -> HandlerList.unregisterAll(this));
-                }
-            });
+    private void startBukkit() {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, this::runWizard);
         }, 60L);
+    }
+
+    private void startFolia() {
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "modl-setup-wizard");
+            t.setDaemon(true);
+            return t;
+        });
+        // 60 ticks = 3 seconds delay
+        executor.schedule(this::runWizard, 3, TimeUnit.SECONDS);
+        executor.shutdown();
+    }
+
+    private void runWizard() {
+        try {
+            ConsoleInput input = new ServerCommandInput();
+            SetupWizard wizard = new SetupWizard(logger, input, PlatformType.SPIGOT);
+            BootConfig config = wizard.run();
+
+            if (config != null) {
+                config.save(plugin.getDataFolder().toPath());
+                logger.info("Configuration saved to boot.yml.");
+                logger.info("Initializing plugin...");
+                runOnMain(() -> onComplete.accept(config));
+            } else {
+                fallbackToTemplate();
+            }
+        } catch (Exception e) {
+            logger.severe("Setup wizard error: " + e.getMessage());
+            fallbackToTemplate();
+        } finally {
+            active = false;
+            runOnMain(() -> HandlerList.unregisterAll(this));
+        }
+    }
+
+    private void runOnMain(Runnable task) {
+        if (FoliaSchedulerHelper.isFolia()) {
+            FoliaSchedulerHelper.runGlobal(plugin, task);
+        } else {
+            Bukkit.getScheduler().runTask(plugin, task);
+        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST)

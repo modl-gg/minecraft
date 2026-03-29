@@ -1,0 +1,73 @@
+plugins {
+    id 'fabric-loom' version '1.9-SNAPSHOT'
+    id 'java'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven { url "https://maven.fabricmc.net/" }
+    maven { url "https://repo.codemc.io/repository/maven-releases/" }
+    maven { url "https://repo.codemc.io/repository/maven-snapshots/" }
+    maven { url "https://jitpack.io" }
+    maven { url "https://repo.aikar.co/content/groups/aikar/" }
+}
+
+dependencies {
+    // Fabric
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Bridge-core and dependencies from Maven local
+    implementation "gg.modl:bridge-core:${project.mod_version}"
+    implementation "gg.modl:core:${project.mod_version}"
+    implementation "gg.modl:api:${project.mod_version}"
+
+    // Replay recording (platform-agnostic, uses PacketEvents API)
+    implementation "gg.modl.replay:modl-replay-recording:1.0.0-SNAPSHOT"
+    implementation "gg.modl.replay:replay-format:1.0.0-SNAPSHOT"
+
+    // Netty (provided by Minecraft)
+    compileOnly "io.netty:netty-all:4.1.97.Final"
+
+    // Adventure
+    implementation "net.kyori:adventure-text-minimessage:4.26.1"
+    implementation "net.kyori:adventure-text-serializer-legacy:4.26.1"
+    implementation "net.kyori:adventure-api:4.26.1"
+
+    // YAML config
+    implementation "org.yaml:snakeyaml:2.3"
+
+    // Lombok
+    compileOnly "org.projectlombok:lombok:1.18.34"
+    annotationProcessor "org.projectlombok:lombok:1.18.34"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from("../../LICENSE.txt") {
+        rename { "LICENSE_modl.txt" }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = 21
+}

@@ -18,7 +18,7 @@ import gg.modl.minecraft.core.util.PluginLogger;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import gg.modl.minecraft.spigot.bridge.BridgeComponent;
-import gg.modl.minecraft.spigot.bridge.reporter.TicketCreator;
+import gg.modl.minecraft.bridge.reporter.TicketCreator;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import net.byteflux.libby.BukkitLibraryManager;
 import net.byteflux.libby.Library;

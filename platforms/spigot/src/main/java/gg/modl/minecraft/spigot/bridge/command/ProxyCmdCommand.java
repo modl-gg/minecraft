@@ -1,7 +1,7 @@
 package gg.modl.minecraft.spigot.bridge.command;
 
-import gg.modl.minecraft.spigot.bridge.locale.BridgeLocaleManager;
-import gg.modl.minecraft.spigot.bridge.query.BridgeQueryClient;
+import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
+import gg.modl.minecraft.bridge.query.BridgeQueryClient;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

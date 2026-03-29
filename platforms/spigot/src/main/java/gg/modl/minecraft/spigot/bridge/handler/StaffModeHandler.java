@@ -1,9 +1,10 @@
 package gg.modl.minecraft.spigot.bridge.handler;
 
-import gg.modl.minecraft.spigot.bridge.config.BridgeConfig;
-import gg.modl.minecraft.spigot.bridge.config.StaffModeConfig;
-import gg.modl.minecraft.spigot.bridge.locale.BridgeLocaleManager;
-import gg.modl.minecraft.spigot.bridge.query.BridgeQueryClient;
+import gg.modl.minecraft.bridge.BridgeScheduler;
+import gg.modl.minecraft.bridge.config.BridgeConfig;
+import gg.modl.minecraft.bridge.config.StaffModeConfig;
+import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
+import gg.modl.minecraft.bridge.query.BridgeQueryClient;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -76,6 +77,7 @@ public class StaffModeHandler implements Listener {
     private final FreezeHandler freezeHandler;
     private final BridgeLocaleManager localeManager;
     private final StaffModeConfig staffModeConfig;
+    private final BridgeScheduler scheduler;
     @Setter private BridgeQueryClient bridgeClient;
 
     private final Set<UUID> staffModeActive = ConcurrentHashMap.newKeySet();
@@ -105,13 +107,21 @@ public class StaffModeHandler implements Listener {
         staffModeActive.clear();
     }
 
+    private void runOnMainOrGlobal(Runnable task) {
+        scheduler.runSync(task);
+    }
+
+    private void runForPlayer(UUID uuid, Runnable task) {
+        scheduler.runForPlayer(uuid, task);
+    }
+
     private void startScoreboardUpdater() {
         scoreboardExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "modl-bridge-scoreboard");
             t.setDaemon(true);
             return t;
         });
-        scoreboardExecutor.scheduleAtFixedRate(() -> Bukkit.getScheduler().runTask(plugin, this::updateAllScoreboards), 1, 1, TimeUnit.SECONDS);
+        scoreboardExecutor.scheduleAtFixedRate(() -> runOnMainOrGlobal(this::updateAllScoreboards), 1, 1, TimeUnit.SECONDS);
     }
 
     private void createScoreboard(Player player) {
@@ -230,7 +240,7 @@ public class StaffModeHandler implements Listener {
     }
 
     private void runForOnlinePlayer(UUID uuid, Consumer<Player> action) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        runForPlayer(uuid, () -> {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null && player.isOnline()) {
                 action.accept(player);
@@ -267,7 +277,7 @@ public class StaffModeHandler implements Listener {
         staffModeActive.remove(uuid);
         targetMap.remove(uuid);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        runForPlayer(uuid, () -> {
             Player player = Bukkit.getPlayer(uuid);
             if (player == null || !player.isOnline()) {
                 snapshots.remove(uuid);
@@ -503,7 +513,7 @@ public class StaffModeHandler implements Listener {
             if (bridgeClient != null && bridgeClient.isConnected()) {
                 bridgeClient.sendMessage("OPEN_STAFF_MENU", uuid.toString());
             } else {
-                Bukkit.getScheduler().runTask(plugin, () -> player.performCommand("staffmenu"));
+                runForPlayer(uuid, () -> player.performCommand("staffmenu"));
             }
         } else if (ACTION_RANDOM_TELEPORT.equals(action)) {
             handleRandomTeleport(player);
@@ -580,7 +590,7 @@ public class StaffModeHandler implements Listener {
         if (bridgeClient != null && bridgeClient.isConnected()) {
             bridgeClient.sendMessage("OPEN_INSPECT_MENU", player.getUniqueId().toString(), target.getName());
         } else {
-            Bukkit.getScheduler().runTask(plugin, () -> player.performCommand("inspect " + target.getName()));
+            runForPlayer(player.getUniqueId(), () -> player.performCommand("inspect " + target.getName()));
         }
     }
 
@@ -594,7 +604,7 @@ public class StaffModeHandler implements Listener {
     private void handleHackreportTarget(Player player) {
         Player target = resolveTarget(player.getUniqueId());
         if (target != null) {
-            Bukkit.getScheduler().runTask(plugin, () -> player.performCommand("hackreport " + target.getName()));
+            runForPlayer(player.getUniqueId(), () -> player.performCommand("hackreport " + target.getName()));
         }
     }
 

@@ -1,0 +1,69 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.gradle.userdev' version '7.0.+'
+}
+
+version = project.mod_version
+group = project.mod_group_id
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven { url "https://repo.codemc.io/repository/maven-releases/" }
+    maven { url "https://repo.codemc.io/repository/maven-snapshots/" }
+    maven { url "https://jitpack.io" }
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+minecraft {
+    accessTransformers {
+        // Add access transformers here if needed
+    }
+}
+
+dependencies {
+    implementation "net.neoforged:neoforge:${project.neo_version}"
+
+    // Bridge-core and dependencies from Maven local
+    implementation "gg.modl:bridge-core:${project.mod_version}"
+    implementation "gg.modl:core:${project.mod_version}"
+    implementation "gg.modl:api:${project.mod_version}"
+
+    // Replay recording (platform-agnostic, uses PacketEvents API)
+    implementation "gg.modl.replay:modl-replay-recording:1.0.0-SNAPSHOT"
+    implementation "gg.modl.replay:replay-format:1.0.0-SNAPSHOT"
+
+    // Adventure
+    implementation "net.kyori:adventure-text-minimessage:4.26.1"
+    implementation "net.kyori:adventure-text-serializer-legacy:4.26.1"
+    implementation "net.kyori:adventure-api:4.26.1"
+
+    // YAML config
+    implementation "org.yaml:snakeyaml:2.3"
+
+    // Lombok
+    compileOnly "org.projectlombok:lombok:1.18.34"
+    annotationProcessor "org.projectlombok:lombok:1.18.34"
+}
+
+processResources {
+    var replaceProperties = [
+            minecraft_version   : minecraft_version,
+            neo_version         : neo_version,
+            mod_id              : mod_id,
+            mod_name            : mod_name,
+            mod_license         : mod_license,
+            mod_version         : mod_version,
+            mod_authors         : mod_authors,
+            mod_description     : mod_description
+    ]
+    inputs.properties replaceProperties
+    filesMatching(['META-INF/neoforge.mods.toml']) {
+        expand replaceProperties
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

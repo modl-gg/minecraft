@@ -1,9 +1,10 @@
 package gg.modl.minecraft.spigot.bridge.reporter.hook;
 
-import gg.modl.minecraft.spigot.bridge.config.BridgeConfig;
-import gg.modl.minecraft.spigot.bridge.reporter.detection.DetectionSource;
-import gg.modl.minecraft.spigot.bridge.reporter.detection.ViolationTracker;
-import gg.modl.minecraft.spigot.bridge.reporter.AutoReporter;
+import gg.modl.minecraft.bridge.config.BridgeConfig;
+import gg.modl.minecraft.bridge.reporter.detection.DetectionSource;
+import gg.modl.minecraft.bridge.reporter.detection.ViolationTracker;
+import gg.modl.minecraft.bridge.reporter.AutoReporter;
+import gg.modl.minecraft.bridge.reporter.hook.AntiCheatHook;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.plugin.java.JavaPlugin;
 import top.polar.api.PolarApi;

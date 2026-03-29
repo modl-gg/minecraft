@@ -2,7 +2,7 @@ package gg.modl.minecraft.spigot;
 
 import gg.modl.minecraft.core.service.sync.StatWipeExecutor;
 import gg.modl.minecraft.spigot.bridge.BridgeComponent;
-import gg.modl.minecraft.spigot.bridge.statwipe.StatWipeHandler;
+import gg.modl.minecraft.bridge.statwipe.StatWipeHandler;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor

@@ -1,24 +1,24 @@
 package gg.modl.minecraft.spigot.bridge;
 
+import gg.modl.minecraft.bridge.AbstractBridgeComponent;
+import gg.modl.minecraft.bridge.BridgePluginContext;
+import gg.modl.minecraft.bridge.config.BridgeConfig;
+import gg.modl.minecraft.bridge.config.StaffModeConfig;
+import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
+import gg.modl.minecraft.bridge.query.BridgeMessageHandler;
+import gg.modl.minecraft.bridge.query.BridgeQueryClient;
+import gg.modl.minecraft.bridge.reporter.AutoReporter;
+import gg.modl.minecraft.bridge.reporter.ModlBackendReplayUploader;
+import gg.modl.minecraft.bridge.reporter.detection.ViolationTracker;
+import gg.modl.minecraft.bridge.reporter.hook.AntiCheatHook;
 import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.util.PluginLogger;
-import gg.modl.minecraft.core.util.YamlMergeUtil;
 import gg.modl.minecraft.spigot.bridge.command.ProxyCmdCommand;
-import gg.modl.minecraft.spigot.bridge.config.BridgeConfig;
-import gg.modl.minecraft.spigot.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.spigot.bridge.handler.FreezeHandler;
 import gg.modl.minecraft.spigot.bridge.handler.StaffModeHandler;
-import gg.modl.minecraft.spigot.bridge.locale.BridgeLocaleManager;
-import gg.modl.minecraft.spigot.bridge.query.BridgeQueryClient;
-import gg.modl.minecraft.spigot.bridge.reporter.AutoReporter;
-import gg.modl.minecraft.spigot.bridge.reporter.ModlBackendReplayUploader;
-import gg.modl.minecraft.spigot.bridge.reporter.TicketCreator;
-import gg.modl.minecraft.spigot.bridge.reporter.detection.ViolationTracker;
-import gg.modl.minecraft.spigot.bridge.reporter.hook.AntiCheatHook;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.GrimHook;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.PolarHook;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.VulcanHook;
-import gg.modl.minecraft.spigot.bridge.statwipe.StatWipeHandler;
 import gg.modl.replay.format.events.BlockChangeEvent;
 import gg.modl.replay.recording.PacketRecorder;
 import gg.modl.replay.recording.RecordingConfig;
@@ -43,8 +43,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,36 +50,21 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class BridgeComponent implements Listener {
+public class BridgeComponent extends AbstractBridgeComponent implements Listener {
     private final JavaPlugin plugin;
-    private final String apiKey;
-    private final String backendUrl;
-    private final String panelUrl;
-    private final PluginLogger logger;
-    private final List<AntiCheatHook> hooks = new ArrayList<>();
-
-    @Getter private BridgeConfig bridgeConfig;
-    @Getter private StatWipeHandler statWipeHandler;
     @Getter private FreezeHandler freezeHandler;
     @Getter private StaffModeHandler staffModeHandler;
-    @Getter private BridgeQueryClient bridgeClient;
 
-    private ViolationTracker violationTracker;
-    private AutoReporter autoReporter;
     private boolean polarAvailable;
-    @Getter private ReplayService replayService;
 
     private RecordingManager recordingManager;
     private PacketRecorder packetRecorder;
-    private int replayCleanupTaskId = -1;
+    private gg.modl.minecraft.bridge.BridgeTask replayCleanupTask;
     private final Map<UUID, Integer> worldChangeGeneration = new ConcurrentHashMap<>();
 
     public BridgeComponent(JavaPlugin plugin, String apiKey, String backendUrl, String panelUrl, PluginLogger logger) {
+        super(new SpigotBridgePluginContext(plugin), apiKey, backendUrl, panelUrl, logger);
         this.plugin = plugin;
-        this.apiKey = apiKey;
-        this.backendUrl = backendUrl;
-        this.panelUrl = panelUrl;
-        this.logger = logger;
     }
 
     public void onLoad() {
@@ -93,105 +76,39 @@ public class BridgeComponent implements Listener {
                     hookPolar();
                 }
             });
-            logger.info("Polar detected, registered enable callback");
+            pluginLogger.info("Polar detected, registered enable callback");
         } catch (ClassNotFoundException ignored) {}
     }
 
-    public void enable(TicketCreator ticketCreator, boolean connectToProxy) {
-        if (!BridgeConfig.exists(plugin.getDataFolder().toPath())) {
-            plugin.saveResource("bridge-config.yml", false);
-        }
-        YamlMergeUtil.mergeWithDefaults("/bridge-config.yml",
-                plugin.getDataFolder().toPath().resolve("bridge-config.yml"), logger);
-
-        try {
-            bridgeConfig = BridgeConfig.load(plugin.getDataFolder().toPath());
-        } catch (IOException e) {
-            logger.severe("[bridge] Failed to load bridge-config.yml: " + e.getMessage());
-            bridgeConfig = new BridgeConfig();
-        }
-        bridgeConfig.setApiKey(apiKey);
-
-        BridgeLocaleManager localeManager = new BridgeLocaleManager(plugin.getLogger());
-
-        if (!plugin.getDataFolder().toPath().resolve("staff_mode.yml").toFile().exists()) {
-            plugin.saveResource("staff_mode.yml", false);
-        }
-        YamlMergeUtil.mergeWithDefaults("/staff_mode.yml",
-                plugin.getDataFolder().toPath().resolve("staff_mode.yml"), logger);
-
-        violationTracker = new ViolationTracker();
-        violationTracker.startCleanupTask(plugin);
-        statWipeHandler = new StatWipeHandler(plugin, bridgeConfig);
-
-        freezeHandler = new FreezeHandler(plugin, localeManager);
+    @Override
+    protected void initFreezeHandler(BridgeLocaleManager localeManager) {
+        freezeHandler = new FreezeHandler(plugin, localeManager, context.getScheduler());
         freezeHandler.register();
+    }
 
-        StaffModeConfig staffModeConfig = new StaffModeConfig(plugin.getDataFolder().toPath(), plugin.getLogger());
-        staffModeHandler = new StaffModeHandler(plugin, bridgeConfig, freezeHandler, localeManager, staffModeConfig);
+    @Override
+    protected void initStaffModeHandler(BridgeConfig bridgeConfig,
+                                         BridgeLocaleManager localeManager,
+                                         StaffModeConfig staffModeConfig) {
+        staffModeHandler = new StaffModeHandler(plugin, bridgeConfig, freezeHandler, localeManager, staffModeConfig, context.getScheduler());
         staffModeHandler.register();
         freezeHandler.setStaffModeHandler(staffModeHandler);
-
-        if (connectToProxy && !bridgeConfig.getProxyHost().isEmpty()) {
-            bridgeClient = new BridgeQueryClient(
-                    bridgeConfig.getProxyHost(),
-                    bridgeConfig.getProxyPort(),
-                    bridgeConfig.getApiKey(),
-                    bridgeConfig.getServerName(),
-                    statWipeHandler,
-                    freezeHandler,
-                    staffModeHandler,
-                    plugin
-            );
-            bridgeClient.connect();
-            staffModeHandler.setBridgeClient(bridgeClient);
-            freezeHandler.setBridgeClient(bridgeClient);
-        }
-
-        autoReporter = new AutoReporter(plugin, bridgeConfig, ticketCreator, violationTracker);
-        Bukkit.getPluginManager().registerEvents(this, plugin);
-
-        initializeReplayRecording();
-        if (replayService != null) {
-            autoReporter.setReplayService(replayService);
-        }
-        if (bridgeClient != null && replayService != null) {
-            bridgeClient.setReplayService(replayService);
-        }
-        registerAntiCheatHooks();
-
-        if (bridgeClient != null) {
-            plugin.getCommand("proxycmd").setExecutor(new ProxyCmdCommand(plugin, localeManager, bridgeClient));
-        }
-
-        logger.info("[bridge] Enabled with " + hooks.size() + " anticheat hook(s)"
-                + (polarAvailable ? " (Polar pending callback)" : "")
-                + (replayService != null ? " + replay capture" : "")
-                + (bridgeClient != null ? " + bridge connection" : ""));
     }
 
-    public void disable() {
-        if (replayCleanupTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(replayCleanupTaskId);
-        }
-        if (recordingManager != null) {
-            recordingManager.stopAll();
-        }
-        if (packetRecorder != null) {
-            packetRecorder.unregister();
-        }
-
-        if (staffModeHandler != null) staffModeHandler.shutdown();
-        if (bridgeClient != null) bridgeClient.shutdown();
-        if (violationTracker != null) violationTracker.stopCleanupTask();
-
-        hooks.forEach(AntiCheatHook::unregister);
-        hooks.clear();
-
-        logger.info("[bridge] Disabled");
+    @Override
+    protected BridgeMessageHandler createMessageHandler() {
+        return new SpigotBridgeMessageHandler(plugin, freezeHandler, staffModeHandler,
+                statWipeHandler, this, context.getScheduler());
     }
 
-    private void registerAntiCheatHooks() {
+    @Override
+    protected void onBridgeClientCreated(BridgeQueryClient client) {
+        staffModeHandler.setBridgeClient(client);
+        freezeHandler.setBridgeClient(client);
+    }
+
+    @Override
+    protected void registerAntiCheatHooks(List<AntiCheatHook> hooks) {
         if (Bukkit.getPluginManager().getPlugin("GrimAC") != null) {
             GrimHook grimHook = new GrimHook(plugin, bridgeConfig, violationTracker, autoReporter);
             grimHook.register();
@@ -213,13 +130,13 @@ public class BridgeComponent implements Listener {
         }
 
         if (hooks.isEmpty() && !polarAvailable) {
-            logger.warning("[bridge] No anticheat plugins detected. Install GrimAC, Vulcan, or Polar for anticheat reporting.");
+            pluginLogger.warning("[bridge] No anticheat plugins detected. Install GrimAC, Vulcan, or Polar for anticheat reporting.");
         }
     }
 
     private void hookPolar() {
         if (violationTracker == null || autoReporter == null) {
-            logger.warning("Polar enable callback fired but bridge is not fully initialized");
+            pluginLogger.warning("Polar enable callback fired but bridge is not fully initialized");
             return;
         }
 
@@ -228,41 +145,38 @@ public class BridgeComponent implements Listener {
         hooks.add(polarHook);
     }
 
-    private void initializeReplayRecording() {
-        if (!bridgeConfig.isReplayEnabled()) {
-            logger.info("[bridge] Replay recording disabled in config");
+    @Override
+    protected void initReplayRecording(BridgeConfig config) {
+        if (!config.isReplayEnabled()) {
+            pluginLogger.info("[bridge] Replay recording disabled in config");
             return;
         }
 
         if (backendUrl == null || backendUrl.isEmpty() || apiKey == null || apiKey.isEmpty()) {
-            logger.info("[bridge] Backend URL or API key not configured, replay capture unavailable");
+            pluginLogger.info("[bridge] Backend URL or API key not configured, replay capture unavailable");
             return;
         }
 
         try {
             Class.forName("com.github.retrooper.packetevents.PacketEvents");
         } catch (ClassNotFoundException e) {
-            logger.warning("[bridge] PacketEvents not found, replay recording disabled");
+            pluginLogger.warning("[bridge] PacketEvents not found, replay recording disabled");
             return;
         }
 
         RecordingConfig recordingConfig = new RecordingConfig() {
-            @Override public int bufferDurationSeconds() { return bridgeConfig.getReplayBufferDuration(); }
-            @Override public int maxDurationSeconds() { return bridgeConfig.getReplayMaxDuration(); }
-            @Override public int radiusBlocks() { return bridgeConfig.getReplayRadius(); }
-            @Override public int moveThrottleMs() { return bridgeConfig.getReplayMoveThrottle(); }
+            @Override public int bufferDurationSeconds() { return config.getReplayBufferDuration(); }
+            @Override public int maxDurationSeconds() { return config.getReplayMaxDuration(); }
+            @Override public int radiusBlocks() { return config.getReplayRadius(); }
+            @Override public int moveThrottleMs() { return config.getReplayMoveThrottle(); }
             @Override public String uploadEndpoint() { return backendUrl; }
             @Override public String uploadApiKey() { return apiKey; }
             @Override public String viewerBaseUrl() { return ""; }
-            @Override public String mcVersion() {
-                String bukkit = Bukkit.getBukkitVersion();
-                int dash = bukkit.indexOf('-');
-                return dash > 0 ? bukkit.substring(0, dash) : bukkit;
-            }
+            @Override public String mcVersion() { return context.getMinecraftVersion(); }
         };
 
         File replaysDir = new File(plugin.getDataFolder(), "replays");
-        if (bridgeConfig.isReplaySaveLocal()) {
+        if (config.isReplaySaveLocal()) {
             replaysDir.mkdirs();
         }
 
@@ -287,8 +201,8 @@ public class BridgeComponent implements Listener {
                         .thenCompose(metadata -> {
                             File replayFile = metadata != null ? metadata.getOutputFile() : null;
 
-                            if (bridgeConfig.isReplayAutoRecord()) {
-                                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            if (config.isReplayAutoRecord()) {
+                                context.getScheduler().runForPlayerLater(targetUuid, () -> {
                                     Player player = Bukkit.getPlayer(targetUuid);
                                     if (player != null && player.isOnline()) {
                                         startRecordingForPlayer(player);
@@ -297,20 +211,20 @@ public class BridgeComponent implements Listener {
                             }
 
                             if (replayFile == null || !replayFile.exists()) {
-                                logger.warning("[bridge] No replay file found for " + targetName + " after stopping recording");
+                                pluginLogger.warning("[bridge] No replay file found for " + targetName + " after stopping recording");
                                 return CompletableFuture.completedFuture(null);
                             }
 
                             return uploader.uploadAsync(replayFile, recordingConfig.mcVersion())
                                     .thenApply(replayId -> {
-                                        logger.info("[bridge] Replay uploaded for " + targetName + ": " + replayId);
+                                        pluginLogger.info("[bridge] Replay uploaded for " + targetName + ": " + replayId);
                                         return replayId;
                                     })
                                     .whenComplete((replayId, ex) -> {
                                         if (ex != null) {
-                                            logger.warning("[bridge] Replay upload failed for " + targetName + ": " + ex.getMessage());
+                                            pluginLogger.warning("[bridge] Replay upload failed for " + targetName + ": " + ex.getMessage());
                                         }
-                                        if (!bridgeConfig.isReplaySaveLocal()) {
+                                        if (!config.isReplaySaveLocal()) {
                                             replayFile.delete();
                                         }
                                     });
@@ -323,49 +237,54 @@ public class BridgeComponent implements Listener {
             }
         };
 
-        if (bridgeConfig.isReplayAutoRecord()) {
+        if (config.isReplayAutoRecord()) {
             for (Player player : Bukkit.getOnlinePlayers()) {
                 startRecordingForPlayer(player);
             }
         }
 
-        if (bridgeConfig.isReplaySaveLocal()) {
-            long ttlMs = bridgeConfig.getReplayLocalTtl() * 60_000L;
-            long checkIntervalTicks = 20L * 60 * 5; // check every 5 minutes
-            replayCleanupTaskId = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+        if (config.isReplaySaveLocal()) {
+            long ttlMs = config.getReplayLocalTtl() * 60_000L;
+            replayCleanupTask = context.getScheduler().runTimerAsync(() -> {
                 File[] files = replaysDir.listFiles();
                 if (files == null) return;
                 long now = System.currentTimeMillis();
                 for (File f : files) {
                     if (f.isFile() && now - f.lastModified() > ttlMs) {
                         if (f.delete()) {
-                            logger.info("[bridge] Deleted expired replay file: " + f.getName());
+                            pluginLogger.info("[bridge] Deleted expired replay file: " + f.getName());
                         }
                     }
                 }
-            }, checkIntervalTicks, checkIntervalTicks).getTaskId();
+            }, 5, 5, java.util.concurrent.TimeUnit.MINUTES);
         }
 
-        logger.info("[bridge] Replay recording initialized (auto-record: " + bridgeConfig.isReplayAutoRecord()
-                + ", save-local: " + bridgeConfig.isReplaySaveLocal() + ")");
+        pluginLogger.info("[bridge] Replay recording initialized (auto-record: " + config.isReplayAutoRecord()
+                + ", save-local: " + config.isReplaySaveLocal() + ")");
     }
 
-    private static String extractDomain(String url) {
-        if (url == null || url.isEmpty()) return "";
-        String normalized = url.trim();
-        if (!normalized.startsWith("http://") && !normalized.startsWith("https://")) {
-            normalized = "https://" + normalized;
+    @Override
+    protected void registerPlatformEvents() {
+        Bukkit.getPluginManager().registerEvents(this, plugin);
+    }
+
+    @Override
+    protected void registerProxyCommand(BridgeQueryClient client) {
+        plugin.getCommand("proxycmd").setExecutor(new ProxyCmdCommand(plugin, localeManager, client));
+    }
+
+    @Override
+    protected void onDisable() {
+        if (replayCleanupTask != null) {
+            replayCleanupTask.cancel();
         }
-        try {
-            java.net.URI uri = java.net.URI.create(normalized);
-            String host = uri.getHost();
-            return host != null ? host : url.trim();
-        } catch (Exception e) {
-            String result = normalized.substring(normalized.indexOf("://") + 3);
-            int slashIndex = result.indexOf('/');
-            if (slashIndex > 0) result = result.substring(0, slashIndex);
-            return result;
+        if (recordingManager != null) {
+            recordingManager.stopAll();
         }
+        if (packetRecorder != null) {
+            packetRecorder.unregister();
+        }
+        if (staffModeHandler != null) staffModeHandler.shutdown();
     }
 
     private void startRecordingForPlayer(Player player) {
@@ -440,7 +359,7 @@ public class BridgeComponent implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         if (bridgeConfig.isReplayEnabled() && bridgeConfig.isReplayAutoRecord() && recordingManager != null) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            context.getScheduler().runForPlayerLater(event.getPlayer().getUniqueId(), () -> {
                 if (event.getPlayer().isOnline()) {
                     startRecordingForPlayer(event.getPlayer());
                 }
@@ -465,7 +384,7 @@ public class BridgeComponent implements Listener {
 
         int generation = worldChangeGeneration.merge(playerId, 1, Integer::sum);
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        context.getScheduler().runForPlayerLater(playerId, () -> {
             Integer current = worldChangeGeneration.get(playerId);
             if (current == null || current != generation) return;
             worldChangeGeneration.remove(playerId);

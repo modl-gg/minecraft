@@ -17,6 +17,7 @@ import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
+import gg.modl.minecraft.spigot.bridge.folia.FoliaSchedulerHelper;
 import lombok.Setter;
 import net.md_5.bungee.chat.ComponentSerializer;
 import org.bukkit.Bukkit;
@@ -164,6 +165,10 @@ public class SpigotPlatform implements Platform {
 
     @Override
     public void runOnMainThread(Runnable task) {
+        if (FoliaSchedulerHelper.isFolia()) {
+            FoliaSchedulerHelper.runGlobal(plugin, task);
+            return;
+        }
         if (Bukkit.isPrimaryThread()) {
             task.run();
             return;
@@ -220,7 +225,12 @@ public class SpigotPlatform implements Platform {
     @Override
     public void dispatchPlayerCommand(UUID uuid, String command) {
         Player player = Bukkit.getPlayer(uuid);
-        if (player != null) Bukkit.getScheduler().runTask(plugin, () -> player.performCommand(command));
+        if (player == null) return;
+        if (FoliaSchedulerHelper.isFolia()) {
+            FoliaSchedulerHelper.runForEntity(plugin, player, () -> player.performCommand(command));
+        } else {
+            Bukkit.getScheduler().runTask(plugin, () -> player.performCommand(command));
+        }
     }
 
     @Override

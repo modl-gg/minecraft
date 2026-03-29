@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "modl",
+  "version": "${version}",
+  "name": "modl",
+  "description": "First-class moderation and support systems",
+  "authors": ["tigerbong", "byteful"],
+  "contact": {
+    "homepage": "https://modl.gg",
+    "sources": "https://github.com/modl-gg/minecraft"
+  },
+  "license": "AGPL-3.0",
+  "environment": "server",
+  "entrypoints": {
+    "server": ["gg.modl.minecraft.fabric.ModlFabricMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": ">=1.21",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

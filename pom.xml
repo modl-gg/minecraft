@@ -12,6 +12,7 @@
     <modules>
         <module>api</module>
         <module>core</module>
+        <module>bridge-core</module>
         <module>distribution</module>
         <module>platforms</module>
     </modules>
@@ -136,6 +137,11 @@
             <dependency>
                 <groupId>gg.modl</groupId>
                 <artifactId>core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>gg.modl</groupId>
+                <artifactId>bridge-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

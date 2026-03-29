@@ -73,6 +73,10 @@
         </dependency>
         <dependency>
             <groupId>gg.modl</groupId>
+            <artifactId>bridge-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>gg.modl</groupId>
             <artifactId>bungee</artifactId>
         </dependency>
         <dependency>
