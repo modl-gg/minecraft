@@ -28,7 +28,7 @@ public class ModlNeoForgeMod {
     @SubscribeEvent
     public void onServerStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
-        Path dataFolder = server.getRunDirectory().toPath().resolve("config").resolve("modl");
+        Path dataFolder = server.getServerDirectory().resolve("config").resolve("modl");
         dataFolder.toFile().mkdirs();
 
         NeoForgeBridgePluginContext context = new NeoForgeBridgePluginContext(server, dataFolder);

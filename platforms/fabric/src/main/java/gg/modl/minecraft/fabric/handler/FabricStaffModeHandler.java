@@ -94,7 +94,7 @@ public class FabricStaffModeHandler {
             if (targetPlayer != null) {
                 staffPlayer.teleport(targetPlayer.getServerWorld(),
                         targetPlayer.getX(), targetPlayer.getY(), targetPlayer.getZ(),
-                        targetPlayer.getYaw(), targetPlayer.getPitch());
+                        java.util.Set.of(), targetPlayer.getYaw(), targetPlayer.getPitch(), false);
             }
         }
     }
@@ -164,7 +164,7 @@ public class FabricStaffModeHandler {
             player.experienceProgress = snapshot.exp;
             player.experienceLevel = snapshot.level;
             player.teleport(player.getServerWorld(), snapshot.x, snapshot.y, snapshot.z,
-                    snapshot.yaw, snapshot.pitch);
+                    java.util.Set.of(), snapshot.yaw, snapshot.pitch, false);
         } else {
             player.getInventory().clear();
             player.changeGameMode(GameMode.SURVIVAL);
@@ -184,8 +184,8 @@ public class FabricStaffModeHandler {
     private ItemStack createItemStack(StaffModeConfig.HotbarItem hotbarItem) {
         String materialName = hotbarItem.getItem().replace("minecraft:", "");
         Identifier id = Identifier.of("minecraft", materialName);
-        var itemEntry = Registries.ITEM.getOrEmpty(id);
-        ItemStack stack = itemEntry.map(item -> new ItemStack(item, 1)).orElse(new ItemStack(Items.STONE));
+        net.minecraft.item.Item item = Registries.ITEM.containsId(id) ? Registries.ITEM.get(id) : Items.STONE;
+        ItemStack stack = new ItemStack(item, 1);
         String displayName = localeManager.colorize(hotbarItem.getName());
         stack.set(net.minecraft.component.DataComponentTypes.CUSTOM_NAME, Text.literal(displayName));
         return stack;

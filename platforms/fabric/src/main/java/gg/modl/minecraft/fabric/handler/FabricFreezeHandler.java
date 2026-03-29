@@ -69,7 +69,7 @@ public class FabricFreezeHandler {
 
             if (dx * dx + dy * dy + dz * dz > 0.01) {
                 player.teleport(player.getServerWorld(), pos[0], pos[1], pos[2],
-                        player.getYaw(), player.getPitch());
+                        java.util.Set.of(), player.getYaw(), player.getPitch(), false);
             }
         });
     }

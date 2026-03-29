@@ -26,7 +26,7 @@ public class ModlFabricMod implements DedicatedServerModInitializer {
     }
 
     private void onServerStarted(MinecraftServer server) {
-        Path dataFolder = server.getRunDirectory().toPath().resolve("config").resolve("modl");
+        Path dataFolder = server.getRunDirectory().resolve("config").resolve("modl");
         dataFolder.toFile().mkdirs();
 
         FabricBridgePluginContext context = new FabricBridgePluginContext(server, dataFolder);

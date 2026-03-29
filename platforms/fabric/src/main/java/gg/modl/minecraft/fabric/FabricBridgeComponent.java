@@ -17,7 +17,7 @@ import gg.modl.replay.recording.PacketRecorder;
 import gg.modl.replay.recording.RecordingConfig;
 import gg.modl.replay.recording.RecordingManager;
 import lombok.Getter;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityWorldChangeEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
