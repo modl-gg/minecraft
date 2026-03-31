@@ -19,8 +19,8 @@ dependencies {
     compileOnly("gg.modl.minecraft.cirrus:cirrus-velocity:${property("cirrus.version")}")
     compileOnly("org.yaml:snakeyaml:${property("snakeyaml.version")}")
 
-    implementation("net.byteflux:libby-core:${property("libby.version")}")
-    implementation("net.byteflux:libby-velocity:${property("libby.version")}")
+    implementation("com.alessiodp.libby:libby-core:${property("libby.version")}")
+    implementation("com.alessiodp.libby:libby-velocity:${property("libby.version")}")
 
     compileOnly("com.github.retrooper:packetevents-api:${property("packetevents.version")}")
     compileOnly("com.github.retrooper:packetevents-velocity:${property("packetevents.version")}")

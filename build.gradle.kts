@@ -2,7 +2,7 @@ plugins {
     java
 }
 
-val modPlatformModules = setOf("fabric", "neoforge")
+val modPlatformModules = setOf("fabric")
 
 allprojects {
     group = property("group")!!
@@ -22,7 +22,7 @@ subprojects {
         maven("https://jitpack.io")
         maven("https://repo.codemc.io/repository/maven-releases/")
         maven("https://repo.codemc.io/repository/maven-snapshots/")
-        maven("https://repo.byteflux.net/repository/maven-releases/")
+        maven("https://repo.alessiodp.com/snapshots/")
     }
 
     configure<JavaPluginExtension> {

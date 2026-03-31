@@ -3,8 +3,7 @@ plugins {
     id 'java'
 }
 
-version = project.mod_version
-group = project.maven_group
+// version and group inherited from root gradle.properties
 
 repositories {
     mavenLocal()
@@ -14,6 +13,7 @@ repositories {
     maven { url "https://repo.codemc.io/repository/maven-snapshots/" }
     maven { url "https://jitpack.io" }
     maven { url "https://repo.aikar.co/content/groups/aikar/" }
+    maven { url "https://repo.alessiodp.com/snapshots/" }
 }
 
 dependencies {
@@ -28,28 +28,24 @@ dependencies {
     implementation project(":core")
     implementation project(":api")
 
-    // Cirrus menu system (from Maven local)
-    implementation "gg.modl.minecraft.cirrus:cirrus-fabric:4.2.0-SNAPSHOT"
-    implementation "gg.modl.minecraft.cirrus:cirrus-api:4.2.0-SNAPSHOT"
-    implementation "gg.modl.minecraft.cirrus:cirrus-common:4.2.0-SNAPSHOT"
+    // Libby runtime library loading
+    implementation "com.alessiodp.libby:libby-core:${rootProject.property('libby.version')}"
+    implementation "com.alessiodp.libby:libby-fabric:${rootProject.property('libby.version')}"
 
-    // PacketEvents API (needed by replay recording and cirrus)
+    // Compile-only deps (loaded at runtime via Libby)
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:4.2.0-SNAPSHOT"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-api:4.2.0-SNAPSHOT"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-common:4.2.0-SNAPSHOT"
     compileOnly "com.github.retrooper:packetevents-api:2.12.0-SNAPSHOT"
+    compileOnly "gg.modl.replay:modl-replay-recording:1.0.0-SNAPSHOT"
+    compileOnly "gg.modl.replay:replay-format:1.0.0-SNAPSHOT"
 
-    // Replay recording (platform-agnostic, uses PacketEvents API)
-    implementation "gg.modl.replay:modl-replay-recording:1.0.0-SNAPSHOT"
-    implementation "gg.modl.replay:replay-format:1.0.0-SNAPSHOT"
-
-    // Netty (provided by Minecraft)
+    // Provided by server
     compileOnly "io.netty:netty-all:4.1.97.Final"
-
-    // Adventure
-    implementation "net.kyori:adventure-text-minimessage:4.26.1"
-    implementation "net.kyori:adventure-text-serializer-legacy:4.26.1"
-    implementation "net.kyori:adventure-api:4.26.1"
-
-    // YAML config
-    implementation "org.yaml:snakeyaml:2.3"
+    compileOnly "net.kyori:adventure-text-minimessage:4.26.1"
+    compileOnly "net.kyori:adventure-text-serializer-legacy:4.26.1"
+    compileOnly "net.kyori:adventure-api:4.26.1"
+    compileOnly "org.yaml:snakeyaml:2.3"
 
     // Lombok
     compileOnly "org.projectlombok:lombok:1.18.34"
@@ -61,9 +57,16 @@ java {
     targetCompatibility = JavaVersion.VERSION_21
 }
 
+loom {
+    mods {
+        create("modl") {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
 processResources {
     inputs.property "version", project.version
-
     filesMatching("fabric.mod.json") {
         expand "version": project.version
     }

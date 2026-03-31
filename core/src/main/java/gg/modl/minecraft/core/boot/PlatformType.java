@@ -4,6 +4,5 @@ public enum PlatformType {
     SPIGOT,
     BUNGEECORD,
     VELOCITY,
-    FABRIC,
-    NEOFORGE
+    FABRIC
 }

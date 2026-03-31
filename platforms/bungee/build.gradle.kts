@@ -12,8 +12,8 @@ dependencies {
     compileOnly("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
     compileOnly("gg.modl.minecraft.cirrus:cirrus-bungeecord:${property("cirrus.version")}")
 
-    implementation("net.byteflux:libby-core:${property("libby.version")}")
-    implementation("net.byteflux:libby-bungee:${property("libby.version")}")
+    implementation("com.alessiodp.libby:libby-core:${property("libby.version")}")
+    implementation("com.alessiodp.libby:libby-bungee:${property("libby.version")}")
 
     compileOnly("com.github.retrooper:packetevents-api:${property("packetevents.version")}")
     compileOnly("com.github.retrooper:packetevents-bungeecord:${property("packetevents.version")}")

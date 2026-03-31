@@ -34,8 +34,8 @@ dependencies {
     compileOnly("gg.modl.minecraft.cirrus:cirrus-spigot:${property("cirrus.version")}")
 
     // Libby runtime library loading
-    implementation("net.byteflux:libby-core:${property("libby.version")}")
-    implementation("net.byteflux:libby-bukkit:${property("libby.version")}")
+    implementation("com.alessiodp.libby:libby-core:${property("libby.version")}")
+    implementation("com.alessiodp.libby:libby-bukkit:${property("libby.version")}")
 
     // PacketEvents
     compileOnly("com.github.retrooper:packetevents-api:${property("packetevents.version")}")

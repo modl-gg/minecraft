@@ -22,8 +22,8 @@ import gg.modl.minecraft.spigot.bridge.folia.FoliaSchedulerHelper;
 import gg.modl.minecraft.bridge.reporter.TicketCreator;
 import org.bukkit.Bukkit;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
-import net.byteflux.libby.BukkitLibraryManager;
-import net.byteflux.libby.Library;
+import com.alessiodp.libby.BukkitLibraryManager;
+import com.alessiodp.libby.Library;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -365,7 +365,7 @@ public class SpigotPlugin extends JavaPlugin {
                 .groupId(record.getGroupId())
                 .artifactId(record.getArtifactId())
                 .version(record.getVersion())
-                .id(record.getId());
+                ;
 
         if (record.hasRelocations()) {
             for (String[] relocation : record.getRelocations()) {
@@ -373,7 +373,7 @@ public class SpigotPlugin extends JavaPlugin {
             }
         }
         if (record.getUrl() != null) builder.url(record.getUrl());
-        if (record.hasChecksum()) builder.checksum(record.getChecksum());
+        if (record.hasChecksum()) builder.checksumFromBase64(record.getChecksum());
 
         libraryManager.loadLibrary(builder.build());
     }

@@ -2,11 +2,11 @@ plugins {
     id("com.gradleup.shadow") version "9.3.1"
 }
 
-// Distribution bundles modules with different Java targets (8, 17)
-// Disable auto-target-JVM to allow mixing
 java {
     disableAutoTargetJvm()
 }
+
+val fabricJar = project(":platforms:fabric").layout.buildDirectory.file("libs/fabric-${project.version}.jar")
 
 dependencies {
     implementation(project(":core"))
@@ -15,15 +15,12 @@ dependencies {
     implementation(project(":platforms:spigot-sv"))
     implementation(project(":platforms:velocity"))
     implementation(project(":platforms:bungee"))
-    implementation(project(":platforms:fabric")) {
-        isTransitive = false
-    }
-    implementation(project(":platforms:neoforge")) {
-        isTransitive = false
-    }
+    // Libby Fabric adapter (needed by Fabric platform at runtime)
+    implementation("com.alessiodp.libby:libby-fabric:${property("libby.version")}")
 }
 
 tasks.shadowJar {
+    dependsOn(":platforms:fabric:remapJar")
     archiveBaseName.set("modl")
     archiveClassifier.set("")
 
@@ -31,8 +28,11 @@ tasks.shadowJar {
     relocate("io.github.retrooper.packetevents", "gg.modl.libs.packetevents.impl")
 
     exclude("**/module-info.class")
+    exclude("com/google/gson/**")
 
     from(rootProject.file("LICENSE.txt"))
+    // Include Loom-remapped Fabric classes (intermediary-mapped for runtime)
+    from(zipTree(fabricJar))
 }
 
 tasks.assemble {

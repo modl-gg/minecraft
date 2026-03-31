@@ -27,8 +27,8 @@ import gg.modl.minecraft.core.util.YamlMergeUtil;
 
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 import io.github.retrooper.packetevents.velocity.factory.VelocityPacketEventsBuilder;
-import net.byteflux.libby.Library;
-import net.byteflux.libby.VelocityLibraryManager;
+import com.alessiodp.libby.Library;
+import com.alessiodp.libby.VelocityLibraryManager;
 import org.slf4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
@@ -240,7 +240,7 @@ public final class VelocityPlugin {
 
     private void loadLibraries() {
         VelocityLibraryManager<VelocityPlugin> libraryManager = new VelocityLibraryManager<>(
-                logger, folder, server.getPluginManager(), this);
+                this, logger, folder, server.getPluginManager());
         libraryManager.addMavenCentral();
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
@@ -264,7 +264,7 @@ public final class VelocityPlugin {
                 .groupId(record.getGroupId())
                 .artifactId(record.getArtifactId())
                 .version(record.getVersion())
-                .id(record.getId());
+                ;
 
         if (record.hasRelocations()) {
             for (String[] relocation : record.getRelocations()) {
@@ -272,7 +272,7 @@ public final class VelocityPlugin {
             }
         }
         if (record.getUrl() != null) builder.url(record.getUrl());
-        if (record.hasChecksum()) builder.checksum(record.getChecksum());
+        if (record.hasChecksum()) builder.checksumFromBase64(record.getChecksum());
 
         libraryManager.loadLibrary(builder.build());
     }

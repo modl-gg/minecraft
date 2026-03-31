@@ -18,8 +18,8 @@ import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.bungee.factory.BungeePacketEventsBuilder;
-import net.byteflux.libby.BungeeLibraryManager;
-import net.byteflux.libby.Library;
+import com.alessiodp.libby.BungeeLibraryManager;
+import com.alessiodp.libby.Library;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
@@ -209,7 +209,7 @@ public class BungeePlugin extends Plugin {
                 .groupId(record.getGroupId())
                 .artifactId(record.getArtifactId())
                 .version(record.getVersion())
-                .id(record.getId())
+                
                 .isolatedLoad(false);
 
         if (record.hasRelocations()) {
@@ -218,7 +218,7 @@ public class BungeePlugin extends Plugin {
             }
         }
         if (record.getUrl() != null) builder.url(record.getUrl());
-        if (record.hasChecksum()) builder.checksum(record.getChecksum());
+        if (record.hasChecksum()) builder.checksumFromBase64(record.getChecksum());
 
         libraryManager.loadLibrary(builder.build());
     }
