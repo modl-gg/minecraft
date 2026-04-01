@@ -51,7 +51,6 @@ public class FreezeCommand extends BaseCommand {
 
     private void unfreezePlayer(UUID targetUuid, String targetName, String inGameName, String panelName) {
         freezeService.unfreeze(targetUuid);
-        platform.sendMessage(targetUuid, localeManager.getMessage("freeze.unfrozen"));
         platform.staffBroadcast(localeManager.getMessage("freeze.staff_notification_unfreeze", mapOf(
                 "player", targetName,
                 "staff", panelName,
@@ -63,7 +62,6 @@ public class FreezeCommand extends BaseCommand {
     private void freezePlayer(CommandIssuer sender, UUID targetUuid, String targetName, String inGameName, String panelName) {
         UUID staffUuid = sender.isPlayer() ? sender.getUniqueId() : null;
         freezeService.freeze(targetUuid, staffUuid);
-        platform.sendMessage(targetUuid, localeManager.getMessage("freeze.frozen_message"));
         platform.staffBroadcast(localeManager.getMessage("freeze.staff_notification_freeze", mapOf(
                 "player", targetName,
                 "staff", panelName,

@@ -216,7 +216,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         vars.put("player", pwp.getPlayerName() != null ? pwp.getPlayerName() : "Unknown");
 
         List<String> lore = new ArrayList<>();
-        for (String line : locale.getMessageList("menus.history_item.lore")) {
+        for (String line : locale.getMessageList("menus.recent_item.lore")) {
             String processed = line;
             for (Map.Entry<String, String> entry : vars.entrySet()) {
                 processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
@@ -227,7 +227,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
                 lore.add(processed);
         }
 
-        String titleKey = isActive ? "menus.history_item.title_active" : "menus.history_item.title_inactive";
+        String titleKey = isActive ? "menus.recent_item.title_active" : "menus.recent_item.title_inactive";
         String title = locale.getMessage(titleKey, vars);
 
         CirrusItemType itemType = getPunishmentItemType(punishment);

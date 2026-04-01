@@ -378,6 +378,18 @@ menus:
     status_permanent: "&7&7Esta permanente nunca expirará."
     status_unstarted: "&7La sanción aún no ha comenzado."
     note_format: "&e{note_date} {note_issuer}&f: {note}"
+  recent_item:
+    title_active: "&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    title_inactive: "&m&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    lore:
+      - "&7Jugador: &f{player}"
+      - "&7{status_line}"
+      - "&f "
+      - "{notes}"
+      - "&f "
+      - "&fServidor: &7{issued_server}"
+      - "&fID: &c{punishment_id}"
+      - "&bClic para modificar esta sanción."
   note_item:
     title: "&e{date} {author}"
     lore:

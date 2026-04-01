@@ -457,6 +457,18 @@ menus:
     status_permanent: "&7&7Deze permanente straf verloopt nooit."
     status_unstarted: "&7Straf nog niet gestart."
     note_format: "&e{note_date} {note_issuer}&f: {note}"
+  recent_item:
+    title_active: "&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    title_inactive: "&m&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    lore:
+      - "&7Speler: &f{player}"
+      - "&7{status_line}"
+      - "&f "
+      - "{notes}"
+      - "&f "
+      - "&fServer: &7{issued_server}"
+      - "&fID: &c{punishment_id}"
+      - "&bKlik om deze straf te wijzigen."
 
   # Notitie items
   note_item:

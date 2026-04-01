@@ -75,8 +75,10 @@ public final class ChatEventHandler {
         }
 
         if (freezeService.isFrozen(senderUuid)) {
-            platform.staffBroadcast(localeManager.getMessage("freeze.frozen_chat",
-                    mapOf("player", senderName, "message", message)));
+            String frozenChat = localeManager.getMessage("freeze.frozen_chat",
+                    mapOf("player", senderName, "message", message));
+            platform.staffBroadcast(frozenChat);
+            sendMessage.accept(frozenChat);
             return Result.CANCELLED;
         }
 

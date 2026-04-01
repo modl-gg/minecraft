@@ -515,6 +515,20 @@ menus:
     status_unstarted: "&7Punishment not yet started."
     note_format: "&e{note_date} {note_issuer}&f: {note}"
 
+  # Recent punishments items (includes target player info)
+  recent_item:
+    title_active: "&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    title_inactive: "&m&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    lore:
+      - "&7Player: &f{player}"
+      - "&7{status_line}"
+      - "&f "
+      - "{notes}"
+      - "&f "
+      - "&7Server: &f{issued_server}"
+      - "&7ID: &c{punishment_id}"
+      - "&bClick to modify this punishment."
+
   # Note items
   note_item:
     title: "&e{date} {author}"

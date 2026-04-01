@@ -181,7 +181,7 @@ public final class Libraries {
             "4.2.0",
             "cirrus-fabric",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.2.0-SNAPSHOT/cirrus-fabric-4.2.0-SNAPSHOT.jar",
-            "cS0PYJnDEBbhmq8pHUJMK4xygcaXmRILWbVXIQwcJcE="
+            "QRRO0zY1ypvAoWIqZX2C9DkeTpjH5rqh4l6DqTzVCVQ="
     ),
     ADVENTURE_KEY = LibraryRecord.of(
             "net{}kyori",

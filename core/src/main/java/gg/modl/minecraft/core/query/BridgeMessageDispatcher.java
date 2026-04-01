@@ -79,18 +79,17 @@ public class BridgeMessageDispatcher {
         UUID targetUuid = UUID.fromString(data.readUTF());
         UUID staffUuid = UUID.fromString(data.readUTF());
         freezeService.freeze(targetUuid, staffUuid);
-        platform.sendMessage(targetUuid, localeManager.getMessage("freeze.frozen_message"));
         logger.info("[bridge] Freeze applied to " + targetUuid + " by " + staffUuid);
     }
 
     private void handleUnfreezePlayer(DataInputStream data) throws Exception {
         UUID targetUuid = UUID.fromString(data.readUTF());
         freezeService.unfreeze(targetUuid);
-        platform.sendMessage(targetUuid, localeManager.getMessage("freeze.unfrozen"));
         logger.info("[bridge] Unfreeze applied to " + targetUuid);
     }
 
     private void handleFreezeLogout(DataInputStream data) throws Exception {
+        data.readUTF(); // uuid (unused — name is sufficient for the notification)
         String playerName = data.readUTF();
         platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification", mapOf(
                 "player", playerName
