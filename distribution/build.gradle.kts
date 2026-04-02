@@ -6,7 +6,8 @@ java {
     disableAutoTargetJvm()
 }
 
-val fabricJar = project(":platforms:fabric").layout.buildDirectory.file("libs/fabric-${project.version}.jar")
+val fabricLoomJar = project(":platforms:fabric").layout.buildDirectory.file("libs/fabric-${project.version}.jar")
+val fabric26Jar = file("../platforms/fabric-26/build/libs/modl-fabric-26-${project.version}.jar")
 
 dependencies {
     implementation(project(":core"))
@@ -19,8 +20,22 @@ dependencies {
     implementation("com.alessiodp.libby:libby-fabric:${property("libby.version")}")
 }
 
+// Create the v1_21 nested JAR from Loom output
+val fabric121NestedJar by tasks.registering(Jar::class) {
+    archiveBaseName.set("modl-fabric-121")
+    dependsOn(":platforms:fabric:remapJar")
+    from(zipTree(fabricLoomJar)) {
+        include("gg/modl/minecraft/fabric/v1_21/**")
+    }
+    from(zipTree(fabricLoomJar)) {
+        include("META-INF/impl-121-fabric.mod.json")
+        rename("impl-121-fabric.mod.json", "fabric.mod.json")
+    }
+}
+
 tasks.shadowJar {
     dependsOn(":platforms:fabric:remapJar")
+    dependsOn(fabric121NestedJar)
     archiveBaseName.set("modl")
     archiveClassifier.set("")
 
@@ -31,8 +46,20 @@ tasks.shadowJar {
     exclude("com/google/gson/**")
 
     from(rootProject.file("LICENSE.txt"))
-    // Include Loom-remapped Fabric classes (intermediary-mapped for runtime)
-    from(zipTree(fabricJar))
+
+    // Shell entry point + shell fabric.mod.json from Fabric Loom output
+    from(zipTree(fabricLoomJar)) {
+        include("gg/modl/minecraft/fabric/ModlFabricMod.class")
+        include("fabric.mod.json")
+    }
+
+    // Nested Fabric JARs — included as actual JAR files inside META-INF/jars/
+    into("META-INF/jars") {
+        from(fabric121NestedJar)
+        if (fabric26Jar.exists()) {
+            from(fabric26Jar)
+        }
+    }
 }
 
 tasks.assemble {

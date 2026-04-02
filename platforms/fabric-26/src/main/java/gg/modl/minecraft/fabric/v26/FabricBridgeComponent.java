@@ -1,4 +1,4 @@
-package gg.modl.minecraft.fabric;
+package gg.modl.minecraft.fabric.v26;
 
 import gg.modl.minecraft.bridge.AbstractBridgeComponent;
 import gg.modl.minecraft.bridge.config.BridgeConfig;
@@ -10,8 +10,8 @@ import gg.modl.minecraft.bridge.reporter.ModlBackendReplayUploader;
 import gg.modl.minecraft.bridge.reporter.hook.AntiCheatHook;
 import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.util.PluginLogger;
-import gg.modl.minecraft.fabric.handler.FabricFreezeHandler;
-import gg.modl.minecraft.fabric.handler.FabricStaffModeHandler;
+import gg.modl.minecraft.fabric.v26.handler.FabricFreezeHandler;
+import gg.modl.minecraft.fabric.v26.handler.FabricStaffModeHandler;
 import gg.modl.minecraft.bridge.BridgeTask;
 import gg.modl.replay.recording.PacketRecorder;
 import gg.modl.replay.recording.RecordingConfig;
@@ -21,13 +21,14 @@ import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.block.BlockState;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 
 import java.io.File;
 import java.util.*;
@@ -48,9 +49,9 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
 
     public FabricBridgeComponent(FabricBridgePluginContext context, MinecraftServer server) {
         super(context, "", "", "", new PluginLogger() {
-            @Override public void info(String msg) { ModlFabricMod.LOGGER.info(msg); }
-            @Override public void warning(String msg) { ModlFabricMod.LOGGER.warn(msg); }
-            @Override public void severe(String msg) { ModlFabricMod.LOGGER.error(msg); }
+            @Override public void info(String msg) { ModlFabricModImpl.LOGGER.info(msg); }
+            @Override public void warning(String msg) { ModlFabricModImpl.LOGGER.warn(msg); }
+            @Override public void severe(String msg) { ModlFabricModImpl.LOGGER.error(msg); }
         });
         this.server = server;
         this.fabricContext = context;
@@ -147,7 +148,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
 
                             if (config.isReplayAutoRecord()) {
                                 context.getScheduler().runForPlayerLater(targetUuid, () -> {
-                                    ServerPlayerEntity player = server.getPlayerManager().getPlayer(targetUuid);
+                                    ServerPlayer player = server.getPlayerList().getPlayer(targetUuid);
                                     if (player != null) {
                                         startRecordingForPlayer(player);
                                     }
@@ -182,7 +183,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
         };
 
         if (config.isReplayAutoRecord()) {
-            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 startRecordingForPlayer(player);
             }
         }
@@ -205,42 +206,42 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
                 + ", save-local: " + config.isReplaySaveLocal() + ")");
     }
 
-    private void startRecordingForPlayer(ServerPlayerEntity player) {
+    private void startRecordingForPlayer(ServerPlayer player) {
         if (recordingManager == null || packetRecorder == null) return;
-        if (recordingManager.isRecording(player.getUuid())) return;
+        if (recordingManager.isRecording(player.getUUID())) return;
 
         double x = player.getX(), y = player.getY(), z = player.getZ();
-        float yaw = player.getYaw(), pitch = player.getPitch();
+        float yaw = player.getYRot(), pitch = player.getXRot();
         int radius = bridgeConfig.getReplayRadius();
 
-        packetRecorder.trackSelf(player.getUuid(), player.getName().getString(), player.getId(),
+        packetRecorder.trackSelf(player.getUUID(), player.getName().getString(), player.getId(),
                 x, y, z, yaw, pitch);
 
         double radiusSq = (double) radius * radius;
-        for (ServerPlayerEntity nearby : server.getPlayerManager().getPlayerList()) {
+        for (ServerPlayer nearby : server.getPlayerList().getPlayers()) {
             if (nearby.equals(player)) continue;
-            if (!nearby.getServerWorld().equals(player.getServerWorld())) continue;
+            if (!nearby.serverLevel().equals(player.serverLevel())) continue;
             double dx = nearby.getX() - x, dy = nearby.getY() - y, dz = nearby.getZ() - z;
             if (dx * dx + dy * dy + dz * dz > radiusSq) continue;
             packetRecorder.getEntityTracker().trackPlayer(
-                    player.getUuid(), nearby.getId(), nearby.getUuid(), nearby.getName().getString(),
-                    nearby.getX(), nearby.getY(), nearby.getZ(), nearby.getYaw(), nearby.getPitch());
+                    player.getUUID(), nearby.getId(), nearby.getUUID(), nearby.getName().getString(),
+                    nearby.getX(), nearby.getY(), nearby.getZ(), nearby.getYRot(), nearby.getXRot());
         }
 
-        recordingManager.startRecording(player.getUuid(), player.getName().getString(),
+        recordingManager.startRecording(player.getUUID(), player.getName().getString(),
                 (int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
 
         seedInventory(player);
-        packetRecorder.emitInitialSelfEquipment(player.getUuid());
+        packetRecorder.emitInitialSelfEquipment(player.getUUID());
     }
 
-    private void seedInventory(ServerPlayerEntity player) {
+    private void seedInventory(ServerPlayer player) {
         Map<Integer, String> protocolSlots = new HashMap<>();
         Map<Integer, Integer> protocolCounts = new HashMap<>();
 
-        for (int i = 0; i < player.getInventory().size() && i <= 40; i++) {
-            ItemStack item = player.getInventory().getStack(i);
-            String name = item.isEmpty() ? "air" : Registries.ITEM.getId(item.getItem()).getPath();
+        for (int i = 0; i < player.getInventory().getContainerSize() && i <= 40; i++) {
+            ItemStack item = player.getInventory().getItem(i);
+            String name = item.isEmpty() ? "air" : BuiltInRegistries.ITEM.getKey(item.getItem()).location().getPath();
             int amount = item.isEmpty() ? 0 : item.getCount();
             int protocolSlot;
             if (i <= 8) protocolSlot = 36 + i;
@@ -255,12 +256,12 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
             protocolCounts.put(protocolSlot, amount);
         }
 
-        packetRecorder.seedInventoryCache(player.getUuid(), protocolSlots, protocolCounts);
-        packetRecorder.seedHeldSlot(player.getUuid(), player.getInventory().selectedSlot);
+        packetRecorder.seedInventoryCache(player.getUUID(), protocolSlots, protocolCounts);
+        packetRecorder.seedHeldSlot(player.getUUID(), player.getInventory().selected);
     }
 
     private static int getBlockStateId(BlockState state) {
-        return net.minecraft.block.Block.getRawIdFromState(state);
+        return Block.BLOCK_STATE_REGISTRY.getId(state);
     }
 
     @Override
@@ -268,21 +269,21 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
         ServerTickEvents.END_SERVER_TICK.register(s -> fabricFreezeHandler.onTick());
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, s) -> {
-            ServerPlayerEntity player = handler.getPlayer();
+            ServerPlayer player = handler.getPlayer();
             fabricStaffModeHandler.onPlayerJoin(player);
 
             if (bridgeConfig != null && bridgeConfig.isReplayEnabled()
                     && bridgeConfig.isReplayAutoRecord() && recordingManager != null) {
-                context.getScheduler().runForPlayerLater(player.getUuid(), () -> {
-                    ServerPlayerEntity p = server.getPlayerManager().getPlayer(player.getUuid());
+                context.getScheduler().runForPlayerLater(player.getUUID(), () -> {
+                    ServerPlayer p = server.getPlayerList().getPlayer(player.getUUID());
                     if (p != null) startRecordingForPlayer(p);
                 }, 40L);
             }
         });
 
         ServerPlayConnectionEvents.DISCONNECT.register((handler, s) -> {
-            ServerPlayerEntity player = handler.getPlayer();
-            UUID uuid = player.getUuid();
+            ServerPlayer player = handler.getPlayer();
+            UUID uuid = player.getUUID();
             fabricStaffModeHandler.onPlayerQuit(player);
             fabricFreezeHandler.onPlayerQuit(uuid);
             if (violationTracker != null) violationTracker.resetPlayer(uuid);
@@ -297,21 +298,21 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
             }
         });
 
-        // Block break events for replay recording
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
             if (recordingManager != null && !recordingManager.getActiveRecordings().isEmpty()) {
                 int stateId = getBlockStateId(state);
-                recordingManager.enqueueBlockBreak(player.getUuid(), pos.getX(), (short) pos.getY(), pos.getZ(), stateId);
+                recordingManager.enqueueBlockBreak(player.getUUID(), pos.getX(), (short) pos.getY(), pos.getZ(), stateId);
             }
             return true;
         });
 
-        // World/dimension change for replay recording
+        // NOTE: In 26.1, ServerEntityWorldChangeEvents may be renamed to ServerEntityLevelChangeEvents.
+        // If compilation fails here, update the import and event name accordingly.
         ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register((player, origin, destination) -> {
             if (recordingManager == null || packetRecorder == null) return;
             if (!bridgeConfig.isReplayEnabled() || !bridgeConfig.isReplayAutoRecord()) return;
 
-            UUID playerId = player.getUuid();
+            UUID playerId = player.getUUID();
 
             if (recordingManager.isRecording(playerId)) {
                 packetRecorder.cleanupPlayer(playerId);
@@ -326,7 +327,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
                 if (current == null || current != generation) return;
                 worldChangeGeneration.remove(playerId);
 
-                ServerPlayerEntity p = server.getPlayerManager().getPlayer(playerId);
+                ServerPlayer p = server.getPlayerList().getPlayer(playerId);
                 if (p != null && !recordingManager.isRecording(playerId)) {
                     startRecordingForPlayer(p);
                 }

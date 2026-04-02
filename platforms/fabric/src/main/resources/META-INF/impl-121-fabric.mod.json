@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "modl-impl-121",
+  "version": "${version}",
+  "name": "modl (1.21.x)",
+  "environment": "server",
+  "depends": {
+    "minecraft": ">=1.21 <26",
+    "fabric-api": "*"
+  }
+}

@@ -1,4 +1,4 @@
-package gg.modl.minecraft.fabric.handler;
+package gg.modl.minecraft.fabric.v1_21.handler;
 
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;

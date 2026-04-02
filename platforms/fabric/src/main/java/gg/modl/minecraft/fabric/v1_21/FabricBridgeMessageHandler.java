@@ -1,10 +1,10 @@
-package gg.modl.minecraft.fabric;
+package gg.modl.minecraft.fabric.v1_21;
 
 import gg.modl.minecraft.bridge.query.BridgeMessageHandler;
 import gg.modl.minecraft.bridge.statwipe.StatWipeHandler;
 import gg.modl.minecraft.core.service.ReplayService;
-import gg.modl.minecraft.fabric.handler.FabricFreezeHandler;
-import gg.modl.minecraft.fabric.handler.FabricStaffModeHandler;
+import gg.modl.minecraft.fabric.v1_21.handler.FabricFreezeHandler;
+import gg.modl.minecraft.fabric.v1_21.handler.FabricStaffModeHandler;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 
@@ -74,9 +74,9 @@ public class FabricBridgeMessageHandler implements BridgeMessageHandler {
     @Override
     public void onStatWipe(String username, String uuid, String punishmentId) {
         server.execute(() -> {
-            ModlFabricMod.LOGGER.info("[bridge] Processing stat-wipe for {} (punishment: {})", username, punishmentId);
+            ModlFabricModImpl.LOGGER.info("[bridge] Processing stat-wipe for {} (punishment: {})", username, punishmentId);
             boolean success = statWipeHandler.execute(username, uuid, punishmentId);
-            ModlFabricMod.LOGGER.info("[bridge] Stat-wipe for {} {} (punishment: {})",
+            ModlFabricModImpl.LOGGER.info("[bridge] Stat-wipe for {} {} (punishment: {})",
                     username, success ? "succeeded" : "failed", punishmentId);
         });
     }

@@ -1,18 +1,19 @@
-package gg.modl.minecraft.fabric.handler;
+package gg.modl.minecraft.fabric.v26.handler;
 
 import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;
 import lombok.Setter;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-import net.minecraft.world.GameMode;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.GameType;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,12 +52,12 @@ public class FabricStaffModeHandler {
         UUID uuid = UUID.fromString(staffUuid);
         staffModeActive.add(uuid);
 
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
         if (player == null) return;
 
         saveSnapshot(player);
-        player.getInventory().clear();
-        player.changeGameMode(GameMode.CREATIVE);
+        player.getInventory().clearContent();
+        player.setGameMode(GameType.CREATIVE);
 
         if (staffModeConfig.isVanishOnEnable()) {
             vanish(player);
@@ -70,7 +71,7 @@ public class FabricStaffModeHandler {
         staffModeActive.remove(uuid);
         targetMap.remove(uuid);
 
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
         if (player == null) {
             snapshots.remove(uuid);
             vanished.remove(uuid);
@@ -86,22 +87,22 @@ public class FabricStaffModeHandler {
         UUID target = UUID.fromString(targetUuid);
         targetMap.put(staff, target);
 
-        ServerPlayerEntity staffPlayer = server.getPlayerManager().getPlayer(staff);
-        ServerPlayerEntity targetPlayer = server.getPlayerManager().getPlayer(target);
+        ServerPlayer staffPlayer = server.getPlayerList().getPlayer(staff);
+        ServerPlayer targetPlayer = server.getPlayerList().getPlayer(target);
 
         if (staffPlayer != null) {
             setupHotbar(staffPlayer, staffModeConfig.getTargetHotbar());
             if (targetPlayer != null) {
-                staffPlayer.teleport(targetPlayer.getServerWorld(),
+                staffPlayer.teleportTo(targetPlayer.serverLevel(),
                         targetPlayer.getX(), targetPlayer.getY(), targetPlayer.getZ(),
-                        java.util.Set.of(), targetPlayer.getYaw(), targetPlayer.getPitch(), false);
+                        Set.of(), targetPlayer.getYRot(), targetPlayer.getXRot(), false);
             }
         }
     }
 
     public void clearTarget(UUID staffUuid) {
         targetMap.remove(staffUuid);
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(staffUuid);
+        ServerPlayer player = server.getPlayerList().getPlayer(staffUuid);
         if (player != null) {
             setupHotbar(player, staffModeConfig.getStaffHotbar());
         }
@@ -109,7 +110,7 @@ public class FabricStaffModeHandler {
 
     public void vanishFromBridge(String staffUuid) {
         UUID uuid = UUID.fromString(staffUuid);
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
         if (player != null) {
             vanish(player);
         }
@@ -117,87 +118,87 @@ public class FabricStaffModeHandler {
 
     public void unvanishFromBridge(String staffUuid) {
         UUID uuid = UUID.fromString(staffUuid);
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
         if (player != null) {
             unvanish(player);
         }
     }
 
-    private void vanish(ServerPlayerEntity staff) {
-        vanished.add(staff.getUuid());
+    private void vanish(ServerPlayer staff) {
+        vanished.add(staff.getUUID());
         // TODO: Use PacketEvents-Fabric to hide player from non-staff players
-        // For now, just track the vanish state
     }
 
-    private void unvanish(ServerPlayerEntity staff) {
-        vanished.remove(staff.getUuid());
+    private void unvanish(ServerPlayer staff) {
+        vanished.remove(staff.getUUID());
         // TODO: Use PacketEvents-Fabric to show player to all players
     }
 
-    private void saveSnapshot(ServerPlayerEntity player) {
-        snapshots.put(player.getUuid(), new PlayerSnapshot(
-                player.getInventory().main.stream().map(ItemStack::copy).toArray(ItemStack[]::new),
+    private void saveSnapshot(ServerPlayer player) {
+        snapshots.put(player.getUUID(), new PlayerSnapshot(
+                player.getInventory().items.stream().map(ItemStack::copy).toArray(ItemStack[]::new),
                 player.getInventory().armor.stream().map(ItemStack::copy).toArray(ItemStack[]::new),
                 player.getX(), player.getY(), player.getZ(),
-                player.getYaw(), player.getPitch(),
-                player.interactionManager.getGameMode(),
+                player.getYRot(), player.getXRot(),
+                player.gameMode.getGameModeForPlayer(),
                 player.getHealth(),
-                player.getHungerManager().getFoodLevel(),
+                player.getFoodData().getFoodLevel(),
                 player.experienceProgress,
                 player.experienceLevel
         ));
     }
 
-    private void restoreSnapshot(ServerPlayerEntity player) {
-        PlayerSnapshot snapshot = snapshots.remove(player.getUuid());
+    private void restoreSnapshot(ServerPlayer player) {
+        PlayerSnapshot snapshot = snapshots.remove(player.getUUID());
         if (snapshot != null) {
-            player.getInventory().clear();
-            for (int i = 0; i < snapshot.inventoryContents.length && i < player.getInventory().main.size(); i++) {
-                player.getInventory().main.set(i, snapshot.inventoryContents[i]);
+            player.getInventory().clearContent();
+            for (int i = 0; i < snapshot.inventoryContents.length && i < player.getInventory().items.size(); i++) {
+                player.getInventory().items.set(i, snapshot.inventoryContents[i]);
             }
             for (int i = 0; i < snapshot.armorContents.length && i < player.getInventory().armor.size(); i++) {
                 player.getInventory().armor.set(i, snapshot.armorContents[i]);
             }
-            player.changeGameMode(snapshot.gameMode);
+            player.setGameMode(snapshot.gameMode);
             player.setHealth(Math.min(snapshot.health, player.getMaxHealth()));
-            player.getHungerManager().setFoodLevel(snapshot.foodLevel);
+            player.getFoodData().setFoodLevel(snapshot.foodLevel);
             player.experienceProgress = snapshot.exp;
             player.experienceLevel = snapshot.level;
-            player.teleport(player.getServerWorld(), snapshot.x, snapshot.y, snapshot.z,
-                    java.util.Set.of(), snapshot.yaw, snapshot.pitch, false);
+            player.teleportTo(player.serverLevel(), snapshot.x, snapshot.y, snapshot.z,
+                    Set.of(), snapshot.yaw, snapshot.pitch, false);
         } else {
-            player.getInventory().clear();
-            player.changeGameMode(GameMode.SURVIVAL);
+            player.getInventory().clearContent();
+            player.setGameMode(GameType.SURVIVAL);
         }
     }
 
-    private void setupHotbar(ServerPlayerEntity player, Map<Integer, StaffModeConfig.HotbarItem> hotbar) {
-        player.getInventory().clear();
+    private void setupHotbar(ServerPlayer player, Map<Integer, StaffModeConfig.HotbarItem> hotbar) {
+        player.getInventory().clearContent();
         hotbar.forEach((slot, hotbarItem) -> {
             if (slot >= 0 && slot <= 8) {
                 ItemStack item = createItemStack(hotbarItem);
-                player.getInventory().setStack(slot, item);
+                player.getInventory().setItem(slot, item);
             }
         });
     }
 
     private ItemStack createItemStack(StaffModeConfig.HotbarItem hotbarItem) {
         String materialName = hotbarItem.getItem().replace("minecraft:", "");
-        Identifier id = Identifier.of("minecraft", materialName);
-        net.minecraft.item.Item item = Registries.ITEM.containsId(id) ? Registries.ITEM.get(id) : Items.STONE;
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath("minecraft", materialName);
+        net.minecraft.world.item.Item item = BuiltInRegistries.ITEM.containsKey(id)
+                ? BuiltInRegistries.ITEM.getValue(id)
+                : Items.STONE;
         ItemStack stack = new ItemStack(item, 1);
         String displayName = localeManager.colorize(hotbarItem.getName());
-        stack.set(net.minecraft.component.DataComponentTypes.CUSTOM_NAME, Text.literal(displayName));
+        stack.set(DataComponents.CUSTOM_NAME, Component.literal(displayName));
         return stack;
     }
 
-    public void onPlayerJoin(ServerPlayerEntity player) {
-        // Hide vanished staff from joining non-staff players
-        // TODO: Implement with PacketEvents-Fabric
+    public void onPlayerJoin(ServerPlayer player) {
+        // TODO: Implement vanish visibility with PacketEvents-Fabric
     }
 
-    public void onPlayerQuit(ServerPlayerEntity player) {
-        UUID uuid = player.getUuid();
+    public void onPlayerQuit(ServerPlayer player) {
+        UUID uuid = player.getUUID();
         if (staffModeActive.remove(uuid)) {
             unvanish(player);
             restoreSnapshot(player);
@@ -209,7 +210,7 @@ public class FabricStaffModeHandler {
 
     public void shutdown() {
         for (UUID uuid : staffModeActive) {
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+            ServerPlayer player = server.getPlayerList().getPlayer(uuid);
             if (player != null) {
                 restoreSnapshot(player);
             }
@@ -222,7 +223,7 @@ public class FabricStaffModeHandler {
         final ItemStack[] armorContents;
         final double x, y, z;
         final float yaw, pitch;
-        final GameMode gameMode;
+        final GameType gameMode;
         final float health;
         final int foodLevel;
         final float exp;
@@ -230,7 +231,7 @@ public class FabricStaffModeHandler {
 
         PlayerSnapshot(ItemStack[] inventoryContents, ItemStack[] armorContents,
                        double x, double y, double z, float yaw, float pitch,
-                       GameMode gameMode, float health, int foodLevel, float exp, int level) {
+                       GameType gameMode, float health, int foodLevel, float exp, int level) {
             this.inventoryContents = inventoryContents;
             this.armorContents = armorContents;
             this.x = x;

@@ -1,4 +1,4 @@
-package gg.modl.minecraft.fabric;
+package gg.modl.minecraft.fabric.v26;
 
 import gg.modl.minecraft.bridge.BridgePlayerProvider;
 import gg.modl.minecraft.bridge.BridgePluginContext;
@@ -61,7 +61,7 @@ public class FabricBridgePluginContext implements BridgePluginContext {
 
     @Override
     public String getMinecraftVersion() {
-        return server.getVersion();
+        return server.getServerVersion();
     }
 
     public MinecraftServer getServer() {

@@ -1,21 +1,10 @@
 plugins {
-    id 'fabric-loom' version '1.9-SNAPSHOT'
+    id 'net.fabricmc.fabric-loom' version '1.15.5'
     id 'java'
 }
 
-// Load version-specific properties if -Pmc_version is passed
-def mcVersion = project.hasProperty('mc_version') ? project.property('mc_version') : project.minecraft_version
-def versionFile = file("versions/${mcVersion}.properties")
-if (versionFile.exists()) {
-    def versionProps = new Properties()
-    versionFile.withInputStream { versionProps.load(it) }
-    versionProps.each { key, value -> ext.set(key.toString(), value) }
-} else {
-    ext.minecraft_version = project.minecraft_version
-    ext.yarn_mappings = project.yarn_mappings
-    ext.loader_version = project.loader_version
-    ext.fabric_version = project.fabric_version
-}
+group = 'gg.modl'
+version = property('version')
 
 repositories {
     mavenLocal()
@@ -29,20 +18,19 @@ repositories {
 }
 
 dependencies {
-    // Fabric
-    minecraft "com.mojang:minecraft:${ext.minecraft_version}"
-    mappings "net.fabricmc:yarn:${ext.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${ext.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${ext.fabric_version}"
+    minecraft "com.mojang:minecraft:26.1"
+    // No mappings — 26.1 is unobfuscated
+    implementation "net.fabricmc:fabric-loader:0.18.6"
+    implementation "net.fabricmc.fabric-api:fabric-api:0.145.1+26.1"
 
-    // Internal modules
-    implementation project(":bridge-core")
-    implementation project(":core")
-    implementation project(":api")
+    // Internal modules (pre-built from main project)
+    implementation files("../../bridge-core/build/libs/bridge-core-${version}.jar")
+    implementation files("../../core/build/libs/core-${version}.jar")
+    implementation files("../../api/build/libs/api-${version}.jar")
 
     // Libby runtime library loading
-    implementation "com.alessiodp.libby:libby-core:${rootProject.property('libby.version')}"
-    implementation "com.alessiodp.libby:libby-fabric:${rootProject.property('libby.version')}"
+    implementation "com.alessiodp.libby:libby-core:${property('libby_version')}"
+    implementation "com.alessiodp.libby:libby-fabric:${property('libby_version')}"
 
     // Compile-only deps (loaded at runtime via Libby)
     compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:4.2.0-SNAPSHOT"
@@ -69,27 +57,10 @@ java {
     targetCompatibility = JavaVersion.VERSION_21
 }
 
-loom {
-    mods {
-        create("modl") {
-            sourceSet sourceSets.main
-        }
-    }
-}
-
 processResources {
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
         expand "version": project.version
-    }
-    filesMatching("META-INF/impl-121-fabric.mod.json") {
-        expand "version": project.version
-    }
-}
-
-jar {
-    from("../../LICENSE.txt") {
-        rename { "LICENSE_modl.txt" }
     }
 }
 

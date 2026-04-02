@@ -1,4 +1,4 @@
-package gg.modl.minecraft.fabric;
+package gg.modl.minecraft.fabric.v1_21;
 
 import gg.modl.minecraft.bridge.BridgeScheduler;
 import gg.modl.minecraft.bridge.BridgeTask;
