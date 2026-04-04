@@ -17,7 +17,7 @@ import gg.modl.replay.recording.PacketRecorder;
 import gg.modl.replay.recording.RecordingConfig;
 import gg.modl.replay.recording.RecordingManager;
 import lombok.Getter;
-import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -47,12 +47,9 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
     private BridgeTask replayCleanupTask;
     private final Map<UUID, Integer> worldChangeGeneration = new ConcurrentHashMap<>();
 
-    public FabricBridgeComponent(FabricBridgePluginContext context, MinecraftServer server) {
-        super(context, "", "", "", new PluginLogger() {
-            @Override public void info(String msg) { ModlFabricModImpl.LOGGER.info(msg); }
-            @Override public void warning(String msg) { ModlFabricModImpl.LOGGER.warn(msg); }
-            @Override public void severe(String msg) { ModlFabricModImpl.LOGGER.error(msg); }
-        });
+    public FabricBridgeComponent(FabricBridgePluginContext context, MinecraftServer server,
+                                  String apiKey, String backendUrl, String panelUrl, PluginLogger pluginLogger) {
+        super(context, apiKey, backendUrl, panelUrl, pluginLogger);
         this.server = server;
         this.fabricContext = context;
     }
@@ -220,7 +217,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
         double radiusSq = (double) radius * radius;
         for (ServerPlayer nearby : server.getPlayerList().getPlayers()) {
             if (nearby.equals(player)) continue;
-            if (!nearby.serverLevel().equals(player.serverLevel())) continue;
+            if (!nearby.level().equals(player.level())) continue;
             double dx = nearby.getX() - x, dy = nearby.getY() - y, dz = nearby.getZ() - z;
             if (dx * dx + dy * dy + dz * dz > radiusSq) continue;
             packetRecorder.getEntityTracker().trackPlayer(
@@ -241,7 +238,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
 
         for (int i = 0; i < player.getInventory().getContainerSize() && i <= 40; i++) {
             ItemStack item = player.getInventory().getItem(i);
-            String name = item.isEmpty() ? "air" : BuiltInRegistries.ITEM.getKey(item.getItem()).location().getPath();
+            String name = item.isEmpty() ? "air" : BuiltInRegistries.ITEM.getKey(item.getItem()).getPath();
             int amount = item.isEmpty() ? 0 : item.getCount();
             int protocolSlot;
             if (i <= 8) protocolSlot = 36 + i;
@@ -257,7 +254,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
         }
 
         packetRecorder.seedInventoryCache(player.getUUID(), protocolSlots, protocolCounts);
-        packetRecorder.seedHeldSlot(player.getUUID(), player.getInventory().selected);
+        packetRecorder.seedHeldSlot(player.getUUID(), player.getInventory().getSelectedSlot());
     }
 
     private static int getBlockStateId(BlockState state) {
@@ -306,9 +303,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
             return true;
         });
 
-        // NOTE: In 26.1, ServerEntityWorldChangeEvents may be renamed to ServerEntityLevelChangeEvents.
-        // If compilation fails here, update the import and event name accordingly.
-        ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register((player, origin, destination) -> {
+        ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register((player, origin, destination) -> {
             if (recordingManager == null || packetRecorder == null) return;
             if (!bridgeConfig.isReplayEnabled() || !bridgeConfig.isReplayAutoRecord()) return;
 

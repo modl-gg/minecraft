@@ -53,47 +53,56 @@ public final class Libraries {
     PACKETEVENTS_API = LibraryRecord.ofUrl(
             "com{}github{}retrooper",
             "packetevents-api",
-            "2.12.0-20260325.191550-1",
+            "2.12.0-20260401.163410-4",
             "packetevents-api",
-            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-api/2.12.0-SNAPSHOT/packetevents-api-2.12.0-20260325.191550-1.jar",
-            "ev+a7kQ2Q8x3TTOOn/8oBqcNfUj/YWNAEC5OCuilNBU=",
+            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-api/2.12.0-SNAPSHOT/packetevents-api-2.12.0-20260401.163410-4.jar",
+            "2MK1zpgkHPDehG2KJ5u0nYuWvxwYL8JnEdvfdJU6v8E=",
             PACKETEVENTS_RELOCATIONS
     ),
     PACKETEVENTS_NETTY = LibraryRecord.ofUrl(
             "com{}github{}retrooper",
             "packetevents-netty-common",
-            "2.12.0-20260325.191550-1",
+            "2.12.0-20260401.163410-4",
             "packetevents-netty-common",
-            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-netty-common/2.12.0-SNAPSHOT/packetevents-netty-common-2.12.0-20260325.191550-1.jar",
-            "ZRDK6i8usKpg2FyXfjGYiOcBQukJk3WicD7RTeESGgI=",
+            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-netty-common/2.12.0-SNAPSHOT/packetevents-netty-common-2.12.0-20260401.163410-4.jar",
+            "rGtqLt3APTNJQpYCKk+HGIpgpIgHLpUr83q1lbcAYa0=",
             PACKETEVENTS_RELOCATIONS
     ),
     PACKETEVENTS_SPIGOT = LibraryRecord.ofUrl(
             "com{}github{}retrooper",
             "packetevents-spigot",
-            "2.12.0-20260325.191550-1",
+            "2.12.0-20260401.163410-4",
             "packetevents-spigot",
-            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-spigot/2.12.0-SNAPSHOT/packetevents-spigot-2.12.0-20260325.191550-1.jar",
-            "yfezhceaLO5mq9si8p57cbLroOUVkx2KeNUCdeiytWs=",
+            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-spigot/2.12.0-SNAPSHOT/packetevents-spigot-2.12.0-20260401.163410-4.jar",
+            "UZtsO/2EkIXJrsbomQhIgfOWROvpvFbtcEPxttCwa4w=",
             PACKETEVENTS_RELOCATIONS
     ),
     PACKETEVENTS_BUNGEE = LibraryRecord.ofUrl(
             "com{}github{}retrooper",
             "packetevents-bungeecord",
-            "2.12.0-20260325.191550-1",
+            "2.12.0-20260401.163410-4",
             "packetevents-bungeecord",
-            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-bungeecord/2.12.0-SNAPSHOT/packetevents-bungeecord-2.12.0-20260325.191550-1.jar",
-            "mbqurwkNQEzPQ79blYIUcWeNnOhHclQuJnuO/1JlXog=",
+            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-bungeecord/2.12.0-SNAPSHOT/packetevents-bungeecord-2.12.0-20260401.163410-4.jar",
+            "AVFKjnkB9WsuXOwz08TfwbSwT0YTmb2qNFStOiAHV54=",
             PACKETEVENTS_RELOCATIONS
     ),
     PACKETEVENTS_VELOCITY = LibraryRecord.ofUrl(
             "com{}github{}retrooper",
             "packetevents-velocity",
-            "2.12.0-20260325.191550-1",
+            "2.12.0-20260401.163410-4",
             "packetevents-velocity",
-            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-velocity/2.12.0-SNAPSHOT/packetevents-velocity-2.12.0-20260325.191550-1.jar",
-            "yxcjeuiCWsXi+RdV2jmnzLtOpwFEX9s+4CAYHt/Nesw=",
+            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-velocity/2.12.0-SNAPSHOT/packetevents-velocity-2.12.0-20260401.163410-4.jar",
+            "T5c7cGbCIOPKjzFpkI9ne6nL7FDMpRhNEnskDoLb34I=",
             PACKETEVENTS_RELOCATIONS
+    ),
+    PACKETEVENTS_FABRIC = LibraryRecord.ofUrl(
+        "com{}github{}retrooper",
+        "packetevents-fabric",
+        "2.12.0-20260401.163410-4",
+        "packetevents-fabric",
+        "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-fabric/2.12.0-SNAPSHOT/packetevents-fabric-2.12.0-20260401.163410-4.jar",
+        "4/QzfXz/IAHoP1hrzXMzNhDKGkQFZn7IQ8O+XBeah10=",
+        PACKETEVENTS_RELOCATIONS
     ),
     ADVENTURE_NBT = LibraryRecord.of(
             "net{}kyori",
@@ -154,8 +163,7 @@ public final class Libraries {
             "4.2.0",
             "cirrus-spigot",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.2.0-SNAPSHOT/cirrus-spigot-4.2.0-SNAPSHOT.jar",
-            "P7eYW4uCkGceBOBDomVK3UsH/befhpB5kNWUsBLpSxw=",
-            PACKETEVENTS_RELOCATIONS
+            "HBLYrqjYHc/4oaQf+d+CX9fAMPgFKCsclBvETBp7PLo="
     ),
     CIRRUS_VELOCITY = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
@@ -163,8 +171,7 @@ public final class Libraries {
             "4.2.0",
             "cirrus-velocity",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.2.0-SNAPSHOT/cirrus-velocity-4.2.0-SNAPSHOT.jar",
-            "gxT2N25T95+JoOT5hTULa3I8xfIpgyhqYcrnyQ6TBWM=",
-            PACKETEVENTS_RELOCATIONS
+            "Hprdy3UPtIOOgx2tMTb0fiRMc85QI0oEytN0FvH22oc="
     ),
     CIRRUS_BUNGEECORD = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
@@ -172,8 +179,7 @@ public final class Libraries {
             "4.2.0",
             "cirrus-bungeecord",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.2.0-SNAPSHOT/cirrus-bungeecord-4.2.0-SNAPSHOT.jar",
-            "ErQzAvHrDFUk+DObG49KyBAhVal1zZORAlKuW5Bs8QI=",
-            PACKETEVENTS_RELOCATIONS
+            "n6kH3s78ILZ0z6SaReMxQafBZXn9isWUoHkiovRDWZc="
     ),
     CIRRUS_FABRIC = LibraryRecord.ofUrl(
             "gg{}modl{}minecraft{}cirrus",
@@ -181,7 +187,7 @@ public final class Libraries {
             "4.2.0",
             "cirrus-fabric",
             "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.2.0-SNAPSHOT/cirrus-fabric-4.2.0-SNAPSHOT.jar",
-            "QRRO0zY1ypvAoWIqZX2C9DkeTpjH5rqh4l6DqTzVCVQ="
+            "m1AvMZhAF0YGBXftxrobThyicCpPSSPJWNa+D+pufUc="
     ),
     ADVENTURE_KEY = LibraryRecord.of(
             "net{}kyori",
@@ -238,6 +244,91 @@ public final class Libraries {
             "4.26.1",
             "adventure-text-serializer-gson",
             "5KkI3txKy0MFCD2RbTYt3Csh7PRS1XegvmZSgL3a6fw="
+    ),
+
+    PROTOBUF_JAVA = LibraryRecord.of(
+            "com{}google{}protobuf",
+            "protobuf-java",
+            "4.34.1",
+            "protobuf-java",
+            "rgRZAwtUpvMFitNJqgH8Lty7LUqEtzaZZ1u9El3y6W0="
+    ),
+    PROTOBUF_JAVA_UTIL = LibraryRecord.of(
+            "com{}google{}protobuf",
+            "protobuf-java-util",
+            "4.34.1",
+            "protobuf-java-util",
+            "XYL6dEppNb7x/OMp6IawPSbEY4nbfj9c2DY7x5WQhYA="
+    ),
+    GUAVA = LibraryRecord.of(
+            "com{}google{}guava",
+            "guava",
+            "33.3.0-jre",
+            "guava",
+            "363DvOMQHv8UUqrkfXyDP+5EO0e9+e8TMRtsfKtmPd8="
+    ),
+    FAILUREACCESS = LibraryRecord.of(
+            "com{}google{}guava",
+            "failureaccess",
+            "1.0.2",
+            "failureaccess",
+            "io+Bz5s1nj9t+mkaHndphcBh7y8iPJssgHU+G0WOgGQ="
+    ),
+    PROTOVALIDATE = LibraryRecord.of(
+            "build{}buf",
+            "protovalidate",
+            "0.4.1",
+            "protovalidate",
+            "lRnCtcdIF3UXZRI+8uNkySJDND73FGtI22KVdVETflo="
+    ),
+    CEL_CORE = LibraryRecord.of(
+            "org{}projectnessie{}cel",
+            "cel-core",
+            "0.5.1",
+            "cel-core",
+            "0o8FHajmp+f6Em4zDOJJtU3dUg90jstAS9ig4cdJ7Jw="
+    ),
+    CEL_GENERATED_ANTLR = LibraryRecord.of(
+            "org{}projectnessie{}cel",
+            "cel-generated-antlr",
+            "0.5.1",
+            "cel-generated-antlr",
+            "+JaYayVfLH39tP0baqHXknbxTswHl9U4d8LvErPsLT0="
+    ),
+    CEL_GENERATED_PB = LibraryRecord.of(
+            "org{}projectnessie{}cel",
+            "cel-generated-pb",
+            "0.5.1",
+            "cel-generated-pb",
+            "phr8IIfDLRyjUCBSXQ0yB5tQtG1MfnFrb/KhZfz91gI="
+    ),
+    AGRONA = LibraryRecord.of(
+            "org{}agrona",
+            "agrona",
+            "1.22.0",
+            "agrona",
+            "1CKlfonMtq4PlILvoW9d0LmT2sDbOGD1SwM/IfRSBs8="
+    ),
+    IPADDRESS = LibraryRecord.of(
+            "com{}github{}seancfoley",
+            "ipaddress",
+            "5.5.1",
+            "ipaddress",
+            "XqReV9sMLWJBkqUEbO6kGwrK95t2ilShTIZ5G7ZFknA="
+    ),
+    JAKARTA_MAIL_API = LibraryRecord.of(
+            "jakarta{}mail",
+            "jakarta.mail-api",
+            "2.1.3",
+            "jakarta-mail-api",
+            "gFG1jXX5gvmluWOzdlQm6CSypkhl7wrxcgXkVbmNsFw="
+    ),
+    JAKARTA_ACTIVATION_API = LibraryRecord.of(
+            "jakarta{}activation",
+            "jakarta.activation-api",
+            "2.1.3",
+            "jakarta-activation-api",
+            "AbF21xihaSY+eCkGkfxHmXcYa8xrMzSHMlCE1lhvRic="
     );
 
     public static final List<LibraryRecord> COMMON = Arrays.asList(
@@ -247,5 +338,20 @@ public final class Libraries {
             HTTPCORE5,
             HTTPCORE5_H2,
             ADVENTURE_NBT
+    );
+
+    public static final List<LibraryRecord> PROTO_DEPS = Arrays.asList(
+            PROTOBUF_JAVA,
+            PROTOBUF_JAVA_UTIL,
+            GUAVA,
+            FAILUREACCESS,
+            PROTOVALIDATE,
+            CEL_CORE,
+            CEL_GENERATED_ANTLR,
+            CEL_GENERATED_PB,
+            AGRONA,
+            IPADDRESS,
+            JAKARTA_MAIL_API,
+            JAKARTA_ACTIVATION_API
     );
 }

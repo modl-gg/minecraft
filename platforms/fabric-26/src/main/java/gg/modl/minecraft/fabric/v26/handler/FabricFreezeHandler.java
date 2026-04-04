@@ -64,7 +64,7 @@ public class FabricFreezeHandler {
             double dz = player.getZ() - pos[2];
 
             if (dx * dx + dy * dy + dz * dz > 0.01) {
-                player.teleportTo(player.serverLevel(), pos[0], pos[1], pos[2],
+                player.teleportTo(player.level(), pos[0], pos[1], pos[2],
                         Set.of(), player.getYRot(), player.getXRot(), false);
             }
         });

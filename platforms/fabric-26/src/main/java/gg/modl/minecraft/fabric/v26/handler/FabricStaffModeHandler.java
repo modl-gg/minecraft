@@ -8,7 +8,7 @@ import lombok.Setter;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -93,7 +93,7 @@ public class FabricStaffModeHandler {
         if (staffPlayer != null) {
             setupHotbar(staffPlayer, staffModeConfig.getTargetHotbar());
             if (targetPlayer != null) {
-                staffPlayer.teleportTo(targetPlayer.serverLevel(),
+                staffPlayer.teleportTo(targetPlayer.level(),
                         targetPlayer.getX(), targetPlayer.getY(), targetPlayer.getZ(),
                         Set.of(), targetPlayer.getYRot(), targetPlayer.getXRot(), false);
             }
@@ -135,9 +135,13 @@ public class FabricStaffModeHandler {
     }
 
     private void saveSnapshot(ServerPlayer player) {
+        int containerSize = player.getInventory().getContainerSize();
+        ItemStack[] allItems = new ItemStack[containerSize];
+        for (int i = 0; i < containerSize; i++) {
+            allItems[i] = player.getInventory().getItem(i).copy();
+        }
         snapshots.put(player.getUUID(), new PlayerSnapshot(
-                player.getInventory().items.stream().map(ItemStack::copy).toArray(ItemStack[]::new),
-                player.getInventory().armor.stream().map(ItemStack::copy).toArray(ItemStack[]::new),
+                allItems,
                 player.getX(), player.getY(), player.getZ(),
                 player.getYRot(), player.getXRot(),
                 player.gameMode.getGameModeForPlayer(),
@@ -152,18 +156,15 @@ public class FabricStaffModeHandler {
         PlayerSnapshot snapshot = snapshots.remove(player.getUUID());
         if (snapshot != null) {
             player.getInventory().clearContent();
-            for (int i = 0; i < snapshot.inventoryContents.length && i < player.getInventory().items.size(); i++) {
-                player.getInventory().items.set(i, snapshot.inventoryContents[i]);
-            }
-            for (int i = 0; i < snapshot.armorContents.length && i < player.getInventory().armor.size(); i++) {
-                player.getInventory().armor.set(i, snapshot.armorContents[i]);
+            for (int i = 0; i < snapshot.inventoryContents.length && i < player.getInventory().getContainerSize(); i++) {
+                player.getInventory().setItem(i, snapshot.inventoryContents[i]);
             }
             player.setGameMode(snapshot.gameMode);
             player.setHealth(Math.min(snapshot.health, player.getMaxHealth()));
             player.getFoodData().setFoodLevel(snapshot.foodLevel);
             player.experienceProgress = snapshot.exp;
             player.experienceLevel = snapshot.level;
-            player.teleportTo(player.serverLevel(), snapshot.x, snapshot.y, snapshot.z,
+            player.teleportTo(player.level(), snapshot.x, snapshot.y, snapshot.z,
                     Set.of(), snapshot.yaw, snapshot.pitch, false);
         } else {
             player.getInventory().clearContent();
@@ -183,7 +184,7 @@ public class FabricStaffModeHandler {
 
     private ItemStack createItemStack(StaffModeConfig.HotbarItem hotbarItem) {
         String materialName = hotbarItem.getItem().replace("minecraft:", "");
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath("minecraft", materialName);
+        Identifier id = Identifier.fromNamespaceAndPath("minecraft", materialName);
         net.minecraft.world.item.Item item = BuiltInRegistries.ITEM.containsKey(id)
                 ? BuiltInRegistries.ITEM.getValue(id)
                 : Items.STONE;
@@ -220,7 +221,6 @@ public class FabricStaffModeHandler {
 
     private static class PlayerSnapshot {
         final ItemStack[] inventoryContents;
-        final ItemStack[] armorContents;
         final double x, y, z;
         final float yaw, pitch;
         final GameType gameMode;
@@ -229,11 +229,10 @@ public class FabricStaffModeHandler {
         final float exp;
         final int level;
 
-        PlayerSnapshot(ItemStack[] inventoryContents, ItemStack[] armorContents,
+        PlayerSnapshot(ItemStack[] inventoryContents,
                        double x, double y, double z, float yaw, float pitch,
                        GameType gameMode, float health, int foodLevel, float exp, int level) {
             this.inventoryContents = inventoryContents;
-            this.armorContents = armorContents;
             this.x = x;
             this.y = y;
             this.z = z;

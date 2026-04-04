@@ -50,7 +50,7 @@ public class SetupWizard {
             try {
                 printBanner();
                 BootConfig config;
-                if (platformType == PlatformType.SPIGOT) {
+                if (platformType == PlatformType.SPIGOT || platformType == PlatformType.FABRIC) {
                     config = runSpigotWizard();
                 } else {
                     config = runProxyWizard();

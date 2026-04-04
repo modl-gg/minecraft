@@ -53,6 +53,11 @@ public class BridgeConfig {
         return defaultVal != null ? defaultVal : DEFAULT_VIOLATION_THRESHOLD;
     }
 
+    public void updateProxyConnection(String host, int port) {
+        this.proxyHost = host;
+        this.proxyPort = port;
+    }
+
     public static boolean exists(Path dataDir) {
         return Files.exists(dataDir.resolve(FILE_NAME));
     }

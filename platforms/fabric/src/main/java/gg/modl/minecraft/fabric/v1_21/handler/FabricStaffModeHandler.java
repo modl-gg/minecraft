@@ -94,7 +94,7 @@ public class FabricStaffModeHandler {
             if (targetPlayer != null) {
                 staffPlayer.teleport(targetPlayer.getServerWorld(),
                         targetPlayer.getX(), targetPlayer.getY(), targetPlayer.getZ(),
-                        java.util.Set.of(), targetPlayer.getYaw(), targetPlayer.getPitch(), false);
+                        java.util.Set.of(), targetPlayer.getYaw(), targetPlayer.getPitch());
             }
         }
     }
@@ -164,7 +164,7 @@ public class FabricStaffModeHandler {
             player.experienceProgress = snapshot.exp;
             player.experienceLevel = snapshot.level;
             player.teleport(player.getServerWorld(), snapshot.x, snapshot.y, snapshot.z,
-                    java.util.Set.of(), snapshot.yaw, snapshot.pitch, false);
+                    java.util.Set.of(), snapshot.yaw, snapshot.pitch);
         } else {
             player.getInventory().clear();
             player.changeGameMode(GameMode.SURVIVAL);

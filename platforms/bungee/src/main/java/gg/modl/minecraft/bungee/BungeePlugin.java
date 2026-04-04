@@ -186,6 +186,7 @@ public class BungeePlugin extends Plugin {
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
 
+        for (LibraryRecord record : Libraries.PROTO_DEPS) loadLibrary(libraryManager, record);
         for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
         loadLibrary(libraryManager, Libraries.ACF_CORE);
         loadLibrary(libraryManager, Libraries.ACF_BUNGEE);

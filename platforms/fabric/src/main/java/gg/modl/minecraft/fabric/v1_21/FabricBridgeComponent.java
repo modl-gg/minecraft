@@ -46,12 +46,9 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
     private BridgeTask replayCleanupTask;
     private final Map<UUID, Integer> worldChangeGeneration = new ConcurrentHashMap<>();
 
-    public FabricBridgeComponent(FabricBridgePluginContext context, MinecraftServer server) {
-        super(context, "", "", "", new PluginLogger() {
-            @Override public void info(String msg) { ModlFabricModImpl.LOGGER.info(msg); }
-            @Override public void warning(String msg) { ModlFabricModImpl.LOGGER.warn(msg); }
-            @Override public void severe(String msg) { ModlFabricModImpl.LOGGER.error(msg); }
-        });
+    public FabricBridgeComponent(FabricBridgePluginContext context, MinecraftServer server,
+                                  String apiKey, String backendUrl, String panelUrl, PluginLogger pluginLogger) {
+        super(context, apiKey, backendUrl, panelUrl, pluginLogger);
         this.server = server;
         this.fabricContext = context;
     }
