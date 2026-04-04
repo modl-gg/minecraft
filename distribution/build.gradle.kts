@@ -80,6 +80,7 @@ tasks.shadowJar {
     exclude("com/google/gson/**")
 
     // Dependencies loaded at runtime via Libby (Libraries.PROTO_DEPS)
+    exclude("gg/modl/proto/**")
     exclude("com/google/protobuf/**")
     exclude("com/google/common/**")
     exclude("com/google/thirdparty/**")

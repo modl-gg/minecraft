@@ -334,6 +334,7 @@ public class SpigotPlugin extends JavaPlugin {
     private void loadLibraries() {
         libraryManager = new BukkitLibraryManager(this);
         libraryManager.addMavenCentral();
+        libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
 

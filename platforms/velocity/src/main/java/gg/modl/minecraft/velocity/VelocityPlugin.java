@@ -242,6 +242,7 @@ public final class VelocityPlugin {
         VelocityLibraryManager<VelocityPlugin> libraryManager = new VelocityLibraryManager<>(
                 this, logger, folder, server.getPluginManager());
         libraryManager.addMavenCentral();
+        libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
 

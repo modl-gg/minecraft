@@ -52,6 +52,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
     private void loadLibraries() {
         FabricLibraryManager libraryManager = new FabricLibraryManager(MOD_ID, LOGGER);
         libraryManager.addMavenCentral();
+        libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-snapshots/");
         libraryManager.addRepository("https://jitpack.io");

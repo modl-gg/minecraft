@@ -1,6 +1,6 @@
 dependencies {
     api(project(":api"))
-    api("gg.modl:modl-proto:1.0.0")
+    compileOnly("gg.modl:proto:1.0.0")
     compileOnly("com.google.guava:guava:32.0.1-jre")
     compileOnly("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
     compileOnly("co.aikar:acf-core:${property("acf.version")}")

@@ -157,37 +157,29 @@ public final class Libraries {
             "slf4j-simple",
             "7/wyAYZYvqCdHgjH0QYMytRsCGlg9YPQfdf/6cEXKkc="
     ),
-    CIRRUS_SPIGOT = LibraryRecord.ofUrl(
+    CIRRUS_SPIGOT = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-spigot",
             "4.2.0",
-            "cirrus-spigot",
-            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.2.0-SNAPSHOT/cirrus-spigot-4.2.0-SNAPSHOT.jar",
-            "HBLYrqjYHc/4oaQf+d+CX9fAMPgFKCsclBvETBp7PLo="
+            "cirrus-spigot"
     ),
-    CIRRUS_VELOCITY = LibraryRecord.ofUrl(
+    CIRRUS_VELOCITY = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-velocity",
             "4.2.0",
-            "cirrus-velocity",
-            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.2.0-SNAPSHOT/cirrus-velocity-4.2.0-SNAPSHOT.jar",
-            "Hprdy3UPtIOOgx2tMTb0fiRMc85QI0oEytN0FvH22oc="
+            "cirrus-velocity"
     ),
-    CIRRUS_BUNGEECORD = LibraryRecord.ofUrl(
+    CIRRUS_BUNGEECORD = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-bungeecord",
             "4.2.0",
-            "cirrus-bungeecord",
-            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.2.0-SNAPSHOT/cirrus-bungeecord-4.2.0-SNAPSHOT.jar",
-            "n6kH3s78ILZ0z6SaReMxQafBZXn9isWUoHkiovRDWZc="
+            "cirrus-bungeecord"
     ),
-    CIRRUS_FABRIC = LibraryRecord.ofUrl(
+    CIRRUS_FABRIC = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-fabric",
             "4.2.0",
-            "cirrus-fabric",
-            "https://github.com/modl-gg/minecraft-cirrus/releases/download/4.2.0-SNAPSHOT/cirrus-fabric-4.2.0-SNAPSHOT.jar",
-            "m1AvMZhAF0YGBXftxrobThyicCpPSSPJWNa+D+pufUc="
+            "cirrus-fabric"
     ),
     ADVENTURE_KEY = LibraryRecord.of(
             "net{}kyori",
@@ -329,6 +321,13 @@ public final class Libraries {
             "2.1.3",
             "jakarta-activation-api",
             "AbF21xihaSY+eCkGkfxHmXcYa8xrMzSHMlCE1lhvRic="
+    ),
+    MODL_PROTO = LibraryRecord.of(
+            "gg{}modl",
+            "proto",
+            "1.0.0",
+            "proto",
+            "gXbiRQyu38HSERXwRyHNsP723xFohP6YpX/nr538KPE="
     );
 
     public static final List<LibraryRecord> COMMON = Arrays.asList(
@@ -352,6 +351,7 @@ public final class Libraries {
             AGRONA,
             IPADDRESS,
             JAKARTA_MAIL_API,
-            JAKARTA_ACTIVATION_API
+            JAKARTA_ACTIVATION_API,
+            MODL_PROTO
     );
 }

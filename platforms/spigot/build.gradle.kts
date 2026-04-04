@@ -42,8 +42,8 @@ dependencies {
     compileOnly("com.github.retrooper:packetevents-spigot:${property("packetevents.version")}")
 
     // Replay recording
-    implementation("gg.modl.replay:replay-format:1.1.0")
-    implementation("gg.modl.replay:modl-replay-recording:1.1.0")
+    implementation("gg.modl.minecraft.replay:replay-format:1.1.0")
+    implementation("gg.modl.minecraft.replay:modl-replay-recording:1.1.0")
 }
 
 tasks.processResources {

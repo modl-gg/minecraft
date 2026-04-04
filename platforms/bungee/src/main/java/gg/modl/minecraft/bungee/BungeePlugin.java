@@ -183,6 +183,7 @@ public class BungeePlugin extends Plugin {
     private void loadLibraries() {
         BungeeLibraryManager libraryManager = new BungeeLibraryManager(this);
         libraryManager.addMavenCentral();
+        libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
 

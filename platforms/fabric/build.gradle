@@ -51,12 +51,12 @@ dependencies {
     implementation "com.alessiodp.libby:libby-fabric:${rootProject.property('libby.version')}"
 
     // Compile-only deps (loaded at runtime via Libby)
-    compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:4.2.0-SNAPSHOT"
-    compileOnly "gg.modl.minecraft.cirrus:cirrus-api:4.2.0-SNAPSHOT"
-    compileOnly "gg.modl.minecraft.cirrus:cirrus-common:4.2.0-SNAPSHOT"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:4.2.0"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-api:4.2.0"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-common:4.2.0"
     compileOnly "com.github.retrooper:packetevents-api:2.12.0-SNAPSHOT"
-    compileOnly "gg.modl.replay:modl-replay-recording:1.1.0"
-    compileOnly "gg.modl.replay:replay-format:1.1.0"
+    compileOnly "gg.modl.minecraft.replay:modl-replay-recording:1.1.0"
+    compileOnly "gg.modl.minecraft.replay:replay-format:1.1.0"
 
     // Provided by server
     compileOnly "io.netty:netty-all:4.1.97.Final"

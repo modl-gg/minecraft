@@ -23,6 +23,8 @@ subprojects {
         maven("https://repo.codemc.io/repository/maven-releases/")
         maven("https://repo.codemc.io/repository/maven-snapshots/")
         maven("https://repo.alessiodp.com/snapshots/")
+        maven("https://oss.sonatype.org/content/repositories/snapshots")
+        mavenLocal()
     }
 
     configure<JavaPluginExtension> {
