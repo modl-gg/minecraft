@@ -16,7 +16,7 @@ subprojects {
     apply(plugin = "maven-publish")
 
     repositories {
-        mavenLocal()
+        maven("https://nexus.modl.gg/repository/maven-releases/")
         mavenCentral()
         maven("https://repo.aikar.co/content/groups/aikar/")
         maven("https://jitpack.io")

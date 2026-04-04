@@ -7,7 +7,7 @@ group = 'gg.modl'
 version = property('version')
 
 repositories {
-    mavenLocal()
+    maven { url "https://nexus.modl.gg/repository/maven-releases/" }
     mavenCentral()
     maven { url "https://maven.fabricmc.net/" }
     maven { url "https://repo.codemc.io/repository/maven-releases/" }
@@ -37,8 +37,8 @@ dependencies {
     compileOnly "gg.modl.minecraft.cirrus:cirrus-api:4.2.0-SNAPSHOT"
     compileOnly "gg.modl.minecraft.cirrus:cirrus-common:4.2.0-SNAPSHOT"
     compileOnly "com.github.retrooper:packetevents-api:2.12.0-SNAPSHOT"
-    compileOnly "gg.modl.replay:modl-replay-recording:1.0.0-SNAPSHOT"
-    compileOnly "gg.modl.replay:replay-format:1.0.0-SNAPSHOT"
+    compileOnly "gg.modl.replay:modl-replay-recording:1.1.0"
+    compileOnly "gg.modl.replay:replay-format:1.1.0"
 
     // Provided by server
     compileOnly "io.netty:netty-all:4.1.97.Final"

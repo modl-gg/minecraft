@@ -8,11 +8,6 @@ pluginManagement {
 
 rootProject.name = "modl-minecraft"
 
-// Shared protobuf types
-val protoDir = file("../proto")
-if (protoDir.exists()) {
-    includeBuild("../proto")
-}
 
 include("api")
 include("core")
