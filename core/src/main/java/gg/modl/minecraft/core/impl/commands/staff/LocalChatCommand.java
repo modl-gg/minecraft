@@ -1,34 +1,33 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Description;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.PlayerOnly;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.StaffChatService;
 import gg.modl.minecraft.core.service.StaffChatService.ChatMode;
 import lombok.RequiredArgsConstructor;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.command.CommandActor;
 
 import java.util.UUID;
 
-@RequiredArgsConstructor @CommandAlias("%cmd_localchat") @Conditions("player|staff")
-public class LocalChatCommand extends BaseCommand {
-    private static final String LOCAL_CHAT_FORMAT = "§f<%s§f> %s";
+@RequiredArgsConstructor @Command("localchat") @PlayerOnly @StaffOnly
+public class LocalChatCommand {
+    private static final String LOCAL_CHAT_FORMAT = "\u00a7f<%s\u00a7f> %s";
 
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
     private final StaffChatService staffChatService;
 
-    @Default
     @Description("Switch back to normal chat mode or send a local message")
-    public void localChat(CommandIssuer sender, @Default() String message) {
-        UUID senderUuid = sender.getUniqueId();
+    public void localChat(CommandActor actor, @revxrsal.commands.annotation.Optional String message) {
+        if (message == null) message = "";
+        UUID senderUuid = actor.uniqueId();
 
         if (!message.isEmpty()) {
             sendLocalMessage(senderUuid, message);
@@ -36,12 +35,12 @@ public class LocalChatCommand extends BaseCommand {
         }
 
         if (staffChatService.getMode(senderUuid) == ChatMode.NORMAL) {
-            sender.sendMessage(localeManager.getMessage("staff_chat.already_normal"));
+            actor.reply(localeManager.getMessage("staff_chat.already_normal"));
             return;
         }
 
         staffChatService.setMode(senderUuid, ChatMode.NORMAL);
-        sender.sendMessage(localeManager.getMessage("staff_chat.disabled"));
+        actor.reply(localeManager.getMessage("staff_chat.disabled"));
     }
 
     private void sendLocalMessage(UUID senderUuid, String message) {

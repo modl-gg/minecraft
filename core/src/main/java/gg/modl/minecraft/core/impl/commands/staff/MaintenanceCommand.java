@@ -1,23 +1,22 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Subcommand;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.RequiresPermission;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.MaintenanceService;
 import lombok.RequiredArgsConstructor;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Subcommand;
+import revxrsal.commands.command.CommandActor;
 
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
-@RequiredArgsConstructor @CommandAlias("%cmd_maintenance") @Conditions("staff")
-public class MaintenanceCommand extends BaseCommand {
+@RequiredArgsConstructor @Command("maintenance") @StaffOnly
+public class MaintenanceCommand {
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
@@ -25,17 +24,17 @@ public class MaintenanceCommand extends BaseCommand {
 
     @Subcommand("on")
     @Description("Enable maintenance mode")
-    @Conditions("permission:value=staff.maintenance")
-    public void on(CommandIssuer sender) {
+    @RequiresPermission("staff.maintenance")
+    public void on(CommandActor actor) {
         if (maintenanceService.isEnabled()) {
-            sender.sendMessage(localeManager.getMessage("maintenance.already_enabled"));
+            actor.reply(localeManager.getMessage("maintenance.already_enabled"));
             return;
         }
 
         maintenanceService.enable(platform, cache, localeManager.getMessage("maintenance.kick_message"));
 
-        String inGameName = getInGameName(sender);
-        String panelName = getPanelName(sender, inGameName);
+        String inGameName = getInGameName(actor);
+        String panelName = getPanelName(actor, inGameName);
         platform.staffBroadcast(localeManager.getMessage("maintenance.enabled", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
@@ -44,39 +43,38 @@ public class MaintenanceCommand extends BaseCommand {
 
     @Subcommand("off")
     @Description("Disable maintenance mode")
-    @Conditions("permission:value=staff.maintenance")
-    public void off(CommandIssuer sender) {
+    @RequiresPermission("staff.maintenance")
+    public void off(CommandActor actor) {
         if (!maintenanceService.isEnabled()) {
-            sender.sendMessage(localeManager.getMessage("maintenance.already_disabled"));
+            actor.reply(localeManager.getMessage("maintenance.already_disabled"));
             return;
         }
 
         maintenanceService.disable();
 
-        String inGameName = getInGameName(sender);
-        String panelName = getPanelName(sender, inGameName);
+        String inGameName = getInGameName(actor);
+        String panelName = getPanelName(actor, inGameName);
         platform.staffBroadcast(localeManager.getMessage("maintenance.disabled", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
         )));
     }
 
-    @Default
     @Description("Show maintenance mode status")
-    public void status(CommandIssuer sender) {
-        if (maintenanceService.isEnabled()) sender.sendMessage(localeManager.getMessage("maintenance.status_enabled"));
-        else sender.sendMessage(localeManager.getMessage("maintenance.status_disabled"));
+    public void status(CommandActor actor) {
+        if (maintenanceService.isEnabled()) actor.reply(localeManager.getMessage("maintenance.status_enabled"));
+        else actor.reply(localeManager.getMessage("maintenance.status_disabled"));
     }
 
-    private String getInGameName(CommandIssuer sender) {
-        if (!sender.isPlayer()) return "Console";
-        AbstractPlayer player = platform.getPlayer(sender.getUniqueId());
+    private String getInGameName(CommandActor actor) {
+        if (actor.uniqueId() == null) return "Console";
+        AbstractPlayer player = platform.getPlayer(actor.uniqueId());
         return player != null ? player.getName() : "Staff";
     }
 
-    private String getPanelName(CommandIssuer sender, String fallback) {
-        if (!sender.isPlayer()) return "Console";
-        String display = cache.getStaffDisplayName(sender.getUniqueId());
+    private String getPanelName(CommandActor actor, String fallback) {
+        if (actor.uniqueId() == null) return "Console";
+        String display = cache.getStaffDisplayName(actor.uniqueId());
         return display != null ? display : fallback;
     }
 }

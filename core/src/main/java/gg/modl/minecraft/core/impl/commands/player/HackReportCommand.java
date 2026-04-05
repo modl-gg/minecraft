@@ -1,17 +1,14 @@
 package gg.modl.minecraft.core.impl.commands.player;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.CommandCompletion;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Optional;
-import co.aikar.commands.annotation.Syntax;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Optional;
+import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ReplayService;
 import lombok.RequiredArgsConstructor;
@@ -20,36 +17,34 @@ import java.util.concurrent.CompletableFuture;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
-public class HackReportCommand extends BaseCommand {
+public class HackReportCommand {
     private final Platform platform;
     private final ModlHttpClient httpClient;
     private final String panelUrl;
     private final LocaleManager localeManager;
     private final TicketCommandUtil ticketUtil;
 
-    @CommandAlias("%cmd_hackreport")
-    @CommandCompletion("@players")
+    @Command("hackreport")
     @Description("Report a player for cheating/hacking")
-    @Syntax("<player> [details]")
-    @Conditions("player")
-    public void hackReport(CommandIssuer sender, String targetName, @Optional String details) {
-        if (ticketUtil.checkCooldown(sender, "player", localeManager)) return;
+    @PlayerOnly
+    public void hackReport(CommandActor actor, String targetName, @Optional String details) {
+        if (ticketUtil.checkCooldown(actor, "player", localeManager)) return;
 
-        AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
+        AbstractPlayer reporter = platform.getAbstractPlayer(actor.uniqueId(), false);
         AbstractPlayer targetPlayer = platform.getAbstractPlayer(targetName, false);
 
         if (targetPlayer == null) {
-            sender.sendMessage(localeManager.getMessage("general.player_not_found"));
+            actor.reply(localeManager.getMessage("general.player_not_found"));
             return;
         }
 
         if (targetPlayer.getUsername().equalsIgnoreCase(reporter.getUsername())) {
-            sender.sendMessage(localeManager.getMessage("messages.cannot_report_self"));
+            actor.reply(localeManager.getMessage("messages.cannot_report_self"));
             return;
         }
 
         String description = details != null && !details.isEmpty() ? details : null;
-        String createdServer = platform.getPlayerServer(sender.getUniqueId());
+        String createdServer = platform.getPlayerServer(actor.uniqueId());
 
         ReplayService replayService = platform.getReplayService();
         CompletableFuture<String> replayFuture;
@@ -77,7 +72,7 @@ public class HackReportCommand extends BaseCommand {
                 replayUrl
             );
 
-            ticketUtil.submitFinishedTicket(sender, httpClient, platform, localeManager, panelUrl, request, "Report", "player");
+            ticketUtil.submitFinishedTicket(actor, httpClient, platform, localeManager, panelUrl, request, "Report", "player");
         });
     }
 }

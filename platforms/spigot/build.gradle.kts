@@ -27,7 +27,8 @@ dependencies {
     implementation(project(":bridge-core"))
 
     // Command framework
-    compileOnly("co.aikar:acf-bukkit:${property("acf.version")}")
+    compileOnly("io.github.revxrsal:lamp.common:${property("lamp.version")}")
+    compileOnly("io.github.revxrsal:lamp.bukkit:${property("lamp.version")}")
 
     // Cirrus menu system
     compileOnly("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
@@ -38,8 +39,8 @@ dependencies {
     implementation("com.alessiodp.libby:libby-bukkit:${property("libby.version")}")
 
     // PacketEvents
-    compileOnly("com.github.retrooper:packetevents-api:${property("packetevents.version")}")
-    compileOnly("com.github.retrooper:packetevents-spigot:${property("packetevents.version")}")
+    compileOnly("gg.modl.minecraft.packetevents:packetevents-api:${property("packetevents.version")}")
+    compileOnly("gg.modl.minecraft.packetevents:packetevents-spigot:${property("packetevents.version")}")
 
     // Replay recording
     implementation("gg.modl.minecraft.replay:replay-format:1.1.0")

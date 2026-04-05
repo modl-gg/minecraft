@@ -10,6 +10,7 @@
     "sources": "https://github.com/modl-gg/minecraft"
   },
   "license": "AGPL-3.0",
+  "accessWidener": "modl.accesswidener",
   "environment": "server",
   "entrypoints": {
     "server": ["gg.modl.minecraft.fabric.ModlFabricMod"]

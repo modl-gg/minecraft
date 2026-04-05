@@ -1,12 +1,15 @@
 package gg.modl.minecraft.bungee;
 
-import co.aikar.commands.BungeeCommandManager;
-import co.aikar.commands.CommandManager;
 import dev.simplix.cirrus.bungee.wrapper.BungeePlayerWrapper;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
+import net.md_5.bungee.api.plugin.Plugin;
+import revxrsal.commands.Lamp;
+import revxrsal.commands.command.CommandActor;
+import revxrsal.commands.bungee.BungeeLamp;
+import revxrsal.commands.bungee.actor.BungeeCommandActor;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -22,8 +25,7 @@ import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
-import org.jetbrains.annotations.NotNull;
-
+import java.util.function.Consumer;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
@@ -33,7 +35,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class BungeePlatform implements Platform {
-    private final BungeeCommandManager commandManager;
+    private final Plugin plugin;
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
@@ -52,8 +54,8 @@ public class BungeePlatform implements Platform {
     private static volatile Method getNameMethod;
     private static volatile Method getValueMethod;
 
-    public BungeePlatform(BungeeCommandManager commandManager, Logger logger, File dataFolder, String configServerName) {
-        this.commandManager = commandManager;
+    public BungeePlatform(Plugin plugin, Logger logger, File dataFolder, String configServerName) {
+        this.plugin = plugin;
         this.logger = logger;
         this.dataFolder = dataFolder;
         this.configServerName = configServerName;
@@ -110,9 +112,12 @@ public class BungeePlatform implements Platform {
         return player != null && player.isConnected();
     }
 
-    @NotNull @Override
-    public CommandManager<?, ?, ?, ?, ?, ?> getCommandManager() {
-        return commandManager;
+    @Override
+    @SuppressWarnings("unchecked")
+    public Lamp<BungeeCommandActor> buildLamp(Consumer<Lamp.Builder<? extends CommandActor>> configurator) {
+        Lamp.Builder<BungeeCommandActor> builder = BungeeLamp.builder(plugin);
+        configurator.accept((Lamp.Builder) builder);
+        return builder.build();
     }
 
     @Override

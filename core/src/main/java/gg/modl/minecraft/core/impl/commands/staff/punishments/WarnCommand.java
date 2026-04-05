@@ -1,13 +1,8 @@
 package gg.modl.minecraft.core.impl.commands.staff.punishments;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.CommandCompletion;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Name;
-import co.aikar.commands.annotation.Syntax;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Named;
+import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
@@ -15,6 +10,7 @@ import gg.modl.minecraft.api.http.request.CreatePlayerNoteRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +19,8 @@ import java.util.Map;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
-public class WarnCommand extends BaseCommand {
+@Command("warn")
+public class WarnCommand {
     private static final String WARNING_NOTE_PREFIX = "WARNING: ";
 
     private final HttpClientHolder httpClientHolder;
@@ -31,24 +28,21 @@ public class WarnCommand extends BaseCommand {
     private final Cache cache;
     private final LocaleManager localeManager;
 
-    @CommandCompletion("@players")
-    @CommandAlias("%cmd_warn")
-    @Syntax("<target> <reason...> [-silent]")
-    @Conditions("staff")
-    public void warn(CommandIssuer sender, @Name("target") Account target, @Default() String args) {
+    @StaffOnly
+    public void warn(CommandActor actor, @Named("target") Account target, String args) {
         if (target == null) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", mapOf()));
+            actor.reply(localeManager.getPunishmentMessage("general.player_not_found", mapOf()));
             return;
         }
 
         final WarnArgs warnArgs = parseArguments(args);
         if (warnArgs.reason.isEmpty()) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.invalid_syntax", mapOf()));
+            actor.reply(localeManager.getPunishmentMessage("general.invalid_syntax", mapOf()));
             return;
         }
 
-        final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
-        final String issuerId = CommandUtil.resolveIssuerId(sender, cache);
+        final String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
+        final String issuerId = CommandUtil.resolveActorId(actor, cache);
 
         CreatePlayerNoteRequest noteRequest = new CreatePlayerNoteRequest(
             target.getMinecraftUuid().toString(), issuerName, issuerId, WARNING_NOTE_PREFIX + warnArgs.reason
@@ -58,7 +52,7 @@ public class WarnCommand extends BaseCommand {
             String targetName = target.getUsernames().get(0).getUsername();
             notifyTargetIfOnline(target, issuerName, warnArgs.reason);
 
-            sender.sendMessage(localeManager.getMessage("warn.success", mapOf(
+            actor.reply(localeManager.getMessage("warn.success", mapOf(
                 "target", targetName, "reason", warnArgs.reason
             )));
 
@@ -68,8 +62,8 @@ public class WarnCommand extends BaseCommand {
                 )));
             }
         }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-            else sender.sendMessage(localeManager.getMessage("warn.error", mapOf(
+            if (throwable.getCause() instanceof PanelUnavailableException) actor.reply(localeManager.getMessage("api_errors.panel_restarting"));
+            else actor.reply(localeManager.getMessage("warn.error", mapOf(
                     "error", localeManager.sanitizeErrorMessage(throwable.getMessage())
                 )));
             return null;

@@ -1,16 +1,11 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Optional;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.staff.StaffMembersMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.VanishService;
@@ -21,6 +16,9 @@ import gg.modl.minecraft.core.util.Permissions;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.command.CommandActor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +27,7 @@ import java.util.UUID;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
-public class StaffListCommand extends BaseCommand {
+public class StaffListCommand {
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
@@ -37,22 +35,22 @@ public class StaffListCommand extends BaseCommand {
     private final HttpClientHolder httpClientHolder;
     private final String panelUrl;
 
-    @CommandAlias("%cmd_stafflist")
+    @Command("stafflist")
     @Description("List all online staff members")
-    @Conditions("staff")
-    public void staffList(CommandIssuer sender, @Optional String flag) {
+    @StaffOnly
+    public void staffList(CommandActor actor, @revxrsal.commands.annotation.Optional String flag) {
         int page = flag != null ? Pagination.parsePrintFlags(flag) : 0;
         boolean printMode = page > 0;
 
-        if (printMode || !sender.isPlayer()) {
-            printStaffList(sender, Math.max(1, page));
+        if (printMode || actor.uniqueId() == null) {
+            printStaffList(actor, Math.max(1, page));
             return;
         }
 
-        UUID viewerUuid = sender.getUniqueId();
+        UUID viewerUuid = actor.uniqueId();
         AbstractPlayer viewer = platform.getAbstractPlayer(viewerUuid, false);
         String viewerName = viewer != null ? viewer.getName() : viewerUuid.toString();
-        boolean isAdmin = PermissionUtil.hasAnyPermission(sender, cache,
+        boolean isAdmin = PermissionUtil.hasAnyPermission(actor, cache,
                 Permissions.SETTINGS_VIEW, Permissions.SETTINGS_MODIFY);
 
         StaffMembersMenu menu = new StaffMembersMenu(
@@ -65,21 +63,21 @@ public class StaffListCommand extends BaseCommand {
 
     private static final int ENTRIES_PER_PAGE = 8;
 
-    private void printStaffList(CommandIssuer sender, int page) {
+    private void printStaffList(CommandActor actor, int page) {
         List<StaffEntry> staffEntries = collectOnlineStaff();
 
-        sender.sendMessage(localeManager.getMessage("print.staff_list.header", mapOf(
+        actor.reply(localeManager.getMessage("print.staff_list.header", mapOf(
                 "count", String.valueOf(staffEntries.size())
         )));
 
         if (staffEntries.isEmpty()) {
-            sender.sendMessage(localeManager.getMessage("print.staff_list.empty"));
+            actor.reply(localeManager.getMessage("print.staff_list.empty"));
         } else {
             Pagination.Page pg = Pagination.paginate(staffEntries, ENTRIES_PER_PAGE, page);
             for (int i = pg.getStart(); i < pg.getEnd(); i++) {
                 StaffEntry entry = staffEntries.get(i);
                 String vanishTag = entry.isVanished() ? localeManager.getMessage("print.staff_list.vanish") : "";
-                sender.sendMessage(localeManager.getMessage("print.staff_list.entry", mapOf(
+                actor.reply(localeManager.getMessage("print.staff_list.entry", mapOf(
                         "role", entry.getRole(),
                         "player", entry.getDisplayName(),
                         "in-game-name", entry.getInGameName(),
@@ -87,7 +85,7 @@ public class StaffListCommand extends BaseCommand {
                         "v", vanishTag
                 )));
             }
-            sender.sendMessage(localeManager.getMessage("print.staff_list.total", mapOf(
+            actor.reply(localeManager.getMessage("print.staff_list.total", mapOf(
                     "count", String.valueOf(staffEntries.size()),
                     "page", String.valueOf(pg.getPage()),
                     "total_pages", String.valueOf(pg.getTotalPages())

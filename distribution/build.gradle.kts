@@ -103,6 +103,7 @@ tasks.shadowJar {
     from(zipTree(fabricLoomJar)) {
         include("gg/modl/minecraft/fabric/ModlFabricMod.class")
         include("fabric.mod.json")
+        include("modl.accesswidener")
     }
 
     // Nested Fabric JARs — renamed to match fabric.mod.json "jars" declarations

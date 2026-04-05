@@ -1,62 +1,61 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Description;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.StaffChatService;
 import gg.modl.minecraft.core.service.StaffChatService.ChatMode;
 import lombok.RequiredArgsConstructor;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.command.CommandActor;
 
 import java.util.UUID;
 
-@RequiredArgsConstructor @CommandAlias("%cmd_staffchat") @Conditions("staff")
-public class StaffChatCommand extends BaseCommand {
+@RequiredArgsConstructor @Command("staffchat") @StaffOnly
+public class StaffChatCommand {
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
     private final StaffChatService staffChatService;
     private final StaffChatConfig staffChatConfig;
 
-    @Default
     @Description("Toggle staff chat mode or send a message to staff chat")
-    public void staffChat(CommandIssuer sender, @Default() String message) {
+    public void staffChat(CommandActor actor, @revxrsal.commands.annotation.Optional String message) {
+        if (message == null) message = "";
+
         if (!staffChatConfig.isEnabled()) {
-            sender.sendMessage(localeManager.getMessage("staff_chat.feature_disabled"));
+            actor.reply(localeManager.getMessage("staff_chat.feature_disabled"));
             return;
         }
 
         if (!message.isEmpty()) {
-            sendStaffChatMessage(sender, message);
+            sendStaffChatMessage(actor, message);
             return;
         }
 
-        if (!sender.isPlayer()) {
-            sender.sendMessage(localeManager.getMessage("general.players_only"));
+        if (actor.uniqueId() == null) {
+            actor.reply(localeManager.getMessage("general.players_only"));
             return;
         }
 
-        UUID senderUuid = sender.getUniqueId();
+        UUID senderUuid = actor.uniqueId();
         ChatMode newMode = staffChatService.toggleStaffChat(senderUuid);
 
-        if (newMode == ChatMode.STAFF) sender.sendMessage(localeManager.getMessage("staff_chat.enabled"));
-        else sender.sendMessage(localeManager.getMessage("staff_chat.disabled"));
+        if (newMode == ChatMode.STAFF) actor.reply(localeManager.getMessage("staff_chat.enabled"));
+        else actor.reply(localeManager.getMessage("staff_chat.disabled"));
     }
 
-    private void sendStaffChatMessage(CommandIssuer sender, String message) {
-        if (!sender.isPlayer()) {
+    private void sendStaffChatMessage(CommandActor actor, String message) {
+        if (actor.uniqueId() == null) {
             platform.staffBroadcast(staffChatConfig.formatMessage("Console", "Console", message));
             return;
         }
 
-        UUID senderUuid = sender.getUniqueId();
+        UUID senderUuid = actor.uniqueId();
         AbstractPlayer player = platform.getPlayer(senderUuid);
         String inGameName = player != null ? player.getName() : "Staff";
         String display = cache.getStaffDisplayName(senderUuid);

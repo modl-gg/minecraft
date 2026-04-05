@@ -3,7 +3,7 @@ dependencies {
     compileOnly("gg.modl:proto:1.0.0")
     compileOnly("com.google.guava:guava:32.0.1-jre")
     compileOnly("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
-    compileOnly("co.aikar:acf-core:${property("acf.version")}")
+    compileOnly("io.github.revxrsal:lamp.common:${property("lamp.version")}")
     compileOnly("org.yaml:snakeyaml:${property("snakeyaml.version")}")
     compileOnly("org.apache.httpcomponents.client5:httpclient5:5.2.1")
     compileOnly("net.kyori:adventure-api:${property("adventure.version")}")

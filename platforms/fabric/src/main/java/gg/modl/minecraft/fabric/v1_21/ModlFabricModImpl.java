@@ -8,7 +8,10 @@ import gg.modl.minecraft.api.http.request.StartupRequest;
 import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.boot.*;
+import gg.modl.minecraft.core.HttpManager;
+import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.core.plugin.PluginInfo;
+import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -34,6 +37,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
     private FabricBridgeComponent bridgeComponent;
     private CirrusFabric cirrus;
     private BootConfig bootConfig;
+    private PluginLoader pluginLoader;
 
     @Override
     public void onInitializeServer() {
@@ -51,6 +55,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
 
     private void loadLibraries() {
         FabricLibraryManager libraryManager = new FabricLibraryManager(MOD_ID, LOGGER);
+        libraryManager.setLogLevel(com.alessiodp.libby.logging.LogLevel.WARN);
         libraryManager.addMavenCentral();
         libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
@@ -65,7 +70,8 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         loadLibrary(libraryManager, Libraries.CIRRUS_FABRIC);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_FABRIC);
+        loadLibrary(libraryManager, Libraries.PACKETEVENTS_FABRIC_COMMON);
+        loadLibrary(libraryManager, Libraries.PACKETEVENTS_FABRIC_INTERMEDIARY);
         loadLibrary(libraryManager, Libraries.ADVENTURE_KEY);
         loadLibrary(libraryManager, Libraries.ADVENTURE_API);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_LEGACY);
@@ -74,8 +80,10 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_GSON);
         loadLibrary(libraryManager, Libraries.EXAMINATION_API);
         loadLibrary(libraryManager, Libraries.EXAMINATION_STRING);
+        loadLibrary(libraryManager, Libraries.LAMP_COMMON);
+        loadLibrary(libraryManager, Libraries.LAMP_BRIGADIER);
+        loadLibrary(libraryManager, Libraries.LAMP_FABRIC);
 
-        LOGGER.info("[modl] Runtime libraries loaded successfully");
     }
 
     private void loadLibrary(FabricLibraryManager libraryManager, LibraryRecord record) {
@@ -130,9 +138,9 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
     @SuppressWarnings("unchecked")
     private void initPacketEvents() {
         try {
-            Class<?> builderClass = Class.forName(
-                    "gg.modl.libs.packetevents.impl.factory.fabric.FabricPacketEventsBuilder");
-            Object api = builderClass.getMethod("build", String.class).invoke(null, MOD_ID);
+            Class<?> serverModClass = Class.forName(
+                    "gg.modl.libs.packetevents.impl.PacketEventsServerMod");
+            Object api = serverModClass.getMethod("constructApi", String.class).invoke(null, MOD_ID);
             com.github.retrooper.packetevents.PacketEvents.setAPI(
                     (com.github.retrooper.packetevents.PacketEventsAPI<?>) api);
             com.github.retrooper.packetevents.PacketEvents.getAPI().load();
@@ -173,6 +181,18 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
                     LOGGER.error("Failed to connect to modl.gg. Check your API key and network connection.");
                     return;
                 }
+
+                FabricPlatform fabricPlatform = new FabricPlatform(server, dataFolder, PLUGIN_LOGGER);
+                HttpManager httpManager = new HttpManager(
+                        bootConfig.getApiKey(), panelUrl,
+                        false, bootConfig.isTestingApi(), false
+                );
+                ChatMessageCache chatMessageCache = new ChatMessageCache();
+                pluginLoader = new PluginLoader(fabricPlatform, dataFolder, chatMessageCache, httpManager, 2);
+
+                // Commands were registered with Lamp after CommandRegistrationCallback fired.
+                // Manually sync Lamp's Brigadier nodes to the server's live dispatcher.
+                syncLampCommandsToServer(server, pluginLoader.getLamp());
             }
 
             if (bootConfig.getMode() == BootConfig.Mode.BRIDGE_ONLY) {
@@ -187,7 +207,75 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         }
     }
 
+    private void syncLampCommandsToServer(MinecraftServer server, revxrsal.commands.Lamp<?> lamp) {
+        try {
+            var dispatcher = server.getCommandManager().getDispatcher();
+
+            // Get the Hooks object from Lamp
+            var hooksField = revxrsal.commands.Lamp.class.getDeclaredField("hooks");
+            hooksField.setAccessible(true);
+            Object hooksObj = hooksField.get(lamp);
+
+            // Hooks stores registered hooks internally — find the list field
+            Object hooksList = null;
+            for (var field : hooksObj.getClass().getDeclaredFields()) {
+                field.setAccessible(true);
+                Object val = field.get(hooksObj);
+                if (val instanceof java.util.List) {
+                    hooksList = val;
+                    break;
+                }
+            }
+
+            if (hooksList != null) {
+                for (Object hook : (java.util.List<?>) hooksList) {
+                    if (hook.getClass().getName().contains("FabricCommandHooks")) {
+                        var rootField = hook.getClass().getDeclaredField("root");
+                        rootField.setAccessible(true);
+                        @SuppressWarnings("unchecked")
+                        var root = (com.mojang.brigadier.tree.RootCommandNode<net.minecraft.server.command.ServerCommandSource>) rootField.get(hook);
+
+                        // Remove existing nodes first (Brigadier merges instead of replacing)
+                        removeBrigadierNodes(dispatcher.getRoot(), root.getChildren());
+                        for (var node : root.getChildren()) {
+                            dispatcher.getRoot().addChild(node);
+                        }
+                        LOGGER.info("[modl] Synced {} commands to server dispatcher", root.getChildren().size());
+                        break;
+                    }
+                }
+            }
+
+            // Resend command tree to all connected players
+            for (var player : server.getPlayerManager().getPlayerList()) {
+                server.getCommandManager().sendCommandTree(player);
+            }
+        } catch (Exception e) {
+            LOGGER.warn("[modl] Failed to sync commands to server: {}", e.getMessage(), e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void removeBrigadierNodes(com.mojang.brigadier.tree.CommandNode<?> parent,
+                                       java.util.Collection<? extends com.mojang.brigadier.tree.CommandNode<?>> toRemove) {
+        try {
+            // Brigadier stores children in three internal maps: children, literals, arguments
+            // We need to remove from all three to fully replace a command
+            for (String fieldName : new String[]{"children", "literals", "arguments"}) {
+                var field = com.mojang.brigadier.tree.CommandNode.class.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                var map = (java.util.Map<String, ?>) field.get(parent);
+                for (var node : toRemove) {
+                    map.remove(node.getName());
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.warn("[modl] Failed to remove existing command nodes: {}", e.getMessage());
+        }
+    }
+
     private void onServerStopping(MinecraftServer server) {
+        if (pluginLoader != null) pluginLoader.shutdown();
         if (cirrus != null) cirrus.shutdown();
         if (bridgeComponent != null) bridgeComponent.disable();
     }

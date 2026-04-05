@@ -1,14 +1,10 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Description;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.PlayerOnly;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.StaffModeService;
@@ -16,12 +12,15 @@ import gg.modl.minecraft.core.service.VanishService;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.command.CommandActor;
 
 import java.util.UUID;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
-@CommandAlias("%cmd_staffmode") @Conditions("staff|player") @RequiredArgsConstructor
-public class StaffModeCommand extends BaseCommand {
+@Command("staffmode") @PlayerOnly @StaffOnly @RequiredArgsConstructor
+public class StaffModeCommand {
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
@@ -29,33 +28,28 @@ public class StaffModeCommand extends BaseCommand {
     private final VanishService vanishService;
     private final BridgeService bridgeService;
 
-    @Default
     @Description("Toggle staff mode")
-    public void onStaffMode(CommandIssuer sender) {
-        if (!sender.isPlayer()) {
-            sender.sendMessage(localeManager.getMessage("general.players_only"));
-            return;
-        }
-        if (!PermissionUtil.hasPermission(sender, cache, Permissions.MOD_ACTIONS)) {
-            sender.sendMessage(localeManager.getMessage("general.no_permission"));
+    public void onStaffMode(CommandActor actor) {
+        if (!PermissionUtil.hasPermission(actor, cache, Permissions.MOD_ACTIONS)) {
+            actor.reply(localeManager.getMessage("general.no_permission"));
             return;
         }
 
-        UUID uuid = sender.getUniqueId();
-        String inGameName = getInGameName(sender);
-        String panelName = getPanelName(sender, inGameName);
+        UUID uuid = actor.uniqueId();
+        String inGameName = getInGameName(actor);
+        String panelName = getPanelName(actor, inGameName);
 
         if (staffModeService.isInStaffMode(uuid)) {
-            disableStaffMode(uuid, inGameName, panelName, sender);
+            disableStaffMode(uuid, inGameName, panelName, actor);
         } else {
-            enableStaffMode(uuid, inGameName, panelName, sender);
+            enableStaffMode(uuid, inGameName, panelName, actor);
         }
     }
 
-    private void disableStaffMode(UUID uuid, String inGameName, String panelName, CommandIssuer sender) {
+    private void disableStaffMode(UUID uuid, String inGameName, String panelName, CommandActor actor) {
         staffModeService.disable(uuid);
         vanishService.unvanish(uuid);
-        sender.sendMessage(localeManager.getMessage("staff_mode.disabled"));
+        actor.reply(localeManager.getMessage("staff_mode.disabled"));
         platform.staffBroadcast(localeManager.getMessage("staff_mode.disabled_broadcast", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
@@ -64,9 +58,9 @@ public class StaffModeCommand extends BaseCommand {
         bridgeService.sendVanishExit(uuid.toString(), inGameName, panelName);
     }
 
-    private void enableStaffMode(UUID uuid, String inGameName, String panelName, CommandIssuer sender) {
+    private void enableStaffMode(UUID uuid, String inGameName, String panelName, CommandActor actor) {
         staffModeService.enable(uuid);
-        sender.sendMessage(localeManager.getMessage("staff_mode.enabled"));
+        actor.reply(localeManager.getMessage("staff_mode.enabled"));
         platform.staffBroadcast(localeManager.getMessage("staff_mode.enabled_broadcast", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
@@ -74,15 +68,15 @@ public class StaffModeCommand extends BaseCommand {
         bridgeService.sendStaffModeEnter(uuid.toString(), inGameName, panelName);
     }
 
-    private String getInGameName(CommandIssuer sender) {
-        if (!sender.isPlayer()) return "Console";
-        AbstractPlayer player = platform.getPlayer(sender.getUniqueId());
+    private String getInGameName(CommandActor actor) {
+        if (actor.uniqueId() == null) return "Console";
+        AbstractPlayer player = platform.getPlayer(actor.uniqueId());
         return player != null ? player.getName() : "Staff";
     }
 
-    private String getPanelName(CommandIssuer sender, String fallback) {
-        if (!sender.isPlayer()) return "Console";
-        String display = cache.getStaffDisplayName(sender.getUniqueId());
+    private String getPanelName(CommandActor actor, String fallback) {
+        if (actor.uniqueId() == null) return "Console";
+        String display = cache.getStaffDisplayName(actor.uniqueId());
         return display != null ? display : fallback;
     }
 }

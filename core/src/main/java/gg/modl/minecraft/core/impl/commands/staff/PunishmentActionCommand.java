@@ -1,9 +1,5 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.Conditions;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Punishment;
@@ -12,18 +8,19 @@ import gg.modl.minecraft.api.http.response.PunishmentDetailResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.ModifyPunishmentMenu;
-
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import lombok.RequiredArgsConstructor;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.command.CommandActor;
 
-import java.util.Map;
 import java.util.UUID;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
-public class PunishmentActionCommand extends BaseCommand {
+public class PunishmentActionCommand {
     private static final String UPLOAD_LINK_JSON =
             "{\"text\":\"\",\"extra\":[" +
             "{\"text\":\"Click here to upload evidence\",\"color\":\"green\",\"underlined\":true,\"bold\":true," +
@@ -36,32 +33,32 @@ public class PunishmentActionCommand extends BaseCommand {
     private final LocaleManager localeManager;
     private final String panelUrl;
 
-    @CommandAlias("%cmd_punishment_action")
-    @Conditions("staff")
-    public void punishmentAction(CommandIssuer sender, String action, String punishmentId) {
-        if (!sender.isPlayer()) {
-            sender.sendMessage(localeManager.getMessage("general.gui_requires_player"));
+    @Command("punishment_action")
+    @StaffOnly
+    public void punishmentAction(CommandActor actor, String action, String punishmentId) {
+        if (actor.uniqueId() == null) {
+            actor.reply(localeManager.getMessage("general.gui_requires_player"));
             return;
         }
 
         if ("modify".equals(action)) {
-            openModifyMenu(sender, punishmentId);
+            openModifyMenu(actor, punishmentId);
         } else if ("link-evidence".equals(action)) {
-            promptLinkEvidence(sender, punishmentId);
+            promptLinkEvidence(actor, punishmentId);
         } else if ("upload-evidence".equals(action)) {
-            openUploadPage(sender, punishmentId);
+            openUploadPage(actor, punishmentId);
         } else {
-            sender.sendMessage(localeManager.getMessage("punishment_action.unknown_action", mapOf("action", action)));
+            actor.reply(localeManager.getMessage("punishment_action.unknown_action", mapOf("action", action)));
         }
     }
 
-    private void openModifyMenu(CommandIssuer sender, String punishmentId) {
-        UUID senderUuid = sender.getUniqueId();
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", "#" + punishmentId)));
+    private void openModifyMenu(CommandActor actor, String punishmentId) {
+        UUID senderUuid = actor.uniqueId();
+        actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", "#" + punishmentId)));
 
         httpClientHolder.getClient().getPunishmentDetail(punishmentId).thenAccept(response -> {
             if (!response.isSuccess() || response.getPunishment() == null) {
-                sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", mapOf("id", punishmentId)));
+                actor.reply(localeManager.getMessage("print.punishment_detail.not_found", mapOf("id", punishmentId)));
                 return;
             }
 
@@ -70,7 +67,7 @@ public class PunishmentActionCommand extends BaseCommand {
 
             httpClientHolder.getClient().getPlayerProfile(playerUuid).thenAccept(profileResponse -> {
                 if (profileResponse.getStatus() != 200) {
-                    sender.sendMessage(localeManager.getMessage("general.player_not_found"));
+                    actor.reply(localeManager.getMessage("general.player_not_found"));
                     return;
                 }
 
@@ -83,7 +80,7 @@ public class PunishmentActionCommand extends BaseCommand {
                     }
 
                 if (punishment == null) {
-                    sender.sendMessage(localeManager.getMessage("print.punishment_detail.not_found", mapOf("id", punishmentId)));
+                    actor.reply(localeManager.getMessage("print.punishment_detail.not_found", mapOf("id", punishmentId)));
                     return;
                 }
 
@@ -97,17 +94,17 @@ public class PunishmentActionCommand extends BaseCommand {
                 CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
                 menu.display(player);
             }).exceptionally(throwable -> {
-                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+                actor.reply(localeManager.getMessage("api_errors.panel_restarting"));
                 return null;
             });
         }).exceptionally(throwable -> {
-            sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+            actor.reply(localeManager.getMessage("api_errors.panel_restarting"));
             return null;
         });
     }
 
-    private void promptLinkEvidence(CommandIssuer sender, String punishmentId) {
-        UUID senderUuid = sender.getUniqueId();
+    private void promptLinkEvidence(CommandActor actor, String punishmentId) {
+        UUID senderUuid = actor.uniqueId();
         String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
         String issuerId = cache.getStaffId(senderUuid);
         platform.getChatInputManager().requestInput(senderUuid,
@@ -131,15 +128,15 @@ public class PunishmentActionCommand extends BaseCommand {
         );
     }
 
-    private void openUploadPage(CommandIssuer sender, String punishmentId) {
-        UUID senderUuid = sender.getUniqueId();
+    private void openUploadPage(CommandActor actor, String punishmentId) {
+        UUID senderUuid = actor.uniqueId();
         String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
 
-        sender.sendMessage(localeManager.getMessage("punishment_action.generating_upload"));
+        actor.reply(localeManager.getMessage("punishment_action.generating_upload"));
 
         httpClientHolder.getClient().createEvidenceUploadToken(punishmentId, senderName).thenAccept(response -> {
             if (!response.isSuccess() || response.getToken() == null) {
-                sender.sendMessage(localeManager.getMessage("punishment_action.upload_failed"));
+                actor.reply(localeManager.getMessage("punishment_action.upload_failed"));
                 return;
             }
 
@@ -148,7 +145,7 @@ public class PunishmentActionCommand extends BaseCommand {
 
             platform.runOnMainThread(() -> platform.sendJsonMessage(senderUuid, json));
         }).exceptionally(throwable -> {
-            sender.sendMessage(localeManager.getMessage("punishment_action.upload_failed"));
+            actor.reply(localeManager.getMessage("punishment_action.upload_failed"));
             return null;
         });
     }

@@ -1,14 +1,10 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Description;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.PlayerOnly;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.VanishService;
@@ -16,30 +12,28 @@ import gg.modl.minecraft.core.util.Constants;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.command.CommandActor;
 
 import java.util.UUID;
 
-@CommandAlias("%cmd_vanish") @Conditions("staff|player") @RequiredArgsConstructor
-public class VanishCommand extends BaseCommand {
+@Command("vanish") @PlayerOnly @StaffOnly @RequiredArgsConstructor
+public class VanishCommand {
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
     private final VanishService vanishService;
     private final BridgeService bridgeService;
 
-    @Default
     @Description("Toggle vanish mode")
-    public void onVanish(CommandIssuer sender) {
-        if (!sender.isPlayer()) {
-            sender.sendMessage(localeManager.getMessage("general.players_only"));
-            return;
-        }
-        if (!PermissionUtil.hasPermission(sender, cache, Permissions.MOD_ACTIONS)) {
-            sender.sendMessage(localeManager.getMessage("general.no_permission"));
+    public void onVanish(CommandActor actor) {
+        if (!PermissionUtil.hasPermission(actor, cache, Permissions.MOD_ACTIONS)) {
+            actor.reply(localeManager.getMessage("general.no_permission"));
             return;
         }
 
-        UUID uuid = sender.getUniqueId();
+        UUID uuid = actor.uniqueId();
         boolean nowVanished = vanishService.toggle(uuid);
 
         String inGameName = resolveInGameName(uuid);
@@ -47,10 +41,10 @@ public class VanishCommand extends BaseCommand {
         if (panelName == null) panelName = inGameName;
 
         if (nowVanished) {
-            sender.sendMessage(localeManager.getMessage("vanish.enabled"));
+            actor.reply(localeManager.getMessage("vanish.enabled"));
             bridgeService.sendVanishEnter(uuid.toString(), inGameName, panelName);
         } else {
-            sender.sendMessage(localeManager.getMessage("vanish.disabled"));
+            actor.reply(localeManager.getMessage("vanish.disabled"));
             bridgeService.sendVanishExit(uuid.toString(), inGameName, panelName);
         }
     }

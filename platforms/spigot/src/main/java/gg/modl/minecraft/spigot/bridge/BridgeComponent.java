@@ -164,6 +164,11 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
             return;
         }
 
+        if (com.github.retrooper.packetevents.PacketEvents.getAPI() == null) {
+            pluginLogger.warning("[bridge] PacketEvents not initialized, replay recording disabled");
+            return;
+        }
+
         RecordingConfig recordingConfig = new RecordingConfig() {
             @Override public int bufferDurationSeconds() { return config.getReplayBufferDuration(); }
             @Override public int maxDurationSeconds() { return config.getReplayMaxDuration(); }

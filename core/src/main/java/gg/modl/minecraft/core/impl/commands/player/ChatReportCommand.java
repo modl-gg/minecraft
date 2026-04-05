@@ -1,16 +1,13 @@
 package gg.modl.minecraft.core.impl.commands.player;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.CommandCompletion;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Syntax;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +16,7 @@ import java.util.List;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
-public class ChatReportCommand extends BaseCommand {
+public class ChatReportCommand {
     private final Platform platform;
     private final ModlHttpClient httpClient;
     private final String panelUrl;
@@ -27,18 +24,16 @@ public class ChatReportCommand extends BaseCommand {
     private final ChatMessageCache chatMessageCache;
     private final TicketCommandUtil ticketUtil;
 
-    @CommandAlias("%cmd_chatreport")
-    @CommandCompletion("@players")
+    @Command("chatreport")
     @Description("Report a player for chat violations (automatically includes recent chat logs)")
-    @Syntax("<player>")
-    @Conditions("player")
-    public void chatReport(CommandIssuer sender, AbstractPlayer targetPlayer) {
-        if (ticketUtil.checkCooldown(sender, "chat", localeManager)) return;
+    @PlayerOnly
+    public void chatReport(CommandActor actor, AbstractPlayer targetPlayer) {
+        if (ticketUtil.checkCooldown(actor, "chat", localeManager)) return;
 
-        AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
+        AbstractPlayer reporter = platform.getAbstractPlayer(actor.uniqueId(), false);
 
         if (targetPlayer.getUsername().equalsIgnoreCase(reporter.getUsername())) {
-            sender.sendMessage(localeManager.getMessage("messages.cannot_report_self"));
+            actor.reply(localeManager.getMessage("messages.cannot_report_self"));
             return;
         }
 
@@ -48,7 +43,7 @@ public class ChatReportCommand extends BaseCommand {
         );
 
         if (chatLog.isEmpty()) {
-            sender.sendMessage(localeManager.getMessage("messages.no_chat_logs_available", mapOf("player", targetPlayer.getUsername())));
+            actor.reply(localeManager.getMessage("messages.no_chat_logs_available", mapOf("player", targetPlayer.getUsername())));
             return;
         }
 
@@ -56,7 +51,7 @@ public class ChatReportCommand extends BaseCommand {
                              "Reported by: " + reporter.getUsername() + "\n\n" +
                              "**Chat Log:**\n```\n" + chatLog + "\n```";
 
-        String createdServer = platform.getPlayerServer(sender.getUniqueId());
+        String createdServer = platform.getPlayerServer(actor.uniqueId());
 
         CreateTicketRequest request = new CreateTicketRequest(
             reporter.getUuid().toString(),
@@ -72,6 +67,6 @@ public class ChatReportCommand extends BaseCommand {
             listOf()
         );
 
-        ticketUtil.submitFinishedTicket(sender, httpClient, platform, localeManager, panelUrl, request, "Chat report", "chat");
+        ticketUtil.submitFinishedTicket(actor, httpClient, platform, localeManager, panelUrl, request, "Chat report", "chat");
     }
 }

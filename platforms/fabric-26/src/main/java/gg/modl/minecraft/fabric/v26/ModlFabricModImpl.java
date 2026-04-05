@@ -51,6 +51,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
 
     private void loadLibraries() {
         FabricLibraryManager libraryManager = new FabricLibraryManager(MOD_ID, LOGGER);
+        libraryManager.setLogLevel(com.alessiodp.libby.logging.LogLevel.WARN);
         libraryManager.addMavenCentral();
         libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
@@ -65,7 +66,8 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         loadLibrary(libraryManager, Libraries.CIRRUS_FABRIC);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_FABRIC);
+        loadLibrary(libraryManager, Libraries.PACKETEVENTS_FABRIC_COMMON);
+        loadLibrary(libraryManager, Libraries.PACKETEVENTS_FABRIC_INTERMEDIARY);
         loadLibrary(libraryManager, Libraries.ADVENTURE_KEY);
         loadLibrary(libraryManager, Libraries.ADVENTURE_API);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_LEGACY);
@@ -74,8 +76,10 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_GSON);
         loadLibrary(libraryManager, Libraries.EXAMINATION_API);
         loadLibrary(libraryManager, Libraries.EXAMINATION_STRING);
+        loadLibrary(libraryManager, Libraries.LAMP_COMMON);
+        loadLibrary(libraryManager, Libraries.LAMP_BRIGADIER);
+        loadLibrary(libraryManager, Libraries.LAMP_FABRIC);
 
-        LOGGER.info("[modl] Runtime libraries loaded successfully");
     }
 
     private void loadLibrary(FabricLibraryManager libraryManager, LibraryRecord record) {
@@ -130,9 +134,9 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
     @SuppressWarnings("unchecked")
     private void initPacketEvents() {
         try {
-            Class<?> builderClass = Class.forName(
-                    "gg.modl.libs.packetevents.impl.factory.fabric.FabricPacketEventsBuilder");
-            Object api = builderClass.getMethod("build", String.class).invoke(null, MOD_ID);
+            Class<?> serverModClass = Class.forName(
+                    "gg.modl.libs.packetevents.impl.PacketEventsServerMod");
+            Object api = serverModClass.getMethod("constructApi", String.class).invoke(null, MOD_ID);
             com.github.retrooper.packetevents.PacketEvents.setAPI(
                     (com.github.retrooper.packetevents.PacketEventsAPI<?>) api);
             com.github.retrooper.packetevents.PacketEvents.getAPI().load();

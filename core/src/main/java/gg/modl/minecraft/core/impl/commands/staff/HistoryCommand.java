@@ -1,14 +1,5 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.CommandCompletion;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Name;
-import co.aikar.commands.annotation.Syntax;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Modification;
@@ -17,6 +8,8 @@ import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.PlayerOnly;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.HistoryMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -24,6 +17,10 @@ import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.Pagination;
 import gg.modl.minecraft.core.util.PunishmentTypeCacheManager;
 import lombok.RequiredArgsConstructor;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Named;
+import revxrsal.commands.command.CommandActor;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -33,29 +30,28 @@ import java.util.UUID;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
-public class HistoryCommand extends BaseCommand {
+public class HistoryCommand {
     private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
     private final PunishmentTypeCacheManager punishmentTypeCache;
 
-    @CommandCompletion("@players")
-    @CommandAlias("%cmd_history")
-    @Syntax("<player> [-p [page]]")
+    @Command("history")
     @Description("Open the punishment history menu for a player, or use -p to print to chat")
-    @Conditions("player|staff")
-    public void history(CommandIssuer sender, @Name("player") String playerQuery, @Default() String flags) {
+    @PlayerOnly @StaffOnly
+    public void history(CommandActor actor, @Named("player") String playerQuery, @revxrsal.commands.annotation.Optional String flags) {
+        if (flags == null) flags = "";
         int page = Pagination.parsePrintFlags(flags);
         boolean printMode = page > 0;
 
-        if (!sender.isPlayer() || printMode) {
-            printHistory(sender, playerQuery, Math.max(1, page));
+        if (actor.uniqueId() == null || printMode) {
+            printHistory(actor, playerQuery, Math.max(1, page));
             return;
         }
 
-        UUID senderUuid = sender.getUniqueId();
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
+        UUID senderUuid = actor.uniqueId();
+        actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
         httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
@@ -67,15 +63,15 @@ public class HistoryCommand extends BaseCommand {
                 );
                 CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
                 menu.display(player);
-            } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
+            } else actor.reply(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
-            CommandUtil.handleException(sender, throwable, localeManager);
+            CommandUtil.handleException(actor, throwable, localeManager);
             return null;
         });
     }
 
-    private void printHistory(CommandIssuer sender, String playerQuery, int page) {
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
+    private void printHistory(CommandActor actor, String playerQuery, int page) {
+        actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
 
@@ -84,21 +80,21 @@ public class HistoryCommand extends BaseCommand {
                 Account profile = profileResponse.getProfile();
                 List<Account.Username> usernames = profile.getUsernames();
                 String playerName = !usernames.isEmpty() ? usernames.get(usernames.size() - 1).getUsername() : playerQuery;
-                displayHistory(sender, playerName, profile, page);
-            } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
+                displayHistory(actor, playerName, profile, page);
+            } else actor.reply(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
-            CommandUtil.handleException(sender, throwable, localeManager);
+            CommandUtil.handleException(actor, throwable, localeManager);
             return null;
         });
     }
 
     private static final int ENTRIES_PER_PAGE = 8;
 
-    private void displayHistory(CommandIssuer sender, String playerName, Account profile, int page) {
+    private void displayHistory(CommandActor actor, String playerName, Account profile, int page) {
         List<Punishment> punishments = profile.getPunishments();
-        sender.sendMessage(localeManager.getMessage("print.history.header", mapOf("player", playerName)));
+        actor.reply(localeManager.getMessage("print.history.header", mapOf("player", playerName)));
 
-        if (punishments.isEmpty()) sender.sendMessage(localeManager.getMessage("print.history.empty"));
+        if (punishments.isEmpty()) actor.reply(localeManager.getMessage("print.history.empty"));
         else {
             Pagination.Page pg = Pagination.paginate(punishments, ENTRIES_PER_PAGE, page);
             for (int i = pg.getStart(); i < pg.getEnd(); i++) {
@@ -129,24 +125,24 @@ public class HistoryCommand extends BaseCommand {
                 vars.put("duration", duration);
 
                 if (isKick)
-                    sender.sendMessage(localeManager.getMessage("print.history.entry_kick", vars));
+                    actor.reply(localeManager.getMessage("print.history.entry_kick", vars));
                 else {
                     Date pardonDate = findPardonDate(punishment);
 
                     if (pardonDate != null) {
                         long pardonedAgo = System.currentTimeMillis() - pardonDate.getTime();
                         vars.put("pardoned_ago", MenuItems.formatDuration(pardonedAgo > 0 ? pardonedAgo : 0));
-                        sender.sendMessage(localeManager.getMessage("print.history.entry_pardoned", vars));
+                        actor.reply(localeManager.getMessage("print.history.entry_pardoned", vars));
                     } else if (punishment.getStarted() == null)
-                        sender.sendMessage(localeManager.getMessage("print.history.entry_unstarted", vars));
+                        actor.reply(localeManager.getMessage("print.history.entry_unstarted", vars));
                     else if (punishment.isActive()) {
-                        if (effectiveDuration == null || effectiveDuration <= 0) sender.sendMessage(localeManager.getMessage("print.history.entry_permanent", vars));
+                        if (effectiveDuration == null || effectiveDuration <= 0) actor.reply(localeManager.getMessage("print.history.entry_permanent", vars));
                         else {
                             Date effectiveExpiry = punishment.getEffectiveExpiry();
                             long remaining = effectiveExpiry != null
                                     ? effectiveExpiry.getTime() - System.currentTimeMillis() : 0;
                             vars.put("expiry", MenuItems.formatDuration(remaining > 0 ? remaining : 0));
-                            sender.sendMessage(localeManager.getMessage("print.history.entry_active", vars));
+                            actor.reply(localeManager.getMessage("print.history.entry_active", vars));
                         }
                     } else {
                         Date effectiveExpiry = punishment.getEffectiveExpiry();
@@ -154,18 +150,18 @@ public class HistoryCommand extends BaseCommand {
                             long expiredAgo = System.currentTimeMillis() - effectiveExpiry.getTime();
                             vars.put("expired_ago", MenuItems.formatDuration(expiredAgo > 0 ? expiredAgo : 0));
                         } else vars.put("expired_ago", "N/A");
-                        sender.sendMessage(localeManager.getMessage("print.history.entry_expired", vars));
+                        actor.reply(localeManager.getMessage("print.history.entry_expired", vars));
                     }
                 }
             }
-            sender.sendMessage(localeManager.getMessage("print.history.total", mapOf(
+            actor.reply(localeManager.getMessage("print.history.total", mapOf(
                     "count", String.valueOf(punishments.size()),
                     "page", String.valueOf(pg.getPage()),
                     "total_pages", String.valueOf(pg.getTotalPages())
             )));
         }
 
-        sender.sendMessage(localeManager.getMessage("print.history.footer"));
+        actor.reply(localeManager.getMessage("print.history.footer"));
     }
 
     private Date findPardonDate(Punishment punishment) {

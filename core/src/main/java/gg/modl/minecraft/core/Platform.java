@@ -1,6 +1,8 @@
 package gg.modl.minecraft.core;
 
-import co.aikar.commands.CommandManager;
+import revxrsal.commands.Lamp;
+import revxrsal.commands.command.CommandActor;
+import java.util.function.Consumer;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
@@ -26,7 +28,7 @@ public interface Platform {
     void sendMessage(UUID uuid, String message);
     void sendJsonMessage(UUID uuid, String jsonMessage);
     boolean isOnline(UUID uuid);
-    CommandManager<?,?,?,?,?,?> getCommandManager();
+    Lamp<? extends CommandActor> buildLamp(Consumer<Lamp.Builder<? extends CommandActor>> configurator);
     AbstractPlayer getAbstractPlayer(UUID uuid, boolean queryMojang);
     AbstractPlayer getAbstractPlayer(String username, boolean queryMojang);
     CirrusPlayerWrapper getPlayerWrapper(UUID uuid);

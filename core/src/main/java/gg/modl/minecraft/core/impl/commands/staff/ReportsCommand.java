@@ -1,15 +1,5 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.CommandCompletion;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Name;
-import co.aikar.commands.annotation.Optional;
-import co.aikar.commands.annotation.Syntax;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
@@ -17,6 +7,8 @@ import gg.modl.minecraft.api.http.response.ReportsResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.PlayerOnly;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.ReportsMenu;
 import gg.modl.minecraft.core.impl.menus.staff.StaffReportsMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -26,6 +18,10 @@ import gg.modl.minecraft.core.util.DateFormatter;
 import gg.modl.minecraft.core.util.Pagination;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Named;
+import revxrsal.commands.command.CommandActor;
 
 import java.util.List;
 import java.util.Map;
@@ -33,7 +29,7 @@ import java.util.UUID;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
-public class ReportsCommand extends BaseCommand {
+public class ReportsCommand {
     private static final String STATUS_OPEN_COLOR = "&a", STATUS_CLOSED_COLOR = "&7", STATUS_DEFAULT_COLOR = "&f";
     private static final int MAX_CONTENT_LENGTH = 80, TRUNCATED_LENGTH = 77;
 
@@ -43,12 +39,11 @@ public class ReportsCommand extends BaseCommand {
     private final LocaleManager localeManager;
     private final String panelUrl;
 
-    @CommandCompletion("@players")
-    @CommandAlias("%cmd_reports")
-    @Syntax("[player] [-p [page]]")
+    @Command("reports")
     @Description("Open the reports menu (for a player or all reports), or use -p to print to chat")
-    @Conditions("player|staff")
-    public void reports(CommandIssuer sender, @Optional @Name("player") String playerQuery, @Default() String flags) {
+    @PlayerOnly @StaffOnly
+    public void reports(CommandActor actor, @revxrsal.commands.annotation.Optional @Named("player") String playerQuery, @revxrsal.commands.annotation.Optional String flags) {
+        if (flags == null) flags = "";
         boolean printMode;
         String actualPlayerQuery;
 
@@ -64,30 +59,30 @@ public class ReportsCommand extends BaseCommand {
         }
 
         if (printMode && actualPlayerQuery != null && !actualPlayerQuery.isEmpty()) {
-            printPlayerReports(sender, actualPlayerQuery, Math.max(1, page));
+            printPlayerReports(actor, actualPlayerQuery, Math.max(1, page));
             return;
         }
 
-        if (!sender.isPlayer()) {
+        if (actor.uniqueId() == null) {
             if (actualPlayerQuery != null && !actualPlayerQuery.isEmpty()) {
-                printPlayerReports(sender, actualPlayerQuery, Math.max(1, page));
-            } else sender.sendMessage(localeManager.getMessage("general.invalid_syntax"));
+                printPlayerReports(actor, actualPlayerQuery, Math.max(1, page));
+            } else actor.reply(localeManager.getMessage("general.invalid_syntax"));
 
             return;
         }
 
-        UUID senderUuid = sender.getUniqueId();
+        UUID senderUuid = actor.uniqueId();
 
         if (actualPlayerQuery == null || actualPlayerQuery.isEmpty()) {
             if (printMode) {
-                sender.sendMessage(localeManager.getMessage("general.invalid_syntax"));
+                actor.reply(localeManager.getMessage("general.invalid_syntax"));
                 return;
             }
             openStaffReportsMenu(senderUuid);
             return;
         }
 
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", actualPlayerQuery)));
+        actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", actualPlayerQuery)));
         PlayerLookupRequest request = new PlayerLookupRequest(actualPlayerQuery);
 
         httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
@@ -99,15 +94,15 @@ public class ReportsCommand extends BaseCommand {
                 );
                 CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
                 menu.display(player);
-            } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
+            } else actor.reply(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
-            CommandUtil.handleException(sender, throwable, localeManager);
+            CommandUtil.handleException(actor, throwable, localeManager);
             return null;
         });
     }
 
-    private void printPlayerReports(CommandIssuer sender, String playerQuery, int page) {
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
+    private void printPlayerReports(CommandActor actor, String playerQuery, int page) {
+        actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
 
@@ -118,28 +113,28 @@ public class ReportsCommand extends BaseCommand {
 
                 httpClientHolder.getClient().getPlayerReports(targetUuid, "all").thenAccept(reportsResponse -> {
                     if (reportsResponse.isSuccess()) {
-                        displayReports(sender, playerName, reportsResponse.getReports(), page);
-                    } else displayReports(sender, playerName, listOf(), page);
+                        displayReports(actor, playerName, reportsResponse.getReports(), page);
+                    } else displayReports(actor, playerName, listOf(), page);
                 }).exceptionally(throwable -> {
                     if (throwable.getCause() instanceof PanelUnavailableException) {
-                        sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
-                    } else displayReports(sender, playerName, listOf(), page);
+                        actor.reply(localeManager.getMessage("api_errors.panel_restarting"));
+                    } else displayReports(actor, playerName, listOf(), page);
 
                     return null;
                 });
-            } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
+            } else actor.reply(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
-            CommandUtil.handleException(sender, throwable, localeManager);
+            CommandUtil.handleException(actor, throwable, localeManager);
             return null;
         });
     }
 
     private static final int ENTRIES_PER_PAGE = 8;
 
-    private void displayReports(CommandIssuer sender, String playerName, List<ReportsResponse.Report> reports, int page) {
-        sender.sendMessage(localeManager.getMessage("print.reports.header", mapOf("player", playerName)));
+    private void displayReports(CommandActor actor, String playerName, List<ReportsResponse.Report> reports, int page) {
+        actor.reply(localeManager.getMessage("print.reports.header", mapOf("player", playerName)));
 
-        if (reports == null || reports.isEmpty()) sender.sendMessage(localeManager.getMessage("print.reports.empty"));
+        if (reports == null || reports.isEmpty()) actor.reply(localeManager.getMessage("print.reports.empty"));
         else {
             Pagination.Page pg = Pagination.paginate(reports, ENTRIES_PER_PAGE, page);
             for (int i = pg.getStart(); i < pg.getEnd(); i++) {
@@ -162,7 +157,7 @@ public class ReportsCommand extends BaseCommand {
                     coloredStatus = STATUS_DEFAULT_COLOR + status;
                 }
 
-                sender.sendMessage(localeManager.getMessage("print.reports.entry", mapOf(
+                actor.reply(localeManager.getMessage("print.reports.entry", mapOf(
                         "ordinal", String.valueOf(ordinal),
                         "date", date,
                         "id", id,
@@ -177,19 +172,19 @@ public class ReportsCommand extends BaseCommand {
                         content = content.substring(0, TRUNCATED_LENGTH) + "...";
                     }
 
-                    sender.sendMessage(localeManager.getMessage("print.reports.entry_content", mapOf(
+                    actor.reply(localeManager.getMessage("print.reports.entry_content", mapOf(
                             "content", content
                     )));
                 }
             }
-            sender.sendMessage(localeManager.getMessage("print.reports.total", mapOf(
+            actor.reply(localeManager.getMessage("print.reports.total", mapOf(
                     "count", String.valueOf(reports.size()),
                     "page", String.valueOf(pg.getPage()),
                     "total_pages", String.valueOf(pg.getTotalPages())
             )));
         }
 
-        sender.sendMessage(localeManager.getMessage("print.reports.footer"));
+        actor.reply(localeManager.getMessage("print.reports.footer"));
     }
 
     private void openStaffReportsMenu(UUID senderUuid) {

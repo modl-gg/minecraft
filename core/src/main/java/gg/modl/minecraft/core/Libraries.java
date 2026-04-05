@@ -50,59 +50,61 @@ public final class Libraries {
             "httpcore5-h2",
             "3BqV5z6wTbk0UVM9OQzgLFOzAaENw0PQjIYvKTSz0w4="
     ),
-    PACKETEVENTS_API = LibraryRecord.ofUrl(
-            "com{}github{}retrooper",
+    PACKETEVENTS_API = LibraryRecord.of(
+            "gg{}modl{}minecraft{}packetevents",
             "packetevents-api",
-            "2.12.0-20260401.163410-4",
+            "2.12.0",
             "packetevents-api",
-            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-api/2.12.0-SNAPSHOT/packetevents-api-2.12.0-20260401.163410-4.jar",
-            "2MK1zpgkHPDehG2KJ5u0nYuWvxwYL8JnEdvfdJU6v8E=",
+            null,
             PACKETEVENTS_RELOCATIONS
     ),
-    PACKETEVENTS_NETTY = LibraryRecord.ofUrl(
-            "com{}github{}retrooper",
+    PACKETEVENTS_NETTY = LibraryRecord.of(
+            "gg{}modl{}minecraft{}packetevents",
             "packetevents-netty-common",
-            "2.12.0-20260401.163410-4",
+            "2.12.0",
             "packetevents-netty-common",
-            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-netty-common/2.12.0-SNAPSHOT/packetevents-netty-common-2.12.0-20260401.163410-4.jar",
-            "rGtqLt3APTNJQpYCKk+HGIpgpIgHLpUr83q1lbcAYa0=",
+            null,
             PACKETEVENTS_RELOCATIONS
     ),
-    PACKETEVENTS_SPIGOT = LibraryRecord.ofUrl(
-            "com{}github{}retrooper",
+    PACKETEVENTS_SPIGOT = LibraryRecord.of(
+            "gg{}modl{}minecraft{}packetevents",
             "packetevents-spigot",
-            "2.12.0-20260401.163410-4",
+            "2.12.0",
             "packetevents-spigot",
-            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-spigot/2.12.0-SNAPSHOT/packetevents-spigot-2.12.0-20260401.163410-4.jar",
-            "UZtsO/2EkIXJrsbomQhIgfOWROvpvFbtcEPxttCwa4w=",
+            null,
             PACKETEVENTS_RELOCATIONS
     ),
-    PACKETEVENTS_BUNGEE = LibraryRecord.ofUrl(
-            "com{}github{}retrooper",
+    PACKETEVENTS_BUNGEE = LibraryRecord.of(
+            "gg{}modl{}minecraft{}packetevents",
             "packetevents-bungeecord",
-            "2.12.0-20260401.163410-4",
+            "2.12.0",
             "packetevents-bungeecord",
-            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-bungeecord/2.12.0-SNAPSHOT/packetevents-bungeecord-2.12.0-20260401.163410-4.jar",
-            "AVFKjnkB9WsuXOwz08TfwbSwT0YTmb2qNFStOiAHV54=",
+            null,
             PACKETEVENTS_RELOCATIONS
     ),
-    PACKETEVENTS_VELOCITY = LibraryRecord.ofUrl(
-            "com{}github{}retrooper",
+    PACKETEVENTS_VELOCITY = LibraryRecord.of(
+            "gg{}modl{}minecraft{}packetevents",
             "packetevents-velocity",
-            "2.12.0-20260401.163410-4",
+            "2.12.0",
             "packetevents-velocity",
-            "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-velocity/2.12.0-SNAPSHOT/packetevents-velocity-2.12.0-20260401.163410-4.jar",
-            "T5c7cGbCIOPKjzFpkI9ne6nL7FDMpRhNEnskDoLb34I=",
+            null,
             PACKETEVENTS_RELOCATIONS
     ),
-    PACKETEVENTS_FABRIC = LibraryRecord.ofUrl(
-        "com{}github{}retrooper",
-        "packetevents-fabric",
-        "2.12.0-20260401.163410-4",
-        "packetevents-fabric",
-        "https://repo.codemc.io/repository/maven-snapshots/com/github/retrooper/packetevents-fabric/2.12.0-SNAPSHOT/packetevents-fabric-2.12.0-20260401.163410-4.jar",
-        "4/QzfXz/IAHoP1hrzXMzNhDKGkQFZn7IQ8O+XBeah10=",
-        PACKETEVENTS_RELOCATIONS
+    PACKETEVENTS_FABRIC_COMMON = LibraryRecord.of(
+            "gg{}modl{}minecraft{}packetevents",
+            "packetevents-fabric-common",
+            "2.12.0",
+            "packetevents-fabric-common",
+            null,
+            PACKETEVENTS_RELOCATIONS
+    ),
+    PACKETEVENTS_FABRIC_INTERMEDIARY = LibraryRecord.of(
+            "gg{}modl{}minecraft{}packetevents",
+            "packetevents-fabric-intermediary",
+            "2.12.0",
+            "packetevents-fabric-intermediary",
+            null,
+            PACKETEVENTS_RELOCATIONS
     ),
     ADVENTURE_NBT = LibraryRecord.of(
             "net{}kyori",
@@ -111,37 +113,41 @@ public final class Libraries {
             "adventure-nbt",
             "jubaYh9JbxbGGd5uxcC5wUDOrJuJwqWzN3k429VaFi4="
     ),
-    ACF_CORE = LibraryRecord.ofUrl(
-            "co{}aikar",
-            "acf-core",
-            "0.5.1-20260118.005649-52",
-            "acf-core",
-            "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-core/0.5.1-SNAPSHOT/acf-core-0.5.1-20260118.005649-52.jar",
-            "zh32bc5eNCJzsRJTGYP2NyWhuf1JrwgqwEcZZfJ801A="
+    LAMP_COMMON = LibraryRecord.of(
+            "io{}github{}revxrsal",
+            "lamp.common",
+            "4.0.0-rc.16",
+            "lamp-common"
     ),
-    ACF_BUKKIT = LibraryRecord.ofUrl(
-            "co{}aikar",
-            "acf-bukkit",
-            "0.5.1-20260118.005649-52",
-            "acf-bukkit",
-            "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-bukkit/0.5.1-SNAPSHOT/acf-bukkit-0.5.1-20260118.005649-52.jar",
-            "McXMmPGrl6kbVHVxImCWCq7pJROFbqB3j0DT1vWDFFs="
+    LAMP_BRIGADIER = LibraryRecord.of(
+            "io{}github{}revxrsal",
+            "lamp.brigadier",
+            "4.0.0-rc.16",
+            "lamp-brigadier"
     ),
-    ACF_VELOCITY = LibraryRecord.ofUrl(
-            "co{}aikar",
-            "acf-velocity",
-            "0.5.1-20260118.005649-51",
-            "acf-velocity",
-            "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-velocity/0.5.1-SNAPSHOT/acf-velocity-0.5.1-20260118.005649-51.jar",
-            "+MRdScJFX9qVtgdXYeWZA9CahltfHQUbzbppMAPVrVA="
+    LAMP_BUKKIT = LibraryRecord.of(
+            "io{}github{}revxrsal",
+            "lamp.bukkit",
+            "4.0.0-rc.16",
+            "lamp-bukkit"
     ),
-    ACF_BUNGEE = LibraryRecord.ofUrl(
-            "co{}aikar",
-            "acf-bungee",
-            "0.5.1-20260118.005649-52",
-            "acf-bungee",
-            "https://repo.aikar.co/content/groups/aikar/co/aikar/acf-bungee/0.5.1-SNAPSHOT/acf-bungee-0.5.1-20260118.005649-52.jar",
-            "QC6rQuPHfRNWa/qqcM1ly9L3eKhZdGB41f0jYLBkP/s="
+    LAMP_VELOCITY = LibraryRecord.of(
+            "io{}github{}revxrsal",
+            "lamp.velocity",
+            "4.0.0-rc.16",
+            "lamp-velocity"
+    ),
+    LAMP_BUNGEE = LibraryRecord.of(
+            "io{}github{}revxrsal",
+            "lamp.bungee",
+            "4.0.0-rc.16",
+            "lamp-bungee"
+    ),
+    LAMP_FABRIC = LibraryRecord.of(
+            "io{}github{}revxrsal",
+            "lamp.fabric",
+            "4.0.0-rc.16",
+            "lamp-fabric"
     ),
     SLF4J_API = LibraryRecord.of(
             "org{}slf4j",
@@ -160,25 +166,25 @@ public final class Libraries {
     CIRRUS_SPIGOT = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-spigot",
-            "4.2.0",
+            "4.2.2",
             "cirrus-spigot"
     ),
     CIRRUS_VELOCITY = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-velocity",
-            "4.2.0",
+            "4.2.2",
             "cirrus-velocity"
     ),
     CIRRUS_BUNGEECORD = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-bungeecord",
-            "4.2.0",
+            "4.2.2",
             "cirrus-bungeecord"
     ),
     CIRRUS_FABRIC = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-fabric",
-            "4.2.0",
+            "4.2.2",
             "cirrus-fabric"
     ),
     ADVENTURE_KEY = LibraryRecord.of(
@@ -327,7 +333,7 @@ public final class Libraries {
             "proto",
             "1.0.0",
             "proto",
-            "gXbiRQyu38HSERXwRyHNsP723xFohP6YpX/nr538KPE="
+            "cSZqGppxeHNsQSCBRgobOtanIk+s5tfD2oRuxzamYVY="
     );
 
     public static final List<LibraryRecord> COMMON = Arrays.asList(

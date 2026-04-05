@@ -1,25 +1,22 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.CommandCompletion;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Name;
-import co.aikar.commands.annotation.Syntax;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatCommandLogService;
 import gg.modl.minecraft.core.util.Permissions;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Named;
+import revxrsal.commands.command.CommandActor;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
-@CommandAlias("%cmd_commandlogs") @Conditions("staff")
+@Command("commandlogs") @StaffOnly
 public class CommandLogsCommand extends AbstractLogCommand<ChatCommandLogService.CommandLogEntry> {
     private final ChatCommandLogService logService;
 
@@ -28,12 +25,10 @@ public class CommandLogsCommand extends AbstractLogCommand<ChatCommandLogService
         this.logService = logService;
     }
 
-    @CommandCompletion("@players")
-    @Default
-    @Syntax("<player> [page]")
     @Description("View recent commands for a player")
-    public void commandLogs(CommandIssuer sender, @Name("player") String playerQuery, @Default("1") String pageArg) {
-        execute(sender, playerQuery, pageArg);
+    public void commandLogs(CommandActor actor, @Named("player") String playerQuery, @revxrsal.commands.annotation.Optional String pageArg) {
+        if (pageArg == null) pageArg = "1";
+        execute(actor, playerQuery, pageArg);
     }
 
     @Override protected String permission() { return Permissions.COMMAND_LOGS; }

@@ -1,7 +1,6 @@
 package gg.modl.minecraft.core.impl.commands.staff.punishments;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
+import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
@@ -22,7 +21,7 @@ import java.util.Set;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-public abstract class AbstractManualPunishmentCommand extends BaseCommand {
+public abstract class AbstractManualPunishmentCommand {
     protected final HttpClientHolder httpClientHolder;
     protected final Platform platform;
     protected final Cache cache;
@@ -37,15 +36,15 @@ public abstract class AbstractManualPunishmentCommand extends BaseCommand {
         return httpClientHolder.getClient();
     }
 
-    protected void executePunishment(CommandIssuer sender, Account target, String args) {
+    protected void executePunishment(CommandActor actor, Account target, String args) {
         if (target == null) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", mapOf()));
+            actor.reply(localeManager.getPunishmentMessage("general.player_not_found", mapOf()));
             return;
         }
 
         ParsedArgs parsed = parseArguments(args, getSupportedFlags());
-        String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
-        String issuerId = CommandUtil.resolveIssuerId(sender, cache);
+        String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
+        String issuerId = CommandUtil.resolveActorId(actor, cache);
         String reason = parsed.reason.isEmpty() ? localeManager.getMessage("config.default_reason") : parsed.reason;
 
         Map<String, Object> dataMap = new HashMap<>();
@@ -55,8 +54,8 @@ public abstract class AbstractManualPunishmentCommand extends BaseCommand {
         if (parsed.flags.contains(Flag.STAT_WIPE)) dataMap.put("wipeAfterExpiry", parsed.statWipe);
         long duration = parsed.duration > 0 ? parsed.duration : getDefaultDuration();
         if (duration > 0) dataMap.put("duration", duration);
-        dataMap.put("issuedServer", sender.isPlayer()
-            ? platform.getPlayerServer(sender.getUniqueId())
+        dataMap.put("issuedServer", actor.uniqueId() != null
+            ? platform.getPlayerServer(actor.uniqueId())
             : platform.getServerName());
 
         PunishmentCreateRequest request = new PunishmentCreateRequest(
@@ -81,14 +80,14 @@ public abstract class AbstractManualPunishmentCommand extends BaseCommand {
                     .target(targetName)
                     .punishmentId(response.getPunishmentId());
                 if (duration > 0) builder.duration(duration);
-                sender.sendMessage(builder.get("general.punishment_issued"));
+                actor.reply(builder.get("general.punishment_issued"));
 
-                if (sender.isPlayer() && response.getPunishmentId() != null)
+                if (actor.uniqueId() != null && response.getPunishmentId() != null)
                     platform.runOnMainThread(() ->
-                        PunishmentActionMessages.sendPunishmentActions(platform, sender.getUniqueId(), response.getPunishmentId()));
-            } else sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
+                        PunishmentActionMessages.sendPunishmentActions(platform, actor.uniqueId(), response.getPunishmentId()));
+            } else actor.reply(localeManager.getPunishmentMessage("general.punishment_error",
                     mapOf("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
-        }).exceptionally(throwable -> CommandUtil.handleApiError(sender, throwable, localeManager));
+        }).exceptionally(throwable -> CommandUtil.handleApiError(actor, throwable, localeManager));
     }
 
     protected static ParsedArgs parseArguments(String args, Set<Flag> supportedFlags) {

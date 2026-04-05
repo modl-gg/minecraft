@@ -1,14 +1,9 @@
 package gg.modl.minecraft.core.impl.commands.staff.punishments;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.CommandCompletion;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Name;
-import co.aikar.commands.annotation.Optional;
-import co.aikar.commands.annotation.Syntax;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Named;
+import revxrsal.commands.command.CommandActor;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
@@ -17,6 +12,7 @@ import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.PunishMenu;
 import gg.modl.minecraft.core.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -40,7 +36,8 @@ import java.util.stream.Collectors;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
-public class PunishCommand extends BaseCommand {
+@Command("punish")
+public class PunishCommand {
     private static final Map<String, String> SEVERITY_ALIASES = mapOf(
         "lenient", "low",
         "normal", "regular",
@@ -62,29 +59,26 @@ public class PunishCommand extends BaseCommand {
     private volatile List<PunishmentTypesResponse.PunishmentTypeData> cachedPunishmentTypes = new ArrayList<>();
     private volatile boolean cacheInitialized = false;
 
-    @CommandCompletion("@players @punishment-types")
-    @CommandAlias("%cmd_punish")
-    @Syntax("<target> [type] [reason...] [-lenient|regular|severe] [-ab (alt block)] [-s (silent)] [-sw (stat-wipe)]")
     @Description("Issue a punishment to a player. With no type specified and as a player, opens the punishment GUI.")
-    @Conditions("staff")
-    public void punish(CommandIssuer sender, @Name("target") Account target, @Name("args") @Optional String[] args) {
+    @StaffOnly
+    public void punish(CommandActor actor, @Named("target") Account target, @Named("args") String[] args) {
         if (target == null) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", mapOf()));
+            actor.reply(localeManager.getPunishmentMessage("general.player_not_found", mapOf()));
             return;
         }
 
-        if ((args == null || args.length == 0) && sender.isPlayer()) {
-            openPunishmentGui(sender, target);
+        if ((args == null || args.length == 0) && actor.uniqueId() != null) {
+            openPunishmentGui(actor, target);
             return;
         }
 
         if (args == null || args.length == 0) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.invalid_syntax", mapOf()));
+            actor.reply(localeManager.getPunishmentMessage("general.invalid_syntax", mapOf()));
             return;
         }
 
         if (!cacheInitialized || cachedPunishmentTypes.isEmpty()) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_types_not_loaded", mapOf()));
+            actor.reply(localeManager.getPunishmentMessage("general.punishment_types_not_loaded", mapOf()));
             return;
         }
 
@@ -94,38 +88,38 @@ public class PunishCommand extends BaseCommand {
             String availableTypes = punishmentTypes.stream()
                     .map(PunishmentTypesResponse.PunishmentTypeData::getName)
                     .collect(Collectors.joining(", "));
-            sender.sendMessage(localeManager.getPunishmentMessage("general.invalid_punishment_type",
+            actor.reply(localeManager.getPunishmentMessage("general.invalid_punishment_type",
                 mapOf("types", availableTypes)));
             return;
         }
 
         final PunishmentTypesResponse.PunishmentTypeData punishmentType = parsed.punishmentType;
         String punishmentPermission = PermissionUtil.formatPunishmentPermission(punishmentType.getName());
-        if (!PermissionUtil.hasPermission(sender, cache, punishmentPermission)) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.no_permission_punishment",
+        if (!PermissionUtil.hasPermission(actor, cache, punishmentPermission)) {
+            actor.reply(localeManager.getPunishmentMessage("general.no_permission_punishment",
                 mapOf("type", punishmentType.getName())));
             return;
         }
 
         PunishmentArgs punishmentArgs = parseArguments(parsed.remainingArgs);
         if (punishmentArgs.severity != null && !VALID_SEVERITIES.contains(punishmentArgs.severity)) {
-            sender.sendMessage(localeManager.getMessage("punishment_commands.invalid_severity"));
+            actor.reply(localeManager.getMessage("punishment_commands.invalid_severity"));
             return;
         }
 
         String validationError = validatePunishmentCompatibility(punishmentArgs, punishmentType);
         if (validationError != null) {
-            sender.sendMessage(validationError);
+            actor.reply(validationError);
             return;
         }
 
         if (punishmentArgs.severity == null) punishmentArgs.severity = DEFAULT_SEVERITY;
-        final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
-        final String issuerId = CommandUtil.resolveIssuerId(sender, cache);
+        final String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
+        final String issuerId = CommandUtil.resolveActorId(actor, cache);
         Map<String, Object> data = buildPunishmentData(punishmentArgs, punishmentType, target);
 
-        data.put("issuedServer", sender.isPlayer()
-            ? platform.getPlayerServer(sender.getUniqueId())
+        data.put("issuedServer", actor.uniqueId() != null
+            ? platform.getPlayerServer(actor.uniqueId())
             : platform.getServerName());
 
         List<String> notes = new ArrayList<>();
@@ -153,22 +147,22 @@ public class PunishCommand extends BaseCommand {
             if (response.isSuccess()) {
                 String targetName = target.getUsernames().get(0).getUsername();
 
-                sender.sendMessage(localeManager.punishment()
+                actor.reply(localeManager.punishment()
                     .type(punishmentTypeName)
                     .target(targetName)
                     .punishmentId(response.getPunishmentId())
                     .get("general.punishment_issued"));
 
-                if (sender.isPlayer() && response.getPunishmentId() != null)
+                if (actor.uniqueId() != null && response.getPunishmentId() != null)
                     platform.runOnMainThread(() ->
-                        PunishmentActionMessages.sendPunishmentActions(platform, sender.getUniqueId(), response.getPunishmentId()));
-            } else sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
+                        PunishmentActionMessages.sendPunishmentActions(platform, actor.uniqueId(), response.getPunishmentId()));
+            } else actor.reply(localeManager.getPunishmentMessage("general.punishment_error",
                     mapOf("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
-        }).exceptionally(throwable -> CommandUtil.handleApiError(sender, throwable, localeManager));
+        }).exceptionally(throwable -> CommandUtil.handleApiError(actor, throwable, localeManager));
     }
 
-    private void openPunishmentGui(CommandIssuer sender, Account target) {
-        UUID senderUuid = sender.getUniqueId();
+    private void openPunishmentGui(CommandActor actor, Account target) {
+        UUID senderUuid = actor.uniqueId();
         String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
 
         PunishMenu menu = new PunishMenu(

@@ -1,91 +1,82 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.CommandCompletion;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Optional;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.PlayerOnly;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.command.CommandActor;
 
 import java.util.UUID;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
-@CommandAlias("%cmd_target") @Conditions("staff|player") @RequiredArgsConstructor
-public class TargetCommand extends BaseCommand {
+@Command("target") @PlayerOnly @StaffOnly @RequiredArgsConstructor
+public class TargetCommand {
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
     private final StaffModeService staffModeService;
     private final BridgeService bridgeService;
 
-    @Default
-    @CommandCompletion("@players")
     @Description("Target a player for moderation")
-    public void onTarget(CommandIssuer sender, @Optional AbstractPlayer target) {
-        if (!sender.isPlayer()) {
-            sender.sendMessage(localeManager.getMessage("general.players_only"));
-            return;
-        }
-        if (!PermissionUtil.hasPermission(sender, cache, Permissions.MOD_ACTIONS)) {
-            sender.sendMessage(localeManager.getMessage("general.no_permission"));
+    public void onTarget(CommandActor actor, @revxrsal.commands.annotation.Optional AbstractPlayer target) {
+        if (!PermissionUtil.hasPermission(actor, cache, Permissions.MOD_ACTIONS)) {
+            actor.reply(localeManager.getMessage("general.no_permission"));
             return;
         }
 
-        UUID staffUuid = sender.getUniqueId();
+        UUID staffUuid = actor.uniqueId();
 
         if (target == null) {
-            handleNoTarget(sender, staffUuid);
+            handleNoTarget(actor, staffUuid);
             return;
         }
         if (target.getUuid().equals(staffUuid)) {
-            sender.sendMessage(localeManager.getMessage("target.cannot_target_self"));
+            actor.reply(localeManager.getMessage("target.cannot_target_self"));
             return;
         }
 
         UUID targetUuid = target.getUuid();
         String targetName = target.getName();
 
-        connectToTargetServerIfNeeded(sender, staffUuid, targetUuid, targetName);
-        ensureStaffModeEnabled(sender, staffUuid);
+        connectToTargetServerIfNeeded(actor, staffUuid, targetUuid, targetName);
+        ensureStaffModeEnabled(actor, staffUuid);
 
         staffModeService.setTarget(staffUuid, targetUuid);
         bridgeService.sendTargetRequest(staffUuid.toString(), targetUuid.toString());
-        sender.sendMessage(localeManager.getMessage("target.targeting", mapOf("player", targetName)));
+        actor.reply(localeManager.getMessage("target.targeting", mapOf("player", targetName)));
     }
 
-    private void handleNoTarget(CommandIssuer sender, UUID staffUuid) {
+    private void handleNoTarget(CommandActor actor, UUID staffUuid) {
         if (staffModeService.getState(staffUuid) == StaffModeService.StaffModeState.TARGETING) {
             staffModeService.clearTarget(staffUuid);
-            sender.sendMessage(localeManager.getMessage("target.cleared"));
+            actor.reply(localeManager.getMessage("target.cleared"));
         } else {
-            sender.sendMessage(localeManager.getMessage("target.usage"));
+            actor.reply(localeManager.getMessage("target.usage"));
         }
     }
 
-    private void connectToTargetServerIfNeeded(CommandIssuer sender, UUID staffUuid, UUID targetUuid, String targetName) {
+    private void connectToTargetServerIfNeeded(CommandActor actor, UUID staffUuid, UUID targetUuid, String targetName) {
         String staffServer = platform.getPlayerServer(staffUuid);
         String targetServer = platform.getPlayerServer(targetUuid);
 
         if (targetServer != null && !targetServer.equals(staffServer)) {
             platform.connectToServer(staffUuid, targetServer);
-            sender.sendMessage(localeManager.getMessage("target.connecting", mapOf(
+            actor.reply(localeManager.getMessage("target.connecting", mapOf(
                     "player", targetName, "server", targetServer
             )));
         }
     }
 
-    private void ensureStaffModeEnabled(CommandIssuer sender, UUID staffUuid) {
+    private void ensureStaffModeEnabled(CommandActor actor, UUID staffUuid) {
         if (staffModeService.isInStaffMode(staffUuid)) return;
 
         staffModeService.enable(staffUuid);
@@ -95,7 +86,7 @@ public class TargetCommand extends BaseCommand {
         String panelName = cache.getStaffDisplayName(staffUuid);
         if (panelName == null) panelName = inGameName;
 
-        sender.sendMessage(localeManager.getMessage("staff_mode.enabled"));
+        actor.reply(localeManager.getMessage("staff_mode.enabled"));
         platform.staffBroadcast(localeManager.getMessage("staff_mode.enabled_broadcast", mapOf(
                 "staff", panelName, "in-game-name", inGameName
         )));
