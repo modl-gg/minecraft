@@ -318,8 +318,34 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
 
         net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
             if (!(player instanceof ServerPlayerEntity sp)) return net.minecraft.util.ActionResult.PASS;
-            if (fabricStaffModeHandler.isInStaffMode(sp.getUuid())) return net.minecraft.util.ActionResult.FAIL;
             if (fabricFreezeHandler.isFrozen(sp.getUuid())) return net.minecraft.util.ActionResult.FAIL;
+
+            if (fabricStaffModeHandler.isInStaffMode(sp.getUuid())) {
+                // Silent container viewing for vanished staff
+                if (fabricStaffModeHandler.isVanished(sp.getUuid())) {
+                    BlockPos pos = hitResult.getBlockPos();
+                    net.minecraft.block.entity.BlockEntity be = world.getBlockEntity(pos);
+                    if (be instanceof net.minecraft.inventory.Inventory container) {
+                        fabricStaffModeHandler.openSilentContainer(sp, container, pos);
+                        return net.minecraft.util.ActionResult.SUCCESS;
+                    }
+                }
+                return net.minecraft.util.ActionResult.FAIL;
+            }
+
+            // Track block placements for replay recording
+            if (recordingManager != null && !recordingManager.getActiveRecordings().isEmpty()) {
+                BlockPos placePos = hitResult.getBlockPos().offset(hitResult.getSide());
+                UUID uuid = sp.getUuid();
+                server.execute(() -> {
+                    BlockState placedState = ((World) world).getBlockState(placePos);
+                    if (!placedState.isAir()) {
+                        int stateId = getBlockStateId(placedState);
+                        recordingManager.enqueueBlockPlace(uuid, placePos.getX(), (short) placePos.getY(), placePos.getZ(), stateId);
+                    }
+                });
+            }
+
             return net.minecraft.util.ActionResult.PASS;
         });
 

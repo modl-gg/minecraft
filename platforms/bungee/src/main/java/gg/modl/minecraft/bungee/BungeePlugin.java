@@ -189,6 +189,7 @@ public class BungeePlugin extends Plugin {
         for (LibraryRecord record : Libraries.PROTO_DEPS) loadLibrary(libraryManager, record);
         for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
         loadLibrary(libraryManager, Libraries.LAMP_COMMON);
+        loadLibrary(libraryManager, Libraries.LAMP_BRIGADIER);
         loadLibrary(libraryManager, Libraries.LAMP_BUNGEE);
         loadLibrary(libraryManager, Libraries.CIRRUS_BUNGEECORD);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);

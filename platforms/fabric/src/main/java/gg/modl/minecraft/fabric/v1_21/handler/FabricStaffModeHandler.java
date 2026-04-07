@@ -66,6 +66,10 @@ public class FabricStaffModeHandler {
         return staffModeActive.contains(uuid);
     }
 
+    public boolean isVanished(UUID uuid) {
+        return vanished.contains(uuid);
+    }
+
     public void enterStaffMode(String staffUuid) {
         UUID uuid = UUID.fromString(staffUuid);
         staffModeActive.add(uuid);
@@ -480,6 +484,13 @@ public class FabricStaffModeHandler {
             if (player.getHealth() < player.getMaxHealth()) {
                 player.setHealth(player.getMaxHealth());
             }
+            // Prevent item pickup: clear any slots not part of the expected hotbar
+            Map<Integer, StaffModeConfig.HotbarItem> hotbar = getActiveHotbar(uuid);
+            for (int i = 0; i < player.getInventory().size(); i++) {
+                if (player.getInventory().getStack(i).isEmpty()) continue;
+                if (i <= 8 && hotbar != null && hotbar.containsKey(i)) continue;
+                player.getInventory().setStack(i, ItemStack.EMPTY);
+            }
         }
     }
 
@@ -578,6 +589,34 @@ public class FabricStaffModeHandler {
                 (syncId, playerInv, p) -> new net.minecraft.screen.GenericContainerScreenHandler(
                         net.minecraft.screen.ScreenHandlerType.GENERIC_9X5, syncId, playerInv, viewInventory, 5),
                 Text.literal(target.getName().getString() + "'s Inventory")));
+    }
+
+    private static final String SILENT_CONTAINER_PREFIX = "\u00a78Viewing: ";
+
+    public void openSilentContainer(ServerPlayerEntity player, net.minecraft.inventory.Inventory container, net.minecraft.util.math.BlockPos pos) {
+        int size = container.size();
+        // Round up to nearest multiple of 9 for chest-style GUI, max 54 (6 rows)
+        int rows = Math.min(6, Math.max(1, (size + 8) / 9));
+        int guiSize = rows * 9;
+
+        net.minecraft.inventory.SimpleInventory viewInventory = new net.minecraft.inventory.SimpleInventory(guiSize);
+        for (int i = 0; i < size && i < guiSize; i++) {
+            viewInventory.setStack(i, container.getStack(i).copy());
+        }
+
+        net.minecraft.screen.ScreenHandlerType<?> handlerType = switch (rows) {
+            case 1 -> net.minecraft.screen.ScreenHandlerType.GENERIC_9X1;
+            case 2 -> net.minecraft.screen.ScreenHandlerType.GENERIC_9X2;
+            case 3 -> net.minecraft.screen.ScreenHandlerType.GENERIC_9X3;
+            case 4 -> net.minecraft.screen.ScreenHandlerType.GENERIC_9X4;
+            case 5 -> net.minecraft.screen.ScreenHandlerType.GENERIC_9X5;
+            default -> net.minecraft.screen.ScreenHandlerType.GENERIC_9X6;
+        };
+
+        player.openHandledScreen(new net.minecraft.screen.SimpleNamedScreenHandlerFactory(
+                (syncId, playerInv, p) -> new net.minecraft.screen.GenericContainerScreenHandler(
+                        handlerType, syncId, playerInv, viewInventory, rows),
+                Text.literal(SILENT_CONTAINER_PREFIX + pos.getX() + "," + pos.getY() + "," + pos.getZ())));
     }
 
     private void handleTeleportToTarget(ServerPlayerEntity player) {

@@ -15,6 +15,7 @@ dependencies {
     implementation(project(":core"))
 
     compileOnly("io.github.revxrsal:lamp.common:${property("lamp.version")}")
+    compileOnly("io.github.revxrsal:lamp.brigadier:${property("lamp.version")}")
     compileOnly("io.github.revxrsal:lamp.velocity:${property("lamp.version")}")
     compileOnly("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
     compileOnly("gg.modl.minecraft.cirrus:cirrus-velocity:${property("cirrus.version")}")

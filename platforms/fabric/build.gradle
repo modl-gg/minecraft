@@ -60,6 +60,7 @@ dependencies {
 
     // Provided by server
     compileOnly "io.github.revxrsal:lamp.common:${rootProject.property('lamp.version')}"
+    compileOnly "io.github.revxrsal:lamp.brigadier:${rootProject.property('lamp.version')}"
     compileOnly "io.github.revxrsal:lamp.fabric:${rootProject.property('lamp.version')}"
     compileOnly "io.netty:netty-all:4.1.97.Final"
     compileOnly "net.kyori:adventure-text-minimessage:4.26.1"
