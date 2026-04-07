@@ -23,6 +23,7 @@ public class FabricFreezeHandler {
     private final BridgeLocaleManager localeManager;
     private final Map<UUID, UUID> frozenPlayers = new ConcurrentHashMap<>(); // frozen -> staff
     private final Map<UUID, double[]> frozenPositions = new ConcurrentHashMap<>(); // frozen -> [x,y,z]
+    private final Map<UUID, String> frozenPlayerNames = new ConcurrentHashMap<>();
     @Setter private FabricStaffModeHandler staffModeHandler;
     @Setter private BridgeQueryClient bridgeClient;
 
@@ -36,6 +37,7 @@ public class FabricFreezeHandler {
         frozenPlayers.put(target, UUID.fromString(staffUuid));
 
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(target);
+        frozenPlayerNames.put(target, player != null ? player.getName().getString() : "Unknown");
         if (player != null) {
             frozenPositions.put(target, new double[]{player.getX(), player.getY(), player.getZ()});
             player.sendMessage(Text.literal(localeManager.getMessage("freeze.frozen")));
@@ -46,6 +48,7 @@ public class FabricFreezeHandler {
         UUID target = UUID.fromString(targetUuid);
         frozenPlayers.remove(target);
         frozenPositions.remove(target);
+        frozenPlayerNames.remove(target);
 
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(target);
         if (player != null) {
@@ -79,8 +82,8 @@ public class FabricFreezeHandler {
         frozenPositions.remove(uuid);
 
         if (bridgeClient != null) {
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-            String playerName = player != null ? player.getName().getString() : "Unknown";
+            String playerName = frozenPlayerNames.getOrDefault(uuid, "Unknown");
+            frozenPlayerNames.remove(uuid);
             bridgeClient.sendMessage("FREEZE_LOGOUT", uuid.toString(), playerName);
         }
     }

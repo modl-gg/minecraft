@@ -44,6 +44,7 @@ public class FabricPlatform implements Platform {
     private @Setter Staff2faService staff2faService;
     private @Setter ChatInputManager chatInputManager;
     private @Setter ReplayService replayService;
+    private @Setter String serverName = "fabric-server";
 
     public FabricPlatform(MinecraftServer server, Path dataFolder, PluginLogger logger) {
         this.server = server;
@@ -219,7 +220,7 @@ public class FabricPlatform implements Platform {
 
     @Override
     public String getServerName() {
-        return "fabric-server";
+        return serverName;
     }
 
     @Override
@@ -289,9 +290,38 @@ public class FabricPlatform implements Platform {
 
     private void sendJsonToPlayer(ServerPlayerEntity player, String jsonMessage) {
         try {
-            player.sendMessage(Text.literal(jsonMessage.replaceAll("§[0-9a-fk-or]", "")), false);
+            com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(jsonMessage).getAsJsonObject();
+            fixLegacyHoverEvents(obj);
+            String fixedJson = new com.google.gson.Gson().toJson(obj);
+            Text text = Text.Serialization.fromJson(fixedJson, player.getRegistryManager());
+            if (text != null) {
+                player.sendMessage(text, false);
+                return;
+            }
         } catch (Exception e) {
-            player.sendMessage(Text.literal("Notification: " + jsonMessage), false);
+            logger.warning("Failed to parse JSON message: " + e.getMessage());
+        }
+        player.sendMessage(Text.literal(jsonMessage.replaceAll("\u00a7[0-9a-fk-or]", "")), false);
+    }
+
+    private void fixLegacyHoverEvents(com.google.gson.JsonObject obj) {
+        if (obj.has("hoverEvent")) {
+            com.google.gson.JsonObject hover = obj.getAsJsonObject("hoverEvent");
+            if (hover != null && hover.has("value") && !hover.has("contents")) {
+                com.google.gson.JsonElement value = hover.remove("value");
+                if (value.isJsonPrimitive()) {
+                    com.google.gson.JsonObject contents = new com.google.gson.JsonObject();
+                    contents.add("text", value);
+                    hover.add("contents", contents);
+                } else {
+                    hover.add("contents", value);
+                }
+            }
+        }
+        if (obj.has("extra") && obj.get("extra").isJsonArray()) {
+            for (com.google.gson.JsonElement el : obj.getAsJsonArray("extra")) {
+                if (el.isJsonObject()) fixLegacyHoverEvents(el.getAsJsonObject());
+            }
         }
     }
 }

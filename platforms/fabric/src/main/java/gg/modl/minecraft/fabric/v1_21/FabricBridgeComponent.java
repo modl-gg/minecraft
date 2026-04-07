@@ -26,6 +26,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
@@ -34,6 +35,8 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+
+import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class FabricBridgeComponent extends AbstractBridgeComponent {
     private final MinecraftServer server;
@@ -64,6 +67,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
                                          StaffModeConfig staffModeConfig) {
         fabricStaffModeHandler = new FabricStaffModeHandler(server, bridgeConfig, fabricFreezeHandler,
                 localeManager, staffModeConfig);
+        fabricStaffModeHandler.startScoreboardUpdater();
     }
 
     @Override
@@ -267,7 +271,10 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
 
     @Override
     protected void registerPlatformEvents() {
-        ServerTickEvents.END_SERVER_TICK.register(s -> fabricFreezeHandler.onTick());
+        ServerTickEvents.END_SERVER_TICK.register(s -> {
+            fabricFreezeHandler.onTick();
+            fabricStaffModeHandler.onTick();
+        });
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, s) -> {
             ServerPlayerEntity player = handler.getPlayer();
@@ -299,13 +306,56 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
             }
         });
 
-        // Block break events for replay recording
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
+            if (fabricStaffModeHandler.isInStaffMode(player.getUuid())) return false;
+            if (fabricFreezeHandler.isFrozen(player.getUuid())) return false;
             if (recordingManager != null && !recordingManager.getActiveRecordings().isEmpty()) {
                 int stateId = getBlockStateId(state);
                 recordingManager.enqueueBlockBreak(player.getUuid(), pos.getX(), (short) pos.getY(), pos.getZ(), stateId);
             }
             return true;
+        });
+
+        net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+            if (!(player instanceof ServerPlayerEntity sp)) return net.minecraft.util.ActionResult.PASS;
+            if (fabricStaffModeHandler.isInStaffMode(sp.getUuid())) return net.minecraft.util.ActionResult.FAIL;
+            if (fabricFreezeHandler.isFrozen(sp.getUuid())) return net.minecraft.util.ActionResult.FAIL;
+            return net.minecraft.util.ActionResult.PASS;
+        });
+
+        net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
+            if (hand != net.minecraft.util.Hand.MAIN_HAND)
+                return net.minecraft.util.TypedActionResult.pass(net.minecraft.item.ItemStack.EMPTY);
+            if (!(player instanceof ServerPlayerEntity sp))
+                return net.minecraft.util.TypedActionResult.pass(net.minecraft.item.ItemStack.EMPTY);
+            if (!fabricStaffModeHandler.isInStaffMode(sp.getUuid()))
+                return net.minecraft.util.TypedActionResult.pass(net.minecraft.item.ItemStack.EMPTY);
+
+            int slot = sp.getInventory().selectedSlot;
+            Map<Integer, StaffModeConfig.HotbarItem> hotbar = fabricStaffModeHandler.getActiveHotbar(sp.getUuid());
+            StaffModeConfig.HotbarItem item = hotbar != null ? hotbar.get(slot) : null;
+            if (item != null && item.getAction() != null && !item.getAction().isEmpty()) {
+                fabricStaffModeHandler.executeAction(sp, item);
+                return net.minecraft.util.TypedActionResult.success(sp.getMainHandStack());
+            }
+            return net.minecraft.util.TypedActionResult.pass(net.minecraft.item.ItemStack.EMPTY);
+        });
+
+        net.fabricmc.fabric.api.event.player.AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (!(player instanceof ServerPlayerEntity sp)) return net.minecraft.util.ActionResult.PASS;
+            if (!fabricStaffModeHandler.isInStaffMode(sp.getUuid())) return net.minecraft.util.ActionResult.PASS;
+
+            if (entity instanceof ServerPlayerEntity targetPlayer) {
+                int slot = sp.getInventory().selectedSlot;
+                Map<Integer, StaffModeConfig.HotbarItem> hotbar = fabricStaffModeHandler.getActiveHotbar(sp.getUuid());
+                StaffModeConfig.HotbarItem item = hotbar != null ? hotbar.get(slot) : null;
+                if (item != null && "target_selector".equals(item.getAction())) {
+                    fabricStaffModeHandler.setTarget(sp.getUuid().toString(), targetPlayer.getUuid().toString());
+                    sp.sendMessage(Text.literal(localeManager.getMessage("staff_mode.target.now_targeting",
+                            mapOf("player", targetPlayer.getName().getString()))), false);
+                }
+            }
+            return net.minecraft.util.ActionResult.FAIL;
         });
 
         // World/dimension change for replay recording
@@ -338,7 +388,25 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
 
     @Override
     protected void registerProxyCommand(BridgeQueryClient client) {
-        // TODO: Brigadier command registration via CommandRegistrationCallback
+        try {
+            var dispatcher = server.getCommandManager().getDispatcher();
+            dispatcher.register(
+                    net.minecraft.server.command.CommandManager.literal("proxycmd")
+                            .requires(source -> source.hasPermissionLevel(4))
+                            .then(net.minecraft.server.command.CommandManager.argument("command",
+                                            com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                                    .executes(ctx -> {
+                                        String cmd = com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "command");
+                                        client.sendMessage("PROXY_CMD", cmd);
+                                        ctx.getSource().sendMessage(net.minecraft.text.Text.literal("Sent to proxy: " + cmd));
+                                        return 1;
+                                    })));
+            for (var player : server.getPlayerManager().getPlayerList()) {
+                server.getCommandManager().sendCommandTree(player);
+            }
+        } catch (Exception e) {
+            pluginLogger.warning("[bridge] Failed to register proxy command: " + e.getMessage());
+        }
     }
 
     @Override

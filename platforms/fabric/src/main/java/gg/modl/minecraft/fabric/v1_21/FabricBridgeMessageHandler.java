@@ -83,9 +83,33 @@ public class FabricBridgeMessageHandler implements BridgeMessageHandler {
 
     @Override
     public void onCaptureReplay(String targetUuid, String targetName) {
-        // Replay not supported on Fabric yet
+        UUID uuid = UUID.fromString(targetUuid);
+        server.execute(() -> {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+            if (player == null) {
+                sendReplayResponse(targetUuid, "");
+                return;
+            }
+
+            gg.modl.minecraft.core.service.ReplayService replayService = bridgeComponent.getReplayService();
+            if (replayService == null || !replayService.isReplayAvailable(uuid)) {
+                sendReplayResponse(targetUuid, "");
+                return;
+            }
+
+            replayService.captureReplay(uuid, targetName)
+                    .thenAccept(replayId -> sendReplayResponse(targetUuid, replayId != null ? replayId : ""))
+                    .exceptionally(ex -> {
+                        ModlFabricModImpl.LOGGER.warn("[bridge] Replay capture failed for {}: {}", targetName, ex.getMessage());
+                        sendReplayResponse(targetUuid, "");
+                        return null;
+                    });
+        });
+    }
+
+    private void sendReplayResponse(String targetUuid, String replayId) {
         if (bridgeComponent.getBridgeClient() != null) {
-            bridgeComponent.getBridgeClient().sendMessage("CAPTURE_REPLAY_RESPONSE", targetUuid, "");
+            bridgeComponent.getBridgeClient().sendMessage("CAPTURE_REPLAY_RESPONSE", targetUuid, replayId);
         }
     }
 

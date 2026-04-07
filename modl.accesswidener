@@ -1,0 +1,10 @@
+accessWidener	v2	intermediary
+accessible	field	net/minecraft/class_1661	field_7545	I
+accessible	field	net/minecraft/class_1661	field_7547	Lnet/minecraft/class_2371;
+accessible	field	net/minecraft/class_1661	field_7548	Lnet/minecraft/class_2371;
+accessible	field	net/minecraft/class_1661	field_7544	Lnet/minecraft/class_2371;
+accessible	field	net/minecraft/class_3222	field_13974	Lnet/minecraft/class_3225;
+accessible	field	net/minecraft/class_1657	field_7510	F
+accessible	field	net/minecraft/class_1657	field_7520	I
+accessible	field	net/minecraft/class_8609	field_45013	Lnet/minecraft/class_2535;
+accessible	field	net/minecraft/class_2535	field_11651	Lio/netty/channel/Channel;
