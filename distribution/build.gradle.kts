@@ -9,6 +9,10 @@ java {
 val fabricLoomJar = project(":platforms:fabric").layout.buildDirectory.file("libs/fabric-${project.version}.jar")
 val fabric26Dir = rootProject.file("platforms/fabric-26")
 val fabric26Jar = fabric26Dir.resolve("build/libs/modl-fabric-26-${project.version}.jar")
+val fabric121Dir = rootProject.file("platforms/fabric-121")
+val fabric121Jar = fabric121Dir.resolve("build/libs/modl-fabric-121-${project.version}.jar")
+val fabric1214Dir = rootProject.file("platforms/fabric-1214")
+val fabric1214Jar = fabric1214Dir.resolve("build/libs/modl-fabric-1214-${project.version}.jar")
 
 val buildFabric26 by tasks.registering(Exec::class) {
     description = "Builds the Fabric 26.1 module (separate Gradle build due to Loom version conflict)"
@@ -19,6 +23,28 @@ val buildFabric26 by tasks.registering(Exec::class) {
         "build", "-x", "test"
     )
     onlyIf { fabric26Dir.resolve("build.gradle").exists() }
+}
+
+val buildFabric121 by tasks.registering(Exec::class) {
+    description = "Builds the Fabric 1.21.1 module (separate Gradle build for older Loom)"
+    dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
+    workingDir = fabric121Dir
+    commandLine(
+        fabric121Dir.resolve("gradlew").absolutePath,
+        "build", "-x", "test"
+    )
+    onlyIf { fabric121Dir.resolve("build.gradle").exists() }
+}
+
+val buildFabric1214 by tasks.registering(Exec::class) {
+    description = "Builds the Fabric 1.21.4 module (separate Gradle build for older Loom)"
+    dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
+    workingDir = fabric1214Dir
+    commandLine(
+        fabric1214Dir.resolve("gradlew").absolutePath,
+        "build", "-x", "test"
+    )
+    onlyIf { fabric1214Dir.resolve("build.gradle").exists() }
 }
 
 dependencies {
@@ -32,12 +58,12 @@ dependencies {
     implementation("com.alessiodp.libby:libby-fabric:${property("libby.version")}")
 }
 
-// Create the v1_21 nested JAR from Loom output (with PE relocations matching the main shadow JAR)
-val fabric121NestedJar by tasks.registering(com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar::class) {
-    archiveBaseName.set("modl-fabric-121")
+// Create the v1_21_11 nested JAR from Loom output (with PE relocations matching the main shadow JAR)
+val fabric12111NestedJar by tasks.registering(com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar::class) {
+    archiveBaseName.set("modl-fabric-12111")
     dependsOn(":platforms:fabric:remapJar")
     from(zipTree(fabricLoomJar)) {
-        include("gg/modl/minecraft/fabric/v1_21/**")
+        include("gg/modl/minecraft/fabric/v1_21_11/**")
     }
     into("") {
         from(zipTree(fabricLoomJar)) {
@@ -50,6 +76,32 @@ val fabric121NestedJar by tasks.registering(com.github.jengelman.gradle.plugins.
     }
     relocate("com.github.retrooper.packetevents", "gg.modl.libs.packetevents.api")
     relocate("io.github.retrooper.packetevents", "gg.modl.libs.packetevents.impl")
+}
+
+// Relocate PE references in the fabric-121 JAR
+val fabric121RelocatedJar = layout.buildDirectory.file("fabric-121-relocated/modl-fabric-121.jar").map { it.asFile }
+
+val relocateFabric121 by tasks.registering(com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar::class) {
+    dependsOn(buildFabric121)
+    archiveFileName.set("modl-fabric-121.jar")
+    destinationDirectory.set(layout.buildDirectory.dir("fabric-121-relocated"))
+    from(provider { if (fabric121Jar.exists()) zipTree(fabric121Jar) else files() })
+    relocate("com.github.retrooper.packetevents", "gg.modl.libs.packetevents.api")
+    relocate("io.github.retrooper.packetevents", "gg.modl.libs.packetevents.impl")
+    onlyIf { fabric121Jar.exists() }
+}
+
+// Relocate PE references in the fabric-1214 JAR
+val fabric1214RelocatedJar = layout.buildDirectory.file("fabric-1214-relocated/modl-fabric-1214.jar").map { it.asFile }
+
+val relocateFabric1214 by tasks.registering(com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar::class) {
+    dependsOn(buildFabric1214)
+    archiveFileName.set("modl-fabric-1214.jar")
+    destinationDirectory.set(layout.buildDirectory.dir("fabric-1214-relocated"))
+    from(provider { if (fabric1214Jar.exists()) zipTree(fabric1214Jar) else files() })
+    relocate("com.github.retrooper.packetevents", "gg.modl.libs.packetevents.api")
+    relocate("io.github.retrooper.packetevents", "gg.modl.libs.packetevents.impl")
+    onlyIf { fabric1214Jar.exists() }
 }
 
 // Relocate PE references in the fabric-26 JAR to match the main shadow JAR
@@ -67,7 +119,11 @@ val relocateFabric26 by tasks.registering(com.github.jengelman.gradle.plugins.sh
 
 tasks.shadowJar {
     dependsOn(":platforms:fabric:remapJar")
-    dependsOn(fabric121NestedJar)
+    dependsOn(fabric12111NestedJar)
+    dependsOn(buildFabric121)
+    dependsOn(relocateFabric121)
+    dependsOn(buildFabric1214)
+    dependsOn(relocateFabric1214)
     dependsOn(buildFabric26)
     dependsOn(relocateFabric26)
     archiveBaseName.set("modl")
@@ -108,8 +164,14 @@ tasks.shadowJar {
 
     // Nested Fabric JARs — renamed to match fabric.mod.json "jars" declarations
     into("META-INF/jars") {
-        from(fabric121NestedJar) {
+        from(fabric12111NestedJar) {
+            rename(".*", "modl-fabric-12111.jar")
+        }
+        from(provider { if (fabric121RelocatedJar.get().exists()) listOf(fabric121RelocatedJar.get()) else emptyList() }) {
             rename(".*", "modl-fabric-121.jar")
+        }
+        from(provider { if (fabric1214RelocatedJar.get().exists()) listOf(fabric1214RelocatedJar.get()) else emptyList() }) {
+            rename(".*", "modl-fabric-1214.jar")
         }
         from(provider { if (fabric26RelocatedJar.get().exists()) listOf(fabric26RelocatedJar.get()) else emptyList() }) {
             rename(".*", "modl-fabric-26.jar")

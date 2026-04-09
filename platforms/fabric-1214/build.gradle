@@ -1,27 +1,10 @@
 plugins {
-    id 'fabric-loom' version '1.15-SNAPSHOT'
+    id 'fabric-loom' version '1.9-SNAPSHOT'
     id 'java'
 }
 
-// Load local gradle.properties as defaults (Gradle only auto-loads root gradle.properties)
-def localProps = new Properties()
-file("gradle.properties").withInputStream { localProps.load(it) }
-localProps.each { key, value -> project.ext.set(key.toString(), value) }
-
-// Override with version-specific properties if -Pmc_version is passed
-def mcVersion = project.hasProperty('mc_version') ? project.property('mc_version') : project.ext.minecraft_version
-def versionFile = file("versions/${mcVersion}.properties")
-if (versionFile.exists()) {
-    def versionProps = new Properties()
-    versionFile.withInputStream { versionProps.load(it) }
-    versionProps.each { key, value -> project.ext.set(key.toString(), value) }
-}
-
-// Capture into local variables for use inside closures
-def mcVer = project.ext.minecraft_version
-def yarnMappings = project.ext.yarn_mappings
-def loaderVer = project.ext.loader_version
-def fabricVer = project.ext.fabric_version
+group = 'gg.modl'
+version = property('version')
 
 repositories {
     maven { url "https://nexus.modl.gg/repository/maven-releases/" }
@@ -35,20 +18,19 @@ repositories {
 }
 
 dependencies {
-    // Fabric
-    minecraft "com.mojang:minecraft:${mcVer}"
-    mappings "net.fabricmc:yarn:${yarnMappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${loaderVer}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricVer}"
+    minecraft "com.mojang:minecraft:1.21.4"
+    mappings "net.fabricmc:yarn:1.21.4+build.8:v2"
+    modImplementation "net.fabricmc:fabric-loader:0.16.10"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:0.114.0+1.21.4"
 
-    // Internal modules
-    implementation project(":bridge-core")
-    implementation project(":core")
-    implementation project(":api")
+    // Internal modules (pre-built from main project)
+    implementation files("../../bridge-core/build/libs/bridge-core-${version}.jar")
+    implementation files("../../core/build/libs/core-${version}.jar")
+    implementation files("../../api/build/libs/api-${version}.jar")
 
     // Libby runtime library loading
-    implementation "com.alessiodp.libby:libby-core:${rootProject.property('libby.version')}"
-    implementation "com.alessiodp.libby:libby-fabric:${rootProject.property('libby.version')}"
+    implementation "com.alessiodp.libby:libby-core:${property('libby_version')}"
+    implementation "com.alessiodp.libby:libby-fabric:${property('libby_version')}"
 
     // Compile-only deps (loaded at runtime via Libby)
     compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:4.2.2"
@@ -59,9 +41,9 @@ dependencies {
     compileOnly "gg.modl.minecraft.replay:replay-format:1.1.0"
 
     // Provided by server
-    compileOnly "io.github.revxrsal:lamp.common:${rootProject.property('lamp.version')}"
-    compileOnly "io.github.revxrsal:lamp.brigadier:${rootProject.property('lamp.version')}"
-    compileOnly "io.github.revxrsal:lamp.fabric:${rootProject.property('lamp.version')}"
+    compileOnly "io.github.revxrsal:lamp.common:${property('lamp_version')}"
+    compileOnly "io.github.revxrsal:lamp.brigadier:${property('lamp_version')}"
+    compileOnly "io.github.revxrsal:lamp.fabric:${property('lamp_version')}"
     compileOnly "io.netty:netty-all:4.1.97.Final"
     compileOnly "net.kyori:adventure-text-minimessage:4.26.1"
     compileOnly "net.kyori:adventure-text-serializer-legacy:4.26.1"
@@ -90,9 +72,6 @@ loom {
 processResources {
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
-        expand "version": project.version
-    }
-    filesMatching("META-INF/impl-121-fabric.mod.json") {
         expand "version": project.version
     }
 }

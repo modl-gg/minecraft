@@ -1,0 +1,13 @@
+accessWidener v2 named
+
+accessible field net/minecraft/entity/player/PlayerInventory selectedSlot I
+accessible field net/minecraft/entity/player/PlayerInventory main Lnet/minecraft/util/collection/DefaultedList;
+accessible field net/minecraft/entity/player/PlayerInventory armor Lnet/minecraft/util/collection/DefaultedList;
+accessible field net/minecraft/entity/player/PlayerInventory offHand Lnet/minecraft/util/collection/DefaultedList;
+accessible field net/minecraft/server/network/ServerPlayerEntity interactionManager Lnet/minecraft/server/network/ServerPlayerInteractionManager;
+accessible field net/minecraft/entity/player/PlayerEntity experienceProgress F
+accessible field net/minecraft/entity/player/PlayerEntity experienceLevel I
+
+# PacketEvents (loaded via Libby at runtime, so its own accesswidener is not processed)
+accessible field net/minecraft/server/network/ServerCommonNetworkHandler connection Lnet/minecraft/network/ClientConnection;
+accessible field net/minecraft/network/ClientConnection channel Lio/netty/channel/Channel;

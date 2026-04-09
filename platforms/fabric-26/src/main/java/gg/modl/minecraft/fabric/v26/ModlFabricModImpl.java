@@ -1,12 +1,8 @@
 package gg.modl.minecraft.fabric.v26;
 
-import com.alessiodp.libby.FabricLibraryManager;
-import com.alessiodp.libby.Library;
 import dev.simplix.cirrus.fabric.CirrusFabric;
-import gg.modl.minecraft.api.LibraryRecord;
 import gg.modl.minecraft.api.http.request.StartupRequest;
 import gg.modl.minecraft.bridge.config.BridgeConfig;
-import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.boot.*;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.util.PluginLogger;
@@ -39,64 +35,12 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
     public void onInitializeServer() {
         LOGGER.info("[modl] Initializing modl Fabric mod (26.x)");
 
-        loadLibraries();
-
         Path dataFolder = FabricLoader.getInstance().getConfigDir().resolve("modl");
         dataFolder.toFile().mkdirs();
         bootConfig = loadOrCreateBootConfig(dataFolder);
 
         ServerLifecycleEvents.SERVER_STARTED.register(this::onServerStarted);
         ServerLifecycleEvents.SERVER_STOPPING.register(this::onServerStopping);
-    }
-
-    private void loadLibraries() {
-        FabricLibraryManager libraryManager = new FabricLibraryManager(MOD_ID, LOGGER);
-        libraryManager.setLogLevel(com.alessiodp.libby.logging.LogLevel.WARN);
-        libraryManager.addMavenCentral();
-        libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
-        libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
-        libraryManager.addRepository("https://repo.codemc.io/repository/maven-snapshots/");
-        libraryManager.addRepository("https://jitpack.io");
-        libraryManager.addRepository("https://repo.aikar.co/content/groups/aikar/");
-
-        for (LibraryRecord record : Libraries.PROTO_DEPS) loadLibrary(libraryManager, record);
-        for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
-        loadLibrary(libraryManager, Libraries.SLF4J_API);
-        loadLibrary(libraryManager, Libraries.SLF4J_SIMPLE);
-        loadLibrary(libraryManager, Libraries.CIRRUS_FABRIC);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_FABRIC_COMMON);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_FABRIC_INTERMEDIARY);
-        loadLibrary(libraryManager, Libraries.ADVENTURE_KEY);
-        loadLibrary(libraryManager, Libraries.ADVENTURE_API);
-        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_LEGACY);
-        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_MINIMESSAGE);
-        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_JSON);
-        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_GSON);
-        loadLibrary(libraryManager, Libraries.EXAMINATION_API);
-        loadLibrary(libraryManager, Libraries.EXAMINATION_STRING);
-        loadLibrary(libraryManager, Libraries.LAMP_COMMON);
-        loadLibrary(libraryManager, Libraries.LAMP_BRIGADIER);
-        loadLibrary(libraryManager, Libraries.LAMP_FABRIC);
-
-    }
-
-    private void loadLibrary(FabricLibraryManager libraryManager, LibraryRecord record) {
-        Library.Builder builder = Library.builder()
-                .groupId(record.getGroupId())
-                .artifactId(record.getArtifactId())
-                .version(record.getVersion());
-
-        if (record.hasRelocations()) {
-            for (String[] relocation : record.getRelocations()) {
-                builder.relocate(relocation[0], relocation[1]);
-            }
-        }
-        if (record.getUrl() != null) builder.url(record.getUrl());
-        if (record.hasChecksum()) builder.checksumFromBase64(record.getChecksum());
-
-        libraryManager.loadLibrary(builder.build());
     }
 
     private BootConfig loadOrCreateBootConfig(Path dataFolder) {
