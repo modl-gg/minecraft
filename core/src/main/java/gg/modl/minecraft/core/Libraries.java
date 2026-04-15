@@ -189,7 +189,7 @@ public final class Libraries {
             "cirrus-fabric",
             "4.2.2",
             "cirrus-fabric",
-            "WyCet0jIE2AZOq5l+LNK8yVW8vkzBJobqCSFRykHGpo="
+            "OHcOxe8/KuzsF2rnOkhV79o3fKZLaEHd8ilDWlr2wqI="
     ),
     ADVENTURE_KEY = LibraryRecord.of(
             "net{}kyori",
