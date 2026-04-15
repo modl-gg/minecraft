@@ -8,6 +8,15 @@ pluginManagement {
 
 rootProject.name = "modl-minecraft"
 
+val localCirrusBuild = file("../minecraft-cirrus")
+if (localCirrusBuild.isDirectory) {
+    includeBuild(localCirrusBuild)
+}
+
+val localReplayRecordingBuild = file("../minecraft-replay-recording")
+if (localReplayRecordingBuild.isDirectory) {
+    includeBuild(localReplayRecordingBuild)
+}
 
 include("api")
 include("core")

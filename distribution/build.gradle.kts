@@ -7,6 +7,7 @@ java {
 }
 
 val fabricLoomJar = project(":platforms:fabric").layout.buildDirectory.file("libs/fabric-${project.version}.jar")
+val rootGradlew = rootProject.file("gradlew")
 val fabric26Dir = rootProject.file("platforms/fabric-26")
 val fabric26Jar = fabric26Dir.resolve("build/libs/modl-fabric-26-${project.version}.jar")
 val fabric121Dir = rootProject.file("platforms/fabric-121")
@@ -17,9 +18,10 @@ val fabric1214Jar = fabric1214Dir.resolve("build/libs/modl-fabric-1214-${project
 val buildFabric26 by tasks.registering(Exec::class) {
     description = "Builds the Fabric 26.1 module (separate Gradle build due to Loom version conflict)"
     dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
-    workingDir = fabric26Dir
+    workingDir = rootProject.projectDir
     commandLine(
-        fabric26Dir.resolve("gradlew").absolutePath,
+        rootGradlew.absolutePath,
+        "-p", fabric26Dir.absolutePath,
         "build", "-x", "test"
     )
     onlyIf { fabric26Dir.resolve("build.gradle").exists() }
@@ -28,9 +30,10 @@ val buildFabric26 by tasks.registering(Exec::class) {
 val buildFabric121 by tasks.registering(Exec::class) {
     description = "Builds the Fabric 1.21.1 module (separate Gradle build for older Loom)"
     dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
-    workingDir = fabric121Dir
+    workingDir = rootProject.projectDir
     commandLine(
-        fabric121Dir.resolve("gradlew").absolutePath,
+        rootGradlew.absolutePath,
+        "-p", fabric121Dir.absolutePath,
         "build", "-x", "test"
     )
     onlyIf { fabric121Dir.resolve("build.gradle").exists() }
@@ -39,9 +42,10 @@ val buildFabric121 by tasks.registering(Exec::class) {
 val buildFabric1214 by tasks.registering(Exec::class) {
     description = "Builds the Fabric 1.21.4 module (separate Gradle build for older Loom)"
     dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
-    workingDir = fabric1214Dir
+    workingDir = rootProject.projectDir
     commandLine(
-        fabric1214Dir.resolve("gradlew").absolutePath,
+        rootGradlew.absolutePath,
+        "-p", fabric1214Dir.absolutePath,
         "build", "-x", "test"
     )
     onlyIf { fabric1214Dir.resolve("build.gradle").exists() }

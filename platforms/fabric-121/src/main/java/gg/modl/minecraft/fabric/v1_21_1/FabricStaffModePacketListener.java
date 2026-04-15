@@ -10,9 +10,12 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPl
 import gg.modl.minecraft.fabric.v1_21_1.handler.FabricFreezeHandler;
 import gg.modl.minecraft.fabric.v1_21_1.handler.FabricStaffModeHandler;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 import java.util.UUID;
 
+@Slf4j
 @RequiredArgsConstructor
 public class FabricStaffModePacketListener extends PacketListenerAbstract {
     private final FabricStaffModeHandler staffModeHandler;
@@ -34,14 +37,16 @@ public class FabricStaffModePacketListener extends PacketListenerAbstract {
         DiggingAction action = wrapper.getAction();
         if (action != DiggingAction.DROP_ITEM && action != DiggingAction.DROP_ITEM_STACK) return;
 
-        UUID uuid = event.getUser().getUUID();
+        UUID uuid = resolvePlayerUuid(event);
+        if (uuid == null) return;
         if (staffModeHandler.isInStaffMode(uuid) || freezeHandler.isFrozen(uuid)) {
             event.setCancelled(true);
         }
     }
 
     private void handleClickWindow(PacketReceiveEvent event) {
-        UUID uuid = event.getUser().getUUID();
+        UUID uuid = resolvePlayerUuid(event);
+        if (uuid == null) return;
         if (!staffModeHandler.isInStaffMode(uuid)) return;
 
         WrapperPlayClientClickWindow wrapper = new WrapperPlayClientClickWindow(event);
@@ -56,9 +61,24 @@ public class FabricStaffModePacketListener extends PacketListenerAbstract {
         WrapperPlayClientInteractEntity wrapper = new WrapperPlayClientInteractEntity(event);
         if (wrapper.getAction() != WrapperPlayClientInteractEntity.InteractAction.ATTACK) return;
 
-        UUID uuid = event.getUser().getUUID();
+        UUID uuid = resolvePlayerUuid(event);
+        if (uuid == null) return;
         if (staffModeHandler.isInStaffMode(uuid)) {
             event.setCancelled(true);
         }
+    }
+
+    private UUID resolvePlayerUuid(PacketReceiveEvent event) {
+        if (event.getUser() != null) {
+            return event.getUser().getUUID();
+        }
+
+        Object playerHandle = event.getPlayer();
+        if (playerHandle instanceof ServerPlayerEntity player) {
+            return player.getUuid();
+        }
+
+        log.warn("Ignoring {} because PacketEvents did not expose a Fabric player context", event.getPacketType());
+        return null;
     }
 }

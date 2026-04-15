@@ -167,25 +167,29 @@ public final class Libraries {
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-spigot",
             "4.2.2",
-            "cirrus-spigot"
+            "cirrus-spigot",
+            "9N71SSB0SsMWnmPKugan0PASuuliVZ+CFObIJYWueZM="
     ),
     CIRRUS_VELOCITY = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-velocity",
             "4.2.2",
-            "cirrus-velocity"
+            "cirrus-velocity",
+            "VojxGEMOowfH0DajuMwZKhgxSXj3YepVWB3Km4Lt5Js="
     ),
     CIRRUS_BUNGEECORD = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-bungeecord",
             "4.2.2",
-            "cirrus-bungeecord"
+            "cirrus-bungeecord",
+            "+pE8sv6RETffo6kDoGoyei8E1C11q1gEykuPyQ+GygA="
     ),
     CIRRUS_FABRIC = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-fabric",
             "4.2.2",
-            "cirrus-fabric"
+            "cirrus-fabric",
+            "4qOokonMSVl+52y9o5nZp9JNjJcQocAt3SwbC6Enfq0="
     ),
     ADVENTURE_KEY = LibraryRecord.of(
             "net{}kyori",
