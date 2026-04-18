@@ -106,6 +106,14 @@ public final class Libraries {
             null,
             PACKETEVENTS_RELOCATIONS
     ),
+    PACKETEVENTS_FABRIC_OFFICIAL = LibraryRecord.of(
+            "gg{}modl{}minecraft{}packetevents",
+            "packetevents-fabric-official",
+            "2.12.0",
+            "packetevents-fabric-official",
+            null,
+            PACKETEVENTS_RELOCATIONS
+    ),
     ADVENTURE_NBT = LibraryRecord.of(
             "net{}kyori",
             "adventure-nbt",

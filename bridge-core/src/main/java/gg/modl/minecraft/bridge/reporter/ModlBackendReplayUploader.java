@@ -29,11 +29,32 @@ public class ModlBackendReplayUploader {
     private static final int UPLOAD_READ_TIMEOUT_MS = (int) Duration.ofMinutes(5).toMillis();
 
     public ModlBackendReplayUploader(String backendUrl, String apiKey, String serverDomain, Logger logger) {
-        this.backendUrl = backendUrl;
+        this.backendUrl = normalizeBackendUrl(backendUrl);
         this.apiKey = apiKey;
         this.serverDomain = serverDomain;
         this.logger = logger;
         this.gson = new Gson();
+    }
+
+    private static String normalizeBackendUrl(String backendUrl) {
+        if (backendUrl == null) {
+            return null;
+        }
+
+        String normalized = backendUrl.trim();
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+
+        int lastSlash = normalized.lastIndexOf('/');
+        if (lastSlash > normalized.indexOf("://") + 2) {
+            String lastSegment = normalized.substring(lastSlash + 1);
+            if (lastSegment.matches("v\\d+")) {
+                return normalized.substring(0, lastSlash);
+            }
+        }
+
+        return normalized;
     }
 
     public CompletableFuture<String> uploadAsync(File replayFile, String mcVersion) {

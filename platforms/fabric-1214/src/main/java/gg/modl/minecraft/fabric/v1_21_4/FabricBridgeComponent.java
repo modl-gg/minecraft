@@ -22,11 +22,15 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.block.BlockState;
+import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
+import net.minecraft.util.Hand;
+import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
@@ -269,6 +273,37 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
         return net.minecraft.block.Block.getRawIdFromState(state);
     }
 
+    private void trackSuccessfulBlockPlacement(ServerPlayerEntity player, World world,
+                                               Hand hand, BlockHitResult hitResult) {
+        if (recordingManager == null || recordingManager.getActiveRecordings().isEmpty()) {
+            return;
+        }
+
+        ItemStack heldStack = player.getStackInHand(hand);
+        if (!(heldStack.getItem() instanceof BlockItem)) {
+            return;
+        }
+
+        ItemPlacementContext placementContext = new ItemPlacementContext(player, hand, heldStack, hitResult);
+        if (!placementContext.canPlace()) {
+            return;
+        }
+
+        BlockPos placePos = placementContext.getBlockPos().toImmutable();
+        BlockState beforeState = world.getBlockState(placePos);
+        UUID uuid = player.getUuid();
+
+        server.execute(() -> {
+            BlockState placedState = world.getBlockState(placePos);
+            if (placedState.isAir() || placedState.equals(beforeState)) {
+                return;
+            }
+
+            int stateId = getBlockStateId(placedState);
+            recordingManager.enqueueBlockPlace(uuid, placePos.getX(), (short) placePos.getY(), placePos.getZ(), stateId);
+        });
+    }
+
     @Override
     protected void registerPlatformEvents() {
         ServerTickEvents.END_SERVER_TICK.register(s -> {
@@ -332,17 +367,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
                 return net.minecraft.util.ActionResult.FAIL;
             }
 
-            if (recordingManager != null && !recordingManager.getActiveRecordings().isEmpty()) {
-                BlockPos placePos = hitResult.getBlockPos().offset(hitResult.getSide());
-                UUID uuid = sp.getUuid();
-                server.execute(() -> {
-                    BlockState placedState = ((World) world).getBlockState(placePos);
-                    if (!placedState.isAir()) {
-                        int stateId = getBlockStateId(placedState);
-                        recordingManager.enqueueBlockPlace(uuid, placePos.getX(), (short) placePos.getY(), placePos.getZ(), stateId);
-                    }
-                });
-            }
+            trackSuccessfulBlockPlacement(sp, (World) world, hand, hitResult);
 
             return net.minecraft.util.ActionResult.PASS;
         });

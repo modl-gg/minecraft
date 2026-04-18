@@ -244,6 +244,7 @@ public class FabricStaffModeHandler {
         snapshots.put(player.getUuid(), new PlayerSnapshot(
                 player.getInventory().main.stream().map(ItemStack::copy).toArray(ItemStack[]::new),
                 player.getInventory().armor.stream().map(ItemStack::copy).toArray(ItemStack[]::new),
+                player.getInventory().offHand.stream().map(ItemStack::copy).toArray(ItemStack[]::new),
                 player.getX(), player.getY(), player.getZ(),
                 player.getYaw(), player.getPitch(),
                 player.interactionManager.getGameMode(),
@@ -263,6 +264,9 @@ public class FabricStaffModeHandler {
             }
             for (int i = 0; i < snapshot.armorContents.length && i < player.getInventory().armor.size(); i++) {
                 player.getInventory().armor.set(i, snapshot.armorContents[i]);
+            }
+            for (int i = 0; i < snapshot.offHandContents.length && i < player.getInventory().offHand.size(); i++) {
+                player.getInventory().offHand.set(i, snapshot.offHandContents[i]);
             }
             player.changeGameMode(snapshot.gameMode);
             player.setHealth(Math.min(snapshot.health, player.getMaxHealth()));
@@ -580,14 +584,10 @@ public class FabricStaffModeHandler {
         ServerPlayerEntity target = resolveTarget(player.getUuid());
         if (target == null) return;
 
-        net.minecraft.inventory.SimpleInventory viewInventory = new net.minecraft.inventory.SimpleInventory(45);
-        for (int i = 0; i < target.getInventory().size() && i < 45; i++) {
-            viewInventory.setStack(i, target.getInventory().getStack(i).copy());
-        }
-
         player.openHandledScreen(new net.minecraft.screen.SimpleNamedScreenHandlerFactory(
                 (syncId, playerInv, p) -> new net.minecraft.screen.GenericContainerScreenHandler(
-                        net.minecraft.screen.ScreenHandlerType.GENERIC_9X5, syncId, playerInv, viewInventory, 5),
+                        net.minecraft.screen.ScreenHandlerType.GENERIC_9X5, syncId, playerInv,
+                        new LivePlayerInventoryView(target), 5),
                 Text.literal(target.getName().getString() + "'s Inventory")));
     }
 
@@ -722,6 +722,7 @@ public class FabricStaffModeHandler {
     private static class PlayerSnapshot {
         final ItemStack[] inventoryContents;
         final ItemStack[] armorContents;
+        final ItemStack[] offHandContents;
         final double x, y, z;
         final float yaw, pitch;
         final GameMode gameMode;
@@ -730,11 +731,12 @@ public class FabricStaffModeHandler {
         final float exp;
         final int level;
 
-        PlayerSnapshot(ItemStack[] inventoryContents, ItemStack[] armorContents,
+        PlayerSnapshot(ItemStack[] inventoryContents, ItemStack[] armorContents, ItemStack[] offHandContents,
                        double x, double y, double z, float yaw, float pitch,
                        GameMode gameMode, float health, int foodLevel, float exp, int level) {
             this.inventoryContents = inventoryContents;
             this.armorContents = armorContents;
+            this.offHandContents = offHandContents;
             this.x = x;
             this.y = y;
             this.z = z;
@@ -745,6 +747,68 @@ public class FabricStaffModeHandler {
             this.foodLevel = foodLevel;
             this.exp = exp;
             this.level = level;
+        }
+    }
+
+    private static final class LivePlayerInventoryView implements net.minecraft.inventory.Inventory {
+        private static final int VIEW_SIZE = 45;
+
+        private final ServerPlayerEntity target;
+
+        private LivePlayerInventoryView(ServerPlayerEntity target) {
+            this.target = target;
+        }
+
+        @Override
+        public int size() {
+            return VIEW_SIZE;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return target.getInventory().isEmpty();
+        }
+
+        @Override
+        public ItemStack getStack(int slot) {
+            return slot < target.getInventory().size() ? target.getInventory().getStack(slot) : ItemStack.EMPTY;
+        }
+
+        @Override
+        public ItemStack removeStack(int slot, int amount) {
+            return slot < target.getInventory().size() ? target.getInventory().removeStack(slot, amount) : ItemStack.EMPTY;
+        }
+
+        @Override
+        public ItemStack removeStack(int slot) {
+            return slot < target.getInventory().size() ? target.getInventory().removeStack(slot) : ItemStack.EMPTY;
+        }
+
+        @Override
+        public void setStack(int slot, ItemStack stack) {
+            if (slot < target.getInventory().size()) {
+                target.getInventory().setStack(slot, stack);
+            }
+        }
+
+        @Override
+        public void markDirty() {
+            target.getInventory().markDirty();
+        }
+
+        @Override
+        public boolean canPlayerUse(net.minecraft.entity.player.PlayerEntity player) {
+            return target.isAlive();
+        }
+
+        @Override
+        public boolean isValid(int slot, ItemStack stack) {
+            return slot < target.getInventory().size() && target.getInventory().isValid(slot, stack);
+        }
+
+        @Override
+        public void clear() {
+            target.getInventory().clear();
         }
     }
 }

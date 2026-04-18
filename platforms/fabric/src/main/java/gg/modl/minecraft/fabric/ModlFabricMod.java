@@ -15,27 +15,13 @@ public class ModlFabricMod implements DedicatedServerModInitializer {
 
     @Override
     public void onInitializeServer() {
-        loadLibraries();
-
         String gameVersion = FabricLoader.getInstance()
                 .getModContainer("minecraft").get()
                 .getMetadata().getVersion().getFriendlyString();
 
-        String implClass;
-        if (gameVersion.startsWith("26.")) {
-            implClass = "gg.modl.minecraft.fabric.v26.ModlFabricModImpl";
-        } else if (gameVersion.startsWith("1.21.")) {
-            int minor = parseMinorVersion(gameVersion);
-            if (minor >= 5) {
-                implClass = "gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl";
-            } else if (minor >= 2) {
-                implClass = "gg.modl.minecraft.fabric.v1_21_4.ModlFabricModImpl";
-            } else {
-                implClass = "gg.modl.minecraft.fabric.v1_21_1.ModlFabricModImpl";
-            }
-        } else {
-            implClass = "gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl";
-        }
+        loadLibraries();
+
+        String implClass = selectImplementationClass(gameVersion);
 
         try {
             DedicatedServerModInitializer impl = (DedicatedServerModInitializer)
@@ -44,6 +30,23 @@ public class ModlFabricMod implements DedicatedServerModInitializer {
         } catch (Exception e) {
             throw new RuntimeException("Failed to load modl Fabric implementation for MC " + gameVersion, e);
         }
+    }
+
+    static String selectImplementationClass(String gameVersion) {
+        if (gameVersion.startsWith("26.")) {
+            return "gg.modl.minecraft.fabric.v26.ModlFabricModImpl";
+        }
+        if (gameVersion.startsWith("1.21.")) {
+            int minor = parseMinorVersion(gameVersion);
+            if (minor >= 5) {
+                return "gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl";
+            }
+            if (minor >= 4) {
+                return "gg.modl.minecraft.fabric.v1_21_4.ModlFabricModImpl";
+            }
+            return "gg.modl.minecraft.fabric.v1_21_1.ModlFabricModImpl";
+        }
+        return "gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl";
     }
 
     private static int parseMinorVersion(String gameVersion) {
@@ -71,10 +74,6 @@ public class ModlFabricMod implements DedicatedServerModInitializer {
         loadLibrary(libraryManager, Libraries.SLF4J_API);
         loadLibrary(libraryManager, Libraries.SLF4J_SIMPLE);
         loadLibrary(libraryManager, Libraries.CIRRUS_FABRIC);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_FABRIC_COMMON);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_FABRIC_INTERMEDIARY);
         loadLibrary(libraryManager, Libraries.ADVENTURE_KEY);
         loadLibrary(libraryManager, Libraries.ADVENTURE_API);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_LEGACY);

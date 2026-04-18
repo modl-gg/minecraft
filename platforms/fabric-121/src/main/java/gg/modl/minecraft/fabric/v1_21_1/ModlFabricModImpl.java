@@ -92,35 +92,30 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private void initPacketEvents() {
+    private boolean isPacketEventsBootstrapped() {
         try {
-            Class<?> serverModClass = Class.forName(
-                    "gg.modl.libs.packetevents.impl.PacketEventsServerMod");
-            Object api = serverModClass.getMethod("constructApi", String.class).invoke(null, MOD_ID);
-            com.github.retrooper.packetevents.PacketEvents.setAPI(
-                    (com.github.retrooper.packetevents.PacketEventsAPI<?>) api);
-            com.github.retrooper.packetevents.PacketEvents.getAPI().load();
-            com.github.retrooper.packetevents.PacketEvents.getAPI().init();
-            LOGGER.info("[modl] PacketEvents initialized successfully");
-        } catch (Throwable e) {
-            LOGGER.warn("[modl] PacketEvents unavailable: {}", e.getMessage());
+            Class.forName("com.github.retrooper.packetevents.PacketEvents");
+            return com.github.retrooper.packetevents.PacketEvents.getAPI() != null;
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 
     private void onServerStarted(MinecraftServer server) {
         if (bootConfig == null) return;
 
-        initPacketEvents();
-
         Path dataFolder = FabricLoader.getInstance().getConfigDir().resolve("modl");
         FabricBridgePluginContext context = new FabricBridgePluginContext(server, dataFolder);
 
-        try {
-            cirrus = new CirrusFabric(server);
-            cirrus.init();
-        } catch (Throwable e) {
-            LOGGER.warn("[modl] Cirrus menu system unavailable: {}", e.getMessage());
+        if (!isPacketEventsBootstrapped()) {
+            LOGGER.error("[modl] PacketEvents was not bootstrapped by Fabric; skipping Cirrus/menu startup");
+        } else {
+            try {
+                cirrus = new CirrusFabric(server);
+                cirrus.init();
+            } catch (Throwable e) {
+                LOGGER.warn("[modl] Cirrus menu system unavailable: {}", e.getMessage());
+            }
         }
 
         try {

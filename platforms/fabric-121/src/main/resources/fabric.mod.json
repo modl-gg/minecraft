@@ -6,6 +6,7 @@
   "environment": "server",
   "depends": {
     "minecraft": ">=1.21 <1.21.2",
-    "fabric-api": "*"
+    "fabric-api": "*",
+    "packetevents": "*"
   }
 }

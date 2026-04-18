@@ -2,7 +2,6 @@ package gg.modl.minecraft.fabric.v26;
 
 import gg.modl.minecraft.bridge.query.BridgeMessageHandler;
 import gg.modl.minecraft.bridge.statwipe.StatWipeHandler;
-import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.fabric.v26.handler.FabricFreezeHandler;
 import gg.modl.minecraft.fabric.v26.handler.FabricStaffModeHandler;
 import net.minecraft.server.MinecraftServer;
@@ -18,10 +17,10 @@ public class FabricBridgeMessageHandler implements BridgeMessageHandler {
     private final FabricBridgeComponent bridgeComponent;
 
     public FabricBridgeMessageHandler(MinecraftServer server,
-                                       FabricFreezeHandler freezeHandler,
-                                       FabricStaffModeHandler staffModeHandler,
-                                       StatWipeHandler statWipeHandler,
-                                       FabricBridgeComponent bridgeComponent) {
+                                      FabricFreezeHandler freezeHandler,
+                                      FabricStaffModeHandler staffModeHandler,
+                                      StatWipeHandler statWipeHandler,
+                                      FabricBridgeComponent bridgeComponent) {
         this.server = server;
         this.freezeHandler = freezeHandler;
         this.staffModeHandler = staffModeHandler;
@@ -63,10 +62,12 @@ public class FabricBridgeMessageHandler implements BridgeMessageHandler {
     public void onTargetRequest(String staffUuid, String targetUuid) {
         server.execute(() -> {
             ServerPlayer target = server.getPlayerList().getPlayer(UUID.fromString(targetUuid));
-            if (target == null) return;
+            if (target == null) {
+                return;
+            }
 
-            bridgeComponent.getBridgeClient().sendMessage("TARGET_RESPONSE", staffUuid, targetUuid,
-                    bridgeComponent.getBridgeConfig().getServerName());
+            bridgeComponent.getBridgeClient().sendMessage(
+                    "TARGET_RESPONSE", staffUuid, targetUuid, bridgeComponent.getBridgeConfig().getServerName());
             staffModeHandler.setTarget(staffUuid, targetUuid);
         });
     }
@@ -83,8 +84,33 @@ public class FabricBridgeMessageHandler implements BridgeMessageHandler {
 
     @Override
     public void onCaptureReplay(String targetUuid, String targetName) {
+        UUID uuid = UUID.fromString(targetUuid);
+        server.execute(() -> {
+            ServerPlayer player = server.getPlayerList().getPlayer(uuid);
+            if (player == null) {
+                sendReplayResponse(targetUuid, "");
+                return;
+            }
+
+            gg.modl.minecraft.core.service.ReplayService replayService = bridgeComponent.getReplayService();
+            if (replayService == null || !replayService.isReplayAvailable(uuid)) {
+                sendReplayResponse(targetUuid, "");
+                return;
+            }
+
+            replayService.captureReplay(uuid, targetName)
+                    .thenAccept(replayId -> sendReplayResponse(targetUuid, replayId != null ? replayId : ""))
+                    .exceptionally(ex -> {
+                        ModlFabricModImpl.LOGGER.warn("[bridge] Replay capture failed for {}: {}", targetName, ex.getMessage());
+                        sendReplayResponse(targetUuid, "");
+                        return null;
+                    });
+        });
+    }
+
+    private void sendReplayResponse(String targetUuid, String replayId) {
         if (bridgeComponent.getBridgeClient() != null) {
-            bridgeComponent.getBridgeClient().sendMessage("CAPTURE_REPLAY_RESPONSE", targetUuid, "");
+            bridgeComponent.getBridgeClient().sendMessage("CAPTURE_REPLAY_RESPONSE", targetUuid, replayId);
         }
     }
 

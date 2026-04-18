@@ -11,6 +11,11 @@ dependencies {
     compileOnly("net.kyori:adventure-text-serializer-legacy:${property("adventure.version")}")
     compileOnly("net.kyori:adventure-text-serializer-gson:${property("adventure.version")}")
     compileOnly("io.netty:netty-all:4.1.97.Final")
+
+    testImplementation("io.github.revxrsal:lamp.common:${property("lamp.version")}")
+    testImplementation(platform("org.junit:junit-bom:5.11.4"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 // PluginInfo.java template filtering (replaces Maven templating-maven-plugin)
@@ -34,4 +39,8 @@ val generateTemplates = tasks.register<Copy>("generateTemplates") {
 
 sourceSets.main {
     java.srcDir(generateTemplates)
+}
+
+tasks.test {
+    useJUnitPlatform()
 }

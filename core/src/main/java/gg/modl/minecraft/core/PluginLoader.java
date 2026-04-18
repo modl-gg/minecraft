@@ -2,6 +2,7 @@ package gg.modl.minecraft.core;
 
 import revxrsal.commands.Lamp;
 import revxrsal.commands.command.CommandActor;
+import revxrsal.commands.annotation.Named;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
@@ -30,6 +31,7 @@ import gg.modl.minecraft.core.impl.commands.staff.StaffListCommand;
 import gg.modl.minecraft.core.impl.commands.staff.StaffModeCommand;
 import gg.modl.minecraft.core.impl.commands.staff.ReplayCommand;
 import gg.modl.minecraft.core.impl.commands.staff.TargetCommand;
+import gg.modl.minecraft.core.command.PlayerQuerySuggestions;
 import gg.modl.minecraft.core.impl.commands.player.ApplyCommand;
 import gg.modl.minecraft.core.impl.commands.player.BugReportCommand;
 import gg.modl.minecraft.core.impl.commands.player.ChatReportCommand;
@@ -161,6 +163,18 @@ public class PluginLoader {
         this.updateCheckerService.start(updateCheckerConfig.enabled, updateCheckerConfig.intervalMinutes);
 
         this.lamp = platform.buildLamp(builder -> {
+            builder.suggestionProviders(suggestionProviders -> suggestionProviders.addProviderFactoryLast((type, annotations, lamp) -> {
+                if (!(type instanceof Class) || type != String.class) {
+                    return null;
+                }
+
+                Named named = annotations.get(Named.class);
+                if (named == null || !"player".equals(named.value())) {
+                    return null;
+                }
+
+                return PlayerQuerySuggestions.onlinePlayerNames(platform);
+            }));
             builder.parameterTypes(types -> {
                 types.addParameterType(AbstractPlayer.class, (input, context) -> {
                     String name = input.readString();

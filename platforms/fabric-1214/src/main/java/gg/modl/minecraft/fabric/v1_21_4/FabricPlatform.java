@@ -15,9 +15,12 @@ import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.StringUtil;
 import gg.modl.minecraft.core.util.WebPlayer;
+import com.github.retrooper.packetevents.util.adventure.AdventureSerializer;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import lombok.Setter;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
@@ -290,10 +293,12 @@ public class FabricPlatform implements Platform {
 
     private void sendJsonToPlayer(ServerPlayerEntity player, String jsonMessage) {
         try {
-            com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(jsonMessage).getAsJsonObject();
+            JsonObject obj = JsonParser.parseString(jsonMessage).getAsJsonObject();
             fixLegacyHoverEvents(obj);
-            String fixedJson = new com.google.gson.Gson().toJson(obj);
-            com.google.gson.JsonElement jsonElement = com.google.gson.JsonParser.parseString(fixedJson);
+            String fixedJson = new Gson().toJson(obj);
+            Component component = AdventureSerializer.serializer().fromJson(fixedJson);
+            String normalizedJson = AdventureSerializer.toJson(component);
+            com.google.gson.JsonElement jsonElement = JsonParser.parseString(normalizedJson);
             Text text = net.minecraft.text.TextCodecs.CODEC.parse(
                     net.minecraft.registry.RegistryOps.of(com.mojang.serialization.JsonOps.INSTANCE, player.getRegistryManager()),
                     jsonElement).result().orElse(null);
@@ -307,13 +312,13 @@ public class FabricPlatform implements Platform {
         player.sendMessage(Text.literal(jsonMessage.replaceAll("\u00a7[0-9a-fk-or]", "")), false);
     }
 
-    private void fixLegacyHoverEvents(com.google.gson.JsonObject obj) {
+    private void fixLegacyHoverEvents(JsonObject obj) {
         if (obj.has("hoverEvent")) {
-            com.google.gson.JsonObject hover = obj.getAsJsonObject("hoverEvent");
+            JsonObject hover = obj.getAsJsonObject("hoverEvent");
             if (hover != null && hover.has("value") && !hover.has("contents")) {
                 com.google.gson.JsonElement value = hover.remove("value");
                 if (value.isJsonPrimitive()) {
-                    com.google.gson.JsonObject contents = new com.google.gson.JsonObject();
+                    JsonObject contents = new JsonObject();
                     contents.add("text", value);
                     hover.add("contents", contents);
                 } else {
