@@ -16,10 +16,12 @@ import gg.modl.minecraft.fabric.v26.handler.FabricStaffModeHandler;
 import gg.modl.minecraft.replay.recording.PacketRecorder;
 import gg.modl.minecraft.replay.recording.RecordingConfig;
 import gg.modl.minecraft.replay.recording.RecordingManager;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -358,6 +360,17 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
             fabricStaffModeHandler.onTick();
         });
 
+        ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
+            if (entity instanceof ServerPlayer player && fabricStaffModeHandler.isInStaffMode(player.getUUID())) {
+                return false;
+            }
+            if (source.getDirectEntity() instanceof ServerPlayer player
+                    && fabricStaffModeHandler.isInStaffMode(player.getUUID())) {
+                return false;
+            }
+            return true;
+        });
+
         ServerPlayConnectionEvents.JOIN.register((handler, sender, minecraftServer) -> {
             ServerPlayer player = handler.getPlayer();
             fabricStaffModeHandler.onPlayerJoin(player);
@@ -446,7 +459,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
             return InteractionResult.PASS;
         });
 
-        AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+        UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
             if (!(player instanceof ServerPlayer staff)) {
                 return InteractionResult.PASS;
             }
@@ -454,7 +467,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
                 return InteractionResult.PASS;
             }
 
-            if (entity instanceof ServerPlayer targetPlayer) {
+            if (hand == InteractionHand.MAIN_HAND && entity instanceof ServerPlayer targetPlayer) {
                 int slot = staff.getInventory().getSelectedSlot();
                 Map<Integer, StaffModeConfig.HotbarItem> hotbar = fabricStaffModeHandler.getActiveHotbar(staff.getUUID());
                 StaffModeConfig.HotbarItem item = hotbar != null ? hotbar.get(slot) : null;
@@ -464,6 +477,16 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
                             "staff_mode.target.now_targeting",
                             mapOf("player", targetPlayer.getName().getString()))), false);
                 }
+            }
+            return InteractionResult.FAIL;
+        });
+
+        AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (!(player instanceof ServerPlayer staff)) {
+                return InteractionResult.PASS;
+            }
+            if (!fabricStaffModeHandler.isInStaffMode(staff.getUUID())) {
+                return InteractionResult.PASS;
             }
             return InteractionResult.FAIL;
         });

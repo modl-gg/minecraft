@@ -6,6 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
@@ -66,7 +67,7 @@ public class FabricPlatform implements Platform {
     @Override
     public void broadcast(String string) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            player.sendSystemMessage(net.minecraft.network.chat.Component.literal(string), false);
+            sendLegacyMessage(player, string);
         }
     }
 
@@ -74,7 +75,7 @@ public class FabricPlatform implements Platform {
     public void staffBroadcast(String string) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (isAuthenticatedStaff(player.getUUID())) {
-                player.sendSystemMessage(net.minecraft.network.chat.Component.literal(string), false);
+                sendLegacyMessage(player, string);
             }
         }
     }
@@ -92,7 +93,7 @@ public class FabricPlatform implements Platform {
     public void sendMessage(UUID uuid, String message) {
         ServerPlayer player = server.getPlayerList().getPlayer(uuid);
         if (player != null) {
-            player.sendSystemMessage(net.minecraft.network.chat.Component.literal(StringUtil.unescapeNewlines(message)), false);
+            sendLegacyMessage(player, StringUtil.unescapeNewlines(message));
         }
     }
 
@@ -223,8 +224,7 @@ public class FabricPlatform implements Platform {
     public void kickPlayer(AbstractPlayer player, String reason) {
         ServerPlayer serverPlayer = server.getPlayerList().getPlayer(player.getUuid());
         if (serverPlayer != null) {
-            serverPlayer.connection.disconnect(net.minecraft.network.chat.Component.literal(
-                    StringUtil.unescapeNewlines(reason)));
+            serverPlayer.connection.disconnect(parseLegacyText(StringUtil.unescapeNewlines(reason)));
         }
     }
 
@@ -345,9 +345,9 @@ public class FabricPlatform implements Platform {
 
     private void sendJsonToPlayer(ServerPlayer player, String jsonMessage) {
         try {
-            JsonObject object = JsonParser.parseString(jsonMessage).getAsJsonObject();
-            fixLegacyHoverEvents(object);
-            String fixedJson = new Gson().toJson(object);
+            JsonElement element = JsonParser.parseString(jsonMessage);
+            fixLegacyHoverEvents(element);
+            String fixedJson = new Gson().toJson(element);
             Component adventureComponent = AdventureSerializer.serializer().fromJson(fixedJson);
             String normalizedJson = AdventureSerializer.toJson(adventureComponent);
             JsonElement jsonElement = JsonParser.parseString(normalizedJson);
@@ -360,12 +360,44 @@ public class FabricPlatform implements Platform {
         } catch (Exception e) {
             logger.warning("Failed to parse JSON message: " + e.getMessage());
         }
-        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                jsonMessage.replaceAll("\u00a7[0-9a-fk-or]", "")), false);
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(stripLegacyFormatting(jsonMessage)), false);
     }
 
-    private void fixLegacyHoverEvents(JsonObject object) {
-        if (object.has("hoverEvent")) {
+    private void sendLegacyMessage(ServerPlayer player, String message) {
+        player.sendSystemMessage(parseLegacyText(message), false);
+    }
+
+    private net.minecraft.network.chat.Component parseLegacyText(String message) {
+        String normalizedMessage = message == null ? "" : message;
+        try {
+            String json = AdventureSerializer.toJson(CirrusChatElement.ofLegacyText(normalizedMessage).asComponent());
+            var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
+            var nativeComponent = ComponentSerialization.CODEC.parse(ops, JsonParser.parseString(json))
+                    .result().orElse(null);
+            if (nativeComponent != null) {
+                return nativeComponent;
+            }
+        } catch (Exception ignored) {
+        }
+        return net.minecraft.network.chat.Component.literal(stripLegacyFormatting(normalizedMessage));
+    }
+
+    private void fixLegacyHoverEvents(JsonElement element) {
+        if (element == null || element.isJsonNull()) {
+            return;
+        }
+        if (element.isJsonArray()) {
+            for (JsonElement child : element.getAsJsonArray()) {
+                fixLegacyHoverEvents(child);
+            }
+            return;
+        }
+        if (!element.isJsonObject()) {
+            return;
+        }
+
+        JsonObject object = element.getAsJsonObject();
+        if (object.has("hoverEvent") && object.get("hoverEvent").isJsonObject()) {
             JsonObject hover = object.getAsJsonObject("hoverEvent");
             if (hover != null && hover.has("value") && !hover.has("contents")) {
                 JsonElement value = hover.remove("value");
@@ -378,12 +410,13 @@ public class FabricPlatform implements Platform {
                 }
             }
         }
-        if (object.has("extra") && object.get("extra").isJsonArray()) {
-            for (JsonElement element : object.getAsJsonArray("extra")) {
-                if (element.isJsonObject()) {
-                    fixLegacyHoverEvents(element.getAsJsonObject());
-                }
-            }
+
+        for (String key : object.keySet()) {
+            fixLegacyHoverEvents(object.get(key));
         }
+    }
+
+    private String stripLegacyFormatting(String message) {
+        return (message == null ? "" : message).replaceAll("(?i)[&\u00a7][0-9a-fk-or]", "");
     }
 }

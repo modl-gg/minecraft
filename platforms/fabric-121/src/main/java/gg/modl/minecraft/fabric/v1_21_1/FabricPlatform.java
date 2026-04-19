@@ -17,8 +17,10 @@ import gg.modl.minecraft.core.util.StringUtil;
 import gg.modl.minecraft.core.util.WebPlayer;
 import com.github.retrooper.packetevents.util.adventure.AdventureSerializer;
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import dev.simplix.cirrus.text.CirrusChatElement;
 import lombok.Setter;
 import net.kyori.adventure.text.Component;
 import net.minecraft.server.MinecraftServer;
@@ -63,7 +65,7 @@ public class FabricPlatform implements Platform {
     @Override
     public void broadcast(String string) {
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            player.sendMessage(Text.literal(string), false);
+            sendLegacyMessage(player, string);
         }
     }
 
@@ -71,7 +73,7 @@ public class FabricPlatform implements Platform {
     public void staffBroadcast(String string) {
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
             if (isAuthenticatedStaff(player.getUuid())) {
-                player.sendMessage(Text.literal(string), false);
+                sendLegacyMessage(player, string);
             }
         }
     }
@@ -89,7 +91,7 @@ public class FabricPlatform implements Platform {
     public void sendMessage(UUID uuid, String message) {
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
         if (player != null) {
-            player.sendMessage(Text.literal(StringUtil.unescapeNewlines(message)), false);
+            sendLegacyMessage(player, StringUtil.unescapeNewlines(message));
         }
     }
 
@@ -217,7 +219,7 @@ public class FabricPlatform implements Platform {
     public void kickPlayer(AbstractPlayer player, String reason) {
         ServerPlayerEntity serverPlayer = server.getPlayerManager().getPlayer(player.getUuid());
         if (serverPlayer != null) {
-            serverPlayer.networkHandler.disconnect(Text.literal(StringUtil.unescapeNewlines(reason)));
+            serverPlayer.networkHandler.disconnect(parseLegacyText(serverPlayer, StringUtil.unescapeNewlines(reason)));
         }
     }
 
@@ -293,9 +295,9 @@ public class FabricPlatform implements Platform {
 
     private void sendJsonToPlayer(ServerPlayerEntity player, String jsonMessage) {
         try {
-            JsonObject obj = JsonParser.parseString(jsonMessage).getAsJsonObject();
-            fixLegacyHoverEvents(obj);
-            String fixedJson = new Gson().toJson(obj);
+            JsonElement element = JsonParser.parseString(jsonMessage);
+            fixLegacyHoverEvents(element);
+            String fixedJson = new Gson().toJson(element);
             Component component = AdventureSerializer.serializer().fromJson(fixedJson);
             String normalizedJson = AdventureSerializer.toJson(component);
             Text text = Text.Serialization.fromJson(normalizedJson, player.getRegistryManager());
@@ -306,14 +308,45 @@ public class FabricPlatform implements Platform {
         } catch (Exception e) {
             logger.warning("Failed to parse JSON message: " + e.getMessage());
         }
-        player.sendMessage(Text.literal(jsonMessage.replaceAll("\u00a7[0-9a-fk-or]", "")), false);
+        player.sendMessage(Text.literal(stripLegacyFormatting(jsonMessage)), false);
     }
 
-    private void fixLegacyHoverEvents(JsonObject obj) {
-        if (obj.has("hoverEvent")) {
+    private void sendLegacyMessage(ServerPlayerEntity player, String message) {
+        player.sendMessage(parseLegacyText(player, message), false);
+    }
+
+    private Text parseLegacyText(ServerPlayerEntity player, String message) {
+        String normalizedMessage = message == null ? "" : message;
+        try {
+            String json = AdventureSerializer.toJson(CirrusChatElement.ofLegacyText(normalizedMessage).asComponent());
+            Text text = Text.Serialization.fromJson(json, player.getRegistryManager());
+            if (text != null) {
+                return text;
+            }
+        } catch (Exception ignored) {
+        }
+        return Text.literal(stripLegacyFormatting(normalizedMessage));
+    }
+
+    private void fixLegacyHoverEvents(JsonElement element) {
+        if (element == null || element.isJsonNull()) {
+            return;
+        }
+        if (element.isJsonArray()) {
+            for (JsonElement child : element.getAsJsonArray()) {
+                fixLegacyHoverEvents(child);
+            }
+            return;
+        }
+        if (!element.isJsonObject()) {
+            return;
+        }
+
+        JsonObject obj = element.getAsJsonObject();
+        if (obj.has("hoverEvent") && obj.get("hoverEvent").isJsonObject()) {
             JsonObject hover = obj.getAsJsonObject("hoverEvent");
             if (hover != null && hover.has("value") && !hover.has("contents")) {
-                com.google.gson.JsonElement value = hover.remove("value");
+                JsonElement value = hover.remove("value");
                 if (value.isJsonPrimitive()) {
                     JsonObject contents = new JsonObject();
                     contents.add("text", value);
@@ -323,10 +356,13 @@ public class FabricPlatform implements Platform {
                 }
             }
         }
-        if (obj.has("extra") && obj.get("extra").isJsonArray()) {
-            for (com.google.gson.JsonElement el : obj.getAsJsonArray("extra")) {
-                if (el.isJsonObject()) fixLegacyHoverEvents(el.getAsJsonObject());
-            }
+
+        for (String key : obj.keySet()) {
+            fixLegacyHoverEvents(obj.get(key));
         }
+    }
+
+    private String stripLegacyFormatting(String message) {
+        return (message == null ? "" : message).replaceAll("(?i)[&\u00a7][0-9a-fk-or]", "");
     }
 }

@@ -72,7 +72,6 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             Permissions.CHAT_TOGGLE,
             Permissions.CHAT_CLEAR,
             Permissions.CHAT_SLOW,
-            Permissions.MAINTENANCE,
             Permissions.MOD_ACTIONS,
             Permissions.INTERCEPT,
             Permissions.CHAT_LOGS,

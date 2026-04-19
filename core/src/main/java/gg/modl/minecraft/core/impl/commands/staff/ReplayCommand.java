@@ -11,6 +11,7 @@ import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Named;
 import revxrsal.commands.annotation.Subcommand;
 import revxrsal.commands.command.CommandActor;
 
@@ -34,7 +35,7 @@ public class ReplayCommand {
 
     @Subcommand("status")
     @Description("Check replay recording status for a player")
-    public void status(CommandActor actor, @revxrsal.commands.annotation.Optional String targetName) {
+    public void status(CommandActor actor, @revxrsal.commands.annotation.Optional @Named("player") String targetName) {
         if (targetName == null) targetName = "";
         if (!PermissionUtil.hasPermission(actor, cache, Permissions.MOD_ACTIONS)) {
             actor.reply(localeManager.getMessage("general.no_permission"));
@@ -58,7 +59,7 @@ public class ReplayCommand {
 
     @Subcommand("capture")
     @Description("Capture and upload a replay for a player")
-    public void capture(CommandActor actor, @revxrsal.commands.annotation.Optional String targetName) {
+    public void capture(CommandActor actor, @revxrsal.commands.annotation.Optional @Named("player") String targetName) {
         if (targetName == null) targetName = "";
         if (!PermissionUtil.hasPermission(actor, cache, Permissions.MOD_ACTIONS)) {
             actor.reply(localeManager.getMessage("general.no_permission"));

@@ -19,7 +19,6 @@ import gg.modl.minecraft.core.impl.commands.staff.HistoryCommand;
 import gg.modl.minecraft.core.impl.commands.staff.InspectCommand;
 import gg.modl.minecraft.core.impl.commands.staff.InterceptNetworkChatCommand;
 import gg.modl.minecraft.core.impl.commands.staff.LocalChatCommand;
-import gg.modl.minecraft.core.impl.commands.staff.MaintenanceCommand;
 import gg.modl.minecraft.core.impl.commands.ModlHelpCommand;
 import gg.modl.minecraft.core.impl.commands.staff.ModlReloadCommand;
 import gg.modl.minecraft.core.impl.commands.staff.NotesCommand;
@@ -164,6 +163,13 @@ public class PluginLoader {
 
         this.lamp = platform.buildLamp(builder -> {
             builder.suggestionProviders(suggestionProviders -> suggestionProviders.addProviderFactoryLast((type, annotations, lamp) -> {
+                if (type instanceof Class) {
+                    Class<?> clazz = (Class<?>) type;
+                    if (clazz == AbstractPlayer.class || clazz == Account.class) {
+                        return PlayerQuerySuggestions.onlinePlayerNames(platform);
+                    }
+                }
+
                 if (!(type instanceof Class) || type != String.class) {
                     return null;
                 }
@@ -256,7 +262,6 @@ public class PluginLoader {
                 configManager.getStaffChatConfig(), configManager.getChatManagementConfig()));
         lamp.register(new StaffListCommand(platform, cache, this.localeManager, vanishService, httpClientHolder, httpManager.getPanelUrl()));
         lamp.register(new VerifyCommand(platform, this.localeManager, staff2faService, httpClientHolder));
-        lamp.register(new MaintenanceCommand(platform, cache, this.localeManager, maintenanceService));
         lamp.register(new InterceptNetworkChatCommand(networkChatInterceptService, cache, this.localeManager));
         lamp.register(new ChatLogsCommand(httpClientHolder, chatCommandLogService, cache, this.localeManager));
         lamp.register(new CommandLogsCommand(httpClientHolder, chatCommandLogService, cache, this.localeManager));
@@ -342,7 +347,6 @@ public class PluginLoader {
             entry("staffmode", "staffmode"),
             entry("vanish", "vanish|v"),
             entry("target", "target"),
-            entry("maintenance", "maintenance"),
             entry("verify", "verify"),
             entry("interceptnetworkchat", "interceptnetworkchat|inc"),
             entry("chatlogs", "chatlogs"),

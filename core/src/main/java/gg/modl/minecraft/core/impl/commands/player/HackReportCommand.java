@@ -2,6 +2,7 @@ package gg.modl.minecraft.core.impl.commands.player;
 
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Named;
 import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.AbstractPlayer;
@@ -27,7 +28,7 @@ public class HackReportCommand {
     @Command("hackreport")
     @Description("Report a player for cheating/hacking")
     @PlayerOnly
-    public void hackReport(CommandActor actor, String targetName, @Optional String details) {
+    public void hackReport(CommandActor actor, @Named("player") String targetName, @Optional String details) {
         if (ticketUtil.checkCooldown(actor, "player", localeManager)) return;
 
         AbstractPlayer reporter = platform.getAbstractPlayer(actor.uniqueId(), false);

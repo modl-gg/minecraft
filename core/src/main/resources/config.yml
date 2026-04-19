@@ -99,7 +99,6 @@ commands:
   staffmode: "staffmode|modmode|sm|mm"
   vanish: "vanish|v"
   target: "target"
-  maintenance: "maintenance"
   verify: "verify"
   interceptnetworkchat: "interceptnetworkchat|inc"
   chatlogs: "chatlogs"

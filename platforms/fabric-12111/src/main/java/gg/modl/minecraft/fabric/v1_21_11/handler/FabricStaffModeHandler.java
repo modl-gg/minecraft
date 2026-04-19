@@ -139,6 +139,9 @@ public class FabricStaffModeHandler {
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
         if (player != null) {
             vanish(player);
+            if (staffModeActive.contains(uuid)) {
+                updateVanishHotbarItem(player, true);
+            }
         }
     }
 
@@ -147,6 +150,9 @@ public class FabricStaffModeHandler {
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
         if (player != null) {
             unvanish(player);
+            if (staffModeActive.contains(uuid)) {
+                updateVanishHotbarItem(player, false);
+            }
         }
     }
 
@@ -157,7 +163,6 @@ public class FabricStaffModeHandler {
                 hidePlayerFrom(staff, online);
             }
         }
-        updateVanishHotbarItem(staff, true);
     }
 
     private void unvanish(ServerPlayerEntity staff) {
@@ -167,7 +172,6 @@ public class FabricStaffModeHandler {
                 showPlayerTo(staff, online);
             }
         }
-        updateVanishHotbarItem(staff, false);
     }
 
     private void hidePlayerFrom(ServerPlayerEntity toHide, ServerPlayerEntity viewer) {
@@ -228,11 +232,8 @@ public class FabricStaffModeHandler {
         if (hotbar == null) return;
         for (Map.Entry<Integer, StaffModeConfig.HotbarItem> entry : hotbar.entrySet()) {
             if ("vanish_toggle".equals(entry.getValue().getAction())) {
-                StaffModeConfig.HotbarItem item = entry.getValue();
-                String itemId = isVanished && item.getToggleItem() != null ? item.getToggleItem() : item.getItem();
-                String name = isVanished && item.getToggleName() != null ? item.getToggleName() : item.getName();
-                ItemStack stack = createItemStack(itemId, name);
-                player.getInventory().setStack(entry.getKey(), stack);
+                boolean useToggle = !isVanished && entry.getValue().getToggleItem() != null;
+                player.getInventory().setStack(entry.getKey(), createItemStack(entry.getValue(), useToggle));
                 break;
             }
         }
@@ -278,25 +279,45 @@ public class FabricStaffModeHandler {
 
     private void setupHotbar(ServerPlayerEntity player, Map<Integer, StaffModeConfig.HotbarItem> hotbar) {
         player.getInventory().clear();
+        boolean isVanished = vanished.contains(player.getUuid());
         hotbar.forEach((slot, hotbarItem) -> {
             if (slot >= 0 && slot <= 8) {
-                ItemStack item = createItemStack(hotbarItem);
+                boolean useToggle = "vanish_toggle".equals(hotbarItem.getAction())
+                        && !isVanished && hotbarItem.getToggleItem() != null;
+                ItemStack item = createItemStack(hotbarItem, useToggle);
                 player.getInventory().setStack(slot, item);
             }
         });
     }
 
     private ItemStack createItemStack(StaffModeConfig.HotbarItem hotbarItem) {
-        return createItemStack(hotbarItem.getItem(), hotbarItem.getName());
+        return createItemStack(hotbarItem, false);
+    }
+
+    private ItemStack createItemStack(StaffModeConfig.HotbarItem hotbarItem, boolean useToggle) {
+        String itemId = useToggle && hotbarItem.getToggleItem() != null ? hotbarItem.getToggleItem() : hotbarItem.getItem();
+        String name = useToggle && hotbarItem.getToggleName() != null ? hotbarItem.getToggleName() : hotbarItem.getName();
+        List<String> lore = useToggle && hotbarItem.getToggleLore() != null && !hotbarItem.getToggleLore().isEmpty()
+                ? hotbarItem.getToggleLore() : hotbarItem.getLore();
+        return createItemStack(itemId, name, lore);
     }
 
     private ItemStack createItemStack(String itemId, String name) {
+        return createItemStack(itemId, name, Collections.emptyList());
+    }
+
+    private ItemStack createItemStack(String itemId, String name, List<String> lore) {
         String materialName = itemId.replace("minecraft:", "");
         Identifier id = Identifier.of("minecraft", materialName);
         net.minecraft.item.Item item = Registries.ITEM.containsId(id) ? Registries.ITEM.get(id) : Items.STONE;
         ItemStack stack = new ItemStack(item, 1);
         String displayName = localeManager.colorize(name);
         stack.set(net.minecraft.component.DataComponentTypes.CUSTOM_NAME, Text.literal(displayName));
+        if (lore != null && !lore.isEmpty()) {
+            stack.set(net.minecraft.component.DataComponentTypes.LORE, new net.minecraft.component.type.LoreComponent(
+                    lore.stream().<Text>map(line -> Text.literal(localeManager.colorize(line))).toList()
+            ));
+        }
         return stack;
     }
 
@@ -473,6 +494,9 @@ public class FabricStaffModeHandler {
     }
 
     public void onTick() {
+        if (!vanished.isEmpty()) {
+            clearVanishedMobTargets();
+        }
         if (staffModeActive.isEmpty()) return;
         for (UUID uuid : staffModeActive) {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
@@ -489,6 +513,20 @@ public class FabricStaffModeHandler {
                 if (player.getInventory().getStack(i).isEmpty()) continue;
                 if (i <= 8 && hotbar != null && hotbar.containsKey(i)) continue;
                 player.getInventory().setStack(i, ItemStack.EMPTY);
+            }
+        }
+    }
+
+    private void clearVanishedMobTargets() {
+        for (net.minecraft.server.world.ServerWorld world : server.getWorlds()) {
+            for (net.minecraft.entity.Entity entity : world.iterateEntities()) {
+                if (!(entity instanceof net.minecraft.entity.mob.MobEntity mob)) {
+                    continue;
+                }
+                net.minecraft.entity.LivingEntity target = mob.getTarget();
+                if (target instanceof ServerPlayerEntity player && vanished.contains(player.getUuid())) {
+                    mob.setTarget(null);
+                }
             }
         }
     }
@@ -515,9 +553,11 @@ public class FabricStaffModeHandler {
         if (vanished.contains(player.getUuid())) {
             unvanish(player);
             player.sendMessage(Text.literal(localeManager.getMessage("staff_mode.vanish.off")), false);
+            updateVanishHotbarItem(player, false);
         } else {
             vanish(player);
             player.sendMessage(Text.literal(localeManager.getMessage("staff_mode.vanish.on")), false);
+            updateVanishHotbarItem(player, true);
         }
     }
 
