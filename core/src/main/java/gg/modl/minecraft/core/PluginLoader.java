@@ -304,6 +304,7 @@ public class PluginLoader {
             "punishment_action", "staffchat", "localchat", "chat", "stafflist", "freeze",
             "staffmode", "vanish", "target", "verify", "interceptnetworkchat", "chatlogs",
             "commandlogs", "replay");
+        platform.finalizeLampRegistration(lamp);
     }
 
     public static AbstractPlayer fetchPlayer(String target, Platform platform, ModlHttpClient httpClient, boolean queryMojang) {

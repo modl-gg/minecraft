@@ -4,6 +4,7 @@ import com.github.retrooper.packetevents.PacketEvents;
 import dev.simplix.cirrus.spigot.CirrusSpigot;
 import gg.modl.minecraft.api.LibraryRecord;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
+import gg.modl.minecraft.bridge.config.BridgeWizardConfigWriter;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
@@ -238,6 +239,8 @@ public class SpigotPlugin extends JavaPlugin {
     }
 
     private void enableBridgeOnlyMode(BootConfig bootConfig) {
+        BridgeWizardConfigWriter.writeBridgeOnlyConfig(getDataFolder().toPath(), bootConfig, pluginLogger);
+
         TicketCreator tcpTicketCreator = (creatorUuid, creatorName, type, subject, description,
                                           reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer, replayUrl) -> {
             if (bridgeComponent.getBridgeClient() != null) {

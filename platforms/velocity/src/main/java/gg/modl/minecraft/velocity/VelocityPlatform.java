@@ -10,6 +10,7 @@ import gg.modl.minecraft.core.Platform;
 import revxrsal.commands.Lamp;
 import revxrsal.commands.command.CommandActor;
 import revxrsal.commands.velocity.VelocityLamp;
+import revxrsal.commands.velocity.VelocityVisitors;
 import revxrsal.commands.velocity.actor.VelocityCommandActor;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
@@ -125,6 +126,16 @@ public class VelocityPlatform implements Platform {
         Lamp.Builder<VelocityCommandActor> builder = VelocityLamp.builder(plugin, server);
         configurator.accept((Lamp.Builder) builder);
         return builder.build();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void finalizeLampRegistration(Lamp<? extends CommandActor> lamp) {
+        // Velocity's Brigadier bridge only registers the commands present in Lamp's
+        // registry at visit time, so it must run after PluginLoader finishes registering
+        // every command object.
+        Lamp<VelocityCommandActor> velocityLamp = (Lamp<VelocityCommandActor>) lamp;
+        velocityLamp.accept(VelocityVisitors.brigadier(server));
     }
 
     private Player getOnlinePlayer(String username) {

@@ -9,6 +9,7 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("com.google.code.gson:gson:${property("gson.version")}")
+    testImplementation("org.yaml:snakeyaml:${property("snakeyaml.version")}")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

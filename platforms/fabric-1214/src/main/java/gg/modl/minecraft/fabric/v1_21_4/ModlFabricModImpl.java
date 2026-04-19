@@ -3,7 +3,7 @@ package gg.modl.minecraft.fabric.v1_21_4;
 import dev.simplix.cirrus.fabric.CirrusFabric;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.api.http.request.StartupRequest;
-import gg.modl.minecraft.bridge.config.BridgeConfig;
+import gg.modl.minecraft.bridge.config.BridgeWizardConfigWriter;
 import gg.modl.minecraft.bridge.reporter.TicketCreator;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.boot.*;
@@ -346,16 +346,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
     }
 
     private void writeBridgeConfigFromWizard(Path dataFolder) {
-        if (bootConfig.getWizardProxyHost() == null) return;
-        try {
-            BridgeConfig bridgeConfig = BridgeConfig.load(dataFolder);
-            bridgeConfig.setApiKey(bootConfig.getApiKey());
-            bridgeConfig.updateProxyConnection(
-                    bootConfig.getWizardProxyHost(), bootConfig.getWizardProxyPort());
-            bridgeConfig.save(dataFolder);
-        } catch (IOException e) {
-            LOGGER.warn("Failed to write bridge-config.yml: {}", e.getMessage());
-        }
+        BridgeWizardConfigWriter.writeBridgeOnlyConfig(dataFolder, bootConfig, PLUGIN_LOGGER);
     }
 
     private void saveDefaultResources(Path dataFolder) {

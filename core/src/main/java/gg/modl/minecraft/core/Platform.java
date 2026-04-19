@@ -29,6 +29,7 @@ public interface Platform {
     void sendJsonMessage(UUID uuid, String jsonMessage);
     boolean isOnline(UUID uuid);
     Lamp<? extends CommandActor> buildLamp(Consumer<Lamp.Builder<? extends CommandActor>> configurator);
+    default void finalizeLampRegistration(Lamp<? extends CommandActor> lamp) {}
     AbstractPlayer getAbstractPlayer(UUID uuid, boolean queryMojang);
     AbstractPlayer getAbstractPlayer(String username, boolean queryMojang);
     CirrusPlayerWrapper getPlayerWrapper(UUID uuid);
@@ -69,4 +70,3 @@ public interface Platform {
     default ReplayService getReplayService() { return null; }
     default void setReplayService(ReplayService replayService) {}
 }
-
