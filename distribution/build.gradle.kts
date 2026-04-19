@@ -119,20 +119,27 @@ tasks.shadowJar {
         include("modl.accesswidener")
     }
 
-    // Nested Fabric JARs — renamed to match fabric.mod.json "jars" declarations
-    into("META-INF/jars") {
-        from(existingJar(fabric12111Jar)) {
-            rename(".*", "modl-fabric-12111.jar")
-        }
-        from(existingJar(fabric121Jar)) {
-            rename(".*", "modl-fabric-121.jar")
-        }
-        from(existingJar(fabric1214Jar)) {
-            rename(".*", "modl-fabric-1214.jar")
-        }
-        from(existingJar(fabric26Jar)) {
-            rename(".*", "modl-fabric-26.jar")
-        }
+    // Merge all Fabric implementation classes into the universal root mod jar.
+    // Keeping them as nested jars makes Fabric validate every impl mod's minecraft range.
+    from(existingJar(fabric12111Jar).map { jars -> jars.map(::zipTree) }) {
+        exclude("META-INF/**")
+        exclude("fabric.mod.json")
+        exclude("modl.accesswidener")
+    }
+    from(existingJar(fabric121Jar).map { jars -> jars.map(::zipTree) }) {
+        exclude("META-INF/**")
+        exclude("fabric.mod.json")
+        exclude("modl.accesswidener")
+    }
+    from(existingJar(fabric1214Jar).map { jars -> jars.map(::zipTree) }) {
+        exclude("META-INF/**")
+        exclude("fabric.mod.json")
+        exclude("modl.accesswidener")
+    }
+    from(existingJar(fabric26Jar).map { jars -> jars.map(::zipTree) }) {
+        exclude("META-INF/**")
+        exclude("fabric.mod.json")
+        exclude("modl.accesswidener")
     }
 }
 
