@@ -2,6 +2,7 @@ package gg.modl.minecraft.core.impl.commands.staff;
 
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.command.ConsumeRemaining;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.cache.Cache;
@@ -24,7 +25,7 @@ public class StaffChatCommand {
     private final StaffChatConfig staffChatConfig;
 
     @Description("Toggle staff chat mode or send a message to staff chat")
-    public void staffChat(CommandActor actor, @revxrsal.commands.annotation.Optional String message) {
+    public void staffChat(CommandActor actor, @revxrsal.commands.annotation.Optional @ConsumeRemaining String message) {
         if (message == null) message = "";
 
         if (!staffChatConfig.isEnabled()) {

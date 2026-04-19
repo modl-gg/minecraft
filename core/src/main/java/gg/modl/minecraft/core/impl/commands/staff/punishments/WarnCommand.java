@@ -2,6 +2,7 @@ package gg.modl.minecraft.core.impl.commands.staff.punishments;
 
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Named;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
@@ -10,6 +11,7 @@ import gg.modl.minecraft.api.http.request.CreatePlayerNoteRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.ConsumeRemaining;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
@@ -29,7 +31,7 @@ public class WarnCommand {
     private final LocaleManager localeManager;
 
     @StaffOnly
-    public void warn(CommandActor actor, @Named("target") Account target, String args) {
+    public void warn(CommandActor actor, @Named("target") Account target, @Optional @ConsumeRemaining String args) {
         if (target == null) {
             actor.reply(localeManager.getPunishmentMessage("general.player_not_found", mapOf()));
             return;
@@ -80,6 +82,7 @@ public class WarnCommand {
     }
 
     private WarnArgs parseArguments(String args) {
+        if (args == null || args.trim().isEmpty()) return new WarnArgs();
         String[] arguments = args.split(" ");
         WarnArgs result = new WarnArgs();
         StringBuilder reasonBuilder = new StringBuilder();

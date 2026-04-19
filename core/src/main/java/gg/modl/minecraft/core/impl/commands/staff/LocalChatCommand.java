@@ -3,6 +3,7 @@ package gg.modl.minecraft.core.impl.commands.staff;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.ConsumeRemaining;
 import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -25,7 +26,7 @@ public class LocalChatCommand {
     private final StaffChatService staffChatService;
 
     @Description("Switch back to normal chat mode or send a local message")
-    public void localChat(CommandActor actor, @revxrsal.commands.annotation.Optional String message) {
+    public void localChat(CommandActor actor, @revxrsal.commands.annotation.Optional @ConsumeRemaining String message) {
         if (message == null) message = "";
         UUID senderUuid = actor.uniqueId();
 

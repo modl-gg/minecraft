@@ -1,8 +1,12 @@
 package gg.modl.minecraft.core;
 
+import revxrsal.commands.annotation.Command;
 import revxrsal.commands.Lamp;
+import revxrsal.commands.annotation.dynamic.Annotations;
 import revxrsal.commands.command.CommandActor;
 import revxrsal.commands.annotation.Named;
+import revxrsal.commands.parameter.ParameterType;
+import revxrsal.commands.parameter.StringParameterType;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
@@ -30,6 +34,8 @@ import gg.modl.minecraft.core.impl.commands.staff.StaffListCommand;
 import gg.modl.minecraft.core.impl.commands.staff.StaffModeCommand;
 import gg.modl.minecraft.core.impl.commands.staff.ReplayCommand;
 import gg.modl.minecraft.core.impl.commands.staff.TargetCommand;
+import gg.modl.minecraft.core.command.ConfiguredCommandAliases;
+import gg.modl.minecraft.core.command.ConsumeRemaining;
 import gg.modl.minecraft.core.command.PlayerQuerySuggestions;
 import gg.modl.minecraft.core.impl.commands.player.ApplyCommand;
 import gg.modl.minecraft.core.impl.commands.player.BugReportCommand;
@@ -61,14 +67,19 @@ import gg.modl.minecraft.core.service.sync.SyncService;
 import gg.modl.minecraft.core.util.DateFormatter;
 import gg.modl.minecraft.core.util.PlayerLookupUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages;
+import gg.modl.minecraft.core.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.util.PunishmentTypeCacheManager;
 import gg.modl.minecraft.core.util.StaffPermissionLoader;
 import lombok.Getter;
 import org.yaml.snakeyaml.Yaml;
 
+import java.lang.annotation.Annotation;
 import java.io.InputStream;
+import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -161,7 +172,13 @@ public class PluginLoader {
         this.updateCheckerService = new UpdateCheckerService(logger, this.debugMode, PluginInfo.VERSION);
         this.updateCheckerService.start(updateCheckerConfig.enabled, updateCheckerConfig.intervalMinutes);
 
+        Map<String, String> commandAliases = loadCommandAliases(configYml, logger);
+        ConfiguredCommandAliases configuredCommandAliases = new ConfiguredCommandAliases(commandAliases);
+        PunishmentActionMessages.setCommandPath(configuredCommandAliases.primaryAlias("punishment_action"));
+
         this.lamp = platform.buildLamp(builder -> {
+            builder.annotationReplacer(Command.class, (element, annotation) ->
+                remapCommandAnnotation(annotation, configuredCommandAliases));
             builder.suggestionProviders(suggestionProviders -> suggestionProviders.addProviderFactoryLast((type, annotations, lamp) -> {
                 if (type instanceof Class) {
                     Class<?> clazz = (Class<?>) type;
@@ -182,6 +199,16 @@ public class PluginLoader {
                 return PlayerQuerySuggestions.onlinePlayerNames(platform);
             }));
             builder.parameterTypes(types -> {
+                types.addParameterTypeFactory(new ParameterType.Factory<CommandActor>() {
+                    @Override
+                    public <T> ParameterType<CommandActor, T> create(Type type, revxrsal.commands.annotation.list.AnnotationList annotations, Lamp<CommandActor> lamp) {
+                        if (!(type instanceof Class) || type != String.class) return null;
+                        if (!annotations.contains(ConsumeRemaining.class)) return null;
+                        @SuppressWarnings("unchecked")
+                        ParameterType<CommandActor, T> greedyString = (ParameterType<CommandActor, T>) StringParameterType.greedy();
+                        return greedyString;
+                    }
+                });
                 types.addParameterType(AbstractPlayer.class, (input, context) -> {
                     String name = input.readString();
                     AbstractPlayer player = fetchPlayer(name, platform, getHttpClient(), queryMojang);
@@ -197,51 +224,50 @@ public class PluginLoader {
             });
         });
 
-        Map<String, String> commandAliases = loadCommandAliases(configYml, logger);
-
         PunishCommand punishCommand = new PunishCommand(httpClientHolder, platform, cache, this.localeManager);
-        lamp.register(punishCommand);
-        punishCommand.initializePunishmentTypes();
-        syncService.addPunishmentTypesListener(punishCommand::updatePunishmentTypesCache);
+        if (registerIfEnabled(configuredCommandAliases, punishCommand, "punish")) {
+            punishCommand.initializePunishmentTypes();
+            syncService.addPunishmentTypesListener(punishCommand::updatePunishmentTypesCache);
+        }
 
         initializeStaffPermissions(httpManager.getHttpClient(), cache, logger, httpManager.isDebugHttp());
 
-        lamp.register(new ModlHelpCommand(cache, this.localeManager));
-        lamp.register(new ModlReloadCommand(this.localeManager, this::reloadRuntimeConfiguration));
-        lamp.register(new BanCommand(httpClientHolder, platform, cache, this.localeManager));
-        lamp.register(new MuteCommand(httpClientHolder, platform, cache, this.localeManager));
-        lamp.register(new KickCommand(httpClientHolder, platform, cache, this.localeManager));
-        lamp.register(new BlacklistCommand(httpClientHolder, platform, cache, this.localeManager));
-        lamp.register(new PardonCommand(httpClientHolder, platform, cache, this.localeManager));
-        lamp.register(new WarnCommand(httpClientHolder, platform, cache, this.localeManager));
-        lamp.register(new IAmMutedCommand(platform, cache, this.localeManager));
-        lamp.register(new StandingCommand(httpClientHolder, platform, this.localeManager, configManager, cache));
+        registerIfEnabled(configuredCommandAliases, new ModlHelpCommand(cache, this.localeManager), "modl");
+        registerIfEnabled(configuredCommandAliases, new ModlReloadCommand(this.localeManager, this::reloadRuntimeConfiguration), "modl");
+        registerIfEnabled(configuredCommandAliases, new BanCommand(httpClientHolder, platform, cache, this.localeManager), "ban");
+        registerIfEnabled(configuredCommandAliases, new MuteCommand(httpClientHolder, platform, cache, this.localeManager), "mute");
+        registerIfEnabled(configuredCommandAliases, new KickCommand(httpClientHolder, platform, cache, this.localeManager), "kick");
+        registerIfEnabled(configuredCommandAliases, new BlacklistCommand(httpClientHolder, platform, cache, this.localeManager), "blacklist");
+        registerIfEnabled(configuredCommandAliases, new PardonCommand(httpClientHolder, platform, cache, this.localeManager), "pardon", "unban", "unmute");
+        registerIfEnabled(configuredCommandAliases, new WarnCommand(httpClientHolder, platform, cache, this.localeManager), "warn");
+        registerIfEnabled(configuredCommandAliases, new IAmMutedCommand(platform, cache, this.localeManager), "iammuted");
+        registerIfEnabled(configuredCommandAliases, new StandingCommand(httpClientHolder, platform, this.localeManager, configManager, cache), "standing");
 
         TicketCommandUtil ticketUtil = new TicketCommandUtil(cache);
         ModlHttpClient httpClient = httpManager.getHttpClient();
         String panelUrl = httpManager.getPanelUrl();
-        lamp.register(new ReportCommand(asyncCommandExecutor, platform, httpClient, panelUrl, this.localeManager, chatMessageCache, ticketUtil));
-        lamp.register(new ChatReportCommand(platform, httpClient, panelUrl, this.localeManager, chatMessageCache, ticketUtil));
-        lamp.register(new HackReportCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil));
-        lamp.register(new ApplyCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil));
-        lamp.register(new BugReportCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil));
-        lamp.register(new SupportCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil));
-        lamp.register(new ClaimTicketCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil));
+        registerIfEnabled(configuredCommandAliases, new ReportCommand(asyncCommandExecutor, platform, httpClient, panelUrl, this.localeManager, chatMessageCache, ticketUtil), "report");
+        registerIfEnabled(configuredCommandAliases, new ChatReportCommand(platform, httpClient, panelUrl, this.localeManager, chatMessageCache, ticketUtil), "chatreport");
+        registerIfEnabled(configuredCommandAliases, new HackReportCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil), "hackreport");
+        registerIfEnabled(configuredCommandAliases, new ApplyCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil), "apply");
+        registerIfEnabled(configuredCommandAliases, new BugReportCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil), "bugreport");
+        registerIfEnabled(configuredCommandAliases, new SupportCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil), "support");
+        registerIfEnabled(configuredCommandAliases, new ClaimTicketCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil), "tclaim");
 
         PunishmentTypeCacheManager punishmentTypeCache = new PunishmentTypeCacheManager();
         punishmentTypeCache.initialize(httpManager.getHttpClient(), logger);
         syncService.addPunishmentTypesListener(punishmentTypeCache::update);
 
         InspectCommand inspectCommand = new InspectCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl(), punishmentTypeCache);
-        lamp.register(inspectCommand);
-        lamp.register(new StaffCommand(asyncCommandExecutor, httpClientHolder, platform, cache,
-            httpManager.getPanelUrl()));
+        registerIfEnabled(configuredCommandAliases, inspectCommand, "inspect");
+        registerIfEnabled(configuredCommandAliases, new StaffCommand(asyncCommandExecutor, httpClientHolder, platform, cache,
+            httpManager.getPanelUrl()), "staffmenu");
         HistoryCommand historyCommand = new HistoryCommand(httpClientHolder, platform, cache, this.localeManager, punishmentTypeCache);
-        lamp.register(historyCommand);
-        lamp.register(new AltsCommand(httpClientHolder, platform, cache, this.localeManager));
-        lamp.register(new NotesCommand(httpClientHolder, platform, cache, this.localeManager));
-        lamp.register(new ReportsCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
-        lamp.register(new PunishmentActionCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()));
+        registerIfEnabled(configuredCommandAliases, historyCommand, "history");
+        registerIfEnabled(configuredCommandAliases, new AltsCommand(httpClientHolder, platform, cache, this.localeManager), "alts");
+        registerIfEnabled(configuredCommandAliases, new NotesCommand(httpClientHolder, platform, cache, this.localeManager), "notes");
+        registerIfEnabled(configuredCommandAliases, new ReportsCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()), "reports");
+        registerIfEnabled(configuredCommandAliases, new PunishmentActionCommand(httpClientHolder, platform, cache, this.localeManager, httpManager.getPanelUrl()), "punishment_action");
 
         this.staffChatService = new StaffChatService(cachedProfileRegistry);
         this.chatManagementService = new ChatManagementService(cachedProfileRegistry);
@@ -256,26 +282,28 @@ public class PluginLoader {
         platform.setBridgeService(this.bridgeService);
         platform.setChatInputManager(new ChatInputManager(platform));
 
-        lamp.register(new StaffChatCommand(platform, cache, this.localeManager, staffChatService, configManager.getStaffChatConfig()));
-        lamp.register(new LocalChatCommand(platform, cache, this.localeManager, staffChatService));
-        lamp.register(new ChatCommand(platform, cache, this.localeManager, staffChatService, chatManagementService,
-                configManager.getStaffChatConfig(), configManager.getChatManagementConfig()));
-        lamp.register(new StaffListCommand(platform, cache, this.localeManager, vanishService, httpClientHolder, httpManager.getPanelUrl()));
-        lamp.register(new VerifyCommand(platform, this.localeManager, staff2faService, httpClientHolder));
-        lamp.register(new InterceptNetworkChatCommand(networkChatInterceptService, cache, this.localeManager));
-        lamp.register(new ChatLogsCommand(httpClientHolder, chatCommandLogService, cache, this.localeManager));
-        lamp.register(new CommandLogsCommand(httpClientHolder, chatCommandLogService, cache, this.localeManager));
-        lamp.register(new FreezeCommand(platform, cache, this.localeManager, freezeService, bridgeService));
-        lamp.register(new StaffModeCommand(platform, cache, this.localeManager, staffModeService, vanishService, bridgeService));
-        lamp.register(new VanishCommand(platform, cache, this.localeManager, vanishService, bridgeService));
-        lamp.register(new TargetCommand(platform, cache, this.localeManager, staffModeService, bridgeService));
-        lamp.register(new ReplayCommand(platform, cache, this.localeManager, httpManager.getPanelUrl()));
+        registerIfEnabled(configuredCommandAliases, new StaffChatCommand(platform, cache, this.localeManager, staffChatService, configManager.getStaffChatConfig()), "staffchat");
+        registerIfEnabled(configuredCommandAliases, new LocalChatCommand(platform, cache, this.localeManager, staffChatService), "localchat");
+        registerIfEnabled(configuredCommandAliases, new ChatCommand(platform, cache, this.localeManager, staffChatService, chatManagementService,
+                configManager.getStaffChatConfig(), configManager.getChatManagementConfig()), "chat");
+        registerIfEnabled(configuredCommandAliases, new StaffListCommand(platform, cache, this.localeManager, vanishService, httpClientHolder, httpManager.getPanelUrl()), "stafflist");
+        registerIfEnabled(configuredCommandAliases, new VerifyCommand(platform, this.localeManager, staff2faService, httpClientHolder), "verify");
+        registerIfEnabled(configuredCommandAliases, new InterceptNetworkChatCommand(networkChatInterceptService, cache, this.localeManager), "interceptnetworkchat");
+        registerIfEnabled(configuredCommandAliases, new ChatLogsCommand(httpClientHolder, chatCommandLogService, cache, this.localeManager), "chatlogs");
+        registerIfEnabled(configuredCommandAliases, new CommandLogsCommand(httpClientHolder, chatCommandLogService, cache, this.localeManager), "commandlogs");
+        registerIfEnabled(configuredCommandAliases, new FreezeCommand(platform, cache, this.localeManager, freezeService, bridgeService), "freeze");
+        registerIfEnabled(configuredCommandAliases, new StaffModeCommand(platform, cache, this.localeManager, staffModeService, vanishService, bridgeService), "staffmode");
+        registerIfEnabled(configuredCommandAliases, new VanishCommand(platform, cache, this.localeManager, vanishService, bridgeService), "vanish");
+        registerIfEnabled(configuredCommandAliases, new TargetCommand(platform, cache, this.localeManager, staffModeService, bridgeService), "target");
+        registerIfEnabled(configuredCommandAliases, new ReplayCommand(platform, cache, this.localeManager, httpManager.getPanelUrl()), "replay");
 
-        for (Map.Entry<String, String> entry : commandAliases.entrySet()) {
-            if (entry.getKey().equals("modl")) continue;
-            if (entry.getValue().isEmpty()) continue;
-            for (String alias : entry.getValue().split("\\|")) asyncCommandExecutor.registerAsyncAlias(alias.trim());
-        }
+        registerAsyncAliases(configuredCommandAliases,
+            "punish", "ban", "mute", "kick", "blacklist", "pardon", "unban", "unmute", "warn",
+            "inspect", "staffmenu", "history", "alts", "notes", "reports", "iammuted",
+            "report", "chatreport", "hackreport", "apply", "bugreport", "support", "tclaim", "standing",
+            "punishment_action", "staffchat", "localchat", "chat", "stafflist", "freeze",
+            "staffmode", "vanish", "target", "verify", "interceptnetworkchat", "chatlogs",
+            "commandlogs", "replay");
     }
 
     public static AbstractPlayer fetchPlayer(String target, Platform platform, ModlHttpClient httpClient, boolean queryMojang) {
@@ -372,6 +400,27 @@ public class PluginLoader {
             logger.warning("Failed to load command aliases from config: " + e.getMessage());
         }
         return aliases;
+    }
+
+    private static Collection<Annotation> remapCommandAnnotation(Command annotation, ConfiguredCommandAliases commandAliases) {
+        String[] remappedValues = commandAliases.resolveCommandValues(annotation.value());
+        if (Arrays.equals(annotation.value(), remappedValues)) return Collections.singletonList(annotation);
+        if (remappedValues.length == 0) return Collections.emptyList();
+        return Collections.singletonList(Annotations.create(Command.class, "value", remappedValues));
+    }
+
+    private boolean registerIfEnabled(ConfiguredCommandAliases commandAliases, Object command, String... keys) {
+        if (!commandAliases.anyEnabled(keys)) return false;
+        lamp.register(command);
+        return true;
+    }
+
+    private void registerAsyncAliases(ConfiguredCommandAliases commandAliases, String... keys) {
+        for (String key : keys) {
+            for (String alias : commandAliases.aliasesFor(key)) {
+                asyncCommandExecutor.registerAsyncAlias(alias);
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")

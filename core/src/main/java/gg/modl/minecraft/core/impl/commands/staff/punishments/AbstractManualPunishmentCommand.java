@@ -91,6 +91,7 @@ public abstract class AbstractManualPunishmentCommand {
     }
 
     protected static ParsedArgs parseArguments(String args, Set<Flag> supportedFlags) {
+        if (args == null || args.trim().isEmpty()) return new ParsedArgs(supportedFlags);
         String[] arguments = args.split(" ");
         ParsedArgs result = new ParsedArgs(supportedFlags);
         StringBuilder reasonBuilder = new StringBuilder();

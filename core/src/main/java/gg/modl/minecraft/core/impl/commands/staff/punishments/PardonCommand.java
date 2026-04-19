@@ -3,6 +3,7 @@ package gg.modl.minecraft.core.impl.commands.staff.punishments;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
 import revxrsal.commands.annotation.Named;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
@@ -12,6 +13,7 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.ConsumeRemaining;
 import gg.modl.minecraft.core.command.RequiresPermission;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
@@ -34,7 +36,8 @@ public class PardonCommand {
 
     @Description("Pardon all of a player's active and unstarted punishments")
     @RequiresPermission("punishment.modify")
-    public void pardon(CommandActor actor, @Named("target") String target, String reason) {
+    public void pardon(CommandActor actor, @Named("target") String target, @Optional @ConsumeRemaining String reason) {
+        reason = normalizeReason(reason);
         final String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
         final String issuerId = CommandUtil.resolveActorId(actor, cache);
 
@@ -44,7 +47,8 @@ public class PardonCommand {
 
     @Description("Unban a player by name or punishment ID")
     @RequiresPermission("punishment.modify")
-    public void unban(CommandActor actor, @Named("target") String target, String reason) {
+    public void unban(CommandActor actor, @Named("target") String target, @Optional @ConsumeRemaining String reason) {
+        reason = normalizeReason(reason);
         final String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
         final String issuerId = CommandUtil.resolveActorId(actor, cache);
 
@@ -54,7 +58,8 @@ public class PardonCommand {
 
     @Description("Unmute a player by name or punishment ID")
     @RequiresPermission("punishment.modify")
-    public void unmute(CommandActor actor, @Named("target") String target, String reason) {
+    public void unmute(CommandActor actor, @Named("target") String target, @Optional @ConsumeRemaining String reason) {
+        reason = normalizeReason(reason);
         final String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
         final String issuerId = CommandUtil.resolveActorId(actor, cache);
 
@@ -121,6 +126,10 @@ public class PardonCommand {
 
     private boolean isPunishmentId(String target) {
         return target.length() == PUNISHMENT_ID_LENGTH && PUNISHMENT_ID_PATTERN.matcher(target).matches();
+    }
+
+    private static String normalizeReason(String reason) {
+        return reason == null ? "" : reason.trim();
     }
 
     private void invalidatePlayerCache(String playerName, String type) {

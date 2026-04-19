@@ -9,6 +9,7 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.command.ConsumeRemaining;
 import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ReplayService;
@@ -28,7 +29,7 @@ public class HackReportCommand {
     @Command("hackreport")
     @Description("Report a player for cheating/hacking")
     @PlayerOnly
-    public void hackReport(CommandActor actor, @Named("player") String targetName, @Optional String details) {
+    public void hackReport(CommandActor actor, @Named("player") String targetName, @Optional @ConsumeRemaining String details) {
         if (ticketUtil.checkCooldown(actor, "player", localeManager)) return;
 
         AbstractPlayer reporter = platform.getAbstractPlayer(actor.uniqueId(), false);
