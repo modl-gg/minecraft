@@ -1,5 +1,6 @@
 package gg.modl.minecraft.spigot;
 
+import gg.modl.minecraft.bridge.config.BridgeWizardConfigWriter;
 import gg.modl.minecraft.core.boot.BootConfig;
 import gg.modl.minecraft.core.boot.ConsoleInput;
 import gg.modl.minecraft.core.boot.PlatformType;
@@ -72,6 +73,7 @@ public class SpigotSetupWizard implements Listener {
 
             if (config != null) {
                 config.save(plugin.getDataFolder().toPath());
+                BridgeWizardConfigWriter.writeBridgeOnlyConfig(plugin.getDataFolder().toPath(), config, logger);
                 logger.info("Configuration saved to boot.yml.");
                 logger.info("Initializing plugin...");
                 runOnMain(() -> onComplete.accept(config));

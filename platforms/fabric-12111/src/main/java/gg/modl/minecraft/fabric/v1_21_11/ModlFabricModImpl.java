@@ -81,6 +81,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
 
             if (config != null) {
                 config.save(dataFolder);
+                BridgeWizardConfigWriter.writeBridgeOnlyConfig(dataFolder, config, PLUGIN_LOGGER);
                 return config;
             }
 

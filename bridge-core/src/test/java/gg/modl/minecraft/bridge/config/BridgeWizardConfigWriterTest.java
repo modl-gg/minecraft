@@ -38,6 +38,22 @@ class BridgeWizardConfigWriterTest {
     }
 
     @Test
+    void writesPersistedWizardProxySettingsAfterBootConfigReload() throws IOException {
+        BootConfig bootConfig = new BootConfig();
+        bootConfig.setMode(BootConfig.Mode.BRIDGE_ONLY);
+        bootConfig.setWizardProxyHost("proxy.internal");
+        bootConfig.setWizardProxyPort(25591);
+        bootConfig.save(tempDir);
+
+        BootConfig reloaded = BootConfig.load(tempDir);
+        BridgeWizardConfigWriter.writeBridgeOnlyConfig(tempDir, reloaded, logger);
+
+        BridgeConfig bridgeConfig = BridgeConfig.load(tempDir);
+        assertEquals("proxy.internal", bridgeConfig.getProxyHost());
+        assertEquals(25591, bridgeConfig.getProxyPort());
+    }
+
+    @Test
     void skipsWritingWhenWizardProxyHostIsMissing() {
         BootConfig bootConfig = new BootConfig();
         bootConfig.setMode(BootConfig.Mode.BRIDGE_ONLY);

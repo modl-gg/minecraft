@@ -22,9 +22,9 @@ public class BootConfig {
     private String proxyType;
     private int bridgePort = 25590;
 
-    // Transient fields set by setup wizard for bridge-only mode — not serialized to boot.yml
-    private transient String wizardProxyHost;
-    private transient int wizardProxyPort = 25590;
+    // Bridge-only proxy connection settings captured by the setup wizard and persisted in boot.yml
+    private String wizardProxyHost;
+    private int wizardProxyPort = 25590;
 
     public enum Mode {
         STANDALONE,
@@ -96,6 +96,8 @@ public class BootConfig {
         config.setTestingApi(getBool(data, "testing-api", false));
         config.setProxyType(getStr(data, "proxy-type", null));
         config.setBridgePort(getInt(data, "bridge-port", 25590));
+        config.setWizardProxyHost(getStr(data, "proxy-host", null));
+        config.setWizardProxyPort(getInt(data, "proxy-port", 25590));
 
         return config;
     }
@@ -107,6 +109,10 @@ public class BootConfig {
         map.put("testing-api", testingApi);
         if (proxyType != null) map.put("proxy-type", proxyType);
         if (mode == Mode.PROXY) map.put("bridge-port", bridgePort);
+        if (mode == Mode.BRIDGE_ONLY && wizardProxyHost != null && !wizardProxyHost.trim().isEmpty()) {
+            map.put("proxy-host", wizardProxyHost.trim());
+            map.put("proxy-port", wizardProxyPort);
+        }
 
         return map;
     }
@@ -127,6 +133,10 @@ public class BootConfig {
             writer.write("\n");
             writer.write("# Uncomment to use the testing API (api.modl.top)\n");
             writer.write("# testing-api: true\n");
+            writer.write("\n");
+            writer.write("# Proxy connection target (bridge-only mode)\n");
+            writer.write("# proxy-host: \"127.0.0.1\"\n");
+            writer.write("# proxy-port: 25590\n");
             writer.write("\n");
             writer.write("# Bridge listen port (proxy mode only — backends connect to this port)\n");
             writer.write("# bridge-port: 25590\n");
