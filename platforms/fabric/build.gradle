@@ -54,7 +54,7 @@ dependencies {
     compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:4.2.2"
     compileOnly "gg.modl.minecraft.cirrus:cirrus-api:4.2.2"
     compileOnly "gg.modl.minecraft.cirrus:cirrus-common:4.2.2"
-    compileOnly "gg.modl.minecraft.packetevents:packetevents-api:2.12.0"
+    compileOnly "gg.modl.minecraft.packetevents:packetevents-api:2.12.1"
     compileOnly "gg.modl.minecraft.replay:modl-replay-recording:1.1.0"
     compileOnly "gg.modl.minecraft.replay:replay-format:1.1.0"
 

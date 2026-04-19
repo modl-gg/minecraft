@@ -53,7 +53,7 @@ public final class Libraries {
     PACKETEVENTS_API = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-api",
-            "2.12.0",
+            "2.12.1",
             "packetevents-api",
             null,
             PACKETEVENTS_RELOCATIONS
@@ -61,7 +61,7 @@ public final class Libraries {
     PACKETEVENTS_NETTY = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-netty-common",
-            "2.12.0",
+            "2.12.1",
             "packetevents-netty-common",
             null,
             PACKETEVENTS_RELOCATIONS
@@ -69,7 +69,7 @@ public final class Libraries {
     PACKETEVENTS_SPIGOT = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-spigot",
-            "2.12.0",
+            "2.12.1",
             "packetevents-spigot",
             null,
             PACKETEVENTS_RELOCATIONS
@@ -77,7 +77,7 @@ public final class Libraries {
     PACKETEVENTS_BUNGEE = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-bungeecord",
-            "2.12.0",
+            "2.12.1",
             "packetevents-bungeecord",
             null,
             PACKETEVENTS_RELOCATIONS
@@ -85,7 +85,7 @@ public final class Libraries {
     PACKETEVENTS_VELOCITY = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-velocity",
-            "2.12.0",
+            "2.12.1",
             "packetevents-velocity",
             null,
             PACKETEVENTS_RELOCATIONS
@@ -93,7 +93,7 @@ public final class Libraries {
     PACKETEVENTS_FABRIC_COMMON = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-fabric-common",
-            "2.12.0",
+            "2.12.1",
             "packetevents-fabric-common",
             null,
             PACKETEVENTS_RELOCATIONS
@@ -101,7 +101,7 @@ public final class Libraries {
     PACKETEVENTS_FABRIC_INTERMEDIARY = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-fabric-intermediary",
-            "2.12.0",
+            "2.12.1",
             "packetevents-fabric-intermediary",
             null,
             PACKETEVENTS_RELOCATIONS
@@ -109,7 +109,7 @@ public final class Libraries {
     PACKETEVENTS_FABRIC_OFFICIAL = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-fabric-official",
-            "2.12.0",
+            "2.12.1",
             "packetevents-fabric-official",
             null,
             PACKETEVENTS_RELOCATIONS
