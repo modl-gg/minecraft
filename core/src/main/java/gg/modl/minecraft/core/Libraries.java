@@ -9,11 +9,7 @@ public final class Libraries {
 
     private Libraries() {}
 
-    private static final String[][] PACKETEVENTS_RELOCATIONS = {
-            {"com{}github{}retrooper{}packetevents", "gg{}modl{}libs{}packetevents{}api"},
-            {"io{}github{}retrooper{}packetevents", "gg{}modl{}libs{}packetevents{}impl"}
-    };
-    private static final String[][] FABRIC_PACKETEVENTS_REVERSE_RELOCATIONS = {
+    private static final String[][] CIRRUS_PACKETEVENTS_REVERSE_RELOCATIONS = {
             {"gg{}modl{}libs{}packetevents{}api", "com{}github{}retrooper{}packetevents"},
             {"gg{}modl{}libs{}packetevents{}impl", "io{}github{}retrooper{}packetevents"}
     };
@@ -58,65 +54,49 @@ public final class Libraries {
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-api",
             "2.12.1",
-            "packetevents-api",
-            null,
-            PACKETEVENTS_RELOCATIONS
+            "packetevents-api"
     ),
     PACKETEVENTS_NETTY = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-netty-common",
             "2.12.1",
-            "packetevents-netty-common",
-            null,
-            PACKETEVENTS_RELOCATIONS
+            "packetevents-netty-common"
     ),
     PACKETEVENTS_SPIGOT = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-spigot",
             "2.12.1",
-            "packetevents-spigot",
-            null,
-            PACKETEVENTS_RELOCATIONS
+            "packetevents-spigot"
     ),
     PACKETEVENTS_BUNGEE = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-bungeecord",
             "2.12.1",
-            "packetevents-bungeecord",
-            null,
-            PACKETEVENTS_RELOCATIONS
+            "packetevents-bungeecord"
     ),
     PACKETEVENTS_VELOCITY = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-velocity",
             "2.12.1",
-            "packetevents-velocity",
-            null,
-            PACKETEVENTS_RELOCATIONS
+            "packetevents-velocity"
     ),
     PACKETEVENTS_FABRIC_COMMON = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-fabric-common",
             "2.12.1",
-            "packetevents-fabric-common",
-            null,
-            PACKETEVENTS_RELOCATIONS
+            "packetevents-fabric-common"
     ),
     PACKETEVENTS_FABRIC_INTERMEDIARY = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-fabric-intermediary",
             "2.12.1",
-            "packetevents-fabric-intermediary",
-            null,
-            PACKETEVENTS_RELOCATIONS
+            "packetevents-fabric-intermediary"
     ),
     PACKETEVENTS_FABRIC_OFFICIAL = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-fabric-official",
             "2.12.1",
-            "packetevents-fabric-official",
-            null,
-            PACKETEVENTS_RELOCATIONS
+            "packetevents-fabric-official"
     ),
     ADVENTURE_NBT = LibraryRecord.of(
             "net{}kyori",
@@ -180,29 +160,31 @@ public final class Libraries {
             "cirrus-spigot",
             "4.2.2",
             "cirrus-spigot",
-            "x1LqahXhe8bHADiAWgO8p3HGVwhkV1gtdKr3Dxw8aSU="
+            "x1LqahXhe8bHADiAWgO8p3HGVwhkV1gtdKr3Dxw8aSU=",
+            CIRRUS_PACKETEVENTS_REVERSE_RELOCATIONS
     ),
     CIRRUS_VELOCITY = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-velocity",
             "4.2.2",
             "cirrus-velocity",
-            "GWvrYkAGla3q9UewLP2Rjt0LHsLG7okncho+UnfL+wo="
+            "GWvrYkAGla3q9UewLP2Rjt0LHsLG7okncho+UnfL+wo=",
+            CIRRUS_PACKETEVENTS_REVERSE_RELOCATIONS
     ),
     CIRRUS_BUNGEECORD = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-bungeecord",
             "4.2.2",
             "cirrus-bungeecord",
-            "w9kuSjF0ifN43Sqnv0M1Hn/aHCXcNdg3+Ct+e6v9WXA="
+            "w9kuSjF0ifN43Sqnv0M1Hn/aHCXcNdg3+Ct+e6v9WXA=",
+            CIRRUS_PACKETEVENTS_REVERSE_RELOCATIONS
     ),
     CIRRUS_FABRIC = LibraryRecord.of(
             "gg{}modl{}minecraft{}cirrus",
             "cirrus-fabric",
-            "4.2.2",
+            "4.2.3",
             "cirrus-fabric",
-            "HeQ/eB/SrcijxQZFRr3GZMfT16binnkOuO8mr4vp6TQ=",
-            FABRIC_PACKETEVENTS_REVERSE_RELOCATIONS
+            "JNKDxYQuwotfP5Bxov4uOwfbovACRQPQ/j0eENG03hI="
     ),
     ADVENTURE_KEY = LibraryRecord.of(
             "net{}kyori",

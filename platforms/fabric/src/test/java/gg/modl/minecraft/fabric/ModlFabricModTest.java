@@ -51,11 +51,9 @@ class ModlFabricModTest {
     }
 
     @Test
-    void cirrusFabricLibraryIsRelocatedBackToCanonicalPacketEventsForFabric() {
-        assertNotNull(Libraries.CIRRUS_FABRIC.getRelocations());
-        assertEquals("gg{}modl{}libs{}packetevents{}api", Libraries.CIRRUS_FABRIC.getRelocations()[0][0]);
-        assertEquals("com{}github{}retrooper{}packetevents", Libraries.CIRRUS_FABRIC.getRelocations()[0][1]);
-        assertEquals("gg{}modl{}libs{}packetevents{}impl", Libraries.CIRRUS_FABRIC.getRelocations()[1][0]);
-        assertEquals("io{}github{}retrooper{}packetevents", Libraries.CIRRUS_FABRIC.getRelocations()[1][1]);
+    void cirrusFabricLibraryUsesCanonicalArtifactWithoutRelocation() {
+        assertEquals("4.2.3", Libraries.CIRRUS_FABRIC.getVersion());
+        assertFalse(Libraries.CIRRUS_FABRIC.hasRelocations());
+        assertTrue(Libraries.CIRRUS_FABRIC.hasChecksum());
     }
 }

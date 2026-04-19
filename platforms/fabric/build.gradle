@@ -51,7 +51,7 @@ dependencies {
     implementation "com.alessiodp.libby:libby-fabric:${rootProject.property('libby.version')}"
 
     // Compile-only deps (loaded at runtime via Libby)
-    compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:4.2.2"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:4.2.3"
     compileOnly "gg.modl.minecraft.cirrus:cirrus-api:4.2.2"
     compileOnly "gg.modl.minecraft.cirrus:cirrus-common:4.2.2"
     compileOnly "gg.modl.minecraft.packetevents:packetevents-api:2.12.1"

@@ -41,14 +41,18 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.material.MaterialData;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class BridgeComponent extends AbstractBridgeComponent implements Listener {
     private final JavaPlugin plugin;
@@ -400,14 +404,47 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         }, 40L);
     }
 
+    static int resolveBlockStateId(Block block, Function<Object, Integer> modernResolver,
+                                   BiFunction<Material, Byte, Integer> legacyResolver) {
+        try {
+            Method getBlockData = block.getClass().getMethod("getBlockData");
+            Object blockData = getBlockData.invoke(block);
+            if (blockData != null) {
+                try {
+                    return modernResolver.apply(blockData);
+                } catch (RuntimeException ignored) {}
+            }
+        } catch (ReflectiveOperationException ignored) {}
+
+        return legacyResolver.apply(block.getType(), block.getData());
+    }
+
+    static int resolveBlockStateId(Block block) {
+        return resolveBlockStateId(block, BridgeComponent::resolveModernBlockStateId, BridgeComponent::resolveLegacyBlockStateId);
+    }
+
+    private static int resolveModernBlockStateId(Object blockData) {
+        try {
+            Class<?> blockDataClass = Class.forName("org.bukkit.block.data.BlockData");
+            Method converter = SpigotConversionUtil.class.getMethod("fromBukkitBlockData", blockDataClass);
+            return ((com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState) converter.invoke(null, blockData)).getGlobalId();
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Failed to convert Bukkit BlockData to PacketEvents state", e);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int resolveLegacyBlockStateId(Material material, byte data) {
+        return SpigotConversionUtil.fromBukkitMaterialData(new MaterialData(material, data)).getGlobalId();
+    }
+
     @SuppressWarnings("deprecation")
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
         if (recordingManager == null) return;
         Player player = event.getPlayer();
         Block block = event.getBlockPlaced();
-        int stateId = SpigotConversionUtil.fromBukkitMaterialData(
-                new org.bukkit.material.MaterialData(block.getType(), block.getData())).getGlobalId();
+        int stateId = resolveBlockStateId(block);
         recordingManager.enqueueEvent(player.getUniqueId(),
                 new BlockChangeEvent(0, block.getX(), (short) block.getY(), block.getZ(), stateId));
     }
@@ -418,8 +455,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         if (recordingManager == null) return;
         Player player = event.getPlayer();
         Block block = event.getBlock();
-        int previousStateId = SpigotConversionUtil.fromBukkitMaterialData(
-                new org.bukkit.material.MaterialData(block.getType(), block.getData())).getGlobalId();
+        int previousStateId = resolveBlockStateId(block);
         recordingManager.enqueueEvent(player.getUniqueId(),
                 new BlockChangeEvent(0, block.getX(), (short) block.getY(), block.getZ(), previousStateId));
     }

@@ -45,6 +45,14 @@ dependencies {
     // Replay recording
     implementation("gg.modl.minecraft.replay:replay-format:1.1.0")
     implementation("gg.modl.minecraft.replay:modl-replay-recording:1.1.0")
+
+    testImplementation(platform("org.junit:junit-bom:5.11.4"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("org.mockito:mockito-inline:5.2.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.20.0")
+    testImplementation("org.spigotmc:spigot-api:${property("spigot.version")}")
+    testImplementation("gg.modl.minecraft.packetevents:packetevents-spigot:${property("packetevents.version")}")
 }
 
 tasks.processResources {
@@ -68,4 +76,8 @@ tasks.jar {
     manifest {
         attributes("Automatic-Module-Name" to "gg.modl.minecraft.platform.spigot.plugin")
     }
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
