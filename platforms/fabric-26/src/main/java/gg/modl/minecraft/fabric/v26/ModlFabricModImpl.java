@@ -111,13 +111,13 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         }
     }
 
-    private boolean isPacketEventsBootstrapped() {
-        try {
-            Class.forName("com.github.retrooper.packetevents.PacketEvents");
-            return com.github.retrooper.packetevents.PacketEvents.getAPI() != null;
-        } catch (Throwable ignored) {
-            return false;
+    private com.github.retrooper.packetevents.PacketEventsAPI<?> requirePacketEventsApi() {
+        com.github.retrooper.packetevents.PacketEventsAPI<?> packetEventsApi =
+                com.github.retrooper.packetevents.PacketEvents.getAPI();
+        if (packetEventsApi == null) {
+            throw new IllegalStateException("PacketEvents Fabric mod did not initialize before modl startup");
         }
+        return packetEventsApi;
     }
 
     private void onServerStarted(MinecraftServer server) {
@@ -128,15 +128,13 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         Path dataFolder = FabricLoader.getInstance().getConfigDir().resolve("modl");
         FabricBridgePluginContext context = new FabricBridgePluginContext(server, dataFolder);
 
-        if (!isPacketEventsBootstrapped()) {
-            LOGGER.error("[modl] PacketEvents was not bootstrapped by Fabric; skipping Cirrus/menu startup");
-        } else {
-            try {
-                cirrus = new CirrusFabric(server);
-                cirrus.init();
-            } catch (Throwable e) {
-                LOGGER.warn("[modl] Cirrus menu system unavailable: {}", e.getMessage());
-            }
+        requirePacketEventsApi();
+
+        try {
+            cirrus = new CirrusFabric(server);
+            cirrus.init();
+        } catch (Throwable e) {
+            LOGGER.warn("[modl] Cirrus menu system unavailable: {}", e.getMessage());
         }
 
         try {
@@ -303,21 +301,20 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
                         standaloneDebugMode, server);
                 fabricListener.register();
 
-                if (com.github.retrooper.packetevents.PacketEvents.getAPI() != null) {
-                    com.github.retrooper.packetevents.PacketEvents.getAPI().getEventManager().registerListener(
-                            new FabricStaffModePacketListener(
-                                    bridgeComponent.getFabricStaffModeHandler(),
-                                    bridgeComponent.getFabricFreezeHandler()));
-                    com.github.retrooper.packetevents.PacketEvents.getAPI().getEventManager().registerListener(
-                            new FabricCommandPacketListener(
-                                    pluginLoader.getCache(),
-                                    pluginLoader.getFreezeService(),
-                                    pluginLoader.getChatCommandLogService(),
-                                    pluginLoader.getLocaleManager(),
-                                    standaloneMutedCommands,
-                                    standaloneFabricPlatform.getServerName(),
-                                    server));
-                }
+                var packetEventsApi = requirePacketEventsApi();
+                packetEventsApi.getEventManager().registerListener(
+                        new FabricStaffModePacketListener(
+                                bridgeComponent.getFabricStaffModeHandler(),
+                                bridgeComponent.getFabricFreezeHandler()));
+                packetEventsApi.getEventManager().registerListener(
+                        new FabricCommandPacketListener(
+                                pluginLoader.getCache(),
+                                pluginLoader.getFreezeService(),
+                                pluginLoader.getChatCommandLogService(),
+                                pluginLoader.getLocaleManager(),
+                                standaloneMutedCommands,
+                                standaloneFabricPlatform.getServerName(),
+                                server));
             }
         } catch (Exception e) {
             LOGGER.error("[modl] Failed to enable bridge component", e);

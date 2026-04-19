@@ -8,6 +8,6 @@ accessible field net/minecraft/server/network/ServerPlayerEntity interactionMana
 accessible field net/minecraft/entity/player/PlayerEntity experienceProgress F
 accessible field net/minecraft/entity/player/PlayerEntity experienceLevel I
 
-# PacketEvents (loaded via Libby at runtime, so its own accesswidener is not processed)
+# PacketEvents is a normal Fabric dependency; keep these fields widened for modl's Fabric integrations.
 accessible field net/minecraft/server/network/ServerCommonNetworkHandler connection Lnet/minecraft/network/ClientConnection;
 accessible field net/minecraft/network/ClientConnection channel Lio/netty/channel/Channel;

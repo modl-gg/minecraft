@@ -110,16 +110,8 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
             return;
         }
 
-        try {
-            Class.forName("com.github.retrooper.packetevents.PacketEvents");
-        } catch (ClassNotFoundException e) {
-            pluginLogger.warning("[bridge] PacketEvents not found, replay recording disabled");
-            return;
-        }
-
         if (com.github.retrooper.packetevents.PacketEvents.getAPI() == null) {
-            pluginLogger.warning("[bridge] PacketEvents not initialized, replay recording disabled");
-            return;
+            throw new IllegalStateException("PacketEvents Fabric mod did not initialize before replay recording setup");
         }
 
         RecordingConfig recordingConfig = new RecordingConfig() {

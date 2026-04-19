@@ -21,7 +21,6 @@
     "packetevents": "*"
   },
   "jars": [
-    {"file": "META-INF/jars/packetevents-fabric.jar"},
     {"file": "META-INF/jars/modl-fabric-121.jar"},
     {"file": "META-INF/jars/modl-fabric-1214.jar"},
     {"file": "META-INF/jars/modl-fabric-12111.jar"},
