@@ -89,9 +89,6 @@ tasks.shadowJar {
     archiveBaseName.set("modl")
     archiveClassifier.set("")
 
-    relocate("com.github.retrooper.packetevents", "gg.modl.libs.packetevents.api")
-    relocate("io.github.retrooper.packetevents", "gg.modl.libs.packetevents.impl")
-
     exclude("**/module-info.class")
     exclude("com/google/gson/**")
 

@@ -44,10 +44,12 @@ public class SpigotPlugin extends JavaPlugin {
     private PluginLogger pluginLogger;
     private BootConfig bootConfig;
     private boolean needsSetup = false;
+    private BukkitLibraryManager libraryManager;
 
     @Override
     public synchronized void onLoad() {
         this.pluginLogger = PluginLogger.fromJul(getLogger());
+        setupLibby();
 
         bootConfig = loadBootConfig();
         if (bootConfig != null) {
@@ -348,16 +350,16 @@ public class SpigotPlugin extends JavaPlugin {
         getLogger().info("PacketEvents initialized successfully");
     }
 
-    private BukkitLibraryManager libraryManager;
-
-    private void loadLibraries() {
+    private void setupLibby() {
         libraryManager = new BukkitLibraryManager(this);
         libraryManager.setLogLevel(com.alessiodp.libby.logging.LogLevel.WARN);
         libraryManager.addMavenCentral();
         libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
+    }
 
+    private void loadLibraries() {
         for (LibraryRecord record : Libraries.PROTO_DEPS) loadLibrary(libraryManager, record);
         for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
         loadLibrary(libraryManager, Libraries.LAMP_COMMON);

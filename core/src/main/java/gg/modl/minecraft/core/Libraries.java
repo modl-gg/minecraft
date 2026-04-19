@@ -13,6 +13,10 @@ public final class Libraries {
             {"com{}github{}retrooper{}packetevents", "gg{}modl{}libs{}packetevents{}api"},
             {"io{}github{}retrooper{}packetevents", "gg{}modl{}libs{}packetevents{}impl"}
     };
+    private static final String[][] FABRIC_PACKETEVENTS_REVERSE_RELOCATIONS = {
+            {"gg{}modl{}libs{}packetevents{}api", "com{}github{}retrooper{}packetevents"},
+            {"gg{}modl{}libs{}packetevents{}impl", "io{}github{}retrooper{}packetevents"}
+    };
 
     // Version uses timestamp instead of "-SNAPSHOT" because libby 1.3.1 re-downloads SNAPSHOT versions every startup
     public static final LibraryRecord SNAKEYAML = LibraryRecord.of(
@@ -197,7 +201,8 @@ public final class Libraries {
             "cirrus-fabric",
             "4.2.2",
             "cirrus-fabric",
-            "HeQ/eB/SrcijxQZFRr3GZMfT16binnkOuO8mr4vp6TQ="
+            "HeQ/eB/SrcijxQZFRr3GZMfT16binnkOuO8mr4vp6TQ=",
+            FABRIC_PACKETEVENTS_REVERSE_RELOCATIONS
     ),
     ADVENTURE_KEY = LibraryRecord.of(
             "net{}kyori",
