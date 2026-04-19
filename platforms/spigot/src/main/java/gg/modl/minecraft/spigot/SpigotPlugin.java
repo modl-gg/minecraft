@@ -57,6 +57,9 @@ public class SpigotPlugin extends JavaPlugin {
         } else {
             needsSetup = true;
         }
+
+        loadPacketEventsLibraries();
+        loadPacketEvents();
     }
 
     @Override
@@ -126,8 +129,6 @@ public class SpigotPlugin extends JavaPlugin {
     }
 
     private void initializePluginWithPanelUrl(String panelUrl) {
-        loadPacketEventsLibraries();
-        loadPacketEvents();
         initPacketEvents();
 
         BootConfig.Mode mode = bootConfig.getMode();
