@@ -38,10 +38,10 @@ public class ModlFabricMod implements DedicatedServerModInitializer {
         }
         if (gameVersion.startsWith("1.21.")) {
             int minor = parseMinorVersion(gameVersion);
-            if (minor >= 5) {
+            if (minor >= 11) {
                 return "gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl";
             }
-            if (minor >= 4) {
+            if (minor >= 2) {
                 return "gg.modl.minecraft.fabric.v1_21_4.ModlFabricModImpl";
             }
             return "gg.modl.minecraft.fabric.v1_21_1.ModlFabricModImpl";

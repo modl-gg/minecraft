@@ -14,16 +14,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ModlFabricModTest {
     @Test
-    void routesPost1214VersionsTo12111Implementation() {
+    void routes1215Through12110To1214Implementation() {
         assertEquals(
-                "gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl",
+                "gg.modl.minecraft.fabric.v1_21_4.ModlFabricModImpl",
                 ModlFabricMod.selectImplementationClass("1.21.5"));
         assertEquals(
-                "gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl",
+                "gg.modl.minecraft.fabric.v1_21_4.ModlFabricModImpl",
+                ModlFabricMod.selectImplementationClass("1.21.8"));
+        assertEquals(
+                "gg.modl.minecraft.fabric.v1_21_4.ModlFabricModImpl",
                 ModlFabricMod.selectImplementationClass("1.21.10"));
+    }
+
+    @Test
+    void routes12111AndNewerTo12111Implementation() {
         assertEquals(
                 "gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl",
                 ModlFabricMod.selectImplementationClass("1.21.11"));
+        assertEquals(
+                "gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl",
+                ModlFabricMod.selectImplementationClass("1.21.12"));
     }
 
     @Test
