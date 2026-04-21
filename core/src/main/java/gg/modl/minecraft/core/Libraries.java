@@ -160,7 +160,7 @@ public final class Libraries {
             "cirrus-spigot",
             "4.2.2",
             "cirrus-spigot",
-            "x1LqahXhe8bHADiAWgO8p3HGVwhkV1gtdKr3Dxw8aSU=",
+            "aSx9dbKFSKX4bAs63XYQ/bzYCwHtweuhAkWcs/2AyUM=",
             CIRRUS_PACKETEVENTS_REVERSE_RELOCATIONS
     ),
     CIRRUS_VELOCITY = LibraryRecord.of(
@@ -168,7 +168,6 @@ public final class Libraries {
             "cirrus-velocity",
             "4.2.2",
             "cirrus-velocity",
-            "GWvrYkAGla3q9UewLP2Rjt0LHsLG7okncho+UnfL+wo=",
             CIRRUS_PACKETEVENTS_REVERSE_RELOCATIONS
     ),
     CIRRUS_BUNGEECORD = LibraryRecord.of(
@@ -176,7 +175,7 @@ public final class Libraries {
             "cirrus-bungeecord",
             "4.2.2",
             "cirrus-bungeecord",
-            "w9kuSjF0ifN43Sqnv0M1Hn/aHCXcNdg3+Ct+e6v9WXA=",
+            "hQ53NeubeTDgsqYMVUgxPPUHO+JXmBQ1pT7yYI1Zwf8=",
             CIRRUS_PACKETEVENTS_REVERSE_RELOCATIONS
     ),
     CIRRUS_FABRIC = LibraryRecord.of(

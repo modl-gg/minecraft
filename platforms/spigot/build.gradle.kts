@@ -51,6 +51,10 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.mockito:mockito-inline:5.2.0")
     testImplementation("org.mockito:mockito-junit-jupiter:5.20.0")
+    testImplementation("io.github.revxrsal:lamp.common:${property("lamp.version")}")
+    testImplementation("io.github.revxrsal:lamp.bukkit:${property("lamp.version")}")
+    testImplementation("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
+    testImplementation("gg.modl.minecraft.cirrus:cirrus-spigot:${property("cirrus.version")}")
     testImplementation("org.spigotmc:spigot-api:${property("spigot.version")}")
     testImplementation("gg.modl.minecraft.packetevents:packetevents-spigot:${property("packetevents.version")}")
 }

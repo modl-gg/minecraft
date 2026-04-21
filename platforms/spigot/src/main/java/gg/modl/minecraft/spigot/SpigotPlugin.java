@@ -104,7 +104,7 @@ public class SpigotPlugin extends JavaPlugin {
             final String finalPanelUrl = panelUrl;
             Bukkit.getScheduler().runTask(this, () -> {
                 bridgeComponent = new BridgeComponent(this, "", "", "", pluginLogger);
-                initializePluginWithPanelUrl(finalPanelUrl);
+                initializePluginWithPanelUrl(finalPanelUrl, true);
             });
         }, "modl-init");
         initThread.setDaemon(true);
@@ -128,10 +128,14 @@ public class SpigotPlugin extends JavaPlugin {
             }
         }
 
-        initializePluginWithPanelUrl(panelUrl);
+        initializePluginWithPanelUrl(panelUrl, false);
     }
 
     private void initializePluginWithPanelUrl(String panelUrl) {
+        initializePluginWithPanelUrl(panelUrl, false);
+    }
+
+    private void initializePluginWithPanelUrl(String panelUrl, boolean lateBootstrap) {
         initPacketEvents();
 
         BootConfig.Mode mode = bootConfig.getMode();
@@ -145,7 +149,7 @@ public class SpigotPlugin extends JavaPlugin {
             saveDefaultConfig();
             createLocaleFiles();
             mergeDefaultConfigs();
-            enableStandaloneMode(bootConfig, panelUrl);
+            enableStandaloneMode(bootConfig, panelUrl, lateBootstrap);
         } else if (mode == BootConfig.Mode.BRIDGE_ONLY) {
             mergeBootConfig();
             enableBridgeOnlyMode(bootConfig);
@@ -155,7 +159,7 @@ public class SpigotPlugin extends JavaPlugin {
         }
     }
 
-    private void enableStandaloneMode(BootConfig bootConfig, String panelUrl) {
+    private void enableStandaloneMode(BootConfig bootConfig, String panelUrl, boolean lateBootstrap) {
         HttpManager httpManager = new HttpManager(
                 bootConfig.getApiKey(),
                 panelUrl,
@@ -189,7 +193,7 @@ public class SpigotPlugin extends JavaPlugin {
         bridgeComponent.enable(ticketCreator, false);
         String serverName = bridgeComponent.getBridgeConfig().getServerName();
 
-        SpigotPlatform platform = new SpigotPlatform(this, getLogger(), getDataFolder(), serverName);
+        SpigotPlatform platform = new SpigotPlatform(this, getLogger(), getDataFolder(), serverName, lateBootstrap);
         if (bridgeComponent.getReplayService() != null) {
             platform.setReplayService(bridgeComponent.getReplayService());
         }

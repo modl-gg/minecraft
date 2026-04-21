@@ -8,6 +8,7 @@ import gg.modl.minecraft.core.Platform;
 import revxrsal.commands.Lamp;
 import revxrsal.commands.command.CommandActor;
 import revxrsal.commands.bukkit.BukkitLamp;
+import revxrsal.commands.bukkit.BukkitLampConfig;
 import revxrsal.commands.bukkit.actor.BukkitCommandActor;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
@@ -40,6 +41,7 @@ public class SpigotPlatform implements Platform {
     private final File dataFolder;
     private final String configServerName;
     private final JavaPlugin plugin;
+    private final boolean lateBootstrap;
     private final gg.modl.minecraft.core.util.PluginLogger pluginLogger;
     private @Setter Cache cache;
     private @Setter LocaleManager localeManager;
@@ -56,10 +58,15 @@ public class SpigotPlatform implements Platform {
     private static volatile Method getValueMethod;
 
     public SpigotPlatform(JavaPlugin plugin, Logger logger, File dataFolder, String configServerName) {
+        this(plugin, logger, dataFolder, configServerName, false);
+    }
+
+    public SpigotPlatform(JavaPlugin plugin, Logger logger, File dataFolder, String configServerName, boolean lateBootstrap) {
         this.plugin = plugin;
         this.logger = logger;
         this.dataFolder = dataFolder;
         this.configServerName = configServerName;
+        this.lateBootstrap = lateBootstrap;
         this.pluginLogger = gg.modl.minecraft.core.util.PluginLogger.fromJul(logger);
     }
 
@@ -106,9 +113,19 @@ public class SpigotPlatform implements Platform {
     @Override
     @SuppressWarnings("unchecked")
     public Lamp<BukkitCommandActor> buildLamp(Consumer<Lamp.Builder<? extends CommandActor>> configurator) {
-        Lamp.Builder<BukkitCommandActor> builder = BukkitLamp.builder(plugin);
+        Lamp.Builder<BukkitCommandActor> builder = BukkitLamp.builder(createLampConfig());
         configurator.accept((Lamp.Builder) builder);
         return builder.build();
+    }
+
+    BukkitLampConfig<BukkitCommandActor> createLampConfig() {
+        return BukkitLampConfig.<BukkitCommandActor>builder(plugin)
+            .disableBrigadier(shouldDisableBrigadier())
+            .build();
+    }
+
+    boolean shouldDisableBrigadier() {
+        return lateBootstrap;
     }
 
     @Override

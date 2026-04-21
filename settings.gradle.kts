@@ -13,6 +13,11 @@ if (localCirrusBuild.isDirectory) {
     includeBuild(localCirrusBuild)
 }
 
+val localPacketEventsBuild = file("../minecraft-packetevents")
+if (localPacketEventsBuild.isDirectory) {
+    includeBuild(localPacketEventsBuild)
+}
+
 val localReplayRecordingBuild = file("../minecraft-replay-recording")
 if (localReplayRecordingBuild.isDirectory) {
     includeBuild(localReplayRecordingBuild)

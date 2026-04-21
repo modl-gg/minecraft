@@ -2,6 +2,7 @@ package gg.modl.minecraft.core;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class LibrariesTest {
@@ -23,6 +24,13 @@ class LibrariesTest {
         assertReverseRelocations(Libraries.CIRRUS_BUNGEECORD.getRelocations());
         assertReverseRelocations(Libraries.CIRRUS_VELOCITY.getRelocations());
         assertFalse(Libraries.CIRRUS_FABRIC.hasRelocations());
+    }
+
+    @Test
+    void cirrusChecksumsMatchCurrentRuntimeExpectations() {
+        assertEquals("aSx9dbKFSKX4bAs63XYQ/bzYCwHtweuhAkWcs/2AyUM=", Libraries.CIRRUS_SPIGOT.getChecksum());
+        assertEquals("hQ53NeubeTDgsqYMVUgxPPUHO+JXmBQ1pT7yYI1Zwf8=", Libraries.CIRRUS_BUNGEECORD.getChecksum());
+        assertFalse(Libraries.CIRRUS_VELOCITY.hasChecksum());
     }
 
     private static void assertReverseRelocations(String[][] relocations) {

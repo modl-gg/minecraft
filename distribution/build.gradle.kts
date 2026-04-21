@@ -2,12 +2,24 @@ plugins {
     id("com.gradleup.shadow") version "9.3.1"
 }
 
+import java.util.Properties
+import java.util.zip.ZipFile
+
 java {
     disableAutoTargetJvm()
 }
 
 val fabricLoomJar = project(":platforms:fabric").layout.buildDirectory.file("libs/fabric-${project.version}.jar")
 val rootGradlew = rootProject.file("gradlew")
+val packetEventsDir = rootProject.file("../minecraft-packetevents")
+val packetEventsGradlew = packetEventsDir.resolve("gradlew")
+val nestedPacketEventsFileName = "packetevents-fabric.jar"
+val nestedFabricImplementationFileNames = listOf(
+    "modl-fabric-121.jar",
+    "modl-fabric-1214.jar",
+    "modl-fabric-12111.jar",
+    "modl-fabric-26.jar"
+)
 val fabric12111Dir = rootProject.file("platforms/fabric-12111")
 val fabric12111Jar = fabric12111Dir.resolve("build/libs/modl-fabric-12111-${project.version}.jar")
 val fabric26Dir = rootProject.file("platforms/fabric-26")
@@ -17,8 +29,24 @@ val fabric121Jar = fabric121Dir.resolve("build/libs/modl-fabric-121-${project.ve
 val fabric1214Dir = rootProject.file("platforms/fabric-1214")
 val fabric1214Jar = fabric1214Dir.resolve("build/libs/modl-fabric-1214-${project.version}.jar")
 
-fun existingJar(file: java.io.File) = provider {
-    if (file.exists()) listOf(file) else emptyList()
+fun packetEventsVersion(): String {
+    val properties = Properties()
+    packetEventsDir.resolve("gradle.properties").inputStream().use(properties::load)
+    val fullVersion = properties.getProperty("fullVersion")
+    val snapshot = properties.getProperty("snapshot").toBoolean()
+    return if (snapshot) "$fullVersion-SNAPSHOT" else fullVersion
+}
+
+val packetEventsFabricJar = provider {
+    packetEventsDir.resolve("build/libs/packetevents-fabric-${packetEventsVersion()}.jar")
+}
+
+val generatedFabricMetadata = layout.buildDirectory.file("generated/fabricDistribution/fabric.mod.json")
+val fabricMetadataSource = rootProject.file("platforms/fabric/src/main/resources/fabric.mod.json")
+
+val fabricRuntimeSupport by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
 }
 
 val buildFabric12111 by tasks.registering(Exec::class) {
@@ -69,6 +97,55 @@ val buildFabric1214 by tasks.registering(Exec::class) {
     onlyIf { fabric1214Dir.resolve("build.gradle").exists() }
 }
 
+val buildPacketEventsFabric by tasks.registering(Exec::class) {
+    description = "Builds the forked PacketEvents Fabric jar for nesting in the Modl Fabric distribution"
+    workingDir = packetEventsDir
+    commandLine(packetEventsGradlew.absolutePath, ":fabric:jar")
+    onlyIf { packetEventsGradlew.isFile }
+}
+
+val generateFabricDistributionMetadata by tasks.registering {
+    description = "Generates Fabric metadata for the final distribution jar"
+    inputs.file(fabricMetadataSource)
+    inputs.property("version", project.version.toString())
+    inputs.property("nestedFabricImplementationFileNames", nestedFabricImplementationFileNames.joinToString(","))
+    inputs.property("nestedPacketEventsFileName", nestedPacketEventsFileName)
+    outputs.file(generatedFabricMetadata)
+
+    doLast {
+        val source = fabricMetadataSource.readText()
+        val expanded = source.replace("\${version}", project.version.toString())
+        val licenseMarker = "  \"license\": \"AGPL-3.0\",\n"
+        val nestedJarFileNames = nestedFabricImplementationFileNames + nestedPacketEventsFileName
+        val nestedJarsJson = nestedJarFileNames.joinToString(",\n") { fileName ->
+            "    { \"file\": \"META-INF/jars/$fileName\" }"
+        }
+        val withNestedJar = if (expanded.contains("\"jars\"")) {
+            nestedJarFileNames.forEach { fileName ->
+                check(expanded.contains("\"file\": \"META-INF/jars/$fileName\"")) {
+                    "Existing Fabric metadata must register nested jar $fileName"
+                }
+            }
+            expanded
+        } else {
+            check(expanded.contains(licenseMarker)) {
+                "Unable to add nested jar metadata to ${fabricMetadataSource.absolutePath}"
+            }
+            expanded.replace(
+                licenseMarker,
+                licenseMarker +
+                    "  \"jars\": [\n" +
+                    nestedJarsJson + "\n" +
+                    "  ],\n"
+            )
+        }
+
+        val output = generatedFabricMetadata.get().asFile
+        output.parentFile.mkdirs()
+        output.writeText(withNestedJar)
+    }
+}
+
 dependencies {
     implementation(project(":core"))
     implementation(project(":bridge-core"))
@@ -76,16 +153,22 @@ dependencies {
     implementation(project(":platforms:spigot-sv"))
     implementation(project(":platforms:velocity"))
     implementation(project(":platforms:bungee"))
-    // Libby Fabric adapter (needed by Fabric platform at runtime)
-    implementation("com.alessiodp.libby:libby-fabric:${property("libby.version")}")
+    implementation("net.kyori:adventure-api:${property("adventure.version")}")
+    implementation("net.kyori:adventure-nbt:${property("adventure.version")}")
+    implementation("net.kyori:adventure-text-minimessage:${property("adventure.version")}")
+    implementation("net.kyori:adventure-text-serializer-legacy:${property("adventure.version")}")
+    implementation("net.kyori:adventure-text-serializer-gson:${property("adventure.version")}")
+
+    fabricRuntimeSupport(project(":api"))
+    fabricRuntimeSupport(project(":core"))
+    fabricRuntimeSupport(project(":bridge-core"))
+    fabricRuntimeSupport("com.alessiodp.libby:libby-core:${property("libby.version")}")
+    fabricRuntimeSupport("com.alessiodp.libby:libby-fabric:${property("libby.version")}")
+    fabricRuntimeSupport("gg.modl.minecraft.replay:modl-replay-recording:1.1.0")
+    fabricRuntimeSupport("gg.modl.minecraft.replay:replay-format:1.1.0")
 }
 
 tasks.shadowJar {
-    dependsOn(":platforms:fabric:remapJar")
-    dependsOn(buildFabric12111)
-    dependsOn(buildFabric121)
-    dependsOn(buildFabric1214)
-    dependsOn(buildFabric26)
     archiveBaseName.set("modl")
     archiveClassifier.set("")
 
@@ -111,38 +194,140 @@ tasks.shadowJar {
     exclude("javax/annotation/**")
 
     from(rootProject.file("LICENSE.txt"))
+}
 
-    // Shell entry point + shell fabric.mod.json from Fabric Loom output
+val fabricJar by tasks.registering(Jar::class) {
+    dependsOn(":platforms:fabric:remapJar")
+    dependsOn(buildFabric12111)
+    dependsOn(buildFabric121)
+    dependsOn(buildFabric1214)
+    dependsOn(buildFabric26)
+    dependsOn(buildPacketEventsFabric)
+    dependsOn(generateFabricDistributionMetadata)
+
+    archiveBaseName.set("modl-fabric")
+    archiveClassifier.set("")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    exclude("**/module-info.class")
+
+    from(rootProject.file("LICENSE.txt")) {
+        rename { "LICENSE_modl.txt" }
+    }
+
     from(zipTree(fabricLoomJar)) {
-        include("gg/modl/minecraft/fabric/ModlFabricMod.class")
-        include("fabric.mod.json")
-        include("modl.accesswidener")
+        exclude("META-INF/**")
+        exclude("fabric.mod.json")
+    }
+    from(generatedFabricMetadata)
+
+    from(provider { fabricRuntimeSupport.files.map { zipTree(it) } }) {
+        exclude("META-INF/**")
+        exclude("**/module-info.class")
     }
 
-    // Merge all Fabric implementation classes into the universal root mod jar.
-    // Keeping them as nested jars makes Fabric validate every impl mod's minecraft range.
-    from(existingJar(fabric12111Jar).map { jars -> jars.map(::zipTree) }) {
-        exclude("META-INF/**")
-        exclude("fabric.mod.json")
-        exclude("modl.accesswidener")
+    from(fabric121Jar) {
+        into("META-INF/jars")
+        rename { nestedFabricImplementationFileNames[0] }
     }
-    from(existingJar(fabric121Jar).map { jars -> jars.map(::zipTree) }) {
-        exclude("META-INF/**")
-        exclude("fabric.mod.json")
-        exclude("modl.accesswidener")
+    from(fabric1214Jar) {
+        into("META-INF/jars")
+        rename { nestedFabricImplementationFileNames[1] }
     }
-    from(existingJar(fabric1214Jar).map { jars -> jars.map(::zipTree) }) {
-        exclude("META-INF/**")
-        exclude("fabric.mod.json")
-        exclude("modl.accesswidener")
+    from(fabric12111Jar) {
+        into("META-INF/jars")
+        rename { nestedFabricImplementationFileNames[2] }
     }
-    from(existingJar(fabric26Jar).map { jars -> jars.map(::zipTree) }) {
-        exclude("META-INF/**")
-        exclude("fabric.mod.json")
-        exclude("modl.accesswidener")
+    from(fabric26Jar) {
+        into("META-INF/jars")
+        rename { nestedFabricImplementationFileNames[3] }
+    }
+
+    from(packetEventsFabricJar) {
+        into("META-INF/jars")
+        rename { nestedPacketEventsFileName }
     }
 }
 
 tasks.assemble {
     dependsOn(tasks.shadowJar)
+    dependsOn(fabricJar)
+}
+
+val universalDistributionJar = layout.buildDirectory.file("libs/modl-${project.version}.jar")
+val fabricDistributionJar = layout.buildDirectory.file("libs/modl-fabric-${project.version}.jar")
+
+fun zipEntryNames(file: java.io.File): Set<String> =
+    ZipFile(file).use { zip -> zip.entries().asSequence().map { it.name }.toSet() }
+
+tasks.register("verifySplitDistributionArtifacts") {
+    description = "Verifies that distribution produces separate universal and Fabric jars"
+    group = "verification"
+    dependsOn(tasks.shadowJar)
+    dependsOn(fabricJar)
+    inputs.file(universalDistributionJar)
+    inputs.file(fabricDistributionJar)
+
+    doLast {
+        val universalFile = universalDistributionJar.get().asFile
+        check(universalFile.isFile) { "Missing universal distribution jar: ${universalFile.absolutePath}" }
+        val universalEntries = zipEntryNames(universalFile)
+        check("fabric.mod.json" !in universalEntries) { "Universal jar must not contain fabric.mod.json" }
+        check("modl.accesswidener" !in universalEntries) { "Universal jar must not contain modl.accesswidener" }
+        check(universalEntries.none { it.startsWith("gg/modl/minecraft/fabric/") }) {
+            "Universal jar must not contain Fabric platform classes"
+        }
+
+        val fabricFile = fabricDistributionJar.get().asFile
+        check(fabricFile.isFile) { "Missing Fabric distribution jar: ${fabricFile.absolutePath}" }
+        val fabricEntries = zipEntryNames(fabricFile)
+        check("fabric.mod.json" in fabricEntries) { "Fabric jar must contain fabric.mod.json" }
+        check("modl.accesswidener" in fabricEntries) { "Fabric jar must contain modl.accesswidener" }
+        val fabricMetadata = ZipFile(fabricFile).use { zip ->
+            zip.getInputStream(zip.getEntry("fabric.mod.json")).bufferedReader().readText()
+        }
+        val nestedJarFileNames = nestedFabricImplementationFileNames + nestedPacketEventsFileName
+        nestedJarFileNames.forEach { fileName ->
+            check(fabricMetadata.contains("\"file\": \"META-INF/jars/$fileName\"")) {
+                "Fabric metadata must register nested jar $fileName"
+            }
+        }
+        check("gg/modl/minecraft/fabric/ModlFabricMod.class" in fabricEntries) {
+            "Fabric jar must contain the Fabric shell entrypoint"
+        }
+        check("gg/modl/minecraft/api/LibraryRecord.class" in fabricEntries) {
+            "Fabric jar must contain shared API classes"
+        }
+        check("gg/modl/minecraft/core/PluginLoader.class" in fabricEntries) {
+            "Fabric jar must contain shared core classes"
+        }
+        check("gg/modl/minecraft/bridge/AbstractBridgeComponent.class" in fabricEntries) {
+            "Fabric jar must contain shared bridge classes"
+        }
+        check("gg/modl/minecraft/replay/recording/RecordingConfig.class" in fabricEntries) {
+            "Fabric jar must contain replay recording runtime classes"
+        }
+        check("gg/modl/minecraft/replay/format/ReplayHeader.class" in fabricEntries) {
+            "Fabric jar must contain replay format runtime classes"
+        }
+        check("com/alessiodp/libby/FabricLibraryManager.class" in fabricEntries) {
+            "Fabric jar must contain Libby Fabric runtime loader"
+        }
+        nestedJarFileNames.forEach { fileName ->
+            check("META-INF/jars/$fileName" in fabricEntries) {
+                "Fabric jar must contain nested jar $fileName"
+            }
+        }
+        val implementationPrefixes = listOf(
+            "gg/modl/minecraft/fabric/v1_21_1/",
+            "gg/modl/minecraft/fabric/v1_21_4/",
+            "gg/modl/minecraft/fabric/v1_21_11/",
+            "gg/modl/minecraft/fabric/v26/"
+        )
+        implementationPrefixes.forEach { prefix ->
+            check(fabricEntries.none { it.startsWith(prefix) }) {
+                "Fabric implementation classes must remain inside nested jars, but found root entries under $prefix"
+            }
+        }
+    }
 }
