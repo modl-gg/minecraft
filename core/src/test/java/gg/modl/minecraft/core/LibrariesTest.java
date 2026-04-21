@@ -28,9 +28,9 @@ class LibrariesTest {
 
     @Test
     void cirrusChecksumsMatchCurrentRuntimeExpectations() {
-        assertEquals("aSx9dbKFSKX4bAs63XYQ/bzYCwHtweuhAkWcs/2AyUM=", Libraries.CIRRUS_SPIGOT.getChecksum());
-        assertEquals("hQ53NeubeTDgsqYMVUgxPPUHO+JXmBQ1pT7yYI1Zwf8=", Libraries.CIRRUS_BUNGEECORD.getChecksum());
-        assertFalse(Libraries.CIRRUS_VELOCITY.hasChecksum());
+        assertEquals("UBSO7Eenxuj/Xs2tvxEgOOOZnhA2BGM9cQqaFXJXxdI=", Libraries.CIRRUS_SPIGOT.getChecksum());
+        assertEquals("mi6v+Xa7F29OI4BOTVcuJSpz4Z+cI/m6BwmBKFmvg34=", Libraries.CIRRUS_BUNGEECORD.getChecksum());
+        assertEquals("9wAG0uzxFitqPdb/UESODtJG8rezsF8QdTybrPxMoV8=", Libraries.CIRRUS_VELOCITY.getChecksum());
     }
 
     private static void assertReverseRelocations(String[][] relocations) {

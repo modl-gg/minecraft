@@ -67,7 +67,7 @@ class ModlFabricModTest {
 
     @Test
     void cirrusFabricLibraryUsesCanonicalArtifactWithoutRelocation() {
-        assertEquals("4.2.3", Libraries.CIRRUS_FABRIC.getVersion());
+        assertEquals("4.2.4", Libraries.CIRRUS_FABRIC.getVersion());
         assertFalse(Libraries.CIRRUS_FABRIC.hasRelocations());
         assertTrue(Libraries.CIRRUS_FABRIC.hasChecksum());
     }
