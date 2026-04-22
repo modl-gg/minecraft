@@ -83,9 +83,7 @@ public class ReportsCommand {
         }
 
         actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", actualPlayerQuery)));
-        PlayerLookupRequest request = new PlayerLookupRequest(actualPlayerQuery);
-
-        httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
+        StaffProfileLookup.lookupPlayerProfile(httpClientHolder.getClient(), platform, actualPlayerQuery).thenAccept(profileResponse -> {
             if (profileResponse.getStatus() == 200) {
                 String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
                 ReportsMenu menu = new ReportsMenu(

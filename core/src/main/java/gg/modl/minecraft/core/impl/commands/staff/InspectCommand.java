@@ -75,8 +75,7 @@ public class InspectCommand {
         UUID senderUuid = actor.uniqueId();
         actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
-        PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
-        httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
+        StaffProfileLookup.lookupPlayerProfile(httpClientHolder.getClient(), platform, playerQuery).thenAccept(profileResponse -> {
             if (profileResponse.getStatus() == 200) {
                 String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
                 InspectContext context = new InspectContext(

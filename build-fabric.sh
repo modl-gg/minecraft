@@ -16,10 +16,13 @@ echo "=== Building Fabric 1.21.1 ==="
 echo "=== Building Fabric 1.21.4 ==="
 ./gradlew -p platforms/fabric-1214 build -x test
 
+echo "=== Building Fabric 1.21.8 ==="
+./gradlew -p platforms/fabric-1218 build -x test
+
 echo "=== Building Fabric 1.21.11 ==="
 ./gradlew -p platforms/fabric-12111 build -x test
 
-echo "=== Building Fabric 26.1 ==="
+echo "=== Building Fabric 26.1.2 ==="
 ./gradlew -p platforms/fabric-26 build -x test
 
 echo "=== Building distribution JARs ==="

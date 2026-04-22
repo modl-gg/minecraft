@@ -14,15 +14,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ModlFabricModTest {
     @Test
-    void routes1215Through12110To1214Implementation() {
+    void routes1212Through1216To1214Implementation() {
+        assertEquals(
+                "gg.modl.minecraft.fabric.v1_21_4.ModlFabricModImpl",
+                ModlFabricMod.selectImplementationClass("1.21.2"));
         assertEquals(
                 "gg.modl.minecraft.fabric.v1_21_4.ModlFabricModImpl",
                 ModlFabricMod.selectImplementationClass("1.21.5"));
         assertEquals(
                 "gg.modl.minecraft.fabric.v1_21_4.ModlFabricModImpl",
+                ModlFabricMod.selectImplementationClass("1.21.6"));
+    }
+
+    @Test
+    void routes1217Through12110To1218Implementation() {
+        assertEquals(
+                "gg.modl.minecraft.fabric.v1_21_8.ModlFabricModImpl",
+                ModlFabricMod.selectImplementationClass("1.21.7"));
+        assertEquals(
+                "gg.modl.minecraft.fabric.v1_21_8.ModlFabricModImpl",
                 ModlFabricMod.selectImplementationClass("1.21.8"));
         assertEquals(
-                "gg.modl.minecraft.fabric.v1_21_4.ModlFabricModImpl",
+                "gg.modl.minecraft.fabric.v1_21_8.ModlFabricModImpl",
                 ModlFabricMod.selectImplementationClass("1.21.10"));
     }
 
@@ -47,6 +60,9 @@ class ModlFabricModTest {
         assertEquals(
                 "gg.modl.minecraft.fabric.v26.ModlFabricModImpl",
                 ModlFabricMod.selectImplementationClass("26.1"));
+        assertEquals(
+                "gg.modl.minecraft.fabric.v26.ModlFabricModImpl",
+                ModlFabricMod.selectImplementationClass("26.1.2"));
     }
 
     @Test
@@ -60,6 +76,7 @@ class ModlFabricModTest {
             assertFalse(json.contains("packetevents-fabric.jar"));
             assertFalse(json.contains("modl-fabric-121.jar"));
             assertFalse(json.contains("modl-fabric-1214.jar"));
+            assertFalse(json.contains("modl-fabric-1218.jar"));
             assertFalse(json.contains("modl-fabric-12111.jar"));
             assertFalse(json.contains("modl-fabric-26.jar"));
         }

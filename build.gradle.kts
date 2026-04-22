@@ -17,6 +17,7 @@ subprojects {
 
     repositories {
         maven("https://nexus.modl.gg/repository/maven-releases/")
+        maven("https://nexus.modl.gg/repository/maven-snapshots/")
         mavenCentral()
         maven("https://repo.aikar.co/content/groups/aikar/")
         maven("https://jitpack.io")

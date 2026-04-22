@@ -44,7 +44,7 @@ dependencies {
 
     // Replay recording
     implementation("gg.modl.minecraft.replay:replay-format:1.1.0")
-    implementation("gg.modl.minecraft.replay:modl-replay-recording:1.1.0")
+    implementation("gg.modl.minecraft.replay:modl-replay-recording:1.1.2")
 
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")

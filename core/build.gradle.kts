@@ -15,6 +15,7 @@ dependencies {
     testImplementation("io.github.revxrsal:lamp.common:${property("lamp.version")}")
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("com.google.code.gson:gson:${property("gson.version")}")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

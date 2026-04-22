@@ -1,6 +1,11 @@
 package gg.modl.minecraft.core.impl.http;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.AddPunishmentEvidenceRequest;
@@ -67,12 +72,19 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
+import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -87,6 +99,12 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10), LOGIN_TIMEOUT = Duration.ofSeconds(15),
             SYNC_TIMEOUT = Duration.ofSeconds(20);
     private static final int MAX_LOG_BODY_LENGTH = 1000, HTTP_BAD_GATEWAY = 502;
+    private static final String[] FALLBACK_DATE_PATTERNS = {
+            "yyyy-MM-dd'T'HH:mm:ss.SSSX",
+            "yyyy-MM-dd'T'HH:mm:ssX",
+            "yyyy-MM-dd HH:mm:ss",
+            "MMM d, yyyy, h:mm:ss a",
+    };
 
     private @NotNull final String baseUrl, apiKey, serverDomain;
     private @NotNull final ThreadPoolExecutor executor;
@@ -109,8 +127,57 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
             t.setPriority(Thread.NORM_PRIORITY);
             return t;
         });
-        this.gson = new Gson();
+        this.gson = new GsonBuilder()
+                .registerTypeAdapter(Date.class, flexibleDateDeserializer())
+                .create();
         this.logger = Logger.getLogger(ModlHttpClientV2Impl.class.getName());
+    }
+
+    private static JsonDeserializer<Date> flexibleDateDeserializer() {
+        return new JsonDeserializer<Date>() {
+            @Override
+            public Date deserialize(JsonElement json, java.lang.reflect.Type typeOfT,
+                                    JsonDeserializationContext context) throws JsonParseException {
+                if (json == null || json.isJsonNull()) {
+                    return null;
+                }
+                if (!json.isJsonPrimitive()) {
+                    throw new JsonParseException("Unsupported date payload: " + json);
+                }
+                if (json.getAsJsonPrimitive().isNumber()) {
+                    return new Date(json.getAsLong());
+                }
+                String value = json.getAsString();
+                if (value == null) {
+                    return null;
+                }
+                String trimmed = value.trim();
+                if (trimmed.isEmpty() || "null".equalsIgnoreCase(trimmed)) {
+                    return null;
+                }
+                try {
+                    return Date.from(Instant.parse(trimmed));
+                } catch (DateTimeParseException ignored) {
+                }
+                try {
+                    return Date.from(OffsetDateTime.parse(trimmed).toInstant());
+                } catch (DateTimeParseException ignored) {
+                }
+                try {
+                    return new Date(Long.parseLong(trimmed));
+                } catch (NumberFormatException ignored) {
+                }
+                for (String pattern : FALLBACK_DATE_PATTERNS) {
+                    try {
+                        SimpleDateFormat format = new SimpleDateFormat(pattern, Locale.US);
+                        format.setTimeZone(TimeZone.getTimeZone("UTC"));
+                        return format.parse(trimmed);
+                    } catch (ParseException ignored) {
+                    }
+                }
+                throw new JsonParseException(trimmed);
+            }
+        };
     }
 
     private static class RequestConfig {

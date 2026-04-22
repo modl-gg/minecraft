@@ -17,6 +17,7 @@ val nestedPacketEventsFileName = "packetevents-fabric.jar"
 val nestedFabricImplementationFileNames = listOf(
     "modl-fabric-121.jar",
     "modl-fabric-1214.jar",
+    "modl-fabric-1218.jar",
     "modl-fabric-12111.jar",
     "modl-fabric-26.jar"
 )
@@ -28,6 +29,8 @@ val fabric121Dir = rootProject.file("platforms/fabric-121")
 val fabric121Jar = fabric121Dir.resolve("build/libs/modl-fabric-121-${project.version}.jar")
 val fabric1214Dir = rootProject.file("platforms/fabric-1214")
 val fabric1214Jar = fabric1214Dir.resolve("build/libs/modl-fabric-1214-${project.version}.jar")
+val fabric1218Dir = rootProject.file("platforms/fabric-1218")
+val fabric1218Jar = fabric1218Dir.resolve("build/libs/modl-fabric-1218-${project.version}.jar")
 
 fun packetEventsVersion(): String {
     val properties = Properties()
@@ -62,7 +65,7 @@ val buildFabric12111 by tasks.registering(Exec::class) {
 }
 
 val buildFabric26 by tasks.registering(Exec::class) {
-    description = "Builds the Fabric 26.1 module (separate Gradle build due to Loom version conflict)"
+    description = "Builds the Fabric 26.1.2 module (separate Gradle build due to Loom version conflict)"
     dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
     workingDir = rootProject.projectDir
     commandLine(
@@ -95,6 +98,18 @@ val buildFabric1214 by tasks.registering(Exec::class) {
         "build", "-x", "test"
     )
     onlyIf { fabric1214Dir.resolve("build.gradle").exists() }
+}
+
+val buildFabric1218 by tasks.registering(Exec::class) {
+    description = "Builds the Fabric 1.21.8 module (separate Gradle build for older Loom)"
+    dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
+    workingDir = rootProject.projectDir
+    commandLine(
+        rootGradlew.absolutePath,
+        "-p", fabric1218Dir.absolutePath,
+        "build", "-x", "test"
+    )
+    onlyIf { fabric1218Dir.resolve("build.gradle").exists() }
 }
 
 val buildPacketEventsFabric by tasks.registering(Exec::class) {
@@ -164,7 +179,7 @@ dependencies {
     fabricRuntimeSupport(project(":bridge-core"))
     fabricRuntimeSupport("com.alessiodp.libby:libby-core:${property("libby.version")}")
     fabricRuntimeSupport("com.alessiodp.libby:libby-fabric:${property("libby.version")}")
-    fabricRuntimeSupport("gg.modl.minecraft.replay:modl-replay-recording:1.1.0")
+    fabricRuntimeSupport("gg.modl.minecraft.replay:modl-replay-recording:1.1.2")
     fabricRuntimeSupport("gg.modl.minecraft.replay:replay-format:1.1.0")
 }
 
@@ -201,6 +216,7 @@ val fabricJar by tasks.registering(Jar::class) {
     dependsOn(buildFabric12111)
     dependsOn(buildFabric121)
     dependsOn(buildFabric1214)
+    dependsOn(buildFabric1218)
     dependsOn(buildFabric26)
     dependsOn(buildPacketEventsFabric)
     dependsOn(generateFabricDistributionMetadata)
@@ -234,13 +250,17 @@ val fabricJar by tasks.registering(Jar::class) {
         into("META-INF/jars")
         rename { nestedFabricImplementationFileNames[1] }
     }
-    from(fabric12111Jar) {
+    from(fabric1218Jar) {
         into("META-INF/jars")
         rename { nestedFabricImplementationFileNames[2] }
     }
-    from(fabric26Jar) {
+    from(fabric12111Jar) {
         into("META-INF/jars")
         rename { nestedFabricImplementationFileNames[3] }
+    }
+    from(fabric26Jar) {
+        into("META-INF/jars")
+        rename { nestedFabricImplementationFileNames[4] }
     }
 
     from(packetEventsFabricJar) {

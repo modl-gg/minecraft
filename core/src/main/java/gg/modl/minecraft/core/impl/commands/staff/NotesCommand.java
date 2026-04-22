@@ -3,7 +3,6 @@ package gg.modl.minecraft.core.impl.commands.staff;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Note;
-import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
@@ -48,8 +47,7 @@ public class NotesCommand {
         UUID senderUuid = actor.uniqueId();
         actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
-        PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
-        httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
+        StaffProfileLookup.lookupPlayerProfile(httpClientHolder.getClient(), platform, playerQuery).thenAccept(profileResponse -> {
             if (profileResponse.getStatus() == 200) {
                 String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
                 NotesMenu menu = new NotesMenu(
@@ -68,9 +66,7 @@ public class NotesCommand {
     private void printNotes(CommandActor actor, String playerQuery, int page) {
         actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
-        PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
-
-        httpClientHolder.getClient().lookupPlayerProfile(request).thenAccept(profileResponse -> {
+        StaffProfileLookup.lookupPlayerProfile(httpClientHolder.getClient(), platform, playerQuery).thenAccept(profileResponse -> {
             if (profileResponse.getStatus() == 200) {
                 Account profile = profileResponse.getProfile();
                 List<Account.Username> usernames = profile.getUsernames();

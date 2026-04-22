@@ -19,10 +19,10 @@ repositories {
 }
 
 dependencies {
-    minecraft "com.mojang:minecraft:${property('minecraft_version')}"
-    mappings "net.fabricmc:yarn:${property('yarn_mappings')}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${property('loader_version')}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${property('fabric_version')}"
+    minecraft "com.mojang:minecraft:1.21.8"
+    mappings "net.fabricmc:yarn:1.21.8+build.1:v2"
+    modImplementation "net.fabricmc:fabric-loader:0.16.10"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:0.136.1+1.21.8"
 
     // Internal modules (pre-built from main project)
     implementation files("../../bridge-core/build/libs/bridge-core-${version}.jar")

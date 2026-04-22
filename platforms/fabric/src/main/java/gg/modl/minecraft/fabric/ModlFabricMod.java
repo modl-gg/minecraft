@@ -41,6 +41,9 @@ public class ModlFabricMod implements DedicatedServerModInitializer {
             if (minor >= 11) {
                 return "gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl";
             }
+            if (minor >= 7) {
+                return "gg.modl.minecraft.fabric.v1_21_8.ModlFabricModImpl";
+            }
             if (minor >= 2) {
                 return "gg.modl.minecraft.fabric.v1_21_4.ModlFabricModImpl";
             }
