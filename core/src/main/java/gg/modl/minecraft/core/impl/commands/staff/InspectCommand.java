@@ -29,8 +29,12 @@ import revxrsal.commands.annotation.Description;
 import revxrsal.commands.annotation.Named;
 import revxrsal.commands.command.CommandActor;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
@@ -91,6 +95,7 @@ public class InspectCommand {
                 menu.display(player);
             } else actor.reply(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
+            logInspectFailure(playerQuery, throwable);
             CommandUtil.handleException(actor, throwable, localeManager);
             return null;
         });
@@ -162,9 +167,29 @@ public class InspectCommand {
                     PunishmentActionMessages.sendPunishmentActions(platform, senderUuid, punishmentId));
             }
         }).exceptionally(throwable -> {
+            logInspectFailure("#" + punishmentId, throwable);
             CommandUtil.handleException(actor, throwable, localeManager);
             return null;
         });
+    }
+
+    private void logInspectFailure(String playerQuery, Throwable throwable) {
+        Throwable root = unwrapThrowable(throwable);
+        String message = root.getMessage();
+        platform.getLogger().severe("Inspect lookup failed for " + playerQuery + " (" + root.getClass().getSimpleName() + ")" +
+            (message != null && !message.isEmpty() ? ": " + message : ""));
+
+        StringWriter stackTrace = new StringWriter();
+        root.printStackTrace(new PrintWriter(stackTrace));
+        platform.getLogger().severe(stackTrace.toString());
+    }
+
+    private static Throwable unwrapThrowable(Throwable throwable) {
+        Throwable current = throwable;
+        while ((current instanceof CompletionException || current instanceof ExecutionException) && current.getCause() != null) {
+            current = current.getCause();
+        }
+        return current != null ? current : new RuntimeException("Unknown inspect failure");
     }
 
     private void printLookup(CommandActor actor, String playerQuery) {
