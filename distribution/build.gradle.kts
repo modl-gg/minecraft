@@ -13,7 +13,7 @@ val fabricLoomJar = project(":platforms:fabric").layout.buildDirectory.file("lib
 val rootGradlew = rootProject.file("gradlew")
 val packetEventsDir = rootProject.file("../minecraft-packetevents")
 val packetEventsGradlew = packetEventsDir.resolve("gradlew")
-val nestedPacketEventsFileName = "packetevents-fabric.jar"
+val nestedPacketEventsFileName = "packetevents-modl.jar"
 val nestedFabricImplementationFileNames = listOf(
     "modl-fabric-121.jar",
     "modl-fabric-1214.jar",

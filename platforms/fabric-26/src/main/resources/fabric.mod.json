@@ -7,6 +7,6 @@
   "depends": {
     "minecraft": ">=26",
     "fabric-api": "*",
-    "packetevents": "*"
+    "packetevents-modl": "*"
   }
 }

@@ -71,9 +71,10 @@ class ModlFabricModTest {
             assertNotNull(stream, "fabric.mod.json should be present on the test classpath");
 
             String json = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            assertTrue(json.contains("\"packetevents\": \"*\""));
+            assertTrue(json.contains("\"packetevents-modl\": \"*\""));
+            assertFalse(json.contains("\"packetevents\": \"*\""));
             assertTrue(json.contains("\"fabric-api\": \"*\""));
-            assertFalse(json.contains("packetevents-fabric.jar"));
+            assertFalse(json.contains("packetevents-modl.jar"));
             assertFalse(json.contains("modl-fabric-121.jar"));
             assertFalse(json.contains("modl-fabric-1214.jar"));
             assertFalse(json.contains("modl-fabric-1218.jar"));
