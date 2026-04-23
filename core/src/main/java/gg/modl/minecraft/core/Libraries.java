@@ -53,49 +53,49 @@ public final class Libraries {
     PACKETEVENTS_API = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-api",
-            "2.12.7",
+            "2.12.8",
             "packetevents-api"
     ),
     PACKETEVENTS_NETTY = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-netty-common",
-            "2.12.7",
+            "2.12.8",
             "packetevents-netty-common"
     ),
     PACKETEVENTS_SPIGOT = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-spigot",
-            "2.12.7",
+            "2.12.8",
             "packetevents-spigot"
     ),
     PACKETEVENTS_BUNGEE = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-bungeecord",
-            "2.12.7",
+            "2.12.8",
             "packetevents-bungeecord"
     ),
     PACKETEVENTS_VELOCITY = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-velocity",
-            "2.12.7",
+            "2.12.8",
             "packetevents-velocity"
     ),
     PACKETEVENTS_FABRIC_COMMON = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-fabric-common",
-            "2.12.7",
+            "2.12.8",
             "packetevents-fabric-common"
     ),
     PACKETEVENTS_FABRIC_INTERMEDIARY = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-fabric-intermediary",
-            "2.12.7",
+            "2.12.8",
             "packetevents-fabric-intermediary"
     ),
     PACKETEVENTS_FABRIC_OFFICIAL = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-fabric-official",
-            "2.12.7",
+            "2.12.8",
             "packetevents-fabric-official"
     ),
     ADVENTURE_NBT = LibraryRecord.of(

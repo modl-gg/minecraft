@@ -130,9 +130,11 @@ val generateFabricDistributionMetadata by tasks.registering {
     doLast {
         val source = fabricMetadataSource.readText()
         val expanded = source.replace("\${version}", project.version.toString())
-        val licenseMarker = "  \"license\": \"AGPL-3.0\",\n"
+        val newline = if (expanded.contains("\r\n")) "\r\n" else "\n"
+        val licenseMarkerRegex = Regex("""  "license": "AGPL-3.0",(?:\r\n|\n)""")
+        val licenseMarkerMatch = licenseMarkerRegex.find(expanded)
         val nestedJarFileNames = nestedFabricImplementationFileNames + nestedPacketEventsFileName
-        val nestedJarsJson = nestedJarFileNames.joinToString(",\n") { fileName ->
+        val nestedJarsJson = nestedJarFileNames.joinToString(",$newline") { fileName ->
             "    { \"file\": \"META-INF/jars/$fileName\" }"
         }
         val withNestedJar = if (expanded.contains("\"jars\"")) {
@@ -143,15 +145,15 @@ val generateFabricDistributionMetadata by tasks.registering {
             }
             expanded
         } else {
-            check(expanded.contains(licenseMarker)) {
+            check(licenseMarkerMatch != null) {
                 "Unable to add nested jar metadata to ${fabricMetadataSource.absolutePath}"
             }
-            expanded.replace(
-                licenseMarker,
-                licenseMarker +
-                    "  \"jars\": [\n" +
-                    nestedJarsJson + "\n" +
-                    "  ],\n"
+            expanded.replaceRange(
+                licenseMarkerMatch.range,
+                licenseMarkerMatch.value +
+                    "  \"jars\": [$newline" +
+                    nestedJarsJson + newline +
+                    "  ],$newline"
             )
         }
 
