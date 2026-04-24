@@ -108,6 +108,8 @@ public class BungeePlugin extends Plugin {
 
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
         getProxy().getPluginManager().registerListener(this, new AsyncCommandInterceptor(asyncExecutor, getProxy()));
+
+        getLogger().info("Successfully booted modl.gg platform plugin!");
     }
 
     @Override
@@ -122,7 +124,6 @@ public class BungeePlugin extends Plugin {
             if (BootConfig.exists(getDataFolder().toPath())) {
                 BootConfig config = BootConfig.load(getDataFolder().toPath());
                 if (config != null && config.isValid()) {
-                    getLogger().info("Loaded configuration from boot.yml (mode: " + config.getMode().toYaml() + ")");
                     return config;
                 }
             }
@@ -175,7 +176,6 @@ public class BungeePlugin extends Plugin {
         PacketEvents.setAPI(BungeePacketEventsBuilder.build(this));
         PacketEvents.getAPI().load();
         PacketEvents.getAPI().init();
-        getLogger().info("PacketEvents initialized successfully");
     }
 
     private void loadLibraries() {

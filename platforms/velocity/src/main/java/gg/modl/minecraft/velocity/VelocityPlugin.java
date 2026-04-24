@@ -132,6 +132,8 @@ public final class VelocityPlugin {
                 pluginLoader.getFreezeService(), pluginLoader.getNetworkChatInterceptService(),
                 pluginLoader.getChatCommandLogService(),
                 pluginLoader.getConfigManager().getStaffChatConfig()));
+
+        logger.info("Successfully booted modl.gg platform plugin!");
     }
 
     @Subscribe
@@ -161,7 +163,6 @@ public final class VelocityPlugin {
             if (BootConfig.exists(folder)) {
                 BootConfig config = BootConfig.load(folder);
                 if (config != null && config.isValid()) {
-                    logger.info("Loaded configuration from boot.yml (mode: " + config.getMode().toYaml() + ")");
                     return config;
                 }
             }
@@ -233,7 +234,6 @@ public final class VelocityPlugin {
         PacketEvents.setAPI(VelocityPacketEventsBuilder.build(server, plugin, logger, folder));
         PacketEvents.getAPI().load();
         PacketEvents.getAPI().init();
-        logger.info("PacketEvents initialized successfully");
     }
 
     private void loadLibraries() {

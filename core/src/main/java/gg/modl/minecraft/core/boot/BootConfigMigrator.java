@@ -50,7 +50,6 @@ public class BootConfigMigrator {
             }
 
             boot.save(dataDir);
-            logger.info("Migrated configuration to boot.yml");
             return Optional.of(boot);
         } catch (Exception e) {
             logger.warning("Failed to migrate config.yml to boot.yml: " + e.getMessage());
@@ -116,7 +115,6 @@ public class BootConfigMigrator {
                 yaml.dump(bridgeConfigMap, writer);
             }
 
-            logger.info("Migrated bridge settings from modl-bridge/config.yml to bridge-config.yml");
         } catch (Exception e) {
             logger.warning("Failed to migrate bridge config: " + e.getMessage());
         }

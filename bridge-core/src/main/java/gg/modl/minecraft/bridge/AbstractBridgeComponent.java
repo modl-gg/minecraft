@@ -110,9 +110,6 @@ public abstract class AbstractBridgeComponent {
             registerProxyCommand(bridgeClient);
         }
 
-        pluginLogger.info("[bridge] Enabled with " + hooks.size() + " anticheat hook(s)"
-                + (replayService != null ? " + replay capture" : "")
-                + (bridgeClient != null ? " + bridge connection" : ""));
     }
 
     public void disable() {
@@ -123,8 +120,6 @@ public abstract class AbstractBridgeComponent {
 
         hooks.forEach(AntiCheatHook::unregister);
         hooks.clear();
-
-        pluginLogger.info("[bridge] Disabled");
     }
 
     protected abstract void initFreezeHandler(BridgeLocaleManager localeManager);

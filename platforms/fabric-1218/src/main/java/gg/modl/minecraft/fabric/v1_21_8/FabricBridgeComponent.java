@@ -90,18 +90,15 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
 
     @Override
     protected void registerAntiCheatHooks(List<AntiCheatHook> hooks) {
-        pluginLogger.info("[bridge] Fabric platform: anticheat hooks not available");
     }
 
     @Override
     protected void initReplayRecording(BridgeConfig config) {
         if (!config.isReplayEnabled()) {
-            pluginLogger.info("[bridge] Replay recording disabled in config");
             return;
         }
 
         if (backendUrl == null || backendUrl.isEmpty() || apiKey == null || apiKey.isEmpty()) {
-            pluginLogger.info("[bridge] Backend URL or API key not configured, replay capture unavailable");
             return;
         }
 
@@ -164,10 +161,6 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
                             }
 
                             return uploader.uploadAsync(replayFile, recordingConfig.mcVersion())
-                                    .thenApply(replayId -> {
-                                        pluginLogger.info("[bridge] Replay uploaded for " + targetName + ": " + replayId);
-                                        return replayId;
-                                    })
                                     .whenComplete((replayId, ex) -> {
                                         if (ex != null) {
                                             pluginLogger.warning("[bridge] Replay upload failed for " + targetName + ": " + ex.getMessage());
@@ -199,14 +192,11 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
                 long now = System.currentTimeMillis();
                 for (File f : files) {
                     if (f.isFile() && now - f.lastModified() > ttlMs) {
-                        if (f.delete()) pluginLogger.info("[bridge] Deleted expired replay file: " + f.getName());
+                        f.delete();
                     }
                 }
             }, 5, 5, TimeUnit.MINUTES);
         }
-
-        pluginLogger.info("[bridge] Replay recording initialized (auto-record: " + config.isReplayAutoRecord()
-                + ", save-local: " + config.isReplaySaveLocal() + ")");
     }
 
     private void startRecordingForPlayer(ServerPlayerEntity player) {

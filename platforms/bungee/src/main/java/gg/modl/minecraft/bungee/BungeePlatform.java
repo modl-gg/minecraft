@@ -198,10 +198,8 @@ public class BungeePlatform implements Platform {
         try {
             if (ProxyServer.getInstance().getPluginManager().getPlugin("LiteBans") == null) return null;
             Class.forName("litebans.api.Database");
-            logger.info("LiteBans plugin detected, using LiteBans API");
             return new LiteBansDatabaseProvider();
-        } catch (ClassNotFoundException e) {
-            logger.info("LiteBans API not found in classpath");
+        } catch (ClassNotFoundException ignored) {
         } catch (Exception e) {
             logger.warning("Error checking for LiteBans: " + e.getMessage());
         }

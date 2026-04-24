@@ -49,8 +49,6 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
 
     @Override
     public void onInitializeServer() {
-        LOGGER.info("[modl] Initializing modl Fabric mod");
-
         Path dataFolder = FabricLoader.getInstance().getConfigDir().resolve("modl");
         dataFolder.toFile().mkdirs();
         bootConfig = loadOrCreateBootConfig(dataFolder);
@@ -64,7 +62,6 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
             if (BootConfig.exists(dataFolder)) {
                 BootConfig config = BootConfig.load(dataFolder);
                 if (config != null && config.isValid()) {
-                    LOGGER.info("Loaded configuration from boot.yml (mode: {})", config.getMode().toYaml());
                     return config;
                 }
             }
@@ -274,6 +271,8 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
                                 standaloneFabricPlatform.getServerName(),
                                 server));
             }
+
+            LOGGER.info("Successfully booted modl.gg platform plugin!");
         } catch (Exception e) {
             LOGGER.error("[modl] Failed to enable bridge component", e);
         }
@@ -309,7 +308,6 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
                         for (var node : root.getChildren()) {
                             dispatcher.getRoot().addChild(node);
                         }
-                        LOGGER.info("[modl] Synced {} commands to server dispatcher", root.getChildren().size());
                         break;
                     }
                 }

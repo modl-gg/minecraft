@@ -4,9 +4,9 @@ dependencies {
     compileOnly("org.yaml:snakeyaml:${property("snakeyaml.version")}")
     compileOnly("net.kyori:adventure-text-minimessage:${property("adventure.version")}")
     compileOnly("net.kyori:adventure-text-serializer-legacy:${property("adventure.version")}")
-    compileOnly("io.netty:netty-all:4.1.97.Final")
+    compileOnly("io.netty:netty-all:${property("netty.version")}")
 
-    testImplementation(platform("org.junit:junit-bom:5.11.4"))
+    testImplementation(platform("org.junit:junit-bom:${property("junit.bom.version")}"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("com.google.code.gson:gson:${property("gson.version")}")
     testImplementation("org.yaml:snakeyaml:${property("snakeyaml.version")}")

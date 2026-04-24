@@ -1,5 +1,5 @@
 plugins {
-    id("com.gradleup.shadow") version "9.3.1"
+    id("com.gradleup.shadow")
 }
 
 import java.util.Properties
@@ -31,6 +31,29 @@ val fabric1214Dir = rootProject.file("platforms/fabric-1214")
 val fabric1214Jar = fabric1214Dir.resolve("build/libs/modl-fabric-1214-${project.version}.jar")
 val fabric1218Dir = rootProject.file("platforms/fabric-1218")
 val fabric1218Jar = fabric1218Dir.resolve("build/libs/modl-fabric-1218-${project.version}.jar")
+val sharedDependencyProperties = listOf(
+    "version",
+    "libby.version",
+    "lamp.version",
+    "cirrus.version",
+    "lombok.version",
+    "lombok.version.fabric26",
+    "netty.version",
+    "packetevents.version",
+    "replay.recording.version",
+    "replay.format.version",
+    "adventure.version",
+    "snakeyaml.version"
+)
+
+fun commandWithSharedProperties(baseArgs: MutableList<String>): MutableList<String> {
+    sharedDependencyProperties.forEach { propertyName ->
+        rootProject.findProperty(propertyName)?.let { value ->
+            baseArgs.add("-P$propertyName=$value")
+        }
+    }
+    return baseArgs
+}
 
 fun packetEventsVersion(): String {
     val properties = Properties()
@@ -57,9 +80,11 @@ val buildFabric12111 by tasks.registering(Exec::class) {
     dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
     workingDir = rootProject.projectDir
     commandLine(
+        commandWithSharedProperties(mutableListOf(
         rootGradlew.absolutePath,
         "-p", fabric12111Dir.absolutePath,
         "build", "-x", "test"
+        ))
     )
     onlyIf { fabric12111Dir.resolve("build.gradle").exists() }
 }
@@ -69,9 +94,11 @@ val buildFabric26 by tasks.registering(Exec::class) {
     dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
     workingDir = rootProject.projectDir
     commandLine(
+        commandWithSharedProperties(mutableListOf(
         rootGradlew.absolutePath,
         "-p", fabric26Dir.absolutePath,
         "build", "-x", "test"
+        ))
     )
     onlyIf { fabric26Dir.resolve("build.gradle").exists() }
 }
@@ -81,9 +108,11 @@ val buildFabric121 by tasks.registering(Exec::class) {
     dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
     workingDir = rootProject.projectDir
     commandLine(
+        commandWithSharedProperties(mutableListOf(
         rootGradlew.absolutePath,
         "-p", fabric121Dir.absolutePath,
         "build", "-x", "test"
+        ))
     )
     onlyIf { fabric121Dir.resolve("build.gradle").exists() }
 }
@@ -93,9 +122,11 @@ val buildFabric1214 by tasks.registering(Exec::class) {
     dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
     workingDir = rootProject.projectDir
     commandLine(
+        commandWithSharedProperties(mutableListOf(
         rootGradlew.absolutePath,
         "-p", fabric1214Dir.absolutePath,
         "build", "-x", "test"
+        ))
     )
     onlyIf { fabric1214Dir.resolve("build.gradle").exists() }
 }
@@ -105,9 +136,11 @@ val buildFabric1218 by tasks.registering(Exec::class) {
     dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
     workingDir = rootProject.projectDir
     commandLine(
+        commandWithSharedProperties(mutableListOf(
         rootGradlew.absolutePath,
         "-p", fabric1218Dir.absolutePath,
         "build", "-x", "test"
+        ))
     )
     onlyIf { fabric1218Dir.resolve("build.gradle").exists() }
 }
@@ -181,8 +214,8 @@ dependencies {
     fabricRuntimeSupport(project(":bridge-core"))
     fabricRuntimeSupport("com.alessiodp.libby:libby-core:${property("libby.version")}")
     fabricRuntimeSupport("com.alessiodp.libby:libby-fabric:${property("libby.version")}")
-    fabricRuntimeSupport("gg.modl.minecraft.replay:modl-replay-recording:1.1.2")
-    fabricRuntimeSupport("gg.modl.minecraft.replay:replay-format:1.1.0")
+    fabricRuntimeSupport("gg.modl.minecraft.replay:modl-replay-recording:${property("replay.recording.version")}")
+    fabricRuntimeSupport("gg.modl.minecraft.replay:replay-format:${property("replay.format.version")}")
 }
 
 tasks.shadowJar {

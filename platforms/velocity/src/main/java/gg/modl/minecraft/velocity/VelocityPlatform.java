@@ -261,10 +261,8 @@ public class VelocityPlatform implements Platform {
         try {
             if (!server.getPluginManager().getPlugin("litebans").isPresent()) return null;
             Class.forName("litebans.api.Database");
-            logger.info("LiteBans plugin detected, using LiteBans API");
             return new LiteBansDatabaseProvider();
-        } catch (ClassNotFoundException e) {
-            logger.info("LiteBans API not found in classpath");
+        } catch (ClassNotFoundException ignored) {
         } catch (Exception e) {
             logger.warn("Error checking for LiteBans: {}", e.getMessage());
         }

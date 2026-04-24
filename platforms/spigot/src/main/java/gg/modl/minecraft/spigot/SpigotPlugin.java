@@ -156,7 +156,10 @@ public class SpigotPlugin extends JavaPlugin {
         } else if (mode == BootConfig.Mode.PROXY) {
             getLogger().severe("boot.yml mode is 'proxy' but this is a Spigot server. Use 'standalone' or 'bridge-only'.");
             getServer().getPluginManager().disablePlugin(this);
+            return;
         }
+
+        getLogger().info("Successfully booted modl.gg platform plugin!");
     }
 
     private void enableStandaloneMode(BootConfig bootConfig, String panelUrl, boolean lateBootstrap) {
@@ -267,7 +270,6 @@ public class SpigotPlugin extends JavaPlugin {
         };
 
         bridgeComponent.enable(tcpTicketCreator, true);
-        getLogger().info("Running in bridge-only mode (no main plugin features)");
     }
 
     @Override
@@ -313,7 +315,6 @@ public class SpigotPlugin extends JavaPlugin {
             if (BootConfig.exists(getDataFolder().toPath())) {
                 BootConfig config = BootConfig.load(getDataFolder().toPath());
                 if (config != null && config.isValid()) {
-                    getLogger().info("Loaded configuration from boot.yml (mode: " + config.getMode().toYaml() + ")");
                     return config;
                 }
             }
@@ -351,7 +352,6 @@ public class SpigotPlugin extends JavaPlugin {
 
     private void initPacketEvents() {
         PacketEvents.getAPI().init();
-        getLogger().info("PacketEvents initialized successfully");
     }
 
     private void setupLibby() {

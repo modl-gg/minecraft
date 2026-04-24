@@ -334,7 +334,6 @@ public class PluginLoader {
         if (config.containsKey("locale")) {
             String locale = (String) config.get("locale");
             if (locale != null && !locale.isEmpty()) {
-                logger.info("Using locale: " + locale);
                 return locale;
             }
         }
@@ -467,11 +466,7 @@ public class PluginLoader {
                 String detectedPrefix = detectLiteBansTablePrefix(dataDirectory, logger);
                 if (detectedPrefix != null) {
                     tablePrefix = detectedPrefix;
-                    logger.info("Detected LiteBans table prefix from config: " + tablePrefix);
                 }
-
-                logger.info("Loaded database config: " + type + " @ " + host + ":" + port + "/" + dbName);
-                logger.info("Using table prefix: " + tablePrefix);
 
                 return new DatabaseConfig(host, dbName, username, password, dbType, tablePrefix, port);
             }
@@ -491,7 +486,6 @@ public class PluginLoader {
             Path litebansConfig = dataDirectory.getParent().resolve("LiteBans").resolve("config.yml");
 
             if (!Files.exists(litebansConfig)) {
-                logger.info("LiteBans config not found, using prefix from modl.gg config");
                 return null;
             }
 

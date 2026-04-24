@@ -1,10 +1,17 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version '1.15.5'
+    id 'net.fabricmc.fabric-loom'
     id 'java'
 }
 
-group = 'gg.modl'
-version = property('version')
+def sharedProps = new Properties()
+file("../../gradle.properties").withInputStream { input ->
+    sharedProps.load(input)
+}
+sharedProps.each { key, value -> project.ext.set(key.toString(), value) }
+
+
+group = sharedProps.getProperty('group')
+version = sharedProps.getProperty('version')
 
 repositories {
     maven { url "https://nexus.modl.gg/repository/maven-releases/" }
@@ -19,10 +26,10 @@ repositories {
 }
 
 dependencies {
-    minecraft "com.mojang:minecraft:26.1.2"
+    minecraft "com.mojang:minecraft:${property('minecraft_version')}"
     // No mappings — 26.1.x is unobfuscated
-    implementation "net.fabricmc:fabric-loader:0.19.1"
-    implementation "net.fabricmc.fabric-api:fabric-api:0.146.0+26.1.2"
+    implementation "net.fabricmc:fabric-loader:${property('loader_version')}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${property('fabric_version')}"
 
     // Internal modules (pre-built from main project)
     implementation files("../../bridge-core/build/libs/bridge-core-${version}.jar")
@@ -30,30 +37,30 @@ dependencies {
     implementation files("../../api/build/libs/api-${version}.jar")
 
     // Libby runtime library loading
-    implementation "com.alessiodp.libby:libby-core:${property('libby_version')}"
-    implementation "com.alessiodp.libby:libby-fabric:${property('libby_version')}"
+    implementation "com.alessiodp.libby:libby-core:${rootProject.property('libby.version')}"
+    implementation "com.alessiodp.libby:libby-fabric:${rootProject.property('libby.version')}"
 
     // Compile-only deps (loaded at runtime via Libby)
-    compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:4.2.4"
-    compileOnly "gg.modl.minecraft.cirrus:cirrus-api:4.2.4"
-    compileOnly "gg.modl.minecraft.cirrus:cirrus-common:4.2.4"
-    compileOnly "gg.modl.minecraft.packetevents:packetevents-api:${findProperty('packetevents.version') ?: '2.12.8'}"
-    compileOnly "gg.modl.minecraft.replay:modl-replay-recording:1.1.2"
-    compileOnly "gg.modl.minecraft.replay:replay-format:1.1.0"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:${rootProject.property('cirrus.version')}"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-api:${rootProject.property('cirrus.version')}"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-common:${rootProject.property('cirrus.version')}"
+    compileOnly "gg.modl.minecraft.packetevents:packetevents-api:${rootProject.property('packetevents.version')}"
+    compileOnly "gg.modl.minecraft.replay:modl-replay-recording:${rootProject.property('replay.recording.version')}"
+    compileOnly "gg.modl.minecraft.replay:replay-format:${rootProject.property('replay.format.version')}"
 
     // Provided by server
-    compileOnly "io.github.revxrsal:lamp.common:${property('lamp_version')}"
-    compileOnly "io.github.revxrsal:lamp.brigadier:${property('lamp_version')}"
-    compileOnly "io.github.revxrsal:lamp.fabric:${property('lamp_version')}"
-    compileOnly "io.netty:netty-all:4.1.97.Final"
-    compileOnly "net.kyori:adventure-text-minimessage:4.26.1"
-    compileOnly "net.kyori:adventure-text-serializer-legacy:4.26.1"
-    compileOnly "net.kyori:adventure-api:4.26.1"
-    compileOnly "org.yaml:snakeyaml:2.3"
+    compileOnly "io.github.revxrsal:lamp.common:${rootProject.property('lamp.version')}"
+    compileOnly "io.github.revxrsal:lamp.brigadier:${rootProject.property('lamp.version')}"
+    compileOnly "io.github.revxrsal:lamp.fabric:${rootProject.property('lamp.version')}"
+    compileOnly "io.netty:netty-all:${rootProject.property('netty.version')}"
+    compileOnly "net.kyori:adventure-text-minimessage:${rootProject.property('adventure.version')}"
+    compileOnly "net.kyori:adventure-text-serializer-legacy:${rootProject.property('adventure.version')}"
+    compileOnly "net.kyori:adventure-api:${rootProject.property('adventure.version')}"
+    compileOnly "org.yaml:snakeyaml:${rootProject.property('snakeyaml.version')}"
 
     // Lombok
-    compileOnly "org.projectlombok:lombok:1.18.44"
-    annotationProcessor "org.projectlombok:lombok:1.18.44"
+    compileOnly "org.projectlombok:lombok:${rootProject.property('lombok.version.fabric26')}"
+    annotationProcessor "org.projectlombok:lombok:${rootProject.property('lombok.version.fabric26')}"
 }
 
 java {

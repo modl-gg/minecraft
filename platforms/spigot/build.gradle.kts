@@ -8,12 +8,12 @@ dependencies {
     compileOnly("org.spigotmc:spigot-api:${property("spigot.version")}")
 
     // Anticheat APIs
-    compileOnly("ac.grim.grimac:GrimAPI:1.0.0")
-    compileOnly("top.polar:api:2.3.0")
+    compileOnly("ac.grim.grimac:GrimAPI:${property("grim.api.version")}")
+    compileOnly("top.polar:api:${property("polar.api.version")}")
     compileOnly(files("libs/VulcanAPI.jar"))
 
     // Netty (provided by Minecraft server)
-    compileOnly("io.netty:netty-all:4.1.97.Final")
+    compileOnly("io.netty:netty-all:${property("netty.version")}")
 
     // Adventure (loaded via Libby at runtime)
     compileOnly("net.kyori:adventure-text-minimessage:${property("adventure.version")}")
@@ -43,14 +43,14 @@ dependencies {
     compileOnly("gg.modl.minecraft.packetevents:packetevents-spigot:${property("packetevents.version")}")
 
     // Replay recording
-    implementation("gg.modl.minecraft.replay:replay-format:1.1.0")
-    implementation("gg.modl.minecraft.replay:modl-replay-recording:1.1.2")
+    implementation("gg.modl.minecraft.replay:replay-format:${property("replay.format.version")}")
+    implementation("gg.modl.minecraft.replay:modl-replay-recording:${property("replay.recording.version")}")
 
-    testImplementation(platform("org.junit:junit-bom:5.11.4"))
+    testImplementation(platform("org.junit:junit-bom:${property("junit.bom.version")}"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("org.mockito:mockito-inline:5.2.0")
-    testImplementation("org.mockito:mockito-junit-jupiter:5.20.0")
+    testImplementation("org.mockito:mockito-inline:${property("mockito.inline.version")}")
+    testImplementation("org.mockito:mockito-junit-jupiter:${property("mockito.junit.jupiter.version")}")
     testImplementation("io.github.revxrsal:lamp.common:${property("lamp.version")}")
     testImplementation("io.github.revxrsal:lamp.bukkit:${property("lamp.version")}")
     testImplementation("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
