@@ -16,29 +16,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class LocaleManager {
-    private static final Pattern LEGACY_CODE_PATTERN = Pattern.compile("&([0-9a-fk-orA-FK-OR])");
     private static final Pattern EXCEPTION_PREFIX_PATTERN = Pattern.compile("^[a-zA-Z0-9_.]+Exception: .+");
     private static final Pattern JAVA_PREFIX_PATTERN = Pattern.compile("^java\\.[a-zA-Z0-9_.]+: .+");
     private static final Pattern LOCALE_PATH_PATTERN = Pattern.compile(".*\\.[a-z_]+\\.[a-z_]+.*");
-    private static final Map<Character, String> LEGACY_TO_MINIMESSAGE = mapOfEntries(
-            entry('0', "<black>"), entry('1', "<dark_blue>"),
-            entry('2', "<dark_green>"), entry('3', "<dark_aqua>"),
-            entry('4', "<dark_red>"), entry('5', "<dark_purple>"),
-            entry('6', "<gold>"), entry('7', "<gray>"),
-            entry('8', "<dark_gray>"), entry('9', "<blue>"),
-            entry('a', "<green>"), entry('b', "<aqua>"),
-            entry('c', "<red>"), entry('d', "<light_purple>"),
-            entry('e', "<yellow>"), entry('f', "<white>"),
-            entry('k', "<obfuscated>"), entry('l', "<bold>"),
-            entry('m', "<strikethrough>"), entry('n', "<underlined>"),
-            entry('o', "<italic>"), entry('r', "<reset>")
-    );
 
     @Getter private Map<String, Object> messages;
     private Map<String, Object> configValues;
@@ -164,22 +150,8 @@ public class LocaleManager {
     }
 
     private String colorize(String message) {
-        if (renderer != null && MessageRenderer.isMiniMessage(message)) {
-            message = legacyToMiniMessage(message);
-            return renderer.componentToLegacy(renderer.render(message));
-        }
-        return message.replace("&", "\u00a7");
-    }
-
-    private String legacyToMiniMessage(String message) {
-        Matcher matcher = LEGACY_CODE_PATTERN.matcher(message);
-        StringBuffer sb = new StringBuffer();
-        while (matcher.find()) {
-            String replacement = LEGACY_TO_MINIMESSAGE.get(Character.toLowerCase(matcher.group(1).charAt(0)));
-            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
-        }
-        matcher.appendTail(sb);
-        return sb.toString();
+        if (renderer != null && MessageRenderer.isMiniMessage(message)) return renderer.renderToLegacy(message);
+        return LegacyTextRenderer.colorize(message);
     }
 
     public String getPunishmentMessage(String path, Map<String, String> variables) {

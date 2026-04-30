@@ -1,7 +1,5 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.cache.Cache;
@@ -11,6 +9,7 @@ import gg.modl.minecraft.core.util.Constants;
 import gg.modl.minecraft.core.util.DateFormatter;
 import gg.modl.minecraft.core.util.Pagination;
 import gg.modl.minecraft.core.util.PermissionUtil;
+import revxrsal.commands.command.CommandActor;
 
 import java.util.Date;
 import java.util.List;
@@ -18,7 +17,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
-public abstract class AbstractLogCommand<T> extends BaseCommand {
+public abstract class AbstractLogCommand<T> {
     private static final int ENTRIES_PER_PAGE = 10;
 
     protected final HttpClientHolder httpClientHolder;
@@ -38,39 +37,39 @@ public abstract class AbstractLogCommand<T> extends BaseCommand {
     protected abstract String getServer(T entry);
     protected abstract Map<String, String> entryPlaceholders(T entry, String playerName, String timestamp, String server);
 
-    protected void execute(CommandIssuer sender, String playerQuery, String pageArg) {
-        if (!PermissionUtil.hasPermission(sender, cache, permission())) {
-            sender.sendMessage(localeManager.getMessage("general.no_permission"));
+    protected void execute(CommandActor actor, String playerQuery, String pageArg) {
+        if (!PermissionUtil.hasPermission(actor, cache, permission())) {
+            actor.reply(localeManager.getMessage("general.no_permission"));
             return;
         }
 
         final int requestedPage = Pagination.parsePage(pageArg);
         String errorKey = localePrefix() + ".error";
 
-        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
+        actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
         httpClientHolder.getClient().lookupPlayer(new PlayerLookupRequest(playerQuery)).thenAccept(response -> {
             if (response.isSuccess() && response.getData() != null) {
                 String playerName = response.getData().getCurrentUsername();
                 String targetUuid = response.getData().getMinecraftUuid();
 
-                fetchEntries(targetUuid).thenAccept(entries -> displayEntries(sender, playerName, entries, requestedPage)).exceptionally(throwable -> {
-                    CommandUtil.handleException(sender, throwable, localeManager, errorKey);
+                fetchEntries(targetUuid).thenAccept(entries -> displayEntries(actor, playerName, entries, requestedPage)).exceptionally(throwable -> {
+                    CommandUtil.handleException(actor, throwable, localeManager, errorKey);
                     return null;
                 });
-            } else sender.sendMessage(localeManager.getMessage("general.player_not_found"));
+            } else actor.reply(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
-            CommandUtil.handleException(sender, throwable, localeManager, errorKey);
+            CommandUtil.handleException(actor, throwable, localeManager, errorKey);
             return null;
         });
     }
 
-    private void displayEntries(CommandIssuer sender, String playerName, List<T> entries, int page) {
+    private void displayEntries(CommandActor actor, String playerName, List<T> entries, int page) {
         String header = localeManager.getMessage(localePrefix() + ".header", mapOf("player", playerName));
-        if (header != null && !header.isEmpty()) sender.sendMessage(header);
+        if (header != null && !header.isEmpty()) actor.reply(header);
 
         if (entries == null || entries.isEmpty()) {
-            sender.sendMessage(localeManager.getMessage(localePrefix() + ".empty"));
+            actor.reply(localeManager.getMessage(localePrefix() + ".empty"));
             return;
         }
 
@@ -81,11 +80,11 @@ public abstract class AbstractLogCommand<T> extends BaseCommand {
             String timestamp = DateFormatter.format(new Date(getTimestamp(entry)));
             String server = getServer(entry) != null ? getServer(entry) : Constants.UNKNOWN;
 
-            sender.sendMessage(localeManager.getMessage(localePrefix() + ".entry",
+            actor.reply(localeManager.getMessage(localePrefix() + ".entry",
                     entryPlaceholders(entry, playerName, timestamp, server)));
         }
 
-        sender.sendMessage(localeManager.getMessage(localePrefix() + ".footer", mapOf(
+        actor.reply(localeManager.getMessage(localePrefix() + ".footer", mapOf(
                 "page", String.valueOf(pg.getPage()),
                 "total_pages", String.valueOf(pg.getTotalPages()),
                 "total", String.valueOf(entries.size())

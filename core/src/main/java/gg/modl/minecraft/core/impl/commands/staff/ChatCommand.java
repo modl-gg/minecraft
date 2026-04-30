@@ -1,14 +1,9 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Subcommand;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.command.RequiresPermission;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.config.ConfigManager.ChatManagementConfig;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.cache.Cache;
@@ -17,14 +12,17 @@ import gg.modl.minecraft.core.service.ChatManagementService;
 import gg.modl.minecraft.core.service.StaffChatService;
 import gg.modl.minecraft.core.service.StaffChatService.ChatMode;
 import lombok.RequiredArgsConstructor;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Subcommand;
+import revxrsal.commands.command.CommandActor;
 
 import java.util.Collections;
-import java.util.Map;
 import java.util.UUID;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
-@RequiredArgsConstructor @CommandAlias("%cmd_chat") @Conditions("staff")
-public class ChatCommand extends BaseCommand {
+@RequiredArgsConstructor @Command("chat") @StaffOnly
+public class ChatCommand {
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
@@ -33,44 +31,43 @@ public class ChatCommand extends BaseCommand {
     private final StaffChatConfig staffChatConfig;
     private final ChatManagementConfig chatManagementConfig;
 
-    @Default
     @Description("Show chat command help")
-    public void showHelp(CommandIssuer sender) {
-        sender.sendMessage(localeManager.getMessage("chat_management.help.header"));
-        sender.sendMessage(localeManager.getMessage("chat_management.help.staff"));
-        sender.sendMessage(localeManager.getMessage("chat_management.help.toggle"));
-        sender.sendMessage(localeManager.getMessage("chat_management.help.clear"));
-        sender.sendMessage(localeManager.getMessage("chat_management.help.slow"));
+    public void showHelp(CommandActor actor) {
+        actor.reply(localeManager.getMessage("chat_management.help.header"));
+        actor.reply(localeManager.getMessage("chat_management.help.staff"));
+        actor.reply(localeManager.getMessage("chat_management.help.toggle"));
+        actor.reply(localeManager.getMessage("chat_management.help.clear"));
+        actor.reply(localeManager.getMessage("chat_management.help.slow"));
     }
 
     @Subcommand("staff")
     @Description("Toggle staff chat mode")
-    public void staff(CommandIssuer sender) {
+    public void staff(CommandActor actor) {
         if (!staffChatConfig.isEnabled()) {
-            sender.sendMessage(localeManager.getMessage("staff_chat.feature_disabled"));
+            actor.reply(localeManager.getMessage("staff_chat.feature_disabled"));
             return;
         }
 
-        if (!sender.isPlayer()) {
-            sender.sendMessage(localeManager.getMessage("general.players_only"));
+        if (actor.uniqueId() == null) {
+            actor.reply(localeManager.getMessage("general.players_only"));
             return;
         }
 
-        UUID senderUuid = sender.getUniqueId();
+        UUID senderUuid = actor.uniqueId();
         ChatMode newMode = staffChatService.toggleStaffChat(senderUuid);
 
-        if (newMode == ChatMode.STAFF) sender.sendMessage(localeManager.getMessage("staff_chat.enabled"));
-        else sender.sendMessage(localeManager.getMessage("staff_chat.disabled"));
+        if (newMode == ChatMode.STAFF) actor.reply(localeManager.getMessage("staff_chat.enabled"));
+        else actor.reply(localeManager.getMessage("staff_chat.disabled"));
     }
 
     @Subcommand("toggle")
     @Description("Toggle public chat on or off")
-    @Conditions("permission:value=staff.chat.toggle")
-    public void toggle(CommandIssuer sender) {
+    @RequiresPermission("staff.chat.toggle")
+    public void toggle(CommandActor actor) {
         boolean newState = chatManagementService.toggleChat();
 
-        String inGameName = getInGameName(sender);
-        String panelName = getPanelName(sender, inGameName);
+        String inGameName = getInGameName(actor);
+        String panelName = getPanelName(actor, inGameName);
 
         String messageKey = newState ? "chat_management.chat_toggled_on" : "chat_management.chat_toggled_off";
         platform.broadcast(localeManager.getMessage(messageKey, mapOf(
@@ -81,14 +78,15 @@ public class ChatCommand extends BaseCommand {
 
     @Subcommand("clear")
     @Description("Clear the chat")
-    @Conditions("permission:value=staff.chat.clear")
-    public void clear(CommandIssuer sender, @Default() String countArg) {
+    @RequiresPermission("staff.chat.clear")
+    public void clear(CommandActor actor, @revxrsal.commands.annotation.Optional String countArg) {
+        if (countArg == null) countArg = "";
         int lines = parseClearLineCount(countArg);
 
         platform.broadcast(String.join("", Collections.nCopies(Math.max(0, lines), "\n")));
 
-        String inGameName = getInGameName(sender);
-        String panelName = getPanelName(sender, inGameName);
+        String inGameName = getInGameName(actor);
+        String panelName = getPanelName(actor, inGameName);
         platform.broadcast(localeManager.getMessage("chat_management.chat_cleared", mapOf(
                 "staff", panelName,
                 "in-game-name", inGameName
@@ -97,13 +95,14 @@ public class ChatCommand extends BaseCommand {
 
     @Subcommand("slow")
     @Description("Set or disable slow mode")
-    @Conditions("permission:value=staff.chat.slow")
-    public void slow(CommandIssuer sender, @Default() String secondsArg) {
-        String inGameName = getInGameName(sender);
-        String panelName = getPanelName(sender, inGameName);
+    @RequiresPermission("staff.chat.slow")
+    public void slow(CommandActor actor, @revxrsal.commands.annotation.Optional String secondsArg) {
+        if (secondsArg == null) secondsArg = "";
+        String inGameName = getInGameName(actor);
+        String panelName = getPanelName(actor, inGameName);
 
         if (secondsArg.isEmpty()) {
-            sender.sendMessage(localeManager.getMessage("chat_management.usage_slow"));
+            actor.reply(localeManager.getMessage("chat_management.usage_slow"));
             return;
         }
 
@@ -119,7 +118,7 @@ public class ChatCommand extends BaseCommand {
         try {
             int seconds = Integer.parseInt(secondsArg);
             if (seconds < 1) {
-                sender.sendMessage(localeManager.getMessage("chat_management.invalid_seconds"));
+                actor.reply(localeManager.getMessage("chat_management.invalid_seconds"));
                 return;
             }
 
@@ -130,7 +129,7 @@ public class ChatCommand extends BaseCommand {
                     "seconds", String.valueOf(seconds)
             )));
         } catch (NumberFormatException e) {
-            sender.sendMessage(localeManager.getMessage("chat_management.invalid_seconds"));
+            actor.reply(localeManager.getMessage("chat_management.invalid_seconds"));
         }
     }
 
@@ -144,15 +143,15 @@ public class ChatCommand extends BaseCommand {
         }
     }
 
-    private String getInGameName(CommandIssuer sender) {
-        if (!sender.isPlayer()) return "Console";
-        AbstractPlayer player = platform.getPlayer(sender.getUniqueId());
+    private String getInGameName(CommandActor actor) {
+        if (actor.uniqueId() == null) return "Console";
+        AbstractPlayer player = platform.getPlayer(actor.uniqueId());
         return player != null ? player.getUsername() : "Staff";
     }
 
-    private String getPanelName(CommandIssuer sender, String fallback) {
-        if (!sender.isPlayer()) return "Console";
-        String display = cache.getStaffDisplayName(sender.getUniqueId());
+    private String getPanelName(CommandActor actor, String fallback) {
+        if (actor.uniqueId() == null) return "Console";
+        String display = cache.getStaffDisplayName(actor.uniqueId());
         return display != null ? display : fallback;
     }
 }

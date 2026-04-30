@@ -1,10 +1,10 @@
 package gg.modl.minecraft.spigot;
 
-import co.aikar.commands.BukkitCommandManager;
 import com.github.retrooper.packetevents.PacketEvents;
 import dev.simplix.cirrus.spigot.CirrusSpigot;
 import gg.modl.minecraft.api.LibraryRecord;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
+import gg.modl.minecraft.bridge.config.BridgeWizardConfigWriter;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
@@ -44,10 +44,12 @@ public class SpigotPlugin extends JavaPlugin {
     private PluginLogger pluginLogger;
     private BootConfig bootConfig;
     private boolean needsSetup = false;
+    private BukkitLibraryManager libraryManager;
 
     @Override
     public synchronized void onLoad() {
         this.pluginLogger = PluginLogger.fromJul(getLogger());
+        setupLibby();
 
         bootConfig = loadBootConfig();
         if (bootConfig != null) {
@@ -58,6 +60,9 @@ public class SpigotPlugin extends JavaPlugin {
         } else {
             needsSetup = true;
         }
+
+        loadPacketEventsLibraries();
+        loadPacketEvents();
     }
 
     @Override
@@ -75,30 +80,38 @@ public class SpigotPlugin extends JavaPlugin {
         this.bootConfig = config;
         this.needsSetup = false;
 
-        if (FoliaSchedulerHelper.isFolia()) {
-            // Folia: library downloads would block the global region tick thread
-            Thread initThread = new Thread(() -> {
-                loadLibraries();
-                FoliaSchedulerHelper.runGlobal(this, () -> {
-                    bridgeComponent = new BridgeComponent(this, "", "", "", pluginLogger);
-                    initializePlugin();
-                });
-            }, "modl-init");
-            initThread.setDaemon(true);
-            initThread.start();
-        } else {
-            // Spigot/Paper: synchronous init — blocks until fully loaded
+        // Run library loading + startup request on a background thread
+        // to avoid blocking the server tick thread with HTTP retries
+        Thread initThread = new Thread(() -> {
             loadLibraries();
-            bridgeComponent = new BridgeComponent(this, "", "", "", pluginLogger);
-            initializePlugin();
-        }
+
+            // Startup request (with retry + sleep) runs here, off main thread
+            String panelUrl = "";
+            BootConfig.Mode mode = bootConfig.getMode();
+            if (mode == BootConfig.Mode.STANDALONE || mode == BootConfig.Mode.PROXY) {
+                panelUrl = StartupClient.callStartupWithRetry(
+                        bootConfig.getApiKey(), bootConfig.isTestingApi(),
+                        new StartupRequest(PluginInfo.VERSION, "SPIGOT",
+                                getServer().getVersion(), getServer().getMaxPlayers()),
+                        pluginLogger);
+                if (panelUrl == null) {
+                    getLogger().severe("Failed to connect to modl.gg. Check your API key and network connection.");
+                    Bukkit.getScheduler().runTask(this, () -> getServer().getPluginManager().disablePlugin(this));
+                    return;
+                }
+            }
+
+            final String finalPanelUrl = panelUrl;
+            Bukkit.getScheduler().runTask(this, () -> {
+                bridgeComponent = new BridgeComponent(this, "", "", "", pluginLogger);
+                initializePluginWithPanelUrl(finalPanelUrl, true);
+            });
+        }, "modl-init");
+        initThread.setDaemon(true);
+        initThread.start();
     }
 
     private void initializePlugin() {
-        loadPacketEventsLibraries();
-        loadPacketEvents();
-        initPacketEvents();
-
         BootConfig.Mode mode = bootConfig.getMode();
 
         String panelUrl = "";
@@ -115,6 +128,18 @@ public class SpigotPlugin extends JavaPlugin {
             }
         }
 
+        initializePluginWithPanelUrl(panelUrl, false);
+    }
+
+    private void initializePluginWithPanelUrl(String panelUrl) {
+        initializePluginWithPanelUrl(panelUrl, false);
+    }
+
+    private void initializePluginWithPanelUrl(String panelUrl, boolean lateBootstrap) {
+        initPacketEvents();
+
+        BootConfig.Mode mode = bootConfig.getMode();
+
         String backendUrl = bootConfig.isTestingApi() ? HttpManager.TESTING_API_URL : HttpManager.V2_API_URL;
         bridgeComponent = new BridgeComponent(this, bootConfig.getApiKey(), backendUrl, panelUrl, pluginLogger);
 
@@ -124,17 +149,20 @@ public class SpigotPlugin extends JavaPlugin {
             saveDefaultConfig();
             createLocaleFiles();
             mergeDefaultConfigs();
-            enableStandaloneMode(bootConfig, panelUrl);
+            enableStandaloneMode(bootConfig, panelUrl, lateBootstrap);
         } else if (mode == BootConfig.Mode.BRIDGE_ONLY) {
             mergeBootConfig();
             enableBridgeOnlyMode(bootConfig);
         } else if (mode == BootConfig.Mode.PROXY) {
             getLogger().severe("boot.yml mode is 'proxy' but this is a Spigot server. Use 'standalone' or 'bridge-only'.");
             getServer().getPluginManager().disablePlugin(this);
+            return;
         }
+
+        getLogger().info("Successfully booted modl.gg platform plugin!");
     }
 
-    private void enableStandaloneMode(BootConfig bootConfig, String panelUrl) {
+    private void enableStandaloneMode(BootConfig bootConfig, String panelUrl, boolean lateBootstrap) {
         HttpManager httpManager = new HttpManager(
                 bootConfig.getApiKey(),
                 panelUrl,
@@ -143,7 +171,6 @@ public class SpigotPlugin extends JavaPlugin {
                 getConfig().getBoolean("server.query_mojang", false)
         );
 
-        BukkitCommandManager commandManager = new BukkitCommandManager(this);
         new CirrusSpigot(this).init();
 
         TicketCreator ticketCreator = (creatorUuid, creatorName, type, subject, description,
@@ -169,8 +196,7 @@ public class SpigotPlugin extends JavaPlugin {
         bridgeComponent.enable(ticketCreator, false);
         String serverName = bridgeComponent.getBridgeConfig().getServerName();
 
-        SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger(), getDataFolder(),
-                serverName, this);
+        SpigotPlatform platform = new SpigotPlatform(this, getLogger(), getDataFolder(), serverName, lateBootstrap);
         if (bridgeComponent.getReplayService() != null) {
             platform.setReplayService(bridgeComponent.getReplayService());
         }
@@ -222,6 +248,8 @@ public class SpigotPlugin extends JavaPlugin {
     }
 
     private void enableBridgeOnlyMode(BootConfig bootConfig) {
+        BridgeWizardConfigWriter.writeBridgeOnlyConfig(getDataFolder().toPath(), bootConfig, pluginLogger);
+
         TicketCreator tcpTicketCreator = (creatorUuid, creatorName, type, subject, description,
                                           reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer, replayUrl) -> {
             if (bridgeComponent.getBridgeClient() != null) {
@@ -242,7 +270,6 @@ public class SpigotPlugin extends JavaPlugin {
         };
 
         bridgeComponent.enable(tcpTicketCreator, true);
-        getLogger().info("Running in bridge-only mode (no main plugin features)");
     }
 
     @Override
@@ -288,7 +315,6 @@ public class SpigotPlugin extends JavaPlugin {
             if (BootConfig.exists(getDataFolder().toPath())) {
                 BootConfig config = BootConfig.load(getDataFolder().toPath());
                 if (config != null && config.isValid()) {
-                    getLogger().info("Loaded configuration from boot.yml (mode: " + config.getMode().toYaml() + ")");
                     return config;
                 }
             }
@@ -326,20 +352,23 @@ public class SpigotPlugin extends JavaPlugin {
 
     private void initPacketEvents() {
         PacketEvents.getAPI().init();
-        getLogger().info("PacketEvents initialized successfully");
     }
 
-    private BukkitLibraryManager libraryManager;
-
-    private void loadLibraries() {
+    private void setupLibby() {
         libraryManager = new BukkitLibraryManager(this);
+        libraryManager.setLogLevel(com.alessiodp.libby.logging.LogLevel.WARN);
         libraryManager.addMavenCentral();
+        libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
+    }
 
+    private void loadLibraries() {
+        for (LibraryRecord record : Libraries.PROTO_DEPS) loadLibrary(libraryManager, record);
         for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
-        loadLibrary(libraryManager, Libraries.ACF_CORE);
-        loadLibrary(libraryManager, Libraries.ACF_BUKKIT);
+        loadLibrary(libraryManager, Libraries.LAMP_COMMON);
+        loadLibrary(libraryManager, Libraries.LAMP_BRIGADIER);
+        loadLibrary(libraryManager, Libraries.LAMP_BUKKIT);
         loadLibrary(libraryManager, Libraries.SLF4J_API);
         loadLibrary(libraryManager, Libraries.SLF4J_SIMPLE);
         loadLibrary(libraryManager, Libraries.CIRRUS_SPIGOT);
@@ -351,7 +380,6 @@ public class SpigotPlugin extends JavaPlugin {
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_JSON);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_GSON);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_MINIMESSAGE);
-        getLogger().info("Runtime libraries loaded successfully");
     }
 
     private void loadPacketEventsLibraries() {

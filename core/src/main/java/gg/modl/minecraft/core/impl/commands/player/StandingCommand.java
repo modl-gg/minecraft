@@ -1,10 +1,8 @@
 package gg.modl.minecraft.core.impl.commands.player;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Description;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.command.CommandActor;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
@@ -15,6 +13,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ConfigManager;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
+import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.impl.menus.StandingMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +24,7 @@ import java.util.UUID;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
-public class StandingCommand extends BaseCommand {
+public class StandingCommand {
     private static final long COOLDOWN_MS = 60_000;
     private static final String COOLDOWN_KEY = "standing";
     private static final int PREVIEW_TYPE_ORDINAL = 6;
@@ -36,23 +35,23 @@ public class StandingCommand extends BaseCommand {
     private final ConfigManager configManager;
     private final Cache cache;
 
-    @CommandAlias("%cmd_standing")
+    @Command("standing")
     @Description("View your current standing and punishment history")
-    @Conditions("player")
-    public void standing(CommandIssuer sender) {
-        UUID uuid = sender.getUniqueId();
+    @PlayerOnly
+    public void standing(CommandActor actor) {
+        UUID uuid = actor.uniqueId();
 
-        if (!checkCooldown(sender, uuid)) return;
+        if (!checkCooldown(actor, uuid)) return;
 
         CachedProfile profile = cache.getPlayerProfile(uuid);
         if (profile != null) profile.getCooldowns().set(COOLDOWN_KEY);
 
-        sender.sendMessage(localeManager.getMessage("standing.loading"));
+        actor.reply(localeManager.getMessage("standing.loading"));
 
         ModlHttpClient httpClient = httpClientHolder.getClient();
         httpClient.getPlayerProfile(uuid).thenAccept(profileResponse -> {
             if (profileResponse == null) {
-                sender.sendMessage(localeManager.getMessage("standing.error"));
+                actor.reply(localeManager.getMessage("standing.error"));
                 return;
             }
 
@@ -67,19 +66,19 @@ public class StandingCommand extends BaseCommand {
             CirrusPlayerWrapper player = platform.getPlayerWrapper(uuid);
             menu.display(player);
         }).exceptionally(throwable -> {
-            sender.sendMessage(localeManager.getMessage("standing.error"));
+            actor.reply(localeManager.getMessage("standing.error"));
             return null;
         });
     }
 
-    private boolean checkCooldown(CommandIssuer sender, UUID uuid) {
+    private boolean checkCooldown(CommandActor actor, UUID uuid) {
         CachedProfile profile = cache.getPlayerProfile(uuid);
         if (profile == null) return true;
         if (!profile.getCooldowns().isOnCooldown(COOLDOWN_KEY, COOLDOWN_MS)) return true;
 
         long remaining = profile.getCooldowns().getRemainingMs(COOLDOWN_KEY, COOLDOWN_MS);
         int seconds = (int) Math.ceil(remaining / 1000.0);
-        sender.sendMessage(localeManager.getMessage("standing.cooldown",
+        actor.reply(localeManager.getMessage("standing.cooldown",
                 mapOf("seconds", String.valueOf(seconds))));
         return false;
     }

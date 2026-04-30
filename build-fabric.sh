@@ -4,18 +4,29 @@ set -e
 echo "=== Building internal modules ==="
 ./gradlew :api:build :core:build :bridge-core:build
 
-echo "=== Building Fabric 1.21.x ==="
+echo "=== Building forked PacketEvents Fabric jar ==="
+../minecraft-packetevents/gradlew -p ../minecraft-packetevents :fabric:jar
+
+echo "=== Building Fabric shell ==="
 ./gradlew :platforms:fabric:remapJar
 
-echo "=== Building Fabric 26.1 ==="
-if [ -d "platforms/fabric-26" ] && [ -f "platforms/fabric-26/gradlew" ]; then
-    (cd platforms/fabric-26 && ./gradlew build)
-else
-    echo "WARN: platforms/fabric-26 not set up with Gradle wrapper, skipping 26.1 build"
-fi
+echo "=== Building Fabric 1.21.1 ==="
+./gradlew -p platforms/fabric-121 build -x test
 
-echo "=== Building distribution JAR ==="
-./gradlew :distribution:shadowJar
+echo "=== Building Fabric 1.21.4 ==="
+./gradlew -p platforms/fabric-1214 build -x test
+
+echo "=== Building Fabric 1.21.8 ==="
+./gradlew -p platforms/fabric-1218 build -x test
+
+echo "=== Building Fabric 1.21.11 ==="
+./gradlew -p platforms/fabric-12111 build -x test
+
+echo "=== Building Fabric 26.1.2 ==="
+./gradlew -p platforms/fabric-26 build -x test
+
+echo "=== Building distribution JARs ==="
+./gradlew :distribution:shadowJar :distribution:fabricJar
 
 echo "=== Done ==="
 ls -la distribution/build/libs/modl-*.jar

@@ -1,36 +1,34 @@
 package gg.modl.minecraft.core.impl.commands.player;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Syntax;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
 
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
-public class BugReportCommand extends BaseCommand {
+public class BugReportCommand {
     private final Platform platform;
     private final ModlHttpClient httpClient;
     private final String panelUrl;
     private final LocaleManager localeManager;
     private final TicketCommandUtil ticketUtil;
 
-    @CommandAlias("%cmd_bugreport")
+    @Command("bugreport")
     @Description("Report a bug")
-    @Conditions("player")
-    public void bugReport(CommandIssuer sender) {
-        if (ticketUtil.checkCooldown(sender, "bug", localeManager)) return;
+    @PlayerOnly
+    public void bugReport(CommandActor actor) {
+        if (ticketUtil.checkCooldown(actor, "bug", localeManager)) return;
 
-        AbstractPlayer reporter = platform.getAbstractPlayer(sender.getUniqueId(), false);
-        String createdServer = platform.getPlayerServer(sender.getUniqueId());
+        AbstractPlayer reporter = platform.getAbstractPlayer(actor.uniqueId(), false);
+        String createdServer = platform.getPlayerServer(actor.uniqueId());
 
         CreateTicketRequest request = new CreateTicketRequest(
             reporter.getUuid().toString(),
@@ -44,6 +42,6 @@ public class BugReportCommand extends BaseCommand {
             listOf()
         );
 
-        ticketUtil.submitUnfinishedTicket(sender, httpClient, platform, localeManager, panelUrl, request, "Bug report", "bug");
+        ticketUtil.submitUnfinishedTicket(actor, httpClient, platform, localeManager, panelUrl, request, "Bug report", "bug");
     }
 }

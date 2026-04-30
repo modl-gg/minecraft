@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
     private static final byte[] MAGIC = "modl".getBytes(StandardCharsets.US_ASCII);
+    private static final String ACTION_CAPTURE_REPLAY = "CAPTURE_REPLAY";
     private static final int MAX_FRAME_LENGTH = 65536;
     private static final int LENGTH_FIELD_LENGTH = 4;
     private static final byte AUTH_SUCCESS = 0x01;
@@ -85,28 +86,42 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
     }
 
     @Override
-    public void sendToAllBridges(String action, String... args) {
+    public int sendToAllBridges(String action, String... args) {
         byte[] data = buildMessage(action, args);
-        if (data == null) return;
+        if (data == null) return 0;
 
         if (authenticatedChannels.isEmpty()) {
+            if (isImmediateOnlyAction(action)) {
+                logger.warning("[bridge] No connected backends for " + action + ", not queued");
+                return 0;
+            }
             pendingMessages.add(data);
             logger.info("[bridge] No connected backends, queued " + action + " for delivery on connect");
-            return;
+            return 0;
         }
 
-        boolean sent = false;
+        int sent = 0;
         for (Channel ch : authenticatedChannels) {
             if (ch.isActive()) {
                 sendRaw(ch, data);
-                sent = true;
+                sent++;
             }
         }
 
-        if (!sent) {
+        if (sent == 0) {
+            if (isImmediateOnlyAction(action)) {
+                logger.warning("[bridge] No active backends for " + action + ", not queued");
+                return 0;
+            }
             pendingMessages.add(data);
             logger.info("[bridge] No active backends, queued " + action + " for delivery on reconnect");
         }
+
+        return sent;
+    }
+
+    private boolean isImmediateOnlyAction(String action) {
+        return ACTION_CAPTURE_REPLAY.equals(action);
     }
 
     @Override

@@ -1,14 +1,10 @@
 package gg.modl.minecraft.core.impl.commands.staff.punishments;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.CommandCompletion;
-import co.aikar.commands.annotation.Conditions;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Name;
-import co.aikar.commands.annotation.Syntax;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Named;
+import revxrsal.commands.annotation.Optional;
+import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PardonPlayerRequest;
@@ -17,6 +13,8 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.ConsumeRemaining;
+import gg.modl.minecraft.core.command.RequiresPermission;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +24,8 @@ import java.util.regex.Pattern;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @RequiredArgsConstructor
-public class PardonCommand extends BaseCommand {
+@Command({"pardon", "unban", "unmute"})
+public class PardonCommand {
     private static final Pattern PUNISHMENT_ID_PATTERN = Pattern.compile("^[A-Z0-9]+$");
     private static final int PUNISHMENT_ID_LENGTH = 8;
 
@@ -35,45 +34,41 @@ public class PardonCommand extends BaseCommand {
     private final Cache cache;
     private final LocaleManager localeManager;
 
-    @CommandCompletion("@players")
-    @CommandAlias("%cmd_pardon")
-    @Syntax("<player/punishment_id> [reason...]")
     @Description("Pardon all of a player's active and unstarted punishments")
-    @Conditions("permission:value=punishment.modify")
-    public void pardon(CommandIssuer sender, @Name("target") String target, @Default() String reason) {
-        final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
-        final String issuerId = CommandUtil.resolveIssuerId(sender, cache);
+    @RequiresPermission("punishment.modify")
+    public void pardon(CommandActor actor, @Named("target") String target, @Optional @ConsumeRemaining String reason) {
+        reason = normalizeReason(reason);
+        final String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
+        final String issuerId = CommandUtil.resolveActorId(actor, cache);
 
-        if (isPunishmentId(target)) tryPunishmentIdWithFallback(sender, target, issuerName, issuerId, reason, null);
-        else pardonByPlayerName(sender, target, issuerName, issuerId, reason, null);
+        if (isPunishmentId(target)) tryPunishmentIdWithFallback(actor, target, issuerName, issuerId, reason, null);
+        else pardonByPlayerName(actor, target, issuerName, issuerId, reason, null);
     }
 
-    @CommandAlias("%cmd_unban")
-    @Syntax("<player/punishment_id> [reason...]")
     @Description("Unban a player by name or punishment ID")
-    @Conditions("permission:value=punishment.modify")
-    public void unban(CommandIssuer sender, @Name("target") String target, @Default() String reason) {
-        final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
-        final String issuerId = CommandUtil.resolveIssuerId(sender, cache);
+    @RequiresPermission("punishment.modify")
+    public void unban(CommandActor actor, @Named("target") String target, @Optional @ConsumeRemaining String reason) {
+        reason = normalizeReason(reason);
+        final String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
+        final String issuerId = CommandUtil.resolveActorId(actor, cache);
 
-        if (isPunishmentId(target)) tryPunishmentIdWithFallback(sender, target, issuerName, issuerId, reason, "ban");
-        else pardonByPlayerName(sender, target, issuerName, issuerId, reason, "ban");
+        if (isPunishmentId(target)) tryPunishmentIdWithFallback(actor, target, issuerName, issuerId, reason, "ban");
+        else pardonByPlayerName(actor, target, issuerName, issuerId, reason, "ban");
     }
 
-    @CommandAlias("%cmd_unmute")
-    @Syntax("<player/punishment_id> [reason...]")
     @Description("Unmute a player by name or punishment ID")
-    @Conditions("permission:value=punishment.modify")
-    public void unmute(CommandIssuer sender, @Name("target") String target, @Default() String reason) {
-        final String issuerName = CommandUtil.resolveIssuerName(sender, cache, platform);
-        final String issuerId = CommandUtil.resolveIssuerId(sender, cache);
+    @RequiresPermission("punishment.modify")
+    public void unmute(CommandActor actor, @Named("target") String target, @Optional @ConsumeRemaining String reason) {
+        reason = normalizeReason(reason);
+        final String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
+        final String issuerId = CommandUtil.resolveActorId(actor, cache);
 
-        if (isPunishmentId(target)) tryPunishmentIdWithFallback(sender, target, issuerName, issuerId, reason, "mute");
-        else pardonByPlayerName(sender, target, issuerName, issuerId, reason, "mute");
+        if (isPunishmentId(target)) tryPunishmentIdWithFallback(actor, target, issuerName, issuerId, reason, "mute");
+        else pardonByPlayerName(actor, target, issuerName, issuerId, reason, "mute");
     }
 
-    private void pardonByPlayerName(CommandIssuer sender, String playerName, String issuerName, String issuerId, String reason, String type) {
-        sender.sendMessage(localeManager.getMessage("pardon.processing_player", mapOf("player", playerName)));
+    private void pardonByPlayerName(CommandActor actor, String playerName, String issuerName, String issuerId, String reason, String type) {
+        actor.reply(localeManager.getMessage("pardon.processing_player", mapOf("player", playerName)));
 
         String displayType = type != null ? type : "punishment";
 
@@ -81,49 +76,49 @@ public class PardonCommand extends BaseCommand {
             playerName, issuerName, issuerId, type, reason.isEmpty() ? null : reason
         )).thenAccept(response -> {
             if (response.hasPardoned()) {
-                sender.sendMessage(localeManager.getMessage("pardon.success_player",
+                actor.reply(localeManager.getMessage("pardon.success_player",
                     mapOf("player", playerName, "type", displayType, "count", String.valueOf(response.getPardonedCount()))));
                 invalidatePlayerCache(playerName, type);
-            } else sender.sendMessage(localeManager.getMessage("pardon.no_active_punishment",
+            } else actor.reply(localeManager.getMessage("pardon.no_active_punishment",
                     mapOf("player", playerName, "type", displayType)));
         }).exceptionally(throwable -> {
-            CommandUtil.handleException(sender, throwable, localeManager, "pardon.error");
+            CommandUtil.handleException(actor, throwable, localeManager, "pardon.error");
             return null;
         });
     }
 
-    private void tryPunishmentIdWithFallback(CommandIssuer sender, String target, String issuerName, String issuerId, String reason, String expectedType) {
+    private void tryPunishmentIdWithFallback(CommandActor actor, String target, String issuerName, String issuerId, String reason, String expectedType) {
         PardonPunishmentRequest request = new PardonPunishmentRequest(
             target, issuerName, issuerId, reason.isEmpty() ? null : reason, expectedType
         );
 
         httpClientHolder.getClient().pardonPunishment(request).thenAccept(response -> {
             if (response.hasPardoned()) {
-                sender.sendMessage(localeManager.getMessage("pardon.success_id",
+                actor.reply(localeManager.getMessage("pardon.success_id",
                     mapOf("id", target)));
                 cache.clear();
-            } else sender.sendMessage(localeManager.getMessage("pardon.already_pardoned_id",
+            } else actor.reply(localeManager.getMessage("pardon.already_pardoned_id",
                     mapOf("id", target)));
         }).exceptionally(throwable -> {
             Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
 
             if (cause instanceof PanelUnavailableException) {
-                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+                actor.reply(localeManager.getMessage("api_errors.panel_restarting"));
                 return null;
             }
 
             String errorMessage = cause.getMessage();
 
             if (errorMessage != null && (errorMessage.contains("not found") || errorMessage.contains("404")))
-                pardonByPlayerName(sender, target, issuerName, issuerId, reason, expectedType);
+                pardonByPlayerName(actor, target, issuerName, issuerId, reason, expectedType);
             else if (errorMessage != null && errorMessage.toLowerCase().contains("type")) {
-                if ("ban".equals(expectedType)) sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_ban",
+                if ("ban".equals(expectedType)) actor.reply(localeManager.getMessage("pardon.error_wrong_type_ban",
                         mapOf("id", target)));
-                else if ("mute".equals(expectedType)) sender.sendMessage(localeManager.getMessage("pardon.error_wrong_type_mute",
+                else if ("mute".equals(expectedType)) actor.reply(localeManager.getMessage("pardon.error_wrong_type_mute",
                         mapOf("id", target)));
-                else sender.sendMessage(localeManager.getMessage("pardon.error",
+                else actor.reply(localeManager.getMessage("pardon.error",
                         mapOf("error", localeManager.sanitizeErrorMessage(errorMessage))));
-            } else sender.sendMessage(localeManager.getMessage("pardon.error",
+            } else actor.reply(localeManager.getMessage("pardon.error",
                     mapOf("error", localeManager.sanitizeErrorMessage(errorMessage != null ? errorMessage : "Unknown error"))));
             return null;
         });
@@ -131,6 +126,10 @@ public class PardonCommand extends BaseCommand {
 
     private boolean isPunishmentId(String target) {
         return target.length() == PUNISHMENT_ID_LENGTH && PUNISHMENT_ID_PATTERN.matcher(target).matches();
+    }
+
+    private static String normalizeReason(String reason) {
+        return reason == null ? "" : reason.trim();
     }
 
     private void invalidatePlayerCache(String playerName, String type) {

@@ -1,6 +1,6 @@
 package gg.modl.minecraft.core.util;
 
-import co.aikar.commands.CommandIssuer;
+import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.core.Platform;
@@ -14,16 +14,16 @@ import static gg.modl.minecraft.core.util.Java8Collections.*;
 public final class CommandUtil {
     private CommandUtil() {}
 
-    public static String resolveIssuerName(CommandIssuer sender, Cache cache, Platform platform) {
-        if (!sender.isPlayer()) return "Console";
-        String panelName = cache.getStaffDisplayName(sender.getUniqueId());
+    public static String resolveActorName(CommandActor actor, Cache cache, Platform platform) {
+        if (actor.uniqueId() == null) return "Console";
+        String panelName = cache.getStaffDisplayName(actor.uniqueId());
         if (panelName != null) return panelName;
-        return platform.getAbstractPlayer(sender.getUniqueId(), false).getUsername();
+        return platform.getAbstractPlayer(actor.uniqueId(), false).getUsername();
     }
 
-    public static String resolveIssuerId(CommandIssuer sender, Cache cache) {
-        if (!sender.isPlayer()) return null;
-        return cache.getStaffId(sender.getUniqueId());
+    public static String resolveActorId(CommandActor actor, Cache cache) {
+        if (actor.uniqueId() == null) return null;
+        return cache.getStaffId(actor.uniqueId());
     }
 
     public static String resolveSenderName(UUID uuid, Cache cache, Platform platform) {
@@ -34,20 +34,20 @@ public final class CommandUtil {
         return "Staff";
     }
 
-    public static Void handleApiError(CommandIssuer sender, Throwable throwable, LocaleManager localeManager) {
-        return handleException(sender, throwable, localeManager, "general.punishment_error");
+    public static Void handleApiError(CommandActor actor, Throwable throwable, LocaleManager localeManager) {
+        return handleException(actor, throwable, localeManager, "general.punishment_error");
     }
 
-    public static Void handleException(CommandIssuer sender, Throwable throwable, LocaleManager localeManager) {
-        return handleException(sender, throwable, localeManager, "player_lookup.error");
+    public static Void handleException(CommandActor actor, Throwable throwable, LocaleManager localeManager) {
+        return handleException(actor, throwable, localeManager, "player_lookup.error");
     }
 
-    public static Void handleException(CommandIssuer sender, Throwable throwable, LocaleManager localeManager, String errorKey) {
+    public static Void handleException(CommandActor actor, Throwable throwable, LocaleManager localeManager, String errorKey) {
         Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
         if (cause instanceof PanelUnavailableException) {
-            sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+            actor.reply(localeManager.getMessage("api_errors.panel_restarting"));
         } else {
-            sender.sendMessage(localeManager.getMessage(errorKey,
+            actor.reply(localeManager.getMessage(errorKey,
                     mapOf("error", localeManager.sanitizeErrorMessage(cause.getMessage() != null ? cause.getMessage() : "Unknown error"))));
         }
         return null;

@@ -52,10 +52,30 @@ public final class ReportRenderUtil {
 
     public static String getPlayerName(Account account) {
         if (!account.getUsernames().isEmpty()) {
-            return account.getUsernames().stream()
-                    .max(Comparator.comparing(Account.Username::getDate))
-                    .map(Account.Username::getUsername)
-                    .orElse("Unknown");
+            Account.Username latestDated = null;
+            String fallbackName = null;
+
+            for (Account.Username username : account.getUsernames()) {
+                if (username == null || username.getUsername() == null || username.getUsername().isEmpty()) {
+                    continue;
+                }
+
+                fallbackName = username.getUsername();
+                if (username.getDate() == null) {
+                    continue;
+                }
+
+                if (latestDated == null || username.getDate().after(latestDated.getDate())) {
+                    latestDated = username;
+                }
+            }
+
+            if (latestDated != null) {
+                return latestDated.getUsername();
+            }
+            if (fallbackName != null) {
+                return fallbackName;
+            }
         }
         return "Unknown";
     }

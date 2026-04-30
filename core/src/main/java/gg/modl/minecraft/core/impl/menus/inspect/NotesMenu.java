@@ -144,11 +144,15 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
     @Override
     protected void handleClick(Click click, Note note) {
         String noteText = note.getText();
-        String escapedText = noteText.replace("\\", "\\\\").replace("\"", "\\\"");
-        String json = "[{\"text\":\"" + MenuItems.COLOR_GRAY + "Note: " + MenuItems.COLOR_WHITE +
-                noteText.substring(0, Math.min(30, noteText.length())) +
-                (noteText.length() > 30 ? "..." : "") +
-                "\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"" + escapedText + "\"}}]";
+        String preview = noteText.substring(0, Math.min(30, noteText.length())) +
+                (noteText.length() > 30 ? "..." : "");
+        String escapedPreview = escapeJson(preview);
+        String escapedText = escapeJson(noteText);
+        String json = "{\"text\":\"\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"" + escapedText +
+                "\"},\"extra\":[" +
+                "{\"text\":\"Note: \",\"color\":\"gray\"}," +
+                "{\"text\":\"" + escapedPreview + "\",\"color\":\"white\"}" +
+                "]}";
 
         platform.sendJsonMessage(viewerUuid, json);
     }
@@ -199,5 +203,13 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
                     display(click.player());
                 }
         );
+    }
+
+    private String escapeJson(String value) {
+        return value
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\r", "\\r")
+                .replace("\n", "\\n");
     }
 }

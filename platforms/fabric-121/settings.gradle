@@ -1,0 +1,22 @@
+pluginManagement {
+    def rootGradleProperties = new Properties()
+    file("../../gradle.properties").withInputStream { input ->
+        rootGradleProperties.load(input)
+    }
+
+    repositories {
+        maven { url "https://maven.fabricmc.net/" }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    plugins {
+        id "fabric-loom" version rootGradleProperties.getProperty("fabric.loom.version.legacy")
+    }
+}
+
+rootProject.name = "modl-fabric-121"
+
+def localPacketEventsBuild = file("../../../minecraft-packetevents")
+if (localPacketEventsBuild.isDirectory()) {
+    includeBuild(localPacketEventsBuild)
+}

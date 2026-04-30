@@ -1,12 +1,15 @@
 package gg.modl.minecraft.spigot;
 
-import co.aikar.commands.BukkitCommandManager;
-import co.aikar.commands.CommandManager;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.spigot.wrapper.SpigotPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
+import revxrsal.commands.Lamp;
+import revxrsal.commands.command.CommandActor;
+import revxrsal.commands.bukkit.BukkitLamp;
+import revxrsal.commands.bukkit.BukkitLampConfig;
+import revxrsal.commands.bukkit.actor.BukkitCommandActor;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -25,8 +28,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.jetbrains.annotations.NotNull;
-
+import java.util.function.Consumer;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.util.Collection;
@@ -35,11 +37,11 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class SpigotPlatform implements Platform {
-    private final BukkitCommandManager commandManager;
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
     private final JavaPlugin plugin;
+    private final boolean lateBootstrap;
     private final gg.modl.minecraft.core.util.PluginLogger pluginLogger;
     private @Setter Cache cache;
     private @Setter LocaleManager localeManager;
@@ -55,12 +57,16 @@ public class SpigotPlatform implements Platform {
     private static volatile Method getNameMethod;
     private static volatile Method getValueMethod;
 
-    public SpigotPlatform(BukkitCommandManager commandManager, Logger logger, File dataFolder, String configServerName, JavaPlugin plugin) {
-        this.commandManager = commandManager;
+    public SpigotPlatform(JavaPlugin plugin, Logger logger, File dataFolder, String configServerName) {
+        this(plugin, logger, dataFolder, configServerName, false);
+    }
+
+    public SpigotPlatform(JavaPlugin plugin, Logger logger, File dataFolder, String configServerName, boolean lateBootstrap) {
+        this.plugin = plugin;
         this.logger = logger;
         this.dataFolder = dataFolder;
         this.configServerName = configServerName;
-        this.plugin = plugin;
+        this.lateBootstrap = lateBootstrap;
         this.pluginLogger = gg.modl.minecraft.core.util.PluginLogger.fromJul(logger);
     }
 
@@ -104,9 +110,22 @@ public class SpigotPlatform implements Platform {
         return player != null && player.isOnline();
     }
 
-    @NotNull @Override
-    public CommandManager<?, ?, ?, ?, ?, ?> getCommandManager() {
-        return commandManager;
+    @Override
+    @SuppressWarnings("unchecked")
+    public Lamp<BukkitCommandActor> buildLamp(Consumer<Lamp.Builder<? extends CommandActor>> configurator) {
+        Lamp.Builder<BukkitCommandActor> builder = BukkitLamp.builder(createLampConfig());
+        configurator.accept((Lamp.Builder) builder);
+        return builder.build();
+    }
+
+    BukkitLampConfig<BukkitCommandActor> createLampConfig() {
+        return BukkitLampConfig.<BukkitCommandActor>builder(plugin)
+            .disableBrigadier(shouldDisableBrigadier())
+            .build();
+    }
+
+    boolean shouldDisableBrigadier() {
+        return lateBootstrap;
     }
 
     @Override
@@ -202,10 +221,8 @@ public class SpigotPlatform implements Platform {
         try {
             if (Bukkit.getPluginManager().getPlugin("LiteBans") == null) return null;
             Class.forName("litebans.api.Database");
-            logger.info("LiteBans plugin detected, using LiteBans API");
             return new LiteBansDatabaseProvider();
-        } catch (ClassNotFoundException e) {
-            logger.info("LiteBans API not found in classpath");
+        } catch (ClassNotFoundException ignored) {
         } catch (Exception e) {
             logger.warning("Error checking for LiteBans: " + e.getMessage());
         }

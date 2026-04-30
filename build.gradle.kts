@@ -16,13 +16,16 @@ subprojects {
     apply(plugin = "maven-publish")
 
     repositories {
-        mavenLocal()
+        maven("https://nexus.modl.gg/repository/maven-releases/")
+        maven("https://nexus.modl.gg/repository/maven-snapshots/")
         mavenCentral()
         maven("https://repo.aikar.co/content/groups/aikar/")
         maven("https://jitpack.io")
         maven("https://repo.codemc.io/repository/maven-releases/")
         maven("https://repo.codemc.io/repository/maven-snapshots/")
         maven("https://repo.alessiodp.com/snapshots/")
+        maven("https://oss.sonatype.org/content/repositories/snapshots")
+        mavenLocal()
     }
 
     configure<JavaPluginExtension> {
@@ -35,10 +38,11 @@ subprojects {
         "annotationProcessor"("org.projectlombok:lombok:${property("lombok.version")}")
         "compileOnly"("org.slf4j:slf4j-api:${property("slf4j.version")}")
         "compileOnly"("com.google.code.gson:gson:${property("gson.version")}")
-        "compileOnly"("org.jetbrains:annotations:13.0")
+        "compileOnly"("org.jetbrains:annotations:${property("annotations.version")}")
     }
 
     tasks.withType<JavaCompile> {
         options.encoding = "UTF-8"
+        options.compilerArgs.add("-parameters")
     }
 }

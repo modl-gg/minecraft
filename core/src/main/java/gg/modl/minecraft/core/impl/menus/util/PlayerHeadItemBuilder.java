@@ -15,13 +15,15 @@ import java.util.concurrent.TimeUnit;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public final class PlayerHeadItemBuilder {
+    private static final String UNKNOWN = "Unknown";
+
     private PlayerHeadItemBuilder() {}
 
     public static CirrusItem create(Platform platform, Account targetAccount, String targetName, UUID targetUuid) {
         LocaleManager locale = platform.getLocaleManager();
         List<String> lore = new ArrayList<>();
 
-        String firstLogin = "Unknown";
+        String firstLogin = UNKNOWN;
         if (!targetAccount.getUsernames().isEmpty()) {
             Date earliest = targetAccount.getUsernames().stream()
                     .map(Account.Username::getDate)
@@ -53,19 +55,19 @@ public final class PlayerHeadItemBuilder {
             if (latest != null) lastSeenOrSessionTime = MenuItems.formatDate(latest);
         }
 
-        String server = "Unknown";
+        String server = UNKNOWN;
         if (isOnline) server = platform.getPlayerServer(targetUuid);
         else {
             Object lastServer = targetAccount.getData().get("lastServer");
             if (lastServer instanceof String) server = (String) lastServer;
         }
 
-        String region = "Unknown";
-        String country = "Unknown";
+        String region = UNKNOWN;
+        String country = UNKNOWN;
         if (!targetAccount.getIpList().isEmpty()) {
             IPAddress latestIp = targetAccount.getIpList().get(targetAccount.getIpList().size() - 1);
-            region = latestIp.getRegion();
-            country = latestIp.getCountry();
+            region = displayValue(latestIp.getRegion(), UNKNOWN);
+            country = displayValue(latestIp.getCountry(), UNKNOWN);
         }
 
         String playtime = "N/A";
@@ -96,13 +98,7 @@ public final class PlayerHeadItemBuilder {
         vars.put("country", country);
 
         List<String> loreLinesRaw = locale.getMessageList("menus.player_head.lore");
-        for (String line : loreLinesRaw) {
-            String processed = line;
-            for (Map.Entry<String, String> entry : vars.entrySet()) {
-                processed = processed.replace("{" + entry.getKey() + "}", entry.getValue());
-            }
-            lore.add(processed);
-        }
+        lore.addAll(renderLoreLines(loreLinesRaw, vars));
 
         String title = locale.getMessage("menus.player_head.title", mapOf("player_name", targetName));
         title = MenuItems.translateColorCodes(title);
@@ -129,5 +125,21 @@ public final class PlayerHeadItemBuilder {
         }
 
         return headItem;
+    }
+
+    private static String displayValue(String value, String fallback) {
+        return value != null && !value.isBlank() ? value : fallback;
+    }
+
+    static List<String> renderLoreLines(List<String> loreLinesRaw, Map<String, String> vars) {
+        List<String> lore = new ArrayList<>();
+        for (String line : loreLinesRaw) {
+            String processed = line;
+            for (Map.Entry<String, String> entry : vars.entrySet()) {
+                processed = processed.replace("{" + entry.getKey() + "}", displayValue(entry.getValue(), UNKNOWN));
+            }
+            lore.add(processed);
+        }
+        return lore;
     }
 }

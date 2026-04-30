@@ -6,6 +6,7 @@
   "environment": "server",
   "depends": {
     "minecraft": ">=26",
-    "fabric-api": "*"
+    "fabric-api": "*",
+    "packetevents-modl": "*"
   }
 }

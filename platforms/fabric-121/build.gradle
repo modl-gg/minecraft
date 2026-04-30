@@ -1,0 +1,88 @@
+plugins {
+    id 'fabric-loom'
+    id 'java'
+}
+
+def sharedProps = new Properties()
+file("../../gradle.properties").withInputStream { input ->
+    sharedProps.load(input)
+}
+sharedProps.each { key, value -> project.ext.set(key.toString(), value) }
+
+
+group = sharedProps.getProperty('group')
+version = sharedProps.getProperty('version')
+
+repositories {
+    maven { url "https://nexus.modl.gg/repository/maven-releases/" }
+    maven { url "https://nexus.modl.gg/repository/maven-snapshots/" }
+    mavenCentral()
+    maven { url "https://maven.fabricmc.net/" }
+    maven { url "https://repo.codemc.io/repository/maven-releases/" }
+    maven { url "https://repo.codemc.io/repository/maven-snapshots/" }
+    maven { url "https://jitpack.io" }
+    maven { url "https://repo.aikar.co/content/groups/aikar/" }
+    maven { url "https://repo.alessiodp.com/snapshots/" }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${property('minecraft_version')}"
+    mappings "net.fabricmc:yarn:${property('yarn_mappings')}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${property('loader_version')}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${property('fabric_version')}"
+
+    // Internal modules (pre-built from main project)
+    implementation files("../../bridge-core/build/libs/bridge-core-${version}.jar")
+    implementation files("../../core/build/libs/core-${version}.jar")
+    implementation files("../../api/build/libs/api-${version}.jar")
+
+    // Libby runtime library loading
+    implementation "com.alessiodp.libby:libby-core:${rootProject.property('libby.version')}"
+    implementation "com.alessiodp.libby:libby-fabric:${rootProject.property('libby.version')}"
+
+    // Compile-only deps (loaded at runtime via Libby)
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:${rootProject.property('cirrus.version')}"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-api:${rootProject.property('cirrus.version')}"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-common:${rootProject.property('cirrus.version')}"
+    compileOnly "gg.modl.minecraft.packetevents:packetevents-api:${rootProject.property('packetevents.version')}"
+
+    // Provided by server
+    compileOnly "io.github.revxrsal:lamp.common:${rootProject.property('lamp.version')}"
+    compileOnly "io.github.revxrsal:lamp.brigadier:${rootProject.property('lamp.version')}"
+    compileOnly "io.github.revxrsal:lamp.fabric:${rootProject.property('lamp.version')}"
+    compileOnly "io.netty:netty-all:${rootProject.property('netty.version')}"
+    compileOnly "net.kyori:adventure-text-minimessage:${rootProject.property('adventure.version')}"
+    compileOnly "net.kyori:adventure-text-serializer-legacy:${rootProject.property('adventure.version')}"
+    compileOnly "net.kyori:adventure-api:${rootProject.property('adventure.version')}"
+    compileOnly "org.yaml:snakeyaml:${rootProject.property('snakeyaml.version')}"
+
+    // Lombok
+    compileOnly "org.projectlombok:lombok:${rootProject.property('lombok.version')}"
+    annotationProcessor "org.projectlombok:lombok:${rootProject.property('lombok.version')}"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+loom {
+    accessWidenerPath = file("src/main/resources/modl.accesswidener")
+    mods {
+        create("modl") {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = 21
+}

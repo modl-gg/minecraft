@@ -1,6 +1,6 @@
 package gg.modl.minecraft.core.util;
 
-import co.aikar.commands.CommandIssuer;
+import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
@@ -9,28 +9,28 @@ import java.util.UUID;
 
 public final class PermissionUtil {
     private PermissionUtil() {}
-    public static boolean hasPermission(CommandIssuer issuer, Cache cache, String permission) {
-        if (!issuer.isPlayer()) return true;
-        return cache.hasPermission(issuer.getUniqueId(), permission);
+    public static boolean hasPermission(CommandActor actor, Cache cache, String permission) {
+        if (actor.uniqueId() == null) return true;
+        return cache.hasPermission(actor.uniqueId(), permission);
     }
 
-    public static boolean hasAnyPermission(CommandIssuer issuer, Cache cache, String... permissions) {
-        if (!issuer.isPlayer()) return true;
+    public static boolean hasAnyPermission(CommandActor actor, Cache cache, String... permissions) {
+        if (actor.uniqueId() == null) return true;
         for (String permission : permissions) {
-            if (hasPermission(issuer, cache, permission)) return true;
+            if (hasPermission(actor, cache, permission)) return true;
         }
         return false;
     }
 
-    public static SyncResponse.ActiveStaffMember getStaffMember(CommandIssuer issuer, Cache cache) {
-        if (!issuer.isPlayer()) return null;
-        CachedProfile profile = cache.getPlayerProfile(issuer.getUniqueId());
+    public static SyncResponse.ActiveStaffMember getStaffMember(CommandActor actor, Cache cache) {
+        if (actor.uniqueId() == null) return null;
+        CachedProfile profile = cache.getPlayerProfile(actor.uniqueId());
         return profile != null ? profile.getStaffMember() : null;
     }
 
-    public static boolean isStaff(CommandIssuer issuer, Cache cache) {
-        if (!issuer.isPlayer()) return false;
-        return isStaff(issuer.getUniqueId(), cache);
+    public static boolean isStaff(CommandActor actor, Cache cache) {
+        if (actor.uniqueId() == null) return false;
+        return isStaff(actor.uniqueId(), cache);
     }
 
     public static boolean isStaff(UUID playerUuid, Cache cache) {

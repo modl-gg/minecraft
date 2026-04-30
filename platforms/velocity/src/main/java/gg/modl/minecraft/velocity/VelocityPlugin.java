@@ -1,6 +1,5 @@
 package gg.modl.minecraft.velocity;
 
-import co.aikar.commands.VelocityCommandManager;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
@@ -99,7 +98,6 @@ public final class VelocityPlugin {
             return;
         }
 
-        VelocityCommandManager commandManager = new VelocityCommandManager(this.server, this);
         new CirrusVelocity(this, server).init();
 
         HttpManager httpManager = new HttpManager(
@@ -110,7 +108,7 @@ public final class VelocityPlugin {
                 (Boolean) getNestedConfig("server.query_mojang", false)
         );
 
-        VelocityPlatform platform = new VelocityPlatform(this.server, commandManager, logger, folder.toFile(), getConfigString("server.name", "Server 1"), pluginLogger);
+        VelocityPlatform platform = new VelocityPlatform(this, this.server, logger, folder.toFile(), getConfigString("server.name", "Server 1"), pluginLogger);
         ChatMessageCache chatMessageCache = new ChatMessageCache();
         int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfigInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
 
@@ -134,6 +132,8 @@ public final class VelocityPlugin {
                 pluginLoader.getFreezeService(), pluginLoader.getNetworkChatInterceptService(),
                 pluginLoader.getChatCommandLogService(),
                 pluginLoader.getConfigManager().getStaffChatConfig()));
+
+        logger.info("Successfully booted modl.gg platform plugin!");
     }
 
     @Subscribe
@@ -163,7 +163,6 @@ public final class VelocityPlugin {
             if (BootConfig.exists(folder)) {
                 BootConfig config = BootConfig.load(folder);
                 if (config != null && config.isValid()) {
-                    logger.info("Loaded configuration from boot.yml (mode: " + config.getMode().toYaml() + ")");
                     return config;
                 }
             }
@@ -235,19 +234,22 @@ public final class VelocityPlugin {
         PacketEvents.setAPI(VelocityPacketEventsBuilder.build(server, plugin, logger, folder));
         PacketEvents.getAPI().load();
         PacketEvents.getAPI().init();
-        logger.info("PacketEvents initialized successfully");
     }
 
     private void loadLibraries() {
         VelocityLibraryManager<VelocityPlugin> libraryManager = new VelocityLibraryManager<>(
                 this, logger, folder, server.getPluginManager());
+        libraryManager.setLogLevel(com.alessiodp.libby.logging.LogLevel.WARN);
         libraryManager.addMavenCentral();
+        libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
 
+        for (LibraryRecord record : Libraries.PROTO_DEPS) loadLibrary(libraryManager, record);
         for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
-        loadLibrary(libraryManager, Libraries.ACF_CORE);
-        loadLibrary(libraryManager, Libraries.ACF_VELOCITY);
+        loadLibrary(libraryManager, Libraries.LAMP_COMMON);
+        loadLibrary(libraryManager, Libraries.LAMP_BRIGADIER);
+        loadLibrary(libraryManager, Libraries.LAMP_VELOCITY);
         loadLibrary(libraryManager, Libraries.CIRRUS_VELOCITY);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
@@ -256,7 +258,6 @@ public final class VelocityPlugin {
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_JSON);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_GSON);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_MINIMESSAGE);
-        logger.info("Runtime libraries loaded successfully");
     }
 
     private void loadLibrary(VelocityLibraryManager<VelocityPlugin> libraryManager, LibraryRecord record) {
@@ -291,7 +292,7 @@ public final class VelocityPlugin {
                     this.configuration = mapOf();
                 }
             }
-            logger.info("Configuration loaded successfully");
+            logger.debug("Configuration loaded successfully");
         } catch (IOException e) {
             logger.error("Failed to load configuration", e);
             this.configuration = mapOf();

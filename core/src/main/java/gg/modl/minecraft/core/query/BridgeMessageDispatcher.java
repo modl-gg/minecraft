@@ -5,6 +5,7 @@ import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.FreezeService;
+import gg.modl.minecraft.core.service.ReplayCaptureStatus;
 import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.service.VanishService;
 
@@ -166,9 +167,13 @@ public class BridgeMessageDispatcher {
     private void handleCaptureReplayResponse(DataInputStream data) throws Exception {
         UUID targetUuid = UUID.fromString(data.readUTF());
         String replayId = data.readUTF();
+        ReplayCaptureStatus status = data.available() > 0
+                ? ReplayCaptureStatus.fromWire(data.readUTF())
+                : null;
         if (bridgeReplayService != null) {
             bridgeReplayService.handleCaptureResponse(targetUuid,
-                    replayId.isEmpty() ? null : replayId);
+                    replayId.isEmpty() ? null : replayId,
+                    status);
         }
     }
 

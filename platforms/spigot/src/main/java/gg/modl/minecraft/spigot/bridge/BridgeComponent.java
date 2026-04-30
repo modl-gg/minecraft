@@ -11,6 +11,8 @@ import gg.modl.minecraft.bridge.reporter.AutoReporter;
 import gg.modl.minecraft.bridge.reporter.ModlBackendReplayUploader;
 import gg.modl.minecraft.bridge.reporter.detection.ViolationTracker;
 import gg.modl.minecraft.bridge.reporter.hook.AntiCheatHook;
+import gg.modl.minecraft.core.service.ReplayCaptureResult;
+import gg.modl.minecraft.core.service.ReplayCaptureStatus;
 import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.spigot.bridge.command.ProxyCmdCommand;
@@ -19,10 +21,10 @@ import gg.modl.minecraft.spigot.bridge.handler.StaffModeHandler;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.GrimHook;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.PolarHook;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.VulcanHook;
-import gg.modl.replay.format.events.BlockChangeEvent;
-import gg.modl.replay.recording.PacketRecorder;
-import gg.modl.replay.recording.RecordingConfig;
-import gg.modl.replay.recording.RecordingManager;
+import gg.modl.minecraft.replay.format.events.BlockChangeEvent;
+import gg.modl.minecraft.replay.recording.PacketRecorder;
+import gg.modl.minecraft.replay.recording.RecordingConfig;
+import gg.modl.minecraft.replay.recording.RecordingManager;
 import lombok.Getter;
 import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import org.bukkit.Bukkit;
@@ -41,14 +43,18 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.material.MaterialData;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class BridgeComponent extends AbstractBridgeComponent implements Listener {
     private final JavaPlugin plugin;
@@ -76,7 +82,6 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
                     hookPolar();
                 }
             });
-            pluginLogger.info("Polar detected, registered enable callback");
         } catch (ClassNotFoundException ignored) {}
     }
 
@@ -148,12 +153,10 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
     @Override
     protected void initReplayRecording(BridgeConfig config) {
         if (!config.isReplayEnabled()) {
-            pluginLogger.info("[bridge] Replay recording disabled in config");
             return;
         }
 
         if (backendUrl == null || backendUrl.isEmpty() || apiKey == null || apiKey.isEmpty()) {
-            pluginLogger.info("[bridge] Backend URL or API key not configured, replay capture unavailable");
             return;
         }
 
@@ -161,6 +164,11 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
             Class.forName("com.github.retrooper.packetevents.PacketEvents");
         } catch (ClassNotFoundException e) {
             pluginLogger.warning("[bridge] PacketEvents not found, replay recording disabled");
+            return;
+        }
+
+        if (com.github.retrooper.packetevents.PacketEvents.getAPI() == null) {
+            pluginLogger.warning("[bridge] PacketEvents not initialized, replay recording disabled");
             return;
         }
 
@@ -190,9 +198,9 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
         this.replayService = new ReplayService() {
             @Override
-            public CompletableFuture<String> captureReplay(UUID targetUuid, String targetName) {
+            public CompletableFuture<ReplayCaptureResult> captureReplayResult(UUID targetUuid, String targetName) {
                 if (!recordingManager.isRecording(targetUuid)) {
-                    return CompletableFuture.completedFuture(null);
+                    return CompletableFuture.completedFuture(ReplayCaptureResult.noActiveRecording());
                 }
 
                 packetRecorder.cleanupPlayer(targetUuid);
@@ -212,14 +220,11 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
                             if (replayFile == null || !replayFile.exists()) {
                                 pluginLogger.warning("[bridge] No replay file found for " + targetName + " after stopping recording");
-                                return CompletableFuture.completedFuture(null);
+                                return CompletableFuture.completedFuture(ReplayCaptureResult.error());
                             }
 
                             return uploader.uploadAsync(replayFile, recordingConfig.mcVersion())
-                                    .thenApply(replayId -> {
-                                        pluginLogger.info("[bridge] Replay uploaded for " + targetName + ": " + replayId);
-                                        return replayId;
-                                    })
+                                    .thenApply(ReplayCaptureResult::ok)
                                     .whenComplete((replayId, ex) -> {
                                         if (ex != null) {
                                             pluginLogger.warning("[bridge] Replay upload failed for " + targetName + ": " + ex.getMessage());
@@ -228,12 +233,14 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
                                             replayFile.delete();
                                         }
                                     });
-                        });
+                    });
             }
 
             @Override
-            public boolean isReplayAvailable(UUID playerUuid) {
-                return recordingManager.isRecording(playerUuid);
+            public ReplayCaptureStatus getReplayStatus(UUID playerUuid) {
+                return recordingManager.isRecording(playerUuid)
+                        ? ReplayCaptureStatus.OK
+                        : ReplayCaptureStatus.NO_ACTIVE_RECORDING;
             }
         };
 
@@ -251,16 +258,11 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
                 long now = System.currentTimeMillis();
                 for (File f : files) {
                     if (f.isFile() && now - f.lastModified() > ttlMs) {
-                        if (f.delete()) {
-                            pluginLogger.info("[bridge] Deleted expired replay file: " + f.getName());
-                        }
+                        f.delete();
                     }
                 }
             }, 5, 5, java.util.concurrent.TimeUnit.MINUTES);
         }
-
-        pluginLogger.info("[bridge] Replay recording initialized (auto-record: " + config.isReplayAutoRecord()
-                + ", save-local: " + config.isReplaySaveLocal() + ")");
     }
 
     @Override
@@ -395,14 +397,47 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         }, 40L);
     }
 
+    static int resolveBlockStateId(Block block, Function<Object, Integer> modernResolver,
+                                   BiFunction<Material, Byte, Integer> legacyResolver) {
+        try {
+            Method getBlockData = block.getClass().getMethod("getBlockData");
+            Object blockData = getBlockData.invoke(block);
+            if (blockData != null) {
+                try {
+                    return modernResolver.apply(blockData);
+                } catch (RuntimeException ignored) {}
+            }
+        } catch (ReflectiveOperationException ignored) {}
+
+        return legacyResolver.apply(block.getType(), block.getData());
+    }
+
+    static int resolveBlockStateId(Block block) {
+        return resolveBlockStateId(block, BridgeComponent::resolveModernBlockStateId, BridgeComponent::resolveLegacyBlockStateId);
+    }
+
+    private static int resolveModernBlockStateId(Object blockData) {
+        try {
+            Class<?> blockDataClass = Class.forName("org.bukkit.block.data.BlockData");
+            Method converter = SpigotConversionUtil.class.getMethod("fromBukkitBlockData", blockDataClass);
+            return ((com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState) converter.invoke(null, blockData)).getGlobalId();
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Failed to convert Bukkit BlockData to PacketEvents state", e);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int resolveLegacyBlockStateId(Material material, byte data) {
+        return SpigotConversionUtil.fromBukkitMaterialData(new MaterialData(material, data)).getGlobalId();
+    }
+
     @SuppressWarnings("deprecation")
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
         if (recordingManager == null) return;
         Player player = event.getPlayer();
         Block block = event.getBlockPlaced();
-        int stateId = SpigotConversionUtil.fromBukkitMaterialData(
-                new org.bukkit.material.MaterialData(block.getType(), block.getData())).getGlobalId();
+        int stateId = resolveBlockStateId(block);
         recordingManager.enqueueEvent(player.getUniqueId(),
                 new BlockChangeEvent(0, block.getX(), (short) block.getY(), block.getZ(), stateId));
     }
@@ -413,8 +448,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         if (recordingManager == null) return;
         Player player = event.getPlayer();
         Block block = event.getBlock();
-        int previousStateId = SpigotConversionUtil.fromBukkitMaterialData(
-                new org.bukkit.material.MaterialData(block.getType(), block.getData())).getGlobalId();
+        int previousStateId = resolveBlockStateId(block);
         recordingManager.enqueueEvent(player.getUniqueId(),
                 new BlockChangeEvent(0, block.getX(), (short) block.getY(), block.getZ(), previousStateId));
     }

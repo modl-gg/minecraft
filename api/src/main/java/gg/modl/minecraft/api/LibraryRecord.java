@@ -25,6 +25,10 @@ public class LibraryRecord {
         return new LibraryRecord(groupId, artifactId, version, id, relocations, null, checksum);
     }
 
+    public static LibraryRecord of(String groupId, String artifactId, String version, String id, String[][] relocations) {
+        return new LibraryRecord(groupId, artifactId, version, id, relocations, null, null);
+    }
+
     public static LibraryRecord ofUrl(String groupId, String artifactId, String version, String id, String url, String checksum) {
         return new LibraryRecord(groupId, artifactId, version, id, null, url, checksum);
     }

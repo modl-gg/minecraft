@@ -53,6 +53,11 @@ public class BridgeConfig {
         return defaultVal != null ? defaultVal : DEFAULT_VIOLATION_THRESHOLD;
     }
 
+    public void updateProxyConnection(String host, int port) {
+        this.proxyHost = host;
+        this.proxyPort = port;
+    }
+
     public static boolean exists(Path dataDir) {
         return Files.exists(dataDir.resolve(FILE_NAME));
     }
@@ -89,8 +94,8 @@ public class BridgeConfig {
     @SuppressWarnings("unchecked")
     private static BridgeConfig fromMap(Map<String, Object> data) {
         BridgeConfig config = new BridgeConfig();
-        config.proxyHost = getStr(data, "proxy-host", "");
-        config.proxyPort = getInt(data, "proxy-port", getInt(data, "query-port", DEFAULT_QUERY_PORT));
+        config.proxyHost = getStr(data, "proxy-host", getStr(data, "host", getStr(data, "query-host", "")));
+        config.proxyPort = getInt(data, "proxy-port", getInt(data, "port", getInt(data, "query-port", DEFAULT_QUERY_PORT)));
         config.anticheatName = getStr(data, "anticheat-name", "Anti-cheat");
         config.serverName = getStr(data, "server-name", "Server 1");
         config.reportCooldown = getInt(data, "report-cooldown", DEFAULT_REPORT_COOLDOWN);

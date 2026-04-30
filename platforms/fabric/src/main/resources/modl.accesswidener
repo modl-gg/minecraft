@@ -1,0 +1,11 @@
+accessWidener v2 named
+
+accessible field net/minecraft/entity/player/PlayerInventory selectedSlot I
+accessible field net/minecraft/entity/player/PlayerInventory main Lnet/minecraft/util/collection/DefaultedList;
+accessible field net/minecraft/server/network/ServerPlayerEntity interactionManager Lnet/minecraft/server/network/ServerPlayerInteractionManager;
+accessible field net/minecraft/entity/player/PlayerEntity experienceProgress F
+accessible field net/minecraft/entity/player/PlayerEntity experienceLevel I
+
+# PacketEvents is a normal Fabric dependency; keep these fields widened for modl's Fabric integrations.
+accessible field net/minecraft/server/network/ServerCommonNetworkHandler connection Lnet/minecraft/network/ClientConnection;
+accessible field net/minecraft/network/ClientConnection channel Lio/netty/channel/Channel;

@@ -1,6 +1,5 @@
 package gg.modl.minecraft.bungee;
 
-import co.aikar.commands.BungeeCommandManager;
 import com.github.retrooper.packetevents.PacketEvents;
 import dev.simplix.cirrus.bungee.CirrusBungee;
 import gg.modl.minecraft.api.LibraryRecord;
@@ -86,10 +85,9 @@ public class BungeePlugin extends Plugin {
                 configuration.getBoolean("server.query_mojang", false)
         );
 
-        BungeeCommandManager commandManager = new BungeeCommandManager(this);
         new CirrusBungee(this).init();
 
-        BungeePlatform platform = new BungeePlatform(commandManager, getLogger(), getDataFolder(), configuration.getString("server.name", "Server 1"));
+        BungeePlatform platform = new BungeePlatform(this, getLogger(), getDataFolder(), configuration.getString("server.name", "Server 1"));
         ChatMessageCache chatMessageCache = new ChatMessageCache();
         int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, configuration.getInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
         List<String> mutedCommands = configuration.getStringList("muted_commands");
@@ -110,6 +108,8 @@ public class BungeePlugin extends Plugin {
 
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
         getProxy().getPluginManager().registerListener(this, new AsyncCommandInterceptor(asyncExecutor, getProxy()));
+
+        getLogger().info("Successfully booted modl.gg platform plugin!");
     }
 
     @Override
@@ -124,7 +124,6 @@ public class BungeePlugin extends Plugin {
             if (BootConfig.exists(getDataFolder().toPath())) {
                 BootConfig config = BootConfig.load(getDataFolder().toPath());
                 if (config != null && config.isValid()) {
-                    getLogger().info("Loaded configuration from boot.yml (mode: " + config.getMode().toYaml() + ")");
                     return config;
                 }
             }
@@ -177,18 +176,21 @@ public class BungeePlugin extends Plugin {
         PacketEvents.setAPI(BungeePacketEventsBuilder.build(this));
         PacketEvents.getAPI().load();
         PacketEvents.getAPI().init();
-        getLogger().info("PacketEvents initialized successfully");
     }
 
     private void loadLibraries() {
         BungeeLibraryManager libraryManager = new BungeeLibraryManager(this);
+        libraryManager.setLogLevel(com.alessiodp.libby.logging.LogLevel.WARN);
         libraryManager.addMavenCentral();
+        libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
 
+        for (LibraryRecord record : Libraries.PROTO_DEPS) loadLibrary(libraryManager, record);
         for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
-        loadLibrary(libraryManager, Libraries.ACF_CORE);
-        loadLibrary(libraryManager, Libraries.ACF_BUNGEE);
+        loadLibrary(libraryManager, Libraries.LAMP_COMMON);
+        loadLibrary(libraryManager, Libraries.LAMP_BRIGADIER);
+        loadLibrary(libraryManager, Libraries.LAMP_BUNGEE);
         loadLibrary(libraryManager, Libraries.CIRRUS_BUNGEECORD);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
@@ -201,7 +203,6 @@ public class BungeePlugin extends Plugin {
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_JSON);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_GSON);
         loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_MINIMESSAGE);
-        getLogger().info("Runtime libraries loaded successfully");
     }
 
     private void loadLibrary(BungeeLibraryManager libraryManager, LibraryRecord record) {

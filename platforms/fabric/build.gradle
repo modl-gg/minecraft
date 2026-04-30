@@ -1,24 +1,32 @@
 plugins {
-    id 'fabric-loom' version '1.9-SNAPSHOT'
+    id 'fabric-loom'
     id 'java'
 }
 
-// Load version-specific properties if -Pmc_version is passed
-def mcVersion = project.hasProperty('mc_version') ? project.property('mc_version') : project.minecraft_version
+
+// Load local gradle.properties as defaults (Gradle only auto-loads root gradle.properties)
+def localProps = new Properties()
+file("gradle.properties").withInputStream { localProps.load(it) }
+localProps.each { key, value -> project.ext.set(key.toString(), value) }
+
+// Override with version-specific properties if -Pmc_version is passed
+def mcVersion = project.hasProperty('mc_version') ? project.property('mc_version') : project.ext.minecraft_version
 def versionFile = file("versions/${mcVersion}.properties")
 if (versionFile.exists()) {
     def versionProps = new Properties()
     versionFile.withInputStream { versionProps.load(it) }
-    versionProps.each { key, value -> ext.set(key.toString(), value) }
-} else {
-    ext.minecraft_version = project.minecraft_version
-    ext.yarn_mappings = project.yarn_mappings
-    ext.loader_version = project.loader_version
-    ext.fabric_version = project.fabric_version
+    versionProps.each { key, value -> project.ext.set(key.toString(), value) }
 }
 
+// Capture into local variables for use inside closures
+def mcVer = project.ext.minecraft_version
+def yarnMappings = project.ext.yarn_mappings
+def loaderVer = project.ext.loader_version
+def fabricVer = project.ext.fabric_version
+
 repositories {
-    mavenLocal()
+    maven { url "https://nexus.modl.gg/repository/maven-releases/" }
+    maven { url "https://nexus.modl.gg/repository/maven-snapshots/" }
     mavenCentral()
     maven { url "https://maven.fabricmc.net/" }
     maven { url "https://repo.codemc.io/repository/maven-releases/" }
@@ -30,10 +38,10 @@ repositories {
 
 dependencies {
     // Fabric
-    minecraft "com.mojang:minecraft:${ext.minecraft_version}"
-    mappings "net.fabricmc:yarn:${ext.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${ext.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${ext.fabric_version}"
+    minecraft "com.mojang:minecraft:${mcVer}"
+    mappings "net.fabricmc:yarn:${yarnMappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${loaderVer}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricVer}"
 
     // Internal modules
     implementation project(":bridge-core")
@@ -45,23 +53,28 @@ dependencies {
     implementation "com.alessiodp.libby:libby-fabric:${rootProject.property('libby.version')}"
 
     // Compile-only deps (loaded at runtime via Libby)
-    compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:4.2.0-SNAPSHOT"
-    compileOnly "gg.modl.minecraft.cirrus:cirrus-api:4.2.0-SNAPSHOT"
-    compileOnly "gg.modl.minecraft.cirrus:cirrus-common:4.2.0-SNAPSHOT"
-    compileOnly "com.github.retrooper:packetevents-api:2.12.0-SNAPSHOT"
-    compileOnly "gg.modl.replay:modl-replay-recording:1.0.0-SNAPSHOT"
-    compileOnly "gg.modl.replay:replay-format:1.0.0-SNAPSHOT"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:${rootProject.property('cirrus.version')}"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-api:${rootProject.property('cirrus.version')}"
+    compileOnly "gg.modl.minecraft.cirrus:cirrus-common:${rootProject.property('cirrus.version')}"
+    compileOnly "gg.modl.minecraft.packetevents:packetevents-api:${rootProject.property('packetevents.version')}"
 
     // Provided by server
-    compileOnly "io.netty:netty-all:4.1.97.Final"
-    compileOnly "net.kyori:adventure-text-minimessage:4.26.1"
-    compileOnly "net.kyori:adventure-text-serializer-legacy:4.26.1"
-    compileOnly "net.kyori:adventure-api:4.26.1"
-    compileOnly "org.yaml:snakeyaml:2.3"
+    compileOnly "io.github.revxrsal:lamp.common:${rootProject.property('lamp.version')}"
+    compileOnly "io.github.revxrsal:lamp.brigadier:${rootProject.property('lamp.version')}"
+    compileOnly "io.github.revxrsal:lamp.fabric:${rootProject.property('lamp.version')}"
+    compileOnly "io.netty:netty-all:${rootProject.property('netty.version')}"
+    compileOnly "net.kyori:adventure-text-minimessage:${rootProject.property('adventure.version')}"
+    compileOnly "net.kyori:adventure-text-serializer-legacy:${rootProject.property('adventure.version')}"
+    compileOnly "net.kyori:adventure-api:${rootProject.property('adventure.version')}"
+    compileOnly "org.yaml:snakeyaml:${rootProject.property('snakeyaml.version')}"
 
     // Lombok
-    compileOnly "org.projectlombok:lombok:1.18.34"
-    annotationProcessor "org.projectlombok:lombok:1.18.34"
+    compileOnly "org.projectlombok:lombok:${rootProject.property('lombok.version')}"
+    annotationProcessor "org.projectlombok:lombok:${rootProject.property('lombok.version')}"
+
+    testImplementation platform("org.junit:junit-bom:${rootProject.property('junit.bom.version')}")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
 java {
@@ -70,6 +83,7 @@ java {
 }
 
 loom {
+    accessWidenerPath = file("src/main/resources/modl.accesswidener")
     mods {
         create("modl") {
             sourceSet sourceSets.main
@@ -80,9 +94,6 @@ loom {
 processResources {
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
-        expand "version": project.version
-    }
-    filesMatching("META-INF/impl-121-fabric.mod.json") {
         expand "version": project.version
     }
 }
@@ -96,4 +107,8 @@ jar {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
     options.release = 21
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
 }

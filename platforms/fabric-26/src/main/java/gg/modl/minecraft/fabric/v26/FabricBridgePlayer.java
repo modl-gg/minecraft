@@ -69,6 +69,6 @@ public class FabricBridgePlayer implements BridgePlayer {
 
     @Override
     public String getWorldName() {
-        return player.serverLevel().dimension().location().toString();
+        return player.level().dimension().identifier().toString();
     }
 }

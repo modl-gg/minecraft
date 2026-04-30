@@ -54,8 +54,6 @@ public class MigrationService {
         return CompletableFuture.supplyAsync(() -> {
             StreamingJsonWriter jsonWriter = null;
             try {
-                logger.info("Starting LiteBans data export for task " + taskId);
-                logger.info("Using " + (databaseProvider.isUsingLiteBansApi() ? "LiteBans API" : "direct JDBC"));
                 updateMigrationProgress(taskId, "building_json", "Starting LiteBans export...", 0, null);
 
                 File migrationFile = new File(dataFolder, "litebans-migration-" + taskId + ".json");
@@ -63,7 +61,6 @@ public class MigrationService {
 
                 Set<String> playerUuids = getAllPlayerUuids();
                 int totalPlayers = playerUuids.size();
-                logger.info("Found " + totalPlayers + " unique players to migrate");
                 updateMigrationProgress(taskId, "building_json", "Processing " + totalPlayers + " players...", 0, totalPlayers);
 
                 int processed = 0;
@@ -83,7 +80,6 @@ public class MigrationService {
                 }
 
                 jsonWriter.close();
-                logger.info("Export completed. File: " + migrationFile.getAbsolutePath());
                 return migrationFile;
             } catch (Exception e) {
                 logger.severe("Error during LiteBans export: " + e.getMessage());
@@ -371,14 +367,10 @@ public class MigrationService {
                     return false;
                 }
 
-                double fileSizeMB = jsonFile.length() / 1024.0 / 1024.0;
-                logger.info(String.format("Uploading file: %s (%.2f MB, %d bytes)",
-                    jsonFile.getName(), fileSizeMB, jsonFile.length()));
                 updateMigrationProgress(taskId, "uploading_json", "Uploading migration file to panel...", 0, null);
 
                 boolean success = uploadFileMultipart(jsonFile);
-                if (success) logger.info("File uploaded successfully");
-                else logger.severe("File upload failed");
+                if (!success) logger.severe("File upload failed");
                 return success;
             } catch (Exception e) {
                 logger.severe("Error uploading file: " + e.getMessage());
@@ -389,7 +381,6 @@ public class MigrationService {
                 if (jsonFile != null && jsonFile.exists()) {
                     try {
                         Files.delete(jsonFile.toPath());
-                        logger.info("Cleaned up local migration file");
                     } catch (IOException e) {
                         logger.warning("Failed to delete local file: " + e.getMessage());
                     }
@@ -412,12 +403,10 @@ public class MigrationService {
                 new org.apache.hc.client5.http.classic.methods.HttpPost(uploadUrl);
             httpPost.setHeader(HEADER_API_KEY, apiKey);
             httpPost.setEntity(builder.build());
-            logger.info("Sending upload request to: " + uploadUrl);
 
             return httpClient.execute(httpPost, response -> {
                 int statusCode = response.getCode();
                 String responseBody = org.apache.hc.core5.http.io.entity.EntityUtils.toString(response.getEntity());
-                logger.info("Upload response: " + statusCode + " - " + responseBody);
 
                 if (statusCode >= 200 && statusCode < 300) return true;
                 if (statusCode == HTTP_PAYLOAD_TOO_LARGE) logger.severe("File too large: " + responseBody);
@@ -431,7 +420,6 @@ public class MigrationService {
                                          Integer recordsProcessed, Integer totalRecords) {
         try {
             httpClient.updateMigrationStatus(new MigrationStatusUpdateRequest(taskId, status, message, recordsProcessed, totalRecords));
-            logger.info(String.format("Progress: %s - %s (%s/%s)", status, message, recordsProcessed, totalRecords));
         } catch (Exception e) {
             logger.warning("Failed to update progress: " + e.getMessage());
         }

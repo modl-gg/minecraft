@@ -8,7 +8,6 @@ public final class Permissions {
             CHAT_LOGS = "staff.chatlogs",
             COMMAND_LOGS = "staff.commandlogs",
             INTERCEPT = "staff.intercept",
-            MAINTENANCE = "staff.maintenance",
             CHAT_TOGGLE = "staff.chat.toggle",
             CHAT_CLEAR = "staff.chat.clear",
             CHAT_SLOW = "staff.chat.slow",

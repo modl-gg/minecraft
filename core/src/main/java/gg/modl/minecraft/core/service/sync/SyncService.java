@@ -326,8 +326,6 @@ public class SyncService {
 
     private void processMigrationTask(SyncResponse.MigrationTask migrationTask) {
         try {
-            if (debugMode) logger.info("Processing migration task " + migrationTask.getTaskId() + " (type: " + migrationTask.getType() + ")");
-
             if (!ensureMigrationServiceInitialized()) return;
 
             String taskId = migrationTask.getTaskId();
@@ -344,8 +342,7 @@ public class SyncService {
                     return;
                 }
                 migrationService.uploadMigrationFile(jsonFile, taskId).thenAccept(success -> {
-                    if (success && debugMode) logger.info("Task " + taskId + " completed successfully");
-                    else if (!success) logger.warning("Task " + taskId + " upload failed");
+                    if (!success) logger.warning("Task " + taskId + " upload failed");
                 });
             }).exceptionally(throwable -> {
                 logger.severe("Task " + taskId + " failed: " + throwable.getMessage());
@@ -361,7 +358,6 @@ public class SyncService {
         try {
             DatabaseProvider databaseProvider = platform.createLiteBansDatabaseProvider();
             if (databaseProvider == null) {
-                if (debugMode) logger.info("LiteBans not available, using JDBC connection");
                 databaseProvider = new JdbcDatabaseProvider(databaseConfig, logger);
             }
             migrationService = new MigrationService(logger, httpClientHolder.getClient(), apiUrl, apiKey, dataFolder, databaseProvider, localeManager.getMessage("config.default_reason"));

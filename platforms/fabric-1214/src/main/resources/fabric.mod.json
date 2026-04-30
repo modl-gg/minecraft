@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "modl-impl-1214",
+  "version": "${version}",
+  "name": "modl (1.21.2-1.21.6)",
+  "environment": "server",
+  "depends": {
+    "minecraft": ">=1.21.2 <1.21.7",
+    "fabric-api": "*",
+    "packetevents-modl": "*"
+  }
+}

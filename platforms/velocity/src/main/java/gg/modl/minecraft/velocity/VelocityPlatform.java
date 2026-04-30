@@ -1,7 +1,5 @@
 package gg.modl.minecraft.velocity;
 
-import co.aikar.commands.CommandManager;
-import co.aikar.commands.VelocityCommandManager;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -9,6 +7,11 @@ import dev.simplix.cirrus.velocity.wrapper.VelocityPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
+import revxrsal.commands.Lamp;
+import revxrsal.commands.command.CommandActor;
+import revxrsal.commands.velocity.VelocityLamp;
+import revxrsal.commands.velocity.VelocityVisitors;
+import revxrsal.commands.velocity.actor.VelocityCommandActor;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -20,21 +23,20 @@ import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
 import gg.modl.minecraft.core.util.WebPlayer;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.slf4j.Logger;
 
+import java.util.function.Consumer;
 import java.io.File;
 import java.util.Collection;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@RequiredArgsConstructor
 public class VelocityPlatform implements Platform {
     private final ProxyServer server;
-    private final VelocityCommandManager commandManager;
+    private final Object plugin;
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
@@ -47,6 +49,16 @@ public class VelocityPlatform implements Platform {
     private @Setter ReplayService replayService;
 
     private final gg.modl.minecraft.core.util.PluginLogger pluginLogger;
+
+    public VelocityPlatform(Object plugin, ProxyServer server, Logger logger, File dataFolder,
+                            String configServerName, gg.modl.minecraft.core.util.PluginLogger pluginLogger) {
+        this.server = server;
+        this.plugin = plugin;
+        this.logger = logger;
+        this.dataFolder = dataFolder;
+        this.configServerName = configServerName;
+        this.pluginLogger = pluginLogger;
+    }
 
     private static Component colorize(String string) {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(string);
@@ -109,8 +121,21 @@ public class VelocityPlatform implements Platform {
     }
 
     @Override
-    public CommandManager<?, ?, ?, ?, ?, ?> getCommandManager() {
-        return commandManager;
+    @SuppressWarnings("unchecked")
+    public Lamp<VelocityCommandActor> buildLamp(Consumer<Lamp.Builder<? extends CommandActor>> configurator) {
+        Lamp.Builder<VelocityCommandActor> builder = VelocityLamp.builder(plugin, server);
+        configurator.accept((Lamp.Builder) builder);
+        return builder.build();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void finalizeLampRegistration(Lamp<? extends CommandActor> lamp) {
+        // Velocity's Brigadier bridge only registers the commands present in Lamp's
+        // registry at visit time, so it must run after PluginLoader finishes registering
+        // every command object.
+        Lamp<VelocityCommandActor> velocityLamp = (Lamp<VelocityCommandActor>) lamp;
+        velocityLamp.accept(VelocityVisitors.brigadier(server));
     }
 
     private Player getOnlinePlayer(String username) {
@@ -236,10 +261,8 @@ public class VelocityPlatform implements Platform {
         try {
             if (!server.getPluginManager().getPlugin("litebans").isPresent()) return null;
             Class.forName("litebans.api.Database");
-            logger.info("LiteBans plugin detected, using LiteBans API");
             return new LiteBansDatabaseProvider();
-        } catch (ClassNotFoundException e) {
-            logger.info("LiteBans API not found in classpath");
+        } catch (ClassNotFoundException ignored) {
         } catch (Exception e) {
             logger.warn("Error checking for LiteBans: {}", e.getMessage());
         }

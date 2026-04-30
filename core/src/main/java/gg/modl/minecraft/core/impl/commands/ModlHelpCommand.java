@@ -1,11 +1,9 @@
 package gg.modl.minecraft.core.impl.commands;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandIssuer;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Subcommand;
+import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Subcommand;
+import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.plugin.PluginInfo;
@@ -21,8 +19,8 @@ import java.util.List;
 import java.util.UUID;
 import static gg.modl.minecraft.core.util.Java8Collections.*;
 
-@RequiredArgsConstructor @CommandAlias("%cmd_modl")
-public class ModlHelpCommand extends BaseCommand {
+@RequiredArgsConstructor @Command("modl")
+public class ModlHelpCommand {
     private static final String VERSION_HEADER = "§a§lmodl.gg§a v%s§f - §eModeration and Support Management System",
             VERSION_FOOTER = "§7GNU AGPLv3 Free Software. Use /modl help for command information.";
     private static final int ENTRIES_PER_PAGE = 8;
@@ -30,21 +28,20 @@ public class ModlHelpCommand extends BaseCommand {
     private final Cache cache;
     private final LocaleManager localeManager;
 
-    @Default
     @Description("")
-    public void showHelp(CommandIssuer sender) {
-        sender.sendMessage(String.format(VERSION_HEADER, PluginInfo.VERSION));
-        sender.sendMessage(VERSION_FOOTER);
+    public void showHelp(CommandActor actor) {
+        actor.reply(String.format(VERSION_HEADER, PluginInfo.VERSION));
+        actor.reply(VERSION_FOOTER);
     }
 
     @Subcommand("help")
     @Description("Show available modl.gg commands")
-    public void help(CommandIssuer sender, @Default("1") String pageArg) {
-        displayHelp(sender, Pagination.parsePage(pageArg));
+    public void help(CommandActor actor, @revxrsal.commands.annotation.Default("1") String pageArg) {
+        displayHelp(actor, Pagination.parsePage(pageArg));
     }
 
-    private void displayHelp(CommandIssuer sender, int page) {
-        UUID senderUuid = sender.isPlayer() ? sender.getUniqueId() : null;
+    private void displayHelp(CommandActor actor, int page) {
+        UUID senderUuid = actor.uniqueId();
         boolean isStaff = senderUuid != null && PermissionUtil.isStaff(senderUuid, cache);
         boolean isAdmin = senderUuid != null && cache.hasPermission(senderUuid, Permissions.ADMIN);
 
@@ -59,7 +56,7 @@ public class ModlHelpCommand extends BaseCommand {
         addEntry(entries, "player_commands.bugreport");
         addEntry(entries, "player_commands.support");
 
-        if (isStaff || !sender.isPlayer()) {
+        if (isStaff || senderUuid == null) {
             addEntry(entries, "staff_commands.staffmenu");
             addEntry(entries, "staff_commands.inspect");
             addEntry(entries, "staff_commands.history");
@@ -68,23 +65,23 @@ public class ModlHelpCommand extends BaseCommand {
             addEntry(entries, "staff_commands.reports");
             addEntry(entries, "staff_commands.punish");
 
-            if (!sender.isPlayer() || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_MANUAL_BAN)) {
+            if (senderUuid == null || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_MANUAL_BAN)) {
                 addEntry(entries, "staff_commands.ban");
             }
 
-            if (!sender.isPlayer() || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_MANUAL_MUTE)) {
+            if (senderUuid == null || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_MANUAL_MUTE)) {
                 addEntry(entries, "staff_commands.mute");
             }
 
-            if (!sender.isPlayer() || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_KICK)) {
+            if (senderUuid == null || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_KICK)) {
                 addEntry(entries, "staff_commands.kick");
             }
 
-            if (!sender.isPlayer() || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_BLACKLIST)) {
+            if (senderUuid == null || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_BLACKLIST)) {
                 addEntry(entries, "staff_commands.blacklist");
             }
 
-            if (!sender.isPlayer() || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_MODIFY)) {
+            if (senderUuid == null || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_MODIFY)) {
                 addEntry(entries, "staff_commands.pardon");
                 addEntry(entries, "staff_commands.unban");
                 addEntry(entries, "staff_commands.unmute");
@@ -92,19 +89,19 @@ public class ModlHelpCommand extends BaseCommand {
 
             addEntry(entries, "staff_commands.replay");
 
-            if (isAdmin || !sender.isPlayer()) {
+            if (isAdmin || senderUuid == null) {
                 addEntry(entries, "staff_commands.modl_reload");
             }
         }
 
         Pagination.Page pg = Pagination.paginate(entries, ENTRIES_PER_PAGE, page);
         if (pg.isOutOfRange()) {
-            sender.sendMessage(localeManager.getMessage("help.no_more_pages"));
+            actor.reply(localeManager.getMessage("help.no_more_pages"));
             return;
         }
 
-        sender.sendMessage("");
-        sender.sendMessage(localeManager.getMessage("help.header", mapOf(
+        actor.reply("");
+        actor.reply(localeManager.getMessage("help.header", mapOf(
                 "version", PluginInfo.VERSION,
                 "page", String.valueOf(pg.getPage()),
                 "total_pages", String.valueOf(pg.getTotalPages())
@@ -112,19 +109,19 @@ public class ModlHelpCommand extends BaseCommand {
 
         for (int i = pg.getStart(); i < pg.getEnd(); i++) {
             HelpEntry entry = entries.get(i);
-            sender.sendMessage(localeManager.getMessage("help.entry", mapOf(
+            actor.reply(localeManager.getMessage("help.entry", mapOf(
                     "command", entry.getCommand(),
                     "description", entry.getDescription()
             )));
         }
 
         if (pg.hasNextPage())
-            sender.sendMessage(localeManager.getMessage("help.footer", mapOf(
+            actor.reply(localeManager.getMessage("help.footer", mapOf(
                     "page", String.valueOf(pg.getPage()),
                     "total_pages", String.valueOf(pg.getTotalPages()),
                     "next_page", String.valueOf(pg.getPage() + 1)
             )));
-        sender.sendMessage("");
+        actor.reply("");
     }
 
     private void addEntry(List<HelpEntry> entries, String localeKey) {

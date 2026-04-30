@@ -36,10 +36,12 @@ public class BootConfigMigrator {
             boot.setApiKey(apiKey);
             boot.setTestingApi(testingApi);
 
-            if (platformType == PlatformType.SPIGOT) {
+            if (isBackendPlatform(platformType)) {
                 String bridgeHost = getNestedString(config, "bridge.host", "");
                 if (!bridgeHost.isEmpty()) {
                     boot.setMode(BootConfig.Mode.BRIDGE_ONLY);
+                    boot.setWizardProxyHost(bridgeHost);
+                    boot.setWizardProxyPort(getNestedInt(config, "bridge.port", 25590));
                 } else {
                     boot.setMode(BootConfig.Mode.STANDALONE);
                 }
@@ -50,12 +52,15 @@ public class BootConfigMigrator {
             }
 
             boot.save(dataDir);
-            logger.info("Migrated configuration to boot.yml");
             return Optional.of(boot);
         } catch (Exception e) {
             logger.warning("Failed to migrate config.yml to boot.yml: " + e.getMessage());
             return Optional.empty();
         }
+    }
+
+    private static boolean isBackendPlatform(PlatformType platformType) {
+        return platformType == PlatformType.SPIGOT || platformType == PlatformType.FABRIC;
     }
 
     @SuppressWarnings("unchecked")
@@ -116,7 +121,6 @@ public class BootConfigMigrator {
                 yaml.dump(bridgeConfigMap, writer);
             }
 
-            logger.info("Migrated bridge settings from modl-bridge/config.yml to bridge-config.yml");
         } catch (Exception e) {
             logger.warning("Failed to migrate bridge config: " + e.getMessage());
         }
