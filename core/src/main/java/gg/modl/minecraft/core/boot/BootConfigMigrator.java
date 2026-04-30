@@ -36,10 +36,12 @@ public class BootConfigMigrator {
             boot.setApiKey(apiKey);
             boot.setTestingApi(testingApi);
 
-            if (platformType == PlatformType.SPIGOT) {
+            if (isBackendPlatform(platformType)) {
                 String bridgeHost = getNestedString(config, "bridge.host", "");
                 if (!bridgeHost.isEmpty()) {
                     boot.setMode(BootConfig.Mode.BRIDGE_ONLY);
+                    boot.setWizardProxyHost(bridgeHost);
+                    boot.setWizardProxyPort(getNestedInt(config, "bridge.port", 25590));
                 } else {
                     boot.setMode(BootConfig.Mode.STANDALONE);
                 }
@@ -55,6 +57,10 @@ public class BootConfigMigrator {
             logger.warning("Failed to migrate config.yml to boot.yml: " + e.getMessage());
             return Optional.empty();
         }
+    }
+
+    private static boolean isBackendPlatform(PlatformType platformType) {
+        return platformType == PlatformType.SPIGOT || platformType == PlatformType.FABRIC;
     }
 
     @SuppressWarnings("unchecked")

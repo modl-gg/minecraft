@@ -34,6 +34,7 @@ public class BootConfig {
         public static Mode fromString(String value) {
             if (value == null) return STANDALONE;
             String normalized = value.toLowerCase().replace("_", "-");
+            if ("bridge".equals(normalized)) return BRIDGE_ONLY;
             if ("bridge-only".equals(normalized)) return BRIDGE_ONLY;
             if ("proxy".equals(normalized)) return PROXY;
             return STANDALONE;

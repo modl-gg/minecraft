@@ -11,6 +11,8 @@ import gg.modl.minecraft.bridge.reporter.AutoReporter;
 import gg.modl.minecraft.bridge.reporter.ModlBackendReplayUploader;
 import gg.modl.minecraft.bridge.reporter.detection.ViolationTracker;
 import gg.modl.minecraft.bridge.reporter.hook.AntiCheatHook;
+import gg.modl.minecraft.core.service.ReplayCaptureResult;
+import gg.modl.minecraft.core.service.ReplayCaptureStatus;
 import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.spigot.bridge.command.ProxyCmdCommand;
@@ -196,9 +198,9 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
         this.replayService = new ReplayService() {
             @Override
-            public CompletableFuture<String> captureReplay(UUID targetUuid, String targetName) {
+            public CompletableFuture<ReplayCaptureResult> captureReplayResult(UUID targetUuid, String targetName) {
                 if (!recordingManager.isRecording(targetUuid)) {
-                    return CompletableFuture.completedFuture(null);
+                    return CompletableFuture.completedFuture(ReplayCaptureResult.noActiveRecording());
                 }
 
                 packetRecorder.cleanupPlayer(targetUuid);
@@ -218,10 +220,11 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
                             if (replayFile == null || !replayFile.exists()) {
                                 pluginLogger.warning("[bridge] No replay file found for " + targetName + " after stopping recording");
-                                return CompletableFuture.completedFuture(null);
+                                return CompletableFuture.completedFuture(ReplayCaptureResult.error());
                             }
 
                             return uploader.uploadAsync(replayFile, recordingConfig.mcVersion())
+                                    .thenApply(ReplayCaptureResult::ok)
                                     .whenComplete((replayId, ex) -> {
                                         if (ex != null) {
                                             pluginLogger.warning("[bridge] Replay upload failed for " + targetName + ": " + ex.getMessage());
@@ -230,12 +233,14 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
                                             replayFile.delete();
                                         }
                                     });
-                        });
+                    });
             }
 
             @Override
-            public boolean isReplayAvailable(UUID playerUuid) {
-                return recordingManager.isRecording(playerUuid);
+            public ReplayCaptureStatus getReplayStatus(UUID playerUuid) {
+                return recordingManager.isRecording(playerUuid)
+                        ? ReplayCaptureStatus.OK
+                        : ReplayCaptureStatus.NO_ACTIVE_RECORDING;
             }
         };
 

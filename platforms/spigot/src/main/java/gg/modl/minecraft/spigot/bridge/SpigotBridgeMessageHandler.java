@@ -3,6 +3,7 @@ package gg.modl.minecraft.spigot.bridge;
 import gg.modl.minecraft.bridge.BridgeScheduler;
 import gg.modl.minecraft.bridge.query.BridgeMessageHandler;
 import gg.modl.minecraft.bridge.statwipe.StatWipeHandler;
+import gg.modl.minecraft.core.service.ReplayCaptureStatus;
 import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.spigot.bridge.handler.FreezeHandler;
 import gg.modl.minecraft.spigot.bridge.handler.StaffModeHandler;
@@ -89,25 +90,44 @@ public class SpigotBridgeMessageHandler implements BridgeMessageHandler {
     @Override
     public void onCaptureReplay(String targetUuid, String targetName) {
         UUID uuid = UUID.fromString(targetUuid);
-        scheduler.runForPlayer(uuid, () -> {
+        scheduler.runSync(() -> {
             Player player = Bukkit.getPlayer(uuid);
-            if (player == null || !player.isOnline()) return;
-
-            ReplayService replayService = bridgeComponent.getReplayService();
-            if (replayService == null) {
-                bridgeComponent.getBridgeClient().sendMessage("CAPTURE_REPLAY_RESPONSE", targetUuid, "");
+            if (player == null || !player.isOnline()) {
+                sendReplayResponse(targetUuid, "", ReplayCaptureStatus.NOT_LOCAL);
                 return;
             }
-
-            replayService.captureReplay(uuid, targetName)
-                    .thenAccept(replayId -> bridgeComponent.getBridgeClient()
-                            .sendMessage("CAPTURE_REPLAY_RESPONSE", targetUuid, replayId != null ? replayId : ""))
-                    .exceptionally(ex -> {
-                        plugin.getLogger().warning("[bridge] CAPTURE_REPLAY failed for " + targetName + ": " + ex.getMessage());
-                        bridgeComponent.getBridgeClient().sendMessage("CAPTURE_REPLAY_RESPONSE", targetUuid, "");
-                        return null;
-                    });
+            scheduler.runForPlayer(uuid, () -> captureLocalReplay(uuid, targetUuid, targetName));
         });
+    }
+
+    private void captureLocalReplay(UUID uuid, String targetUuid, String targetName) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player == null || !player.isOnline()) {
+            sendReplayResponse(targetUuid, "", ReplayCaptureStatus.NOT_LOCAL);
+            return;
+        }
+        ReplayService replayService = bridgeComponent.getReplayService();
+        if (replayService == null) {
+            sendReplayResponse(targetUuid, "", ReplayCaptureStatus.NO_ACTIVE_RECORDING);
+            return;
+        }
+
+        replayService.captureReplayResult(uuid, targetName)
+                .thenAccept(result -> sendReplayResponse(targetUuid,
+                        result.getReplayId() != null ? result.getReplayId() : "",
+                        result.getStatus()))
+                .exceptionally(ex -> {
+                    plugin.getLogger().warning("[bridge] CAPTURE_REPLAY failed for " + targetName + ": " + ex.getMessage());
+                    sendReplayResponse(targetUuid, "", ReplayCaptureStatus.ERROR);
+                    return null;
+                });
+    }
+
+    private void sendReplayResponse(String targetUuid, String replayId, ReplayCaptureStatus status) {
+        if (bridgeComponent.getBridgeClient() != null) {
+            bridgeComponent.getBridgeClient().sendMessage("CAPTURE_REPLAY_RESPONSE",
+                    targetUuid, replayId, status.name());
+        }
     }
 
     @Override

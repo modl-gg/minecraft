@@ -57,8 +57,6 @@ dependencies {
     compileOnly "gg.modl.minecraft.cirrus:cirrus-api:${rootProject.property('cirrus.version')}"
     compileOnly "gg.modl.minecraft.cirrus:cirrus-common:${rootProject.property('cirrus.version')}"
     compileOnly "gg.modl.minecraft.packetevents:packetevents-api:${rootProject.property('packetevents.version')}"
-    compileOnly "gg.modl.minecraft.replay:modl-replay-recording:${rootProject.property('replay.recording.version')}"
-    compileOnly "gg.modl.minecraft.replay:replay-format:${rootProject.property('replay.format.version')}"
 
     // Provided by server
     compileOnly "io.github.revxrsal:lamp.common:${rootProject.property('lamp.version')}"

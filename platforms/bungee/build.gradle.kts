@@ -1,5 +1,7 @@
 repositories {
     maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")
+    maven("https://oss.sonatype.org/content/repositories/snapshots")
+    maven("https://repo.glaremasters.me/repository/public/") // bungeecord needs some weird ass stupid dependency couldnt find it anywhere else lol
 }
 
 dependencies {

@@ -83,7 +83,7 @@ public abstract class AbstractBridgeComponent {
         initFreezeHandler(localeManager);
         initStaffModeHandler(bridgeConfig, localeManager, staffModeConfig);
 
-        if (connectToProxy && !bridgeConfig.getProxyHost().isEmpty()) {
+        if (connectToProxy && !isBlank(bridgeConfig.getProxyHost()) && !isBlank(bridgeConfig.getApiKey())) {
             bridgeClient = new BridgeQueryClient(
                     bridgeConfig.getProxyHost(),
                     bridgeConfig.getProxyPort(),
@@ -95,6 +95,10 @@ public abstract class AbstractBridgeComponent {
             );
             bridgeClient.connect();
             onBridgeClientCreated(bridgeClient);
+        } else if (connectToProxy && isBlank(bridgeConfig.getProxyHost())) {
+            pluginLogger.warning("[bridge] Bridge-only mode is enabled but proxy-host is empty; backend will not connect to proxy");
+        } else if (connectToProxy && isBlank(bridgeConfig.getApiKey())) {
+            pluginLogger.warning("[bridge] Bridge-only mode is enabled but api-key is empty; backend cannot authenticate to proxy");
         }
 
         autoReporter = new AutoReporter(logger, bridgeConfig, ticketCreator, violationTracker);
@@ -158,5 +162,9 @@ public abstract class AbstractBridgeComponent {
             if (slashIndex > 0) result = result.substring(0, slashIndex);
             return result;
         }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 }

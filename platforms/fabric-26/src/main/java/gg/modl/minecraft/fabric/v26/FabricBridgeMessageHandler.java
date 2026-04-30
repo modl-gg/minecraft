@@ -2,6 +2,7 @@ package gg.modl.minecraft.fabric.v26;
 
 import gg.modl.minecraft.bridge.query.BridgeMessageHandler;
 import gg.modl.minecraft.bridge.statwipe.StatWipeHandler;
+import gg.modl.minecraft.core.service.ReplayCaptureStatus;
 import gg.modl.minecraft.fabric.v26.handler.FabricFreezeHandler;
 import gg.modl.minecraft.fabric.v26.handler.FabricStaffModeHandler;
 import net.minecraft.server.MinecraftServer;
@@ -88,29 +89,17 @@ public class FabricBridgeMessageHandler implements BridgeMessageHandler {
         server.execute(() -> {
             ServerPlayer player = server.getPlayerList().getPlayer(uuid);
             if (player == null) {
-                sendReplayResponse(targetUuid, "");
+                sendReplayResponse(targetUuid, ReplayCaptureStatus.NOT_LOCAL);
                 return;
             }
 
-            gg.modl.minecraft.core.service.ReplayService replayService = bridgeComponent.getReplayService();
-            if (replayService == null || !replayService.isReplayAvailable(uuid)) {
-                sendReplayResponse(targetUuid, "");
-                return;
-            }
-
-            replayService.captureReplay(uuid, targetName)
-                    .thenAccept(replayId -> sendReplayResponse(targetUuid, replayId != null ? replayId : ""))
-                    .exceptionally(ex -> {
-                        ModlFabricModImpl.LOGGER.warn("[bridge] Replay capture failed for {}: {}", targetName, ex.getMessage());
-                        sendReplayResponse(targetUuid, "");
-                        return null;
-                    });
+            sendReplayResponse(targetUuid, ReplayCaptureStatus.FABRIC_DISABLED);
         });
     }
 
-    private void sendReplayResponse(String targetUuid, String replayId) {
+    private void sendReplayResponse(String targetUuid, ReplayCaptureStatus status) {
         if (bridgeComponent.getBridgeClient() != null) {
-            bridgeComponent.getBridgeClient().sendMessage("CAPTURE_REPLAY_RESPONSE", targetUuid, replayId);
+            bridgeComponent.getBridgeClient().sendMessage("CAPTURE_REPLAY_RESPONSE", targetUuid, "", status.name());
         }
     }
 

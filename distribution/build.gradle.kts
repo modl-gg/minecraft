@@ -40,8 +40,6 @@ val sharedDependencyProperties = listOf(
     "lombok.version.fabric26",
     "netty.version",
     "packetevents.version",
-    "replay.recording.version",
-    "replay.format.version",
     "adventure.version",
     "snakeyaml.version"
 )
@@ -214,8 +212,6 @@ dependencies {
     fabricRuntimeSupport(project(":bridge-core"))
     fabricRuntimeSupport("com.alessiodp.libby:libby-core:${property("libby.version")}")
     fabricRuntimeSupport("com.alessiodp.libby:libby-fabric:${property("libby.version")}")
-    fabricRuntimeSupport("gg.modl.minecraft.replay:modl-replay-recording:${property("replay.recording.version")}")
-    fabricRuntimeSupport("gg.modl.minecraft.replay:replay-format:${property("replay.format.version")}")
 }
 
 tasks.shadowJar {
@@ -359,12 +355,6 @@ tasks.register("verifySplitDistributionArtifacts") {
         check("gg/modl/minecraft/bridge/AbstractBridgeComponent.class" in fabricEntries) {
             "Fabric jar must contain shared bridge classes"
         }
-        check("gg/modl/minecraft/replay/recording/RecordingConfig.class" in fabricEntries) {
-            "Fabric jar must contain replay recording runtime classes"
-        }
-        check("gg/modl/minecraft/replay/format/ReplayHeader.class" in fabricEntries) {
-            "Fabric jar must contain replay format runtime classes"
-        }
         check("com/alessiodp/libby/FabricLibraryManager.class" in fabricEntries) {
             "Fabric jar must contain Libby Fabric runtime loader"
         }
@@ -376,6 +366,7 @@ tasks.register("verifySplitDistributionArtifacts") {
         val implementationPrefixes = listOf(
             "gg/modl/minecraft/fabric/v1_21_1/",
             "gg/modl/minecraft/fabric/v1_21_4/",
+            "gg/modl/minecraft/fabric/v1_21_8/",
             "gg/modl/minecraft/fabric/v1_21_11/",
             "gg/modl/minecraft/fabric/v26/"
         )
