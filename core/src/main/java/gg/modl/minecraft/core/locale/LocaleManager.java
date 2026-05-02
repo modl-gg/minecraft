@@ -19,7 +19,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
+import java.util.TimeZone;
 
 public class LocaleManager {
     private static final Pattern EXCEPTION_PREFIX_PATTERN = Pattern.compile("^[a-zA-Z0-9_.]+Exception: .+");
@@ -193,7 +195,7 @@ public class LocaleManager {
     }
 
     private String formatIssuedDate(SimplePunishment punishment) {
-        java.util.Date issuedDate = punishment.getIssuedAsDate();
+        Date issuedDate = punishment.getIssuedAsDate();
         return formatDate(issuedDate);
     }
 
@@ -333,7 +335,7 @@ public class LocaleManager {
         try {
             SimpleDateFormat dateFormat = new SimpleDateFormat(format);
             String tz = getMessage("config.timezone");
-            if (tz != null && !tz.isEmpty() && !tz.startsWith("\u00a7cMissing")) dateFormat.setTimeZone(java.util.TimeZone.getTimeZone(tz));
+            if (tz != null && !tz.isEmpty() && !tz.startsWith("\u00a7cMissing")) dateFormat.setTimeZone(TimeZone.getTimeZone(tz));
             return dateFormat.format(date);
         } catch (Exception e) {
             return date.toString();

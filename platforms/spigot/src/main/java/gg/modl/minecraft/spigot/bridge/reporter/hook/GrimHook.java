@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 
 import java.util.List;
 import java.util.UUID;

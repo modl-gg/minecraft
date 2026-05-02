@@ -7,7 +7,6 @@ import dev.simplix.cirrus.model.CirrusClickType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
-import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.OnlinePlayersResponse;
 import gg.modl.minecraft.api.http.response.ReportsResponse;
@@ -22,12 +21,23 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.util.Permissions;
+import gg.modl.minecraft.core.util.StaffCommandUtil;
+import gg.modl.minecraft.core.util.StaffCommandUtil.StaffDisplay;
 import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.Getter;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 import java.util.function.Consumer;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.OnlinePlayer> {
     @Getter
@@ -268,18 +278,10 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
             click.clickedMenu().close();
 
             if (!staffModeService.isInStaffMode(viewerUuid)) {
-                staffModeService.enable(viewerUuid);
-                AbstractPlayer staffPlayer = platform.getPlayer(viewerUuid);
-                String inGameName = staffPlayer != null ? staffPlayer.getName() : "Staff";
-                String panelName = platform.getCache() != null ? platform.getCache().getStaffDisplayName(viewerUuid) : null;
-                if (panelName == null) panelName = inGameName;
-                platform.sendMessage(viewerUuid, platform.getLocaleManager().getMessage("staff_mode.enabled"));
-                platform.staffBroadcast(platform.getLocaleManager().getMessage("staff_mode.enabled_broadcast", mapOf(
-                        "staff", panelName, "in-game-name", inGameName)));
                 BridgeService bridgeService = platform.getBridgeService();
-                if (bridgeService != null) {
-                    bridgeService.sendStaffModeEnter(viewerUuid.toString(), inGameName, panelName);
-                }
+                StaffDisplay display = StaffCommandUtil.resolvePlayerDisplay(viewerUuid, platform, platform.getCache(), "Staff");
+                StaffCommandUtil.enableStaffModeForPlayer(platform, viewerUuid, staffModeService, bridgeService,
+                        platform.getLocaleManager(), display);
             }
 
             staffModeService.setTarget(viewerUuid, player.getUuid());

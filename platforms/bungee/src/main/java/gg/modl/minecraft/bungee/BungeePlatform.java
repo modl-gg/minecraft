@@ -33,13 +33,16 @@ import java.util.Collection;
 import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import gg.modl.minecraft.core.util.PluginLogger;
+import net.md_5.bungee.api.config.ServerInfo;
+import net.md_5.bungee.chat.ComponentSerializer;
 
 public class BungeePlatform implements Platform {
     private final Plugin plugin;
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
-    private final gg.modl.minecraft.core.util.PluginLogger pluginLogger;
+    private final PluginLogger pluginLogger;
     private @Setter Cache cache;
     private @Setter LocaleManager localeManager;
     private @Setter StaffModeService staffModeService;
@@ -59,7 +62,7 @@ public class BungeePlatform implements Platform {
         this.logger = logger;
         this.dataFolder = dataFolder;
         this.configServerName = configServerName;
-        this.pluginLogger = gg.modl.minecraft.core.util.PluginLogger.fromJul(logger);
+        this.pluginLogger = PluginLogger.fromJul(logger);
     }
 
     @Override
@@ -78,10 +81,10 @@ public class BungeePlatform implements Platform {
     }
 
     @Override
-    public void connectToServer(java.util.UUID player, String serverName) {
+    public void connectToServer(UUID player, String serverName) {
         ProxiedPlayer pp = ProxyServer.getInstance().getPlayer(player);
         if (pp != null) {
-            net.md_5.bungee.api.config.ServerInfo server = ProxyServer.getInstance().getServerInfo(serverName);
+            ServerInfo server = ProxyServer.getInstance().getServerInfo(serverName);
             if (server != null) pp.connect(server);
         }
     }
@@ -91,7 +94,7 @@ public class BungeePlatform implements Platform {
         ProxyServer.getInstance().getPlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
             .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
-            .forEach(player -> player.sendMessage(net.md_5.bungee.chat.ComponentSerializer.parse(jsonMessage)));
+            .forEach(player -> player.sendMessage(ComponentSerializer.parse(jsonMessage)));
     }
 
     @Override
@@ -103,7 +106,7 @@ public class BungeePlatform implements Platform {
     @Override
     public void sendJsonMessage(UUID uuid, String jsonMessage) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
-        if (player != null && player.isConnected()) player.sendMessage(net.md_5.bungee.chat.ComponentSerializer.parse(jsonMessage));
+        if (player != null && player.isConnected()) player.sendMessage(ComponentSerializer.parse(jsonMessage));
     }
 
     @Override
@@ -207,7 +210,7 @@ public class BungeePlatform implements Platform {
     }
 
     @Override
-    public gg.modl.minecraft.core.util.PluginLogger getLogger() {
+    public PluginLogger getLogger() {
         return pluginLogger;
     }
 

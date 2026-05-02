@@ -21,9 +21,17 @@ import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.Getter;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 import java.util.function.Consumer;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMenu.PunishmentWithPlayer> {
     @Getter

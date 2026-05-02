@@ -16,7 +16,7 @@ import gg.modl.minecraft.core.service.StaffChatService;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public final class ChatEventHandler {
     private ChatEventHandler() {}

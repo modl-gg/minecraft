@@ -6,6 +6,7 @@ import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.util.adventure.AdventureSerializer;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientChatCommand;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientChatCommandUnsigned;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import dev.simplix.cirrus.text.CirrusChatElement;
@@ -15,6 +16,7 @@ import gg.modl.minecraft.core.service.ChatCommandLogService;
 import gg.modl.minecraft.core.service.FreezeService;
 import gg.modl.minecraft.core.util.CommandInterceptHandler;
 import gg.modl.minecraft.core.util.CommandInterceptHandler.CommandResult;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.MinecraftServer;
@@ -22,9 +24,11 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FabricCommandPacketListener extends PacketListenerAbstract {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FabricCommandPacketListener.class);
+    private static final Logger log = LoggerFactory.getLogger(FabricCommandPacketListener.class);
 
     private final Cache cache;
     private final FreezeService freezeService;
@@ -107,15 +111,15 @@ public class FabricCommandPacketListener extends PacketListenerAbstract {
     private void sendLegacyMessage(ServerPlayer player, String message) {
         try {
             String json = AdventureSerializer.toJson(CirrusChatElement.ofLegacyText(message).asComponent());
-            var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
-            var component = ComponentSerialization.CODEC.parse(ops, JsonParser.parseString(json)).result().orElse(null);
+            RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
+            Component component = ComponentSerialization.CODEC.parse(ops, JsonParser.parseString(json)).result().orElse(null);
             if (component != null) {
                 player.sendSystemMessage(component, false);
                 return;
             }
         } catch (Exception ignored) {
         }
-        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+        player.sendSystemMessage(Component.literal(
                 message.replaceAll("\u00a7[0-9a-fk-or]", "")), false);
     }
 }

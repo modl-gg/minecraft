@@ -6,6 +6,8 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PlayerNameRequest;
 import gg.modl.minecraft.api.http.response.PlayerNameResponse;
 import gg.modl.minecraft.core.Platform;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class PlayerLookupUtil {
 
@@ -24,7 +26,7 @@ public final class PlayerLookupUtil {
                 return new AbstractPlayer(account.getMinecraftUuid(), username, false);
             }
         } catch (Exception e) {
-            java.util.logging.Logger.getLogger(PlayerLookupUtil.class.getName()).log(java.util.logging.Level.FINE, "Backend player lookup failed for: " + target, e);
+            Logger.getLogger(PlayerLookupUtil.class.getName()).log(Level.FINE, "Backend player lookup failed for: " + target, e);
         }
 
         if (queryMojang)
@@ -38,7 +40,7 @@ public final class PlayerLookupUtil {
             PlayerNameResponse response = httpClient.getPlayer(new PlayerNameRequest(target)).join();
             if (response != null && response.isSuccess()) return response.getPlayer();
         } catch (Exception e) {
-            java.util.logging.Logger.getLogger(PlayerLookupUtil.class.getName()).log(java.util.logging.Level.FINE, "Backend account lookup failed for: " + target, e);
+            Logger.getLogger(PlayerLookupUtil.class.getName()).log(Level.FINE, "Backend account lookup failed for: " + target, e);
         }
         return null;
     }

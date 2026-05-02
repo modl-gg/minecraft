@@ -19,7 +19,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
+import static gg.modl.minecraft.core.util.Java8Collections.orTimeout;
 
 class NotificationService {
     private static final String TICKET_CREATED_TYPE = "TICKET_CREATED", TICKET_TYPE_REPORT = "REPORT";

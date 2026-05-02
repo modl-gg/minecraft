@@ -14,12 +14,11 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ReportGuiConfig;
 
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 
-import java.util.List;
-import java.util.Map;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public class ReportDetailsMenu extends SimpleMenu {
     private static final int SLOT_ADD_DETAILS = 11, SLOT_PLAYER_HEAD = 13, SLOT_SKIP_DETAILS = 15, SLOT_BACK = 22;
@@ -73,16 +72,7 @@ public class ReportDetailsMenu extends SimpleMenu {
     }
 
     private CirrusItem buildTargetHead() {
-        List<String> skullLines = locale.getMessageList("messages.report_skull_details", mapOf("player", target.getUsername()));
-        CirrusItem head = MenuItems.playerHead(
-                skullLines.get(0),
-                skullLines.subList(1, skullLines.size())
-        );
-        if (platform.getCache() != null) {
-            String texture = platform.getCache().getSkinTexture(target.getUuid());
-            if (texture != null) head = head.texture(texture);
-        }
-        return head;
+        return ReportRenderUtil.buildTargetHead(locale, platform, target, "messages.report_skull_details");
     }
 
     private void displayMenu(SimpleMenu menu) {

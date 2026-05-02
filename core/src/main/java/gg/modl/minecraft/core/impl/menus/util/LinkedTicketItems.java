@@ -4,16 +4,44 @@ import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.text.CirrusChatElement;
+import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.TicketsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.StringUtil;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public final class LinkedTicketItems {
     private LinkedTicketItems() {}
+
+    public static List<TicketsResponse.Ticket> loadTickets(ModlHttpClient httpClient, List<String> ticketIds) {
+        List<TicketsResponse.Ticket> tickets = new ArrayList<>();
+        if (ticketIds == null || ticketIds.isEmpty()) return tickets;
+
+        try {
+            httpClient.getTicketsByIds(ticketIds).thenAccept(response -> {
+                if (response != null && response.isSuccess() && response.getTickets() != null) {
+                    tickets.addAll(response.getTickets());
+                }
+            }).join();
+        } catch (Exception ignored) {
+        }
+        return tickets;
+    }
+
+    public static Collection<TicketsResponse.Ticket> elementsOrEmpty(List<TicketsResponse.Ticket> tickets) {
+        if (tickets.isEmpty()) return Collections.singletonList(new TicketsResponse.Ticket());
+        return tickets;
+    }
 
     public static CirrusItem mapTicket(TicketsResponse.Ticket ticket, Platform platform) {
         LocaleManager locale = platform.getLocaleManager();

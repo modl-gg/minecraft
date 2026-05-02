@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import dev.simplix.cirrus.actionhandler.ActionHandlers;
 
 public class ModifyPunishmentMenu extends BaseInspectMenu {
     private final Punishment punishment;
@@ -301,7 +302,7 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
                 });
             });
 
-            dev.simplix.cirrus.actionhandler.ActionHandlers.openMenu(linkMenu).handle(click);
+            ActionHandlers.openMenu(linkMenu).handle(click);
         } else {
             List<String> ticketIds = punishment.getAttachedTicketIds();
             Consumer<CirrusPlayerWrapper> backToModify = player -> new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName,
@@ -310,7 +311,7 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
 
             ViewLinkedTicketsMenu viewMenu = new ViewLinkedTicketsMenu(
                     platform, httpClient, viewerUuid, viewerName, targetAccount, ticketIds, backToModify, rootBackAction);
-            dev.simplix.cirrus.actionhandler.ActionHandlers.openMenu(viewMenu).handle(click);
+            ActionHandlers.openMenu(viewMenu).handle(click);
         }
     }
 

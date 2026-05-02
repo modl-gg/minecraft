@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
+import java.io.InputStream;
 
 public class ModlBackendReplayUploader {
 
@@ -164,7 +165,7 @@ public class ModlBackendReplayUploader {
 
     private String readResponseBody(HttpURLConnection connection) {
         try {
-            java.io.InputStream stream = connection.getResponseCode() >= 400
+            InputStream stream = connection.getResponseCode() >= 400
                     ? connection.getErrorStream() : connection.getInputStream();
             if (stream == null) return "";
             StringBuilder sb = new StringBuilder();

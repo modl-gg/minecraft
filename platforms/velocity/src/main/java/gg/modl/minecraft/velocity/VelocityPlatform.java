@@ -33,6 +33,9 @@ import java.io.File;
 import java.util.Collection;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.velocitypowered.api.util.GameProfile;
+import gg.modl.minecraft.core.util.PluginLogger;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 
 public class VelocityPlatform implements Platform {
     private final ProxyServer server;
@@ -48,10 +51,10 @@ public class VelocityPlatform implements Platform {
     private @Setter ChatInputManager chatInputManager;
     private @Setter ReplayService replayService;
 
-    private final gg.modl.minecraft.core.util.PluginLogger pluginLogger;
+    private final PluginLogger pluginLogger;
 
     public VelocityPlatform(Object plugin, ProxyServer server, Logger logger, File dataFolder,
-                            String configServerName, gg.modl.minecraft.core.util.PluginLogger pluginLogger) {
+                            String configServerName, PluginLogger pluginLogger) {
         this.server = server;
         this.plugin = plugin;
         this.logger = logger;
@@ -82,7 +85,7 @@ public class VelocityPlatform implements Platform {
     }
 
     @Override
-    public void connectToServer(java.util.UUID playerUuid, String serverName) {
+    public void connectToServer(UUID playerUuid, String serverName) {
         server.getPlayer(playerUuid).ifPresent(player ->
             server.getServer(serverName).ifPresent(srv ->
                 player.createConnectionRequest(srv).fireAndForget()));
@@ -107,7 +110,7 @@ public class VelocityPlatform implements Platform {
 
     private void sendJsonToPlayer(Player player, String jsonMessage) {
         try {
-            Component component = net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson().deserialize(jsonMessage);
+            Component component = GsonComponentSerializer.gson().deserialize(jsonMessage);
             player.sendMessage(component);
         } catch (Exception e) {
             logger.warn("Failed to send JSON message to player", e);
@@ -284,14 +287,14 @@ public class VelocityPlatform implements Platform {
     public String getPlayerSkinTexture(UUID uuid) {
         Player player = getOnlinePlayer(uuid);
         if (player == null) return null;
-        for (com.velocitypowered.api.util.GameProfile.Property prop : player.getGameProfileProperties()) {
+        for (GameProfile.Property prop : player.getGameProfileProperties()) {
             if ("textures".equals(prop.getName())) return prop.getValue();
         }
         return null;
     }
 
     @Override
-    public gg.modl.minecraft.core.util.PluginLogger getLogger() {
+    public PluginLogger getLogger() {
         return pluginLogger;
     }
 

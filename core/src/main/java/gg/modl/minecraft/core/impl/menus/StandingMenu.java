@@ -23,7 +23,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public class StandingMenu extends BaseListMenu<Punishment> {
     private static final int SOCIAL_SLOT = 11, GAMEPLAY_SLOT = 15;

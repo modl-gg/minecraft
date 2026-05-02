@@ -16,6 +16,7 @@ import gg.modl.minecraft.core.impl.menus.util.TargetPlayerAction;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
+import dev.simplix.cirrus.model.Click;
 
 public abstract class BaseInspectMenu extends BaseMenu {
 
@@ -71,7 +72,7 @@ public abstract class BaseInspectMenu extends BaseMenu {
     @Override
     protected void registerActionHandlers() {
         super.registerActionHandlers();
-        registerActionHandler("targetPlayer", (dev.simplix.cirrus.model.Click click) ->
+        registerActionHandler("targetPlayer", (Click click) ->
                 TargetPlayerAction.handle(click, platform, viewerUuid, targetUuid, targetName));
     }
 

@@ -21,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class StandingCommand {

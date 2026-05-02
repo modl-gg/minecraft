@@ -1,8 +1,10 @@
 package gg.modl.minecraft.core.impl.menus.util;
 
+import lombok.Value;
+
 import gg.modl.minecraft.api.Account;
 
-@lombok.Value
+@Value
 public class InspectContext {
     Account account;
     int punishmentCount;

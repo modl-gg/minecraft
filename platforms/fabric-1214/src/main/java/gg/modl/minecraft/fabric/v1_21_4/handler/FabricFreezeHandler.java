@@ -11,7 +11,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import java.util.Set;
+import net.minecraft.server.world.ServerWorld;
 
 public class FabricFreezeHandler {
     private final MinecraftServer server;
@@ -66,8 +67,8 @@ public class FabricFreezeHandler {
             double dz = player.getZ() - pos[2];
 
             if (dx * dx + dy * dy + dz * dz > 0.01) {
-                player.teleport((net.minecraft.server.world.ServerWorld) player.getEntityWorld(), pos[0], pos[1], pos[2],
-                        java.util.Set.of(), player.getYaw(), player.getPitch(), false);
+                player.teleport((ServerWorld) player.getEntityWorld(), pos[0], pos[1], pos[2],
+                        Set.of(), player.getYaw(), player.getPitch(), false);
             }
         });
     }

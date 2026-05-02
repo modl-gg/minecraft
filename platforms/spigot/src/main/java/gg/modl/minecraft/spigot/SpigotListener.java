@@ -4,6 +4,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
+import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.LoginCache;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 public class SpigotListener implements Listener {
@@ -90,6 +92,7 @@ public class SpigotListener implements Listener {
                 PlayerLoginRequest request = new PlayerLoginRequest(
                         event.getUniqueId().toString(), event.getName(),
                         ipAddress, skinHash, platform.getServerName(), ipInfo);
+                request.setServerInstanceId(StartupClient.getServerInstanceId());
                 return new Object[] { request, ipInfo, skinHash };
             })
             .thenCompose(data -> {
@@ -163,7 +166,7 @@ public class SpigotListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        java.util.UUID uuid = event.getPlayer().getUniqueId();
+        UUID uuid = event.getPlayer().getUniqueId();
 
         ListenerHelper.handlePlayerJoin(uuid, event.getPlayer().getName(),
                 platform, cache, localeManager, staff2faService, syncService);
@@ -176,7 +179,7 @@ public class SpigotListener implements Listener {
                 cache, platform.getLogger());
     }
 
-    private void cacheSkinTexture(java.util.UUID uuid) {
+    private void cacheSkinTexture(UUID uuid) {
         String nativeTexture = platform.getPlayerSkinTexture(uuid);
         if (nativeTexture != null) {
             cache.cacheSkinTexture(uuid, nativeTexture);

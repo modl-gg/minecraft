@@ -55,6 +55,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
+import gg.modl.minecraft.bridge.BridgeTask;
+import java.util.concurrent.TimeUnit;
 
 public class BridgeComponent extends AbstractBridgeComponent implements Listener {
     private final JavaPlugin plugin;
@@ -65,7 +69,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
     private RecordingManager recordingManager;
     private PacketRecorder packetRecorder;
-    private gg.modl.minecraft.bridge.BridgeTask replayCleanupTask;
+    private BridgeTask replayCleanupTask;
     private final Map<UUID, Integer> worldChangeGeneration = new ConcurrentHashMap<>();
 
     public BridgeComponent(JavaPlugin plugin, String apiKey, String backendUrl, String panelUrl, PluginLogger logger) {
@@ -167,7 +171,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
             return;
         }
 
-        if (com.github.retrooper.packetevents.PacketEvents.getAPI() == null) {
+        if (PacketEvents.getAPI() == null) {
             pluginLogger.warning("[bridge] PacketEvents not initialized, replay recording disabled");
             return;
         }
@@ -261,7 +265,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
                         f.delete();
                     }
                 }
-            }, 5, 5, java.util.concurrent.TimeUnit.MINUTES);
+            }, 5, 5, TimeUnit.MINUTES);
         }
     }
 
@@ -420,7 +424,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         try {
             Class<?> blockDataClass = Class.forName("org.bukkit.block.data.BlockData");
             Method converter = SpigotConversionUtil.class.getMethod("fromBukkitBlockData", blockDataClass);
-            return ((com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState) converter.invoke(null, blockData)).getGlobalId();
+            return ((WrappedBlockState) converter.invoke(null, blockData)).getGlobalId();
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("Failed to convert Bukkit BlockData to PacketEvents state", e);
         }

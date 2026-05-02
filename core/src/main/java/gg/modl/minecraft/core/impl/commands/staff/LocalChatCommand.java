@@ -12,6 +12,7 @@ import gg.modl.minecraft.core.service.StaffChatService.ChatMode;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.command.CommandActor;
 
 import java.util.UUID;
@@ -26,7 +27,7 @@ public class LocalChatCommand {
     private final StaffChatService staffChatService;
 
     @Description("Switch back to normal chat mode or send a local message")
-    public void localChat(CommandActor actor, @revxrsal.commands.annotation.Optional @ConsumeRemaining String message) {
+    public void localChat(CommandActor actor, @Optional @ConsumeRemaining String message) {
         if (message == null) message = "";
         UUID senderUuid = actor.uniqueId();
 

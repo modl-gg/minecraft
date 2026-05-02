@@ -21,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
 import java.util.regex.Pattern;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 @Command({"pardon", "unban", "unmute"})

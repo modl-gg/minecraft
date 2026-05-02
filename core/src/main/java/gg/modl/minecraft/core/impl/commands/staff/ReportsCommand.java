@@ -20,13 +20,15 @@ import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.annotation.Named;
 import revxrsal.commands.command.CommandActor;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class ReportsCommand {
@@ -42,7 +44,7 @@ public class ReportsCommand {
     @Command("reports")
     @Description("Open the reports menu (for a player or all reports), or use -p to print to chat")
     @PlayerOnly @StaffOnly
-    public void reports(CommandActor actor, @revxrsal.commands.annotation.Optional @Named("player") String playerQuery, @revxrsal.commands.annotation.Optional String flags) {
+    public void reports(CommandActor actor, @Optional @Named("player") String playerQuery, @Optional String flags) {
         if (flags == null) flags = "";
         boolean printMode;
         String actualPlayerQuery;

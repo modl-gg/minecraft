@@ -62,6 +62,7 @@ import gg.modl.minecraft.api.http.response.StaffListResponse;
 import gg.modl.minecraft.api.http.response.StaffPermissionsResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.api.http.response.TicketsResponse;
+import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.util.CircuitBreaker;
 import gg.modl.minecraft.core.util.Java8Collections;
 import org.jetbrains.annotations.NotNull;
@@ -69,6 +70,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -92,6 +94,9 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import com.google.gson.JsonObject;
+import gg.modl.minecraft.core.plugin.PluginInfo;
+import java.io.InputStream;
 
 public class ModlHttpClientV2Impl implements ModlHttpClient {
     private static final String HEADER_API_KEY = "X-API-Key", HEADER_SERVER_DOMAIN = "X-Server-Domain",
@@ -136,7 +141,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     private static JsonDeserializer<Date> flexibleDateDeserializer() {
         return new JsonDeserializer<Date>() {
             @Override
-            public Date deserialize(JsonElement json, java.lang.reflect.Type typeOfT,
+            public Date deserialize(JsonElement json, Type typeOfT,
                                     JsonDeserializationContext context) throws JsonParseException {
                 if (json == null || json.isJsonNull()) {
                     return null;
@@ -206,14 +211,14 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
             this.url = baseUrl + endpoint;
             headers.put(HEADER_API_KEY, apiKey);
             headers.put(HEADER_SERVER_DOMAIN, serverDomain);
-            headers.put("User-Agent", "modl-minecraft/" + gg.modl.minecraft.core.plugin.PluginInfo.VERSION);
+            headers.put("User-Agent", "modl-minecraft/" + PluginInfo.VERSION);
         }
 
         RequestBuilder(String absoluteUrl, boolean absolute) {
             this.url = absoluteUrl;
             headers.put(HEADER_API_KEY, apiKey);
             headers.put(HEADER_SERVER_DOMAIN, serverDomain);
-            headers.put("User-Agent", "modl-minecraft/" + gg.modl.minecraft.core.plugin.PluginInfo.VERSION);
+            headers.put("User-Agent", "modl-minecraft/" + PluginInfo.VERSION);
         }
 
         RequestBuilder header(String name, String value) {
@@ -480,7 +485,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     }
 
     @NotNull @Override
-    public CompletableFuture<ReportsResponse> getPlayerReports(@NotNull java.util.UUID playerUuid, String status) {
+    public CompletableFuture<ReportsResponse> getPlayerReports(@NotNull UUID playerUuid, String status) {
         String endpoint = "/minecraft/reports/player/" + playerUuid;
         if (status != null && !status.isEmpty()) endpoint += "?status=" + status;
         return sendAsync(requestBuilder(endpoint)
@@ -490,7 +495,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
 
     @NotNull @Override
     public CompletableFuture<Void> dismissReport(@NotNull String reportId, String dismissedBy, String reason) {
-        java.util.Map<String, String> body = new java.util.HashMap<>();
+        Map<String, String> body = new HashMap<>();
         if (dismissedBy != null) body.put("dismissedBy", dismissedBy);
         if (reason != null) body.put("reason", reason);
 
@@ -502,7 +507,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
 
     @NotNull @Override
     public CompletableFuture<Void> resolveReport(@NotNull String reportId, String resolvedBy, String resolution, String punishmentId) {
-        java.util.Map<String, String> body = new java.util.HashMap<>();
+        Map<String, String> body = new HashMap<>();
         if (resolvedBy != null) body.put("resolvedBy", resolvedBy);
         if (resolution != null) body.put("resolution", resolution);
         if (punishmentId != null) body.put("punishmentId", punishmentId);
@@ -680,6 +685,8 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         Map<String, String> body = new HashMap<>();
         body.put("minecraftUuid", minecraftUuid);
         body.put("serverName", serverName);
+        String serverInstanceId = StartupClient.getServerInstanceId();
+        if (serverInstanceId != null) body.put("serverInstanceId", serverInstanceId);
         return sendAsync(requestBuilder("/minecraft/players/update-server")
                 .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(gson.toJson(body))
@@ -832,7 +839,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
 
                 String responseBody;
                 try {
-                    java.io.InputStream stream = statusCode >= 400
+                    InputStream stream = statusCode >= 400
                             ? connection.getErrorStream() : connection.getInputStream();
                     if (stream == null) {
                         responseBody = "";
@@ -878,7 +885,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 } else {
                     String errorMessage;
                     try {
-                        com.google.gson.JsonObject errorResponse = gson.fromJson(responseBody, com.google.gson.JsonObject.class);
+                        JsonObject errorResponse = gson.fromJson(responseBody, JsonObject.class);
                         if (errorResponse != null) {
                             String msg = errorResponse.has("message") ? errorResponse.get("message").getAsString() : "";
                             String errors = errorResponse.has("errors") ? errorResponse.get("errors").getAsString() : "";

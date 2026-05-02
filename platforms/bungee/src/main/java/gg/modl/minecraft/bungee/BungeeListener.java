@@ -4,6 +4,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
+import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.LoginCache;
@@ -45,6 +46,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.net.SocketAddress;
+import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 @RequiredArgsConstructor
 public class BungeeListener implements Listener {
@@ -82,7 +86,7 @@ public class BungeeListener implements Listener {
         CompletableFuture.runAsync(() -> {
             try {
                 performLoginCheck(event);
-            } catch (java.util.concurrent.TimeoutException e) {
+            } catch (TimeoutException e) {
                 platform.getLogger().warning("Login check timed out for " + event.getConnection().getName() + " - blocking login for safety");
                 denyLogin(event, "Login verification timed out. Please try again.");
             } catch (Exception e) {
@@ -113,6 +117,7 @@ public class BungeeListener implements Listener {
                 event.getConnection().getName(),
                 ipAddress, skinHash, platform.getServerName(), ipInfo
         );
+        request.setServerInstanceId(StartupClient.getServerInstanceId());
 
         PlayerLoginResponse response = getHttpClient().playerLogin(request).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         loginCache.cacheLoginResult(event.getConnection().getUniqueId(), response, ipInfo, skinHash);
@@ -145,7 +150,7 @@ public class BungeeListener implements Listener {
 
     @EventHandler
     public void onPostLogin(PostLoginEvent event) {
-        java.util.UUID uuid = event.getPlayer().getUniqueId();
+        UUID uuid = event.getPlayer().getUniqueId();
 
         ListenerHelper.handlePlayerJoin(uuid, event.getPlayer().getName(),
                 platform, cache, localeManager, staff2faService, syncService);
@@ -217,7 +222,7 @@ public class BungeeListener implements Listener {
         return player.getServer() != null ? player.getServer().getInfo().getName() : "unknown";
     }
 
-    private String extractIpAddress(java.net.SocketAddress socketAddress) {
+    private String extractIpAddress(SocketAddress socketAddress) {
         if (socketAddress instanceof InetSocketAddress) return ((InetSocketAddress) socketAddress).getAddress().getHostAddress();
         String addr = socketAddress.toString();
         if (addr.startsWith("/")) addr = addr.substring(1);

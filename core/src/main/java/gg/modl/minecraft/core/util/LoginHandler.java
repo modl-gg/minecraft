@@ -14,6 +14,9 @@ import lombok.Data;
 
 import java.util.Map;
 import java.util.UUID;
+import gg.modl.minecraft.api.http.ModlHttpClient;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 public final class LoginHandler {
     private LoginHandler() {}
@@ -28,7 +31,7 @@ public final class LoginHandler {
 
     public static LoginResult processLoginResponse(
             PlayerLoginResponse response, UUID playerUuid,
-            gg.modl.minecraft.api.http.ModlHttpClient httpClient,
+            ModlHttpClient httpClient,
             LocaleManager localeManager, SyncService syncService,
             MaintenanceService maintenanceService, Cache cache,
             boolean debugMode, PluginLogger logger) {
@@ -59,7 +62,7 @@ public final class LoginHandler {
 
     public static LoginResult handleLoginError(Exception error) {
         Throwable cause = error;
-        if (error instanceof java.util.concurrent.ExecutionException && error.getCause() != null) {
+        if (error instanceof ExecutionException && error.getCause() != null) {
             cause = error.getCause();
         }
 
@@ -67,7 +70,7 @@ public final class LoginHandler {
             return new LoginResult.Denied("Unable to verify ban status. Login temporarily restricted for safety.");
         }
 
-        if (cause instanceof java.util.concurrent.TimeoutException) {
+        if (cause instanceof TimeoutException) {
             return new LoginResult.Denied("Login verification timed out. Please try again.");
         }
 

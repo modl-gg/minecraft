@@ -1,5 +1,9 @@
 package gg.modl.minecraft.fabric.v26;
 
+import com.github.retrooper.packetevents.PacketEventsAPI;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.tree.CommandNode;
+import com.mojang.brigadier.tree.RootCommandNode;
 import dev.simplix.cirrus.fabric.CirrusFabric;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.api.http.request.StartupRequest;
@@ -20,18 +24,25 @@ import gg.modl.minecraft.core.util.PluginLogger;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import com.github.retrooper.packetevents.PacketEvents;
+import org.yaml.snakeyaml.Yaml;
+import revxrsal.commands.Lamp;
 
 public class ModlFabricModImpl implements DedicatedServerModInitializer {
     public static final String MOD_ID = "modl";
@@ -109,9 +120,9 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         }
     }
 
-    private com.github.retrooper.packetevents.PacketEventsAPI<?> requirePacketEventsApi() {
-        com.github.retrooper.packetevents.PacketEventsAPI<?> packetEventsApi =
-                com.github.retrooper.packetevents.PacketEvents.getAPI();
+    private PacketEventsAPI<?> requirePacketEventsApi() {
+        PacketEventsAPI<?> packetEventsApi =
+                PacketEvents.getAPI();
         if (packetEventsApi == null) {
             throw new IllegalStateException("PacketEvents Fabric mod did not initialize before modl startup");
         }
@@ -161,7 +172,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
                 Path configPath = dataFolder.resolve("config.yml");
                 if (configPath.toFile().exists()) {
                     try {
-                        org.yaml.snakeyaml.Yaml yaml = new org.yaml.snakeyaml.Yaml();
+                        Yaml yaml = new Yaml();
                         Map<String, Object> config = yaml.load(Files.newInputStream(configPath));
                         if (config != null) {
                             debugMode = Boolean.TRUE.equals(config.get("debug"));
@@ -299,7 +310,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
                         standaloneDebugMode, server);
                 fabricListener.register();
 
-                var packetEventsApi = requirePacketEventsApi();
+                PacketEventsAPI<?> packetEventsApi = requirePacketEventsApi();
                 packetEventsApi.getEventManager().registerListener(
                         new FabricStaffModePacketListener(
                                 bridgeComponent.getFabricStaffModeHandler(),
@@ -321,34 +332,34 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         }
     }
 
-    private void syncLampCommandsToServer(MinecraftServer server, revxrsal.commands.Lamp<?> lamp) {
+    private void syncLampCommandsToServer(MinecraftServer server, Lamp<?> lamp) {
         try {
-            var dispatcher = server.getCommands().getDispatcher();
+            CommandDispatcher<CommandSourceStack> dispatcher = server.getCommands().getDispatcher();
 
-            var hooksField = revxrsal.commands.Lamp.class.getDeclaredField("hooks");
+            Field hooksField = Lamp.class.getDeclaredField("hooks");
             hooksField.setAccessible(true);
             Object hooksObj = hooksField.get(lamp);
 
             Object hooksList = null;
-            for (var field : hooksObj.getClass().getDeclaredFields()) {
+            for (Field field : hooksObj.getClass().getDeclaredFields()) {
                 field.setAccessible(true);
                 Object value = field.get(hooksObj);
-                if (value instanceof java.util.List) {
+                if (value instanceof List) {
                     hooksList = value;
                     break;
                 }
             }
 
             if (hooksList != null) {
-                for (Object hook : (java.util.List<?>) hooksList) {
+                for (Object hook : (List<?>) hooksList) {
                     if (hook.getClass().getName().contains("FabricCommandHooks")) {
-                        var rootField = hook.getClass().getDeclaredField("root");
+                        Field rootField = hook.getClass().getDeclaredField("root");
                         rootField.setAccessible(true);
                         @SuppressWarnings("unchecked")
-                        var root = (com.mojang.brigadier.tree.RootCommandNode<net.minecraft.commands.CommandSourceStack>) rootField.get(hook);
+                        RootCommandNode<CommandSourceStack> root = (RootCommandNode<CommandSourceStack>) rootField.get(hook);
 
                         removeBrigadierNodes(dispatcher.getRoot(), root.getChildren());
-                        for (var node : root.getChildren()) {
+                        for (CommandNode<CommandSourceStack> node : root.getChildren()) {
                             dispatcher.getRoot().addChild(node);
                         }
                         break;
@@ -356,7 +367,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
                 }
             }
 
-            for (var player : server.getPlayerList().getPlayers()) {
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 server.getCommands().sendCommands(player);
             }
         } catch (Exception e) {
@@ -365,14 +376,14 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
     }
 
     @SuppressWarnings("unchecked")
-    private void removeBrigadierNodes(com.mojang.brigadier.tree.CommandNode<?> parent,
-                                      java.util.Collection<? extends com.mojang.brigadier.tree.CommandNode<?>> toRemove) {
+    private void removeBrigadierNodes(CommandNode<?> parent,
+                                      Collection<? extends CommandNode<?>> toRemove) {
         try {
             for (String fieldName : new String[]{"children", "literals", "arguments"}) {
-                var field = com.mojang.brigadier.tree.CommandNode.class.getDeclaredField(fieldName);
+                Field field = CommandNode.class.getDeclaredField(fieldName);
                 field.setAccessible(true);
-                var map = (java.util.Map<String, ?>) field.get(parent);
-                for (var node : toRemove) {
+                Map<String, ?> map = (Map<String, ?>) field.get(parent);
+                for (CommandNode<?> node : toRemove) {
                     map.remove(node.getName());
                 }
             }

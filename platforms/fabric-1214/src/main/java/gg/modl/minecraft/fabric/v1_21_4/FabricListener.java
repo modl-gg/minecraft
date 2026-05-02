@@ -3,6 +3,7 @@ package gg.modl.minecraft.fabric.v1_21_4;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
+import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 import gg.modl.minecraft.core.cache.LoginCache;
@@ -35,6 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
+import java.util.concurrent.TimeUnit;
+import net.minecraft.text.Text;
 
 @RequiredArgsConstructor
 public class FabricListener {
@@ -93,6 +97,7 @@ public class FabricListener {
                     PlayerLoginRequest request = new PlayerLoginRequest(
                             uuid.toString(), playerName,
                             ipAddress, skinHash, platform.getServerName(), ipInfo);
+                    request.setServerInstanceId(StartupClient.getServerInstanceId());
                     return new Object[]{request, ipInfo, skinHash};
                 }).thenCompose(data -> {
                     PlayerLoginRequest request = (PlayerLoginRequest) data[0];
@@ -120,7 +125,7 @@ public class FabricListener {
                         completeJoin(uuid, playerName, null);
                     }
                     return null;
-                }).get(LOGIN_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
+                }).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             } catch (Exception e) {
                 platform.getLogger().warning("Async login timed out for " + playerName + ": " + e.getMessage());
                 completeJoin(uuid, playerName, null);
@@ -129,7 +134,7 @@ public class FabricListener {
     }
 
     private void handleLoginSuccess(UUID uuid, String playerName, String ipAddress,
-                                    gg.modl.minecraft.api.http.response.PlayerLoginResponse response,
+                                    PlayerLoginResponse response,
                                     Map<String, Object> ipInfo) {
         LoginHandler.LoginResult result = LoginHandler.processLoginResponse(
                 response, uuid, getHttpClient(), localeManager, syncService,
@@ -146,7 +151,7 @@ public class FabricListener {
     }
 
     private void completeJoin(UUID uuid, String playerName,
-                              gg.modl.minecraft.api.http.response.PlayerLoginResponse response) {
+                              PlayerLoginResponse response) {
         server.execute(() -> {
             ListenerHelper.handlePlayerJoin(uuid, playerName,
                     platform, cache, localeManager, staff2faService, syncService);
@@ -181,7 +186,7 @@ public class FabricListener {
         ChatEventHandler.Result result = ChatEventHandler.handleChat(
                 player.getUuid(), player.getName().getString(), message.getContent().getString(),
                 platform.getServerName(),
-                msg -> player.sendMessage(net.minecraft.text.Text.literal(msg), false),
+                msg -> player.sendMessage(Text.literal(msg), false),
                 platform, cache, localeManager, chatMessageCache,
                 staffChatService, staffChatConfig, chatManagementService,
                 freezeService, chatCommandLogService, networkChatInterceptService);

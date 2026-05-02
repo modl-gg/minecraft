@@ -12,7 +12,7 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.Constants;
 import lombok.RequiredArgsConstructor;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class ClaimTicketCommand {

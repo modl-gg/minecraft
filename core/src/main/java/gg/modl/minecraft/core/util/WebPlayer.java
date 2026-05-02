@@ -15,6 +15,8 @@ import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
+import com.google.gson.JsonArray;
+import java.util.concurrent.TimeUnit;
 
 @Data @AllArgsConstructor
 public class WebPlayer {
@@ -92,7 +94,7 @@ public class WebPlayer {
                     UUID playerUuid = UUID.fromString(idString.replaceFirst(UUID_REGEX, "$1-$2-$3-$4-$5"));
 
                     String textureValue = null;
-                    com.google.gson.JsonArray propsArray = json.has("properties") ? json.getAsJsonArray("properties") : null;
+                    JsonArray propsArray = json.has("properties") ? json.getAsJsonArray("properties") : null;
                     if (propsArray != null && propsArray.size() > 0) {
                         JsonObject properties = propsArray.get(0).getAsJsonObject();
                         if (properties.has("value")) textureValue = properties.get("value").getAsString();
@@ -116,7 +118,7 @@ public class WebPlayer {
 
     public static String getSkinId(JsonObject json) {
         try {
-            com.google.gson.JsonArray propsArr = json.has("properties") ? json.getAsJsonArray("properties") : null;
+            JsonArray propsArr = json.has("properties") ? json.getAsJsonArray("properties") : null;
             if (propsArr == null || propsArr.size() == 0) return null;
 
             JsonObject properties = propsArr.get(0).getAsJsonObject();
@@ -155,7 +157,7 @@ public class WebPlayer {
     @Deprecated
     public static WebPlayer getSync(String username) {
         try {
-            return get(username).get(SYNC_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+            return get(username).get(SYNC_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             logger.warning("Synchronous WebPlayer.get() failed for username " + username + ": " + e.getMessage());
             return INVALID;
@@ -165,7 +167,7 @@ public class WebPlayer {
     @Deprecated
     public static WebPlayer getSync(UUID uuid) {
         try {
-            return get(uuid).get(SYNC_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+            return get(uuid).get(SYNC_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             logger.warning("Synchronous WebPlayer.get() failed for UUID " + uuid + ": " + e.getMessage());
             return INVALID;

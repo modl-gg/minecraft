@@ -9,6 +9,7 @@ import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
 
@@ -37,15 +38,18 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import gg.modl.minecraft.core.util.PluginLogger;
 import java.util.stream.Collectors;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
+import static gg.modl.minecraft.core.util.Java8Collections.orTimeout;
 
 public class SyncService {
     private static final int MIN_POLLING_RATE_SECONDS = 1,
@@ -76,6 +80,7 @@ public class SyncService {
     private final boolean debugMode;
     private volatile boolean isRunning = false;
     private final AtomicInteger syncCycleCount = new AtomicInteger(0);
+    private final AtomicBoolean forcedSyncPending = new AtomicBoolean(false);
 
     public SyncService(@NotNull Platform platform, @NotNull HttpClientHolder httpClientHolder, @NotNull Cache cache,
                        @NotNull PluginLogger logger, @NotNull LocaleManager localeManager, @NotNull String apiUrl,
@@ -155,6 +160,32 @@ public class SyncService {
         if (debugMode) logger.info("modl.gg Sync service stopped");
     }
 
+    public void forceSync(String reason) {
+        ScheduledExecutorService executor = syncExecutor;
+        if (!isRunning || executor == null || executor.isShutdown()) {
+            if (debugMode) logger.info("Skipping forced sync while sync service is stopped: " + reason);
+            return;
+        }
+
+        try {
+            if (!forcedSyncPending.compareAndSet(false, true)) {
+                if (debugMode) logger.info("Coalescing forced sync while another forced sync is pending: " + reason);
+                return;
+            }
+            executor.execute(() -> {
+                try {
+                    if (debugMode) logger.info("Running forced sync: " + reason);
+                    performSync();
+                } finally {
+                    forcedSyncPending.set(false);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            forcedSyncPending.set(false);
+            if (debugMode) logger.warning("Forced sync rejected: " + e.getMessage());
+        }
+    }
+
     private void performSync() {
         final Callable<Void> work = () -> {
             try {
@@ -191,6 +222,7 @@ public class SyncService {
         request.setLastSyncTimestamp(lastSyncTimestamp);
         request.setOnlinePlayers(buildOnlinePlayersList(onlinePlayers));
         request.setServerName(platform.getServerName());
+        request.setServerInstanceId(StartupClient.getServerInstanceId());
         if (chatCommandLogService != null) {
             request.setChatLogs(chatCommandLogService.drainChatBuffer());
             request.setCommandLogs(chatCommandLogService.drainCommandBuffer());
@@ -336,21 +368,29 @@ public class SyncService {
                 return;
             }
 
-            migrationService.exportLiteBansData(taskId).thenAccept(jsonFile -> {
-                if (jsonFile == null || !jsonFile.exists()) {
-                    logger.warning("Task " + taskId + " export failed - no file generated");
-                    return;
-                }
-                migrationService.uploadMigrationFile(jsonFile, taskId).thenAccept(success -> {
-                    if (!success) logger.warning("Task " + taskId + " upload failed");
-                });
-            }).exceptionally(throwable -> {
-                logger.severe("Task " + taskId + " failed: " + throwable.getMessage());
-                return null;
-            });
+            startLiteBansMigration(taskId);
         } catch (Exception e) {
             logger.severe("Error processing migration task: " + e.getMessage());
         }
+    }
+
+    private void startLiteBansMigration(String taskId) {
+        migrationService.exportLiteBansData(taskId).thenAccept(jsonFile ->
+                handleMigrationExportResult(taskId, jsonFile)
+        ).exceptionally(throwable -> {
+            logger.severe("Task " + taskId + " failed: " + throwable.getMessage());
+            return null;
+        });
+    }
+
+    private void handleMigrationExportResult(String taskId, File jsonFile) {
+        if (jsonFile == null || !jsonFile.exists()) {
+            logger.warning("Task " + taskId + " export failed - no file generated");
+            return;
+        }
+        migrationService.uploadMigrationFile(jsonFile, taskId).thenAccept(success -> {
+            if (!success) logger.warning("Task " + taskId + " upload failed");
+        });
     }
 
     private boolean ensureMigrationServiceInitialized() {

@@ -30,6 +30,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import gg.modl.minecraft.core.util.PluginLogger;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 
 @RequiredArgsConstructor
 public class MigrationService {
@@ -222,7 +228,7 @@ public class MigrationService {
         punishment.typeOrdinal = typeOrdinal;
 
         String reason = rs.getString("REASON");
-        punishment.reason = (reason != null && !reason.isEmpty()) ? reason : defaultReason;
+        punishment.reason = resolvePunishmentReason(reason);
 
         long timeIssued = rs.getLong("TIME");
         if (timeIssued <= 0) timeIssued = System.currentTimeMillis();
@@ -261,6 +267,10 @@ public class MigrationService {
         }
 
         return punishment;
+    }
+
+    private String resolvePunishmentReason(String reason) {
+        return (reason != null && !reason.isEmpty()) ? reason : defaultReason;
     }
 
     private void writePlayerToJson(StreamingJsonWriter writer, PlayerMigrationData playerData) throws IOException {
@@ -390,23 +400,23 @@ public class MigrationService {
     }
 
     private boolean uploadFileMultipart(File file) throws Exception {
-        try (org.apache.hc.client5.http.impl.classic.CloseableHttpClient httpClient =
-                org.apache.hc.client5.http.impl.classic.HttpClients.createDefault()) {
+        try (CloseableHttpClient httpClient =
+                HttpClients.createDefault()) {
 
-            org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder builder =
-                org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder.create();
+            MultipartEntityBuilder builder =
+                MultipartEntityBuilder.create();
             builder.addBinaryBody("migrationFile", file,
-                org.apache.hc.core5.http.ContentType.APPLICATION_JSON, file.getName());
+                ContentType.APPLICATION_JSON, file.getName());
 
             String uploadUrl = apiUrl + "/minecraft/migration/upload";
-            org.apache.hc.client5.http.classic.methods.HttpPost httpPost =
-                new org.apache.hc.client5.http.classic.methods.HttpPost(uploadUrl);
+            HttpPost httpPost =
+                new HttpPost(uploadUrl);
             httpPost.setHeader(HEADER_API_KEY, apiKey);
             httpPost.setEntity(builder.build());
 
             return httpClient.execute(httpPost, response -> {
                 int statusCode = response.getCode();
-                String responseBody = org.apache.hc.core5.http.io.entity.EntityUtils.toString(response.getEntity());
+                String responseBody = EntityUtils.toString(response.getEntity());
 
                 if (statusCode >= 200 && statusCode < 300) return true;
                 if (statusCode == HTTP_PAYLOAD_TOO_LARGE) logger.severe("File too large: " + responseBody);

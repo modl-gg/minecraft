@@ -18,13 +18,15 @@ import gg.modl.minecraft.core.util.Pagination;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.annotation.Named;
 import revxrsal.commands.command.CommandActor;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class AltsCommand {
@@ -38,7 +40,7 @@ public class AltsCommand {
     @Command("alts")
     @Description("Open the alts menu for a player, or use -p to print to chat")
     @PlayerOnly @StaffOnly
-    public void alts(CommandActor actor, @Named("player") String playerQuery, @revxrsal.commands.annotation.Optional String flags) {
+    public void alts(CommandActor actor, @Named("player") String playerQuery, @Optional String flags) {
         if (flags == null) flags = "";
         int page = Pagination.parsePrintFlags(flags);
         boolean printMode = page > 0;

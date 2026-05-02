@@ -7,11 +7,15 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 import java.util.stream.Collectors;
 
 import gg.modl.minecraft.core.util.PluginLogger;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @Data
 public class PunishGuiConfig {

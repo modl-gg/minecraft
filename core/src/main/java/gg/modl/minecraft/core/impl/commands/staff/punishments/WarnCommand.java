@@ -18,7 +18,7 @@ import gg.modl.minecraft.core.util.CommandUtil;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 @Command("warn")

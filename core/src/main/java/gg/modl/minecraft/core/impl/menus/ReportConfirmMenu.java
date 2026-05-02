@@ -15,6 +15,7 @@ import gg.modl.minecraft.api.http.response.CreateTicketResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ReportGuiConfig;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.service.ReplayService;
@@ -24,7 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public class ReportConfirmMenu extends SimpleMenu {
     private final AbstractPlayer reporter, target;
@@ -71,15 +73,7 @@ public class ReportConfirmMenu extends SimpleMenu {
                 MenuItems.lore(confirmLore)
         ).slot(11).actionHandler("confirm"));
 
-        List<String> skullLines = locale.getMessageList("messages.report_skull_confirm", mapOf("player", target.getUsername()));
-        CirrusItem confirmHead = MenuItems.playerHead(
-                skullLines.get(0),
-                skullLines.subList(1, skullLines.size())
-        );
-        if (platform.getCache() != null) {
-            String texture = platform.getCache().getSkinTexture(target.getUuid());
-            if (texture != null) confirmHead = confirmHead.texture(texture);
-        }
+        CirrusItem confirmHead = ReportRenderUtil.buildTargetHead(locale, platform, target, "messages.report_skull_confirm");
         set(confirmHead.slot(13));
 
         set(CirrusItem.of(

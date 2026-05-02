@@ -15,16 +15,20 @@ import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.api.http.request.StartupRequest;
-import gg.modl.minecraft.core.boot.*;
+import gg.modl.minecraft.core.boot.BootConfig;
+import gg.modl.minecraft.core.boot.BootConfigMigrator;
+import gg.modl.minecraft.core.boot.ConsoleInput;
+import gg.modl.minecraft.core.boot.PlatformType;
+import gg.modl.minecraft.core.boot.SetupWizard;
+import gg.modl.minecraft.core.boot.StartupClient;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 import gg.modl.minecraft.core.plugin.PluginInfo;
-import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
-import gg.modl.minecraft.core.query.BridgeReplayService;
-import gg.modl.minecraft.core.query.BridgeServer;
+import gg.modl.minecraft.core.query.ProxyBridgeRuntime;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
+import io.github._4drian3d.signedvelocity.velocity.SignedVelocity;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
 import io.github.retrooper.packetevents.velocity.factory.VelocityPacketEventsBuilder;
 import com.alessiodp.libby.Library;
 import com.alessiodp.libby.VelocityLibraryManager;
@@ -39,6 +43,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import com.alessiodp.libby.logging.LogLevel;
 
 @Plugin(id = PluginInfo.ID,
         name = PluginInfo.NAME,
@@ -58,7 +63,7 @@ public final class VelocityPlugin {
 
     private Map<String, Object> configuration;
     private PluginLoader pluginLoader;
-    private BridgeServer bridgeServer;
+    private ProxyBridgeRuntime bridgeRuntime;
 
     @Inject
     public VelocityPlugin(PluginContainer plugin, ProxyServer server, @DataDirectory Path folder, Logger logger) {
@@ -113,7 +118,7 @@ public final class VelocityPlugin {
         int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfigInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
 
         this.pluginLoader = new PluginLoader(platform, folder, chatMessageCache, httpManager, syncPollingRate);
-        configureBridgeExecutor(platform, httpManager, bootConfig, panelUrl);
+        configureBridgeExecutor(platform, bootConfig, panelUrl);
 
         @SuppressWarnings("unchecked")
         List<String> mutedCommands = (List<String>) getNestedConfig("muted_commands", Collections.emptyList());
@@ -138,7 +143,7 @@ public final class VelocityPlugin {
 
     @Subscribe
     public synchronized void onProxyShutdown(ProxyShutdownEvent event) {
-        if (bridgeServer != null) bridgeServer.shutdown();
+        if (bridgeRuntime != null) bridgeRuntime.shutdown();
         if (pluginLoader != null) pluginLoader.shutdown();
         if (PacketEvents.getAPI() != null) {
             try {
@@ -153,7 +158,7 @@ public final class VelocityPlugin {
             return;
         }
 
-        var sv = new io.github._4drian3d.signedvelocity.velocity.SignedVelocity(server, this, logger);
+        SignedVelocity sv = new SignedVelocity(server, this, logger);
         sv.init();
         logger.info("[SignedVelocity] Embedded listeners registered");
     }
@@ -208,26 +213,8 @@ public final class VelocityPlugin {
         logger.error("===============================================");
     }
 
-    private void configureBridgeExecutor(VelocityPlatform platform, HttpManager httpManager, BootConfig bootConfig, String panelUrl) {
-        if (bootConfig.getMode() != BootConfig.Mode.PROXY) return;
-
-        int bridgePort = bootConfig.getBridgePort();
-        String apiKey = bootConfig.getApiKey();
-
-        BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
-                platform, pluginLoader.getLocaleManager(), pluginLoader.getFreezeService(),
-                pluginLoader.getStaffModeService(), pluginLoader.getVanishService(),
-                pluginLoader.getHttpClient(), pluginLogger);
-
-        bridgeServer = new BridgeServer(bridgePort, apiKey, dispatcher, pluginLogger, panelUrl);
-        bridgeServer.start();
-
-        pluginLoader.getSyncService().setStatWipeExecutor(bridgeServer);
-        pluginLoader.getBridgeService().setExecutor(bridgeServer);
-
-        BridgeReplayService bridgeReplayService = new BridgeReplayService(bridgeServer, pluginLogger);
-        dispatcher.setBridgeReplayService(bridgeReplayService);
-        platform.setReplayService(bridgeReplayService);
+    private void configureBridgeExecutor(VelocityPlatform platform, BootConfig bootConfig, String panelUrl) {
+        bridgeRuntime = ProxyBridgeRuntime.startIfProxy(platform, pluginLoader, bootConfig, pluginLogger, panelUrl);
     }
 
     private void initializePacketEvents() {
@@ -239,7 +226,7 @@ public final class VelocityPlugin {
     private void loadLibraries() {
         VelocityLibraryManager<VelocityPlugin> libraryManager = new VelocityLibraryManager<>(
                 this, logger, folder, server.getPluginManager());
-        libraryManager.setLogLevel(com.alessiodp.libby.logging.LogLevel.WARN);
+        libraryManager.setLogLevel(LogLevel.WARN);
         libraryManager.addMavenCentral();
         libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
@@ -250,6 +237,7 @@ public final class VelocityPlugin {
         loadLibrary(libraryManager, Libraries.LAMP_COMMON);
         loadLibrary(libraryManager, Libraries.LAMP_BRIGADIER);
         loadLibrary(libraryManager, Libraries.LAMP_VELOCITY);
+        loadLibrary(libraryManager, Libraries.SLF4J_API);
         loadLibrary(libraryManager, Libraries.CIRRUS_VELOCITY);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);

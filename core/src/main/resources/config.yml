@@ -40,6 +40,12 @@ sync:
   # Default: 2 seconds. Minimum: 1 second
   polling_rate: 2
 
+# Realtime Configuration
+# Adds a non-authoritative WebSocket beside HTTP polling for low-risk cache invalidation hints.
+# HTTP sync remains authoritative. Keep disabled unless instructed to enable for rollout.
+realtime:
+  enabled: false
+
 # Update Checker Configuration
 update_checker:
   # Enable periodic plugin update checks against GitHub releases

@@ -6,7 +6,11 @@ import gg.modl.minecraft.core.service.ReplayCaptureStatus;
 import gg.modl.minecraft.core.util.PluginLogger;
 
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class BridgeReplayService implements ReplayService {
     private static final long CAPTURE_TIMEOUT_SECONDS = 600;

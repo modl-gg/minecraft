@@ -10,9 +10,15 @@ import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.WebPlayer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 import java.util.concurrent.TimeUnit;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public final class PlayerHeadItemBuilder {
     private static final String UNKNOWN = "Unknown";

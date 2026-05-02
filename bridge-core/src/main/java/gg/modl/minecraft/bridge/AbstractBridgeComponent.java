@@ -4,6 +4,7 @@ import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;
+import gg.modl.minecraft.bridge.query.BridgeMessageHandler;
 import gg.modl.minecraft.bridge.reporter.AutoReporter;
 import gg.modl.minecraft.bridge.reporter.TicketCreator;
 import gg.modl.minecraft.bridge.reporter.detection.ViolationTracker;
@@ -15,6 +16,7 @@ import gg.modl.minecraft.core.util.YamlMergeUtil;
 import lombok.Getter;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +53,23 @@ public abstract class AbstractBridgeComponent {
         Path dataFolder = context.getDataFolder();
         Logger logger = context.getLogger();
 
+        prepareBridgeConfig(dataFolder);
+        prepareBridgeLocale(logger);
+        prepareStaffModeConfig(dataFolder);
+        startLifecycleServices(dataFolder, logger);
+        initializePlatformHandlers();
+        connectBridgeClientIfConfigured(connectToProxy, logger);
+        initializeAutoReporting(logger, ticketCreator);
+        registerRuntimeHooks();
+    }
+
+    public void disable() {
+        onDisable();
+        stopLifecycleServices();
+        unregisterAntiCheatHooks();
+    }
+
+    private void prepareBridgeConfig(Path dataFolder) {
         if (!BridgeConfig.exists(dataFolder)) {
             context.saveDefaultResource("bridge-config.yml");
         }
@@ -64,25 +83,35 @@ public abstract class AbstractBridgeComponent {
             bridgeConfig = new BridgeConfig();
         }
         bridgeConfig.setApiKey(apiKey);
+    }
 
+    private void prepareBridgeLocale(Logger logger) {
         localeManager = new BridgeLocaleManager(logger);
+    }
 
+    private void prepareStaffModeConfig(Path dataFolder) {
         if (!dataFolder.resolve("staff_mode.yml").toFile().exists()) {
             context.saveDefaultResource("staff_mode.yml");
         }
         YamlMergeUtil.mergeWithDefaults("/staff_mode.yml",
                 dataFolder.resolve("staff_mode.yml"), pluginLogger);
+    }
 
+    private void startLifecycleServices(Path dataFolder, Logger logger) {
         violationTracker = new ViolationTracker();
         violationTracker.startCleanupTask(context.getScheduler());
 
         statWipeHandler = new StatWipeHandler(logger, bridgeConfig, context.getPlayerProvider());
 
         staffModeConfig = new StaffModeConfig(dataFolder, logger);
+    }
 
+    private void initializePlatformHandlers() {
         initFreezeHandler(localeManager);
         initStaffModeHandler(bridgeConfig, localeManager, staffModeConfig);
+    }
 
+    private void connectBridgeClientIfConfigured(boolean connectToProxy, Logger logger) {
         if (connectToProxy && !isBlank(bridgeConfig.getProxyHost()) && !isBlank(bridgeConfig.getApiKey())) {
             bridgeClient = new BridgeQueryClient(
                     bridgeConfig.getProxyHost(),
@@ -100,28 +129,32 @@ public abstract class AbstractBridgeComponent {
         } else if (connectToProxy && isBlank(bridgeConfig.getApiKey())) {
             pluginLogger.warning("[bridge] Bridge-only mode is enabled but api-key is empty; backend cannot authenticate to proxy");
         }
+    }
 
+    private void initializeAutoReporting(Logger logger, TicketCreator ticketCreator) {
         autoReporter = new AutoReporter(logger, bridgeConfig, ticketCreator, violationTracker);
 
         initReplayRecording(bridgeConfig);
         if (replayService != null) {
             autoReporter.setReplayService(replayService);
         }
+    }
+
+    private void registerRuntimeHooks() {
         registerAntiCheatHooks(hooks);
         registerPlatformEvents();
 
         if (bridgeClient != null) {
             registerProxyCommand(bridgeClient);
         }
-
     }
 
-    public void disable() {
-        onDisable();
-
+    private void stopLifecycleServices() {
         if (violationTracker != null) violationTracker.stopCleanupTask();
         if (bridgeClient != null) bridgeClient.shutdown();
+    }
 
+    private void unregisterAntiCheatHooks() {
         hooks.forEach(AntiCheatHook::unregister);
         hooks.clear();
     }
@@ -132,7 +165,7 @@ public abstract class AbstractBridgeComponent {
                                                   BridgeLocaleManager localeManager,
                                                   StaffModeConfig staffModeConfig);
 
-    protected abstract gg.modl.minecraft.bridge.query.BridgeMessageHandler createMessageHandler();
+    protected abstract BridgeMessageHandler createMessageHandler();
 
     protected abstract void onBridgeClientCreated(BridgeQueryClient client);
 
@@ -153,7 +186,7 @@ public abstract class AbstractBridgeComponent {
             normalized = "https://" + normalized;
         }
         try {
-            java.net.URI uri = java.net.URI.create(normalized);
+            URI uri = URI.create(normalized);
             String host = uri.getHost();
             return host != null ? host : url.trim();
         } catch (Exception e) {

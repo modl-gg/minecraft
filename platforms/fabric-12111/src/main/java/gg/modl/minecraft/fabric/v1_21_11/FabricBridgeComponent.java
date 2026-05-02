@@ -1,5 +1,6 @@
 package gg.modl.minecraft.fabric.v1_21_11;
 
+import com.mojang.brigadier.CommandDispatcher;
 import gg.modl.minecraft.bridge.AbstractBridgeComponent;
 import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.bridge.config.StaffModeConfig;
@@ -18,14 +19,28 @@ import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.fabricmc.fabric.api.event.player.UseItemCallback;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.command.permission.Permission;
+import net.minecraft.command.permission.PermissionCheck;
+import net.minecraft.command.permission.PermissionLevel;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.server.command.CommandManager;
+import net.minecraft.util.ActionResult;
 
 public class FabricBridgeComponent extends AbstractBridgeComponent {
     private final MinecraftServer server;
@@ -115,48 +130,48 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
             return true;
         });
 
-        net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-            if (!(player instanceof ServerPlayerEntity sp)) return net.minecraft.util.ActionResult.PASS;
-            if (fabricFreezeHandler.isFrozen(sp.getUuid())) return net.minecraft.util.ActionResult.FAIL;
+        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+            if (!(player instanceof ServerPlayerEntity sp)) return ActionResult.PASS;
+            if (fabricFreezeHandler.isFrozen(sp.getUuid())) return ActionResult.FAIL;
 
             if (fabricStaffModeHandler.isInStaffMode(sp.getUuid())) {
                 // Silent container viewing for vanished staff
                 if (fabricStaffModeHandler.isVanished(sp.getUuid())) {
                     BlockPos pos = hitResult.getBlockPos();
-                    net.minecraft.block.entity.BlockEntity be = world.getBlockEntity(pos);
-                    if (be instanceof net.minecraft.inventory.Inventory container) {
+                    BlockEntity be = world.getBlockEntity(pos);
+                    if (be instanceof Inventory container) {
                         fabricStaffModeHandler.openSilentContainer(sp, container, pos);
-                        return net.minecraft.util.ActionResult.SUCCESS;
+                        return ActionResult.SUCCESS;
                     }
                 }
-                return net.minecraft.util.ActionResult.FAIL;
+                return ActionResult.FAIL;
             }
 
 
-            return net.minecraft.util.ActionResult.PASS;
+            return ActionResult.PASS;
         });
 
-        net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
-            if (hand != net.minecraft.util.Hand.MAIN_HAND)
-                return net.minecraft.util.ActionResult.PASS;
+        UseItemCallback.EVENT.register((player, world, hand) -> {
+            if (hand != Hand.MAIN_HAND)
+                return ActionResult.PASS;
             if (!(player instanceof ServerPlayerEntity sp))
-                return net.minecraft.util.ActionResult.PASS;
+                return ActionResult.PASS;
             if (!fabricStaffModeHandler.isInStaffMode(sp.getUuid()))
-                return net.minecraft.util.ActionResult.PASS;
+                return ActionResult.PASS;
 
             int slot = sp.getInventory().getSelectedSlot();
             Map<Integer, StaffModeConfig.HotbarItem> hotbar = fabricStaffModeHandler.getActiveHotbar(sp.getUuid());
             StaffModeConfig.HotbarItem item = hotbar != null ? hotbar.get(slot) : null;
             if (item != null && item.getAction() != null && !item.getAction().isEmpty()) {
                 fabricStaffModeHandler.executeAction(sp, item);
-                return net.minecraft.util.ActionResult.SUCCESS;
+                return ActionResult.SUCCESS;
             }
-            return net.minecraft.util.ActionResult.PASS;
+            return ActionResult.PASS;
         });
 
         UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
-            if (!(player instanceof ServerPlayerEntity sp)) return net.minecraft.util.ActionResult.PASS;
-            if (!fabricStaffModeHandler.isInStaffMode(sp.getUuid())) return net.minecraft.util.ActionResult.PASS;
+            if (!(player instanceof ServerPlayerEntity sp)) return ActionResult.PASS;
+            if (!fabricStaffModeHandler.isInStaffMode(sp.getUuid())) return ActionResult.PASS;
 
             if (hand == Hand.MAIN_HAND && entity instanceof ServerPlayerEntity targetPlayer) {
                 int slot = sp.getInventory().getSelectedSlot();
@@ -168,13 +183,13 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
                             mapOf("player", targetPlayer.getName().getString()))), false);
                 }
             }
-            return net.minecraft.util.ActionResult.FAIL;
+            return ActionResult.FAIL;
         });
 
-        net.fabricmc.fabric.api.event.player.AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
-            if (!(player instanceof ServerPlayerEntity sp)) return net.minecraft.util.ActionResult.PASS;
-            if (!fabricStaffModeHandler.isInStaffMode(sp.getUuid())) return net.minecraft.util.ActionResult.PASS;
-            return net.minecraft.util.ActionResult.FAIL;
+        AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (!(player instanceof ServerPlayerEntity sp)) return ActionResult.PASS;
+            if (!fabricStaffModeHandler.isInStaffMode(sp.getUuid())) return ActionResult.PASS;
+            return ActionResult.FAIL;
         });
 
     }
@@ -182,22 +197,22 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
     @Override
     protected void registerProxyCommand(BridgeQueryClient client) {
         try {
-            var dispatcher = server.getCommandManager().getDispatcher();
+            CommandDispatcher<ServerCommandSource> dispatcher = server.getCommandManager().getDispatcher();
             dispatcher.register(
-                    net.minecraft.server.command.CommandManager.literal("proxycmd")
-                            .requires(net.minecraft.server.command.CommandManager.requirePermissionLevel(
-                                    new net.minecraft.command.permission.PermissionCheck.Require(
-                                            new net.minecraft.command.permission.Permission.Level(
-                                                    net.minecraft.command.permission.PermissionLevel.OWNERS))))
-                            .then(net.minecraft.server.command.CommandManager.argument("command",
-                                            com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                    CommandManager.literal("proxycmd")
+                            .requires(CommandManager.requirePermissionLevel(
+                                    new PermissionCheck.Require(
+                                            new Permission.Level(
+                                                    PermissionLevel.OWNERS))))
+                            .then(CommandManager.argument("command",
+                                            StringArgumentType.greedyString())
                                     .executes(ctx -> {
-                                        String cmd = com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "command");
+                                        String cmd = StringArgumentType.getString(ctx, "command");
                                         client.sendMessage("PROXY_CMD", cmd);
-                                        ctx.getSource().sendMessage(net.minecraft.text.Text.literal("Sent to proxy: " + cmd));
+                                        ctx.getSource().sendMessage(Text.literal("Sent to proxy: " + cmd));
                                         return 1;
                                     })));
-            for (var player : server.getPlayerManager().getPlayerList()) {
+            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
                 server.getCommandManager().sendCommandTree(player);
             }
         } catch (Exception e) {

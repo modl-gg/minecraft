@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core.impl.commands;
 
 import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Default;
 import revxrsal.commands.annotation.Description;
 import revxrsal.commands.annotation.Subcommand;
 import revxrsal.commands.command.CommandActor;
@@ -17,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor @Command("modl")
 public class ModlHelpCommand {
@@ -36,7 +37,7 @@ public class ModlHelpCommand {
 
     @Subcommand("help")
     @Description("Show available modl.gg commands")
-    public void help(CommandActor actor, @revxrsal.commands.annotation.Default("1") String pageArg) {
+    public void help(CommandActor actor, @Default("1") String pageArg) {
         displayHelp(actor, Pagination.parsePage(pageArg));
     }
 

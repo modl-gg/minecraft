@@ -1,5 +1,6 @@
 package gg.modl.minecraft.fabric.v26;
 
+import com.mojang.brigadier.CommandDispatcher;
 import gg.modl.minecraft.bridge.AbstractBridgeComponent;
 import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.bridge.config.StaffModeConfig;
@@ -20,17 +21,22 @@ import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.core.BlockPos;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import net.minecraft.commands.Commands;
+import net.minecraft.world.Container;
 
 public class FabricBridgeComponent extends AbstractBridgeComponent {
     private final MinecraftServer server;
@@ -130,8 +136,8 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
             if (fabricStaffModeHandler.isInStaffMode(staff.getUUID())) {
                 if (fabricStaffModeHandler.isVanished(staff.getUUID())) {
                     BlockPos pos = hitResult.getBlockPos();
-                    var blockEntity = world.getBlockEntity(pos);
-                    if (blockEntity instanceof net.minecraft.world.Container container) {
+                    BlockEntity blockEntity = world.getBlockEntity(pos);
+                    if (blockEntity instanceof Container container) {
                         fabricStaffModeHandler.openSilentContainer(staff, container, pos);
                         return InteractionResult.SUCCESS;
                     }
@@ -201,14 +207,14 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
     @Override
     protected void registerProxyCommand(BridgeQueryClient client) {
         try {
-            var dispatcher = server.getCommands().getDispatcher();
+            CommandDispatcher<CommandSourceStack> dispatcher = server.getCommands().getDispatcher();
             dispatcher.register(
-                    net.minecraft.commands.Commands.literal("proxycmd")
-                            .requires(net.minecraft.commands.Commands.hasPermission(net.minecraft.commands.Commands.LEVEL_OWNERS))
-                            .then(net.minecraft.commands.Commands.argument(
-                                            "command", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                    Commands.literal("proxycmd")
+                            .requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
+                            .then(Commands.argument(
+                                            "command", StringArgumentType.greedyString())
                                     .executes(ctx -> {
-                                        String command = com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "command");
+                                        String command = StringArgumentType.getString(ctx, "command");
                                         client.sendMessage("PROXY_CMD", command);
                                         ctx.getSource().sendSystemMessage(Component.literal("Sent to proxy: " + command));
                                         return 1;

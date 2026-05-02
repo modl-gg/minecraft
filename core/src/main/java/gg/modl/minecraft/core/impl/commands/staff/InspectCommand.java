@@ -26,6 +26,7 @@ import gg.modl.minecraft.core.util.PunishmentTypeCacheManager;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.annotation.Named;
 import revxrsal.commands.command.CommandActor;
 
@@ -35,7 +36,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class InspectCommand {
@@ -60,7 +61,7 @@ public class InspectCommand {
     @Command("inspect")
     @Description("Open the inspect menu for a player, or use -p to print info to chat")
     @PlayerOnly @StaffOnly
-    public void inspect(CommandActor actor, @Named("player") String playerQuery, @revxrsal.commands.annotation.Optional String flags) {
+    public void inspect(CommandActor actor, @Named("player") String playerQuery, @Optional String flags) {
         if (flags == null) flags = "";
 
         if (playerQuery.startsWith("#")) {

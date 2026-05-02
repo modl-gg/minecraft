@@ -11,6 +11,7 @@ import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -97,6 +98,7 @@ public class JoinListener {
                 event.getPlayer().getUsername(),
                 ipAddress, skinHash, platform.getServerName(), ipInfo
         );
+        request.setServerInstanceId(StartupClient.getServerInstanceId());
 
         try {
             PlayerLoginResponse response = getHttpClient().playerLogin(request).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -131,7 +133,7 @@ public class JoinListener {
 
     @Subscribe
     public void onPostLogin(PostLoginEvent event) {
-        java.util.UUID uuid = event.getPlayer().getUniqueId();
+        UUID uuid = event.getPlayer().getUniqueId();
         ListenerHelper.handlePlayerJoin(uuid, event.getPlayer().getUsername(),
                 platform, cache, localeManager, staff2faService, syncService);
 

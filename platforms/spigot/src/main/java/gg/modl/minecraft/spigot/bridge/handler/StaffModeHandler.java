@@ -5,13 +5,10 @@ import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -39,11 +36,16 @@ import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -51,6 +53,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import org.bukkit.event.Cancellable;
+import org.bukkit.event.player.PlayerPickupItemEvent;
+import org.bukkit.inventory.InventoryHolder;
 
 @RequiredArgsConstructor
 public class StaffModeHandler implements Listener {
@@ -487,8 +492,8 @@ public class StaffModeHandler implements Listener {
 
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK && vanished.contains(uuid)) {
             Block block = event.getClickedBlock();
-            if (block != null && block.getState() instanceof org.bukkit.inventory.InventoryHolder) {
-                org.bukkit.inventory.InventoryHolder holder = (org.bukkit.inventory.InventoryHolder) block.getState();
+            if (block != null && block.getState() instanceof InventoryHolder) {
+                InventoryHolder holder = (InventoryHolder) block.getState();
                 event.setCancelled(true);
                 Inventory copy = Bukkit.createInventory(null,
                         holder.getInventory().getSize(),
@@ -650,7 +655,7 @@ public class StaffModeHandler implements Listener {
 
     @SuppressWarnings("deprecation")
     @EventHandler(priority = EventPriority.HIGH)
-    public void onPickup(org.bukkit.event.player.PlayerPickupItemEvent event) {
+    public void onPickup(PlayerPickupItemEvent event) {
         if (staffModeActive.contains(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
         }
@@ -687,7 +692,7 @@ public class StaffModeHandler implements Listener {
         event.setCancelled(true);
     }
 
-    private void cancelIfInStaffMode(Player player, org.bukkit.event.Cancellable event) {
+    private void cancelIfInStaffMode(Player player, Cancellable event) {
         if (staffModeActive.contains(player.getUniqueId())) {
             event.setCancelled(true);
         }
@@ -773,15 +778,4 @@ public class StaffModeHandler implements Listener {
         activeScoreboards.remove(uuid);
     }
 
-    @Getter @AllArgsConstructor
-    private static class PlayerSnapshot {
-        private final ItemStack[] inventoryContents;
-        private final ItemStack[] armorContents;
-        private final Location location;
-        private final GameMode gameMode;
-        private final double health;
-        private final int foodLevel;
-        private final float exp;
-        private final int level;
-    }
 }

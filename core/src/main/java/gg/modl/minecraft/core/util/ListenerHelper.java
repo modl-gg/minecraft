@@ -10,6 +10,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.cache.CachedProfileRegistry;
+import gg.modl.minecraft.core.boot.StartupClient;
 
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
@@ -21,7 +22,8 @@ import gg.modl.minecraft.core.service.sync.SyncService;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
+import java.time.Instant;
 
 public final class ListenerHelper {
 
@@ -55,7 +57,7 @@ public final class ListenerHelper {
             PunishmentAcknowledgeRequest request = new PunishmentAcknowledgeRequest(
                     ban.getId(),
                     playerUuid,
-                    java.time.Instant.now().toString(),
+                    Instant.now().toString(),
                     null,
                     true
             );
@@ -133,7 +135,9 @@ public final class ListenerHelper {
 
         CachedProfile profile = registry.getProfile(uuid);
         long sessionDuration = profile != null ? profile.getSessionDuration() : 0;
-        httpClient.playerDisconnect(new PlayerDisconnectRequest(uuid.toString(), sessionDuration));
+        PlayerDisconnectRequest request = new PlayerDisconnectRequest(uuid.toString(), sessionDuration);
+        request.setServerInstanceId(StartupClient.getServerInstanceId());
+        httpClient.playerDisconnect(request);
 
         if (PermissionUtil.isStaff(uuid, cache)) {
             String displayName = cache.getDisplayName(uuid, playerName);

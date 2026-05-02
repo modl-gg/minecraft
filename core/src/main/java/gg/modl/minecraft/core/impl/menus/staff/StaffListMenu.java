@@ -179,37 +179,8 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         if (staff.getId() == null)
             return createEmptyPlaceholder("No staff members");
 
-        List<String> lore = new ArrayList<>();
         boolean canMod = canModify(staff);
-
-        if (!canMod) {
-            lore.add(MenuItems.COLOR_GRAY + "Role: " + MenuItems.COLOR_WHITE + staff.getCurrentRole());
-            lore.add("");
-            if (isSuperAdmin(staff)) {
-                lore.add(MenuItems.COLOR_RED + "Super Admins cannot be modified");
-            } else if (isViewerSelf(staff)) {
-                lore.add(MenuItems.COLOR_RED + "You cannot modify your own role");
-            } else {
-                lore.add(MenuItems.COLOR_RED + "You cannot modify staff with");
-                lore.add(MenuItems.COLOR_RED + "the same or higher rank");
-            }
-        } else {
-            String selectedRole = selectedRoles.getOrDefault(staff.getId(), staff.getCurrentRole());
-
-            lore.add(MenuItems.COLOR_GRAY + "Roles:");
-            for (String role : availableRoles) {
-                if (role.equals(staff.getCurrentRole())) {
-                    lore.add(MenuItems.COLOR_GREEN + "  §l" + role + " §r§7(current)");
-                } else if (role.equals(selectedRole) && !role.equals(staff.getCurrentRole())) {
-                    lore.add(MenuItems.COLOR_GREEN + "  " + role + " §7(selected)");
-                } else {
-                    lore.add(MenuItems.COLOR_GRAY + "  " + role);
-                }
-            }
-            lore.add("");
-            lore.add(MenuItems.COLOR_YELLOW + "Right-click to cycle roles");
-            lore.add(MenuItems.COLOR_YELLOW + "Left-click to apply selected role");
-        }
+        List<String> lore = canMod ? buildSelectableStaffLore(staff) : buildLockedStaffLore(staff);
 
         CirrusItem headItem = CirrusItem.of(
                 CirrusItemType.PLAYER_HEAD,
@@ -233,6 +204,41 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         }
 
         return headItem;
+    }
+
+    private List<String> buildLockedStaffLore(StaffMember staff) {
+        List<String> lore = new ArrayList<>();
+        lore.add(MenuItems.COLOR_GRAY + "Role: " + MenuItems.COLOR_WHITE + staff.getCurrentRole());
+        lore.add("");
+        if (isSuperAdmin(staff)) {
+            lore.add(MenuItems.COLOR_RED + "Super Admins cannot be modified");
+        } else if (isViewerSelf(staff)) {
+            lore.add(MenuItems.COLOR_RED + "You cannot modify your own role");
+        } else {
+            lore.add(MenuItems.COLOR_RED + "You cannot modify staff with");
+            lore.add(MenuItems.COLOR_RED + "the same or higher rank");
+        }
+        return lore;
+    }
+
+    private List<String> buildSelectableStaffLore(StaffMember staff) {
+        List<String> lore = new ArrayList<>();
+        String selectedRole = selectedRoles.getOrDefault(staff.getId(), staff.getCurrentRole());
+
+        lore.add(MenuItems.COLOR_GRAY + "Roles:");
+        for (String role : availableRoles) {
+            if (role.equals(staff.getCurrentRole())) {
+                lore.add(MenuItems.COLOR_GREEN + "  §l" + role + " §r§7(current)");
+            } else if (role.equals(selectedRole) && !role.equals(staff.getCurrentRole())) {
+                lore.add(MenuItems.COLOR_GREEN + "  " + role + " §7(selected)");
+            } else {
+                lore.add(MenuItems.COLOR_GRAY + "  " + role);
+            }
+        }
+        lore.add("");
+        lore.add(MenuItems.COLOR_YELLOW + "Right-click to cycle roles");
+        lore.add(MenuItems.COLOR_YELLOW + "Left-click to apply selected role");
+        return lore;
     }
 
     @Override

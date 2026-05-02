@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.bukkit.scheduler.BukkitTask;
 
 public class SpigotBridgeScheduler implements BridgeScheduler {
     private final JavaPlugin plugin;
@@ -86,7 +87,7 @@ public class SpigotBridgeScheduler implements BridgeScheduler {
             long periodTicks = unit.toSeconds(period) * 20L;
             if (delayTicks < 1) delayTicks = 1;
             if (periodTicks < 1) periodTicks = 1;
-            org.bukkit.scheduler.BukkitTask bukkitTask = Bukkit.getScheduler()
+            BukkitTask bukkitTask = Bukkit.getScheduler()
                     .runTaskTimerAsynchronously(plugin, task, delayTicks, periodTicks);
             return bukkitTask::cancel;
         }

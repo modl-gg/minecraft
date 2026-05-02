@@ -13,6 +13,7 @@ public class SyncRequest {
     private @NotNull String lastSyncTimestamp;
     private @NotNull List<OnlinePlayer> onlinePlayers;
     private @Nullable String serverName;
+    private @Nullable String serverInstanceId;
     private transient @Nullable List<ChatLogEntry> chatLogs;
     private transient @Nullable List<CommandLogEntry> commandLogs;
 

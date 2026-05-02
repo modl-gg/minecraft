@@ -21,14 +21,23 @@ import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.WebPlayer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class AltsMenu extends BaseInspectListMenu<Account> {
     private static final Logger logger = Logger.getLogger(AltsMenu.class.getName());

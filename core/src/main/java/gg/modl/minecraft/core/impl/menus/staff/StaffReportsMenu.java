@@ -72,23 +72,14 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
                 if (response.isSuccess() && response.getReports() != null) {
                     reports.clear();
                     for (ReportsResponse.Report report : response.getReports()) {
-                        UUID reportedUuid = null;
-                        try {
-                            if (report.getReportedPlayerUuid() != null) {
-                                reportedUuid = UUID.fromString(report.getReportedPlayerUuid());
-                            }
-                        } catch (Exception ignored) {}
-
-                        String type = report.getType() != null ? report.getType() : report.getCategory();
-                        if ("player".equalsIgnoreCase(type)) type = "gameplay";
                         reports.add(new Report(
                                 report.getId(),
-                                type,
+                                ReportRenderUtil.normalizeReportType(report),
                                 report.getReporterName(),
                                 report.getReportedPlayerName(),
-                                report.getContent() != null ? report.getContent() : report.getSubject(),
+                                ReportRenderUtil.getReportContent(report),
                                 report.getStatus(),
-                                reportedUuid,
+                                ReportRenderUtil.parseReportedPlayerUuid(report),
                                 report.getCreatedAt()
                         ));
                     }

@@ -13,7 +13,8 @@ import gg.modl.minecraft.core.service.ChatMessageCache;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class ChatReportCommand {
@@ -32,10 +33,7 @@ public class ChatReportCommand {
 
         AbstractPlayer reporter = platform.getAbstractPlayer(actor.uniqueId(), false);
 
-        if (targetPlayer.getUsername().equalsIgnoreCase(reporter.getUsername())) {
-            actor.reply(localeManager.getMessage("messages.cannot_report_self"));
-            return;
-        }
+        if (ticketUtil.denySelfReport(actor, reporter, targetPlayer, localeManager)) return;
 
         String chatLog = chatMessageCache.getChatLogForReport(
             targetPlayer.getUuid().toString(),

@@ -7,6 +7,7 @@ import gg.modl.minecraft.api.PunishmentTypeRegistry;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 
 import java.util.List;
+import java.util.logging.Logger;
 
 public final class PunishmentTypeParser {
     private PunishmentTypeParser() {}
@@ -62,7 +63,7 @@ public final class PunishmentTypeParser {
                 }
             }
         } catch (Exception e) {
-            java.util.logging.Logger.getLogger("modl").warning("Failed to parse punishment durations: " + e.getMessage());
+            Logger.getLogger("modl").warning("Failed to parse punishment durations: " + e.getMessage());
         }
 
         return new DurationInfo(hasBan, hasMute);

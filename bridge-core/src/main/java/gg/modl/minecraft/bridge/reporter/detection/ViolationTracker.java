@@ -3,7 +3,7 @@ package gg.modl.minecraft.bridge.reporter.detection;
 import gg.modl.minecraft.bridge.BridgeScheduler;
 import gg.modl.minecraft.bridge.BridgeTask;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

@@ -33,7 +33,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
+import static gg.modl.minecraft.core.util.Java8Collections.setOf;
+import java.util.Optional;
+import java.util.logging.Logger;
 
 @RequiredArgsConstructor
 @Command("punish")
@@ -267,7 +270,7 @@ public class PunishCommand {
             WebPlayer webPlayer = WebPlayer.getSync(target.getMinecraftUuid());
             return (webPlayer != null && webPlayer.isValid()) ? webPlayer.getSkin() : null;
         } catch (Exception e) {
-            java.util.logging.Logger.getLogger("modl").warning(
+            Logger.getLogger("modl").warning(
                 "Failed to get skin hash for " + target.getUsernames().get(0).getUsername() + ": " + e.getMessage());
             return null;
         }
@@ -296,7 +299,7 @@ public class PunishCommand {
         for (int i = Math.min(args.length, MAX_TYPE_WORD_LENGTH); i >= 1; i--) {
             String potentialType = String.join(" ", Arrays.copyOfRange(args, 0, i));
 
-            java.util.Optional<PunishmentTypesResponse.PunishmentTypeData> matchedType = punishmentTypes.stream()
+            Optional<PunishmentTypesResponse.PunishmentTypeData> matchedType = punishmentTypes.stream()
                     .filter(pt -> pt.getName().equalsIgnoreCase(potentialType))
                     .findFirst();
 

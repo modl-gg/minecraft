@@ -8,6 +8,7 @@ import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.alessiodp.libby.logging.LogLevel;
 
 public class ModlFabricMod implements DedicatedServerModInitializer {
     private static final String MOD_ID = "modl";
@@ -64,7 +65,7 @@ public class ModlFabricMod implements DedicatedServerModInitializer {
 
     private void loadLibraries() {
         FabricLibraryManager libraryManager = new FabricLibraryManager(MOD_ID, LOGGER);
-        libraryManager.setLogLevel(com.alessiodp.libby.logging.LogLevel.WARN);
+        libraryManager.setLogLevel(LogLevel.WARN);
         libraryManager.addMavenCentral();
         libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");

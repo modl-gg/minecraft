@@ -8,13 +8,14 @@ import gg.modl.minecraft.core.service.ChatCommandLogService;
 import gg.modl.minecraft.core.util.Permissions;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.annotation.Named;
 import revxrsal.commands.command.CommandActor;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @Command("commandlogs") @StaffOnly
 public class CommandLogsCommand extends AbstractLogCommand<ChatCommandLogService.CommandLogEntry> {
@@ -26,7 +27,7 @@ public class CommandLogsCommand extends AbstractLogCommand<ChatCommandLogService
     }
 
     @Description("View recent commands for a player")
-    public void commandLogs(CommandActor actor, @Named("player") String playerQuery, @revxrsal.commands.annotation.Optional String pageArg) {
+    public void commandLogs(CommandActor actor, @Named("player") String playerQuery, @Optional String pageArg) {
         if (pageArg == null) pageArg = "1";
         execute(actor, playerQuery, pageArg);
     }

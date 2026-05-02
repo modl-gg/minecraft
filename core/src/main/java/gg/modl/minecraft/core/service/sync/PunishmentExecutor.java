@@ -13,7 +13,7 @@ import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.orTimeout;
 
 import java.time.Instant;
 import java.util.UUID;

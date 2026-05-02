@@ -37,6 +37,11 @@ import java.util.Collection;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import com.mojang.serialization.JsonOps;
+import net.minecraft.registry.RegistryOps;
+import net.minecraft.text.TextCodecs;
 
 public class FabricPlatform implements Platform {
     private final MinecraftServer server;
@@ -252,8 +257,8 @@ public class FabricPlatform implements Platform {
     public String getPlayerSkinTexture(UUID uuid) {
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
         if (player == null) return null;
-        com.mojang.authlib.GameProfile profile = player.getGameProfile();
-        com.mojang.authlib.properties.Property property = profile.getProperties().get("textures")
+        GameProfile profile = player.getGameProfile();
+        Property property = profile.getProperties().get("textures")
                 .stream().findFirst().orElse(null);
         return property != null ? property.value() : null;
     }
@@ -301,8 +306,8 @@ public class FabricPlatform implements Platform {
             Component component = AdventureSerializer.serializer().fromJson(fixedJson);
             String normalizedJson = AdventureSerializer.toJson(component);
             JsonElement jsonElement = JsonParser.parseString(normalizedJson);
-            Text text = net.minecraft.text.TextCodecs.CODEC.parse(
-                    net.minecraft.registry.RegistryOps.of(com.mojang.serialization.JsonOps.INSTANCE, player.getRegistryManager()),
+            Text text = TextCodecs.CODEC.parse(
+                    RegistryOps.of(JsonOps.INSTANCE, player.getRegistryManager()),
                     jsonElement).result().orElse(null);
             if (text != null) {
                 player.sendMessage(text, false);
@@ -322,8 +327,8 @@ public class FabricPlatform implements Platform {
         String normalizedMessage = message == null ? "" : message;
         try {
             String json = AdventureSerializer.toJson(CirrusChatElement.ofLegacyText(normalizedMessage).asComponent());
-            Text text = net.minecraft.text.TextCodecs.CODEC.parse(
-                    net.minecraft.registry.RegistryOps.of(com.mojang.serialization.JsonOps.INSTANCE, player.getRegistryManager()),
+            Text text = TextCodecs.CODEC.parse(
+                    RegistryOps.of(JsonOps.INSTANCE, player.getRegistryManager()),
                     JsonParser.parseString(json)).result().orElse(null);
             if (text != null) {
                 return text;

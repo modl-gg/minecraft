@@ -50,6 +50,13 @@ public final class Libraries {
             "httpcore5-h2",
             LibraryVersions.HTTPCORE5_H2_CHECKSUM
     ),
+    JAVA_WEBSOCKET = LibraryRecord.of(
+            "org{}java-websocket",
+            "Java-WebSocket",
+            LibraryVersions.JAVA_WEBSOCKET,
+            "Java-WebSocket",
+            LibraryVersions.JAVA_WEBSOCKET_CHECKSUM
+    ),
     PACKETEVENTS_API = LibraryRecord.of(
             "gg{}modl{}minecraft{}packetevents",
             "packetevents-api",
@@ -355,6 +362,7 @@ public final class Libraries {
             HTTPCLIENT5,
             HTTPCORE5,
             HTTPCORE5_H2,
+            JAVA_WEBSOCKET,
             ADVENTURE_NBT
     );
 

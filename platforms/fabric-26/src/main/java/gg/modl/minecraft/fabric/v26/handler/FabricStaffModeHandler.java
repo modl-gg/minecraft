@@ -1,6 +1,7 @@
 package gg.modl.minecraft.fabric.v26.handler;
 
 import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.PacketEventsAPI;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.protocol.player.TextureProperty;
 import com.github.retrooper.packetevents.protocol.player.UserProfile;
@@ -57,6 +58,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
+import com.github.retrooper.packetevents.protocol.player.GameMode;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 
 public class FabricStaffModeHandler {
     private static final String SCOREBOARD_OBJECTIVE = "modl_staff";
@@ -206,7 +215,7 @@ public class FabricStaffModeHandler {
     }
 
     private void hidePlayerFrom(ServerPlayer toHide, ServerPlayer viewer) {
-        var peApi = PacketEvents.getAPI();
+        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
         if (peApi == null) {
             return;
         }
@@ -215,20 +224,20 @@ public class FabricStaffModeHandler {
     }
 
     private void showPlayerTo(ServerPlayer toShow, ServerPlayer viewer) {
-        var peApi = PacketEvents.getAPI();
+        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
         if (peApi == null) {
             return;
         }
 
-        com.mojang.authlib.GameProfile mojangProfile = toShow.getGameProfile();
+        GameProfile mojangProfile = toShow.getGameProfile();
         List<TextureProperty> textureProperties = new ArrayList<>();
-        for (com.mojang.authlib.properties.Property property : mojangProfile.properties().get("textures")) {
+        for (Property property : mojangProfile.properties().get("textures")) {
             textureProperties.add(new TextureProperty("textures", property.value(), property.signature()));
         }
         UserProfile profile = new UserProfile(toShow.getUUID(), mojangProfile.name(), textureProperties);
 
-        com.github.retrooper.packetevents.protocol.player.GameMode peGameMode =
-                com.github.retrooper.packetevents.protocol.player.GameMode.values()[
+        GameMode peGameMode =
+                GameMode.values()[
                         toShow.gameMode.getGameModeForPlayer().ordinal()];
 
         WrapperPlayServerPlayerInfoUpdate.PlayerInfo info =
@@ -345,7 +354,7 @@ public class FabricStaffModeHandler {
     private ItemStack createItemStack(String itemId, String name, List<String> lore) {
         String materialName = itemId.replace("minecraft:", "");
         Identifier id = Identifier.fromNamespaceAndPath("minecraft", materialName);
-        net.minecraft.world.item.Item item = BuiltInRegistries.ITEM.containsKey(id)
+        Item item = BuiltInRegistries.ITEM.containsKey(id)
                 ? BuiltInRegistries.ITEM.getValue(id)
                 : Items.STONE;
         ItemStack stack = new ItemStack(item, 1);
@@ -374,7 +383,7 @@ public class FabricStaffModeHandler {
             return;
         }
 
-        var peApi = PacketEvents.getAPI();
+        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
         if (peApi == null) {
             return;
         }
@@ -401,7 +410,7 @@ public class FabricStaffModeHandler {
         }
         previousScoreEntries.remove(player.getUUID());
 
-        var peApi = PacketEvents.getAPI();
+        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
         if (peApi == null) {
             return;
         }
@@ -438,7 +447,7 @@ public class FabricStaffModeHandler {
     }
 
     private void updateScoreboard(ServerPlayer player) {
-        var peApi = PacketEvents.getAPI();
+        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
         if (peApi == null) {
             return;
         }
@@ -570,11 +579,11 @@ public class FabricStaffModeHandler {
 
     private void clearVanishedMobTargets() {
         for (ServerLevel level : server.getAllLevels()) {
-            for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
-                if (!(entity instanceof net.minecraft.world.entity.Mob mob)) {
+            for (Entity entity : level.getAllEntities()) {
+                if (!(entity instanceof Mob mob)) {
                     continue;
                 }
-                net.minecraft.world.entity.LivingEntity target = mob.getTarget();
+                LivingEntity target = mob.getTarget();
                 if (target instanceof ServerPlayer player && vanished.contains(player.getUUID())) {
                     mob.setTarget(null);
                 }
@@ -900,7 +909,7 @@ public class FabricStaffModeHandler {
         }
 
         @Override
-        public boolean stillValid(net.minecraft.world.entity.player.Player player) {
+        public boolean stillValid(Player player) {
             return target.isAlive();
         }
 

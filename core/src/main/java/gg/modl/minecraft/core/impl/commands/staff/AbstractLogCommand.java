@@ -15,7 +15,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public abstract class AbstractLogCommand<T> {
     private static final int ENTRIES_PER_PAGE = 10;

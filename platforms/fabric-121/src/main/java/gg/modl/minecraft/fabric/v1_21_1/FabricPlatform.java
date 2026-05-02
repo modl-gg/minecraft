@@ -37,6 +37,8 @@ import java.util.Collection;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
 
 public class FabricPlatform implements Platform {
     private final MinecraftServer server;
@@ -252,8 +254,8 @@ public class FabricPlatform implements Platform {
     public String getPlayerSkinTexture(UUID uuid) {
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
         if (player == null) return null;
-        com.mojang.authlib.GameProfile profile = player.getGameProfile();
-        com.mojang.authlib.properties.Property property = profile.getProperties().get("textures")
+        GameProfile profile = player.getGameProfile();
+        Property property = profile.getProperties().get("textures")
                 .stream().findFirst().orElse(null);
         return property != null ? property.value() : null;
     }

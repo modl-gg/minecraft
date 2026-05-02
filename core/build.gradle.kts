@@ -9,6 +9,7 @@ dependencies {
     compileOnly("io.github.revxrsal:lamp.common:${property("lamp.version")}")
     compileOnly("org.yaml:snakeyaml:${property("snakeyaml.version")}")
     compileOnly("org.apache.httpcomponents.client5:httpclient5:${property("httpclient5.version")}")
+    compileOnly("org.java-websocket:Java-WebSocket:${property("java.websocket.version")}")
     compileOnly("net.kyori:adventure-api:${property("adventure.version")}")
     compileOnly("net.kyori:adventure-text-minimessage:${property("adventure.version")}")
     compileOnly("net.kyori:adventure-text-serializer-legacy:${property("adventure.version")}")
@@ -16,6 +17,8 @@ dependencies {
     compileOnly("io.netty:netty-all:${property("netty.version")}")
 
     testImplementation("io.github.revxrsal:lamp.common:${property("lamp.version")}")
+    testImplementation("gg.modl:proto:${property("proto.version")}")
+    testImplementation("org.java-websocket:Java-WebSocket:${property("java.websocket.version")}")
     testImplementation(platform("org.junit:junit-bom:${property("junit.bom.version")}"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("com.google.code.gson:gson:${property("gson.version")}")
@@ -63,6 +66,7 @@ val runtimeLibraries = listOf(
     RuntimeLibrary("HTTPCLIENT5", "org.apache.httpcomponents.client5", "httpclient5", "httpclient5.version"),
     RuntimeLibrary("HTTPCORE5", "org.apache.httpcomponents.core5", "httpcore5", "httpcore5.version"),
     RuntimeLibrary("HTTPCORE5_H2", "org.apache.httpcomponents.core5", "httpcore5-h2", "httpcore5.version"),
+    RuntimeLibrary("JAVA_WEBSOCKET", "org.java-websocket", "Java-WebSocket", "java.websocket.version"),
     RuntimeLibrary("PACKETEVENTS_API", "gg.modl.minecraft.packetevents", "packetevents-api", "packetevents.version"),
     RuntimeLibrary("PACKETEVENTS_NETTY", "gg.modl.minecraft.packetevents", "packetevents-netty-common", "packetevents.version"),
     RuntimeLibrary("PACKETEVENTS_SPIGOT", "gg.modl.minecraft.packetevents", "packetevents-spigot", "packetevents.version"),

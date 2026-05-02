@@ -3,7 +3,6 @@ package gg.modl.minecraft.core.config;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import lombok.Getter;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,7 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 
 public class ConfigManager {
 
@@ -27,7 +26,9 @@ public class ConfigManager {
     @Getter private StaffChatConfig staffChatConfig;
     @Getter private ChatManagementConfig chatManagementConfig;
     @Getter private Staff2faConfig staff2faConfig;
+    @Getter private RealtimeConfig realtimeConfig;
     @Getter private Map<Integer, String> punishmentTypeItems;
+    @Getter private RuntimeConfigSource runtimeConfigSource;
 
     @Getter
     public static class StaffChatConfig {
@@ -55,6 +56,11 @@ public class ConfigManager {
     }
 
     @Getter
+    public static class RealtimeConfig {
+        private boolean enabled = false;
+    }
+
+    @Getter
     public static class StandingGuiConfig {
         private String socialItem = "minecraft:creeper_head";
         private String gameplayItem = "minecraft:tnt";
@@ -73,12 +79,14 @@ public class ConfigManager {
     }
 
     public void reloadAll() {
+        runtimeConfigSource = RuntimeConfigSource.load(dataFolder, logger);
         punishGuiConfig = PunishGuiConfig.load(dataFolder, logger);
         reportGuiConfig = ReportGuiConfig.load(dataFolder, logger);
         standingGuiConfig = loadStandingGuiConfig();
         staffChatConfig = loadStaffChatConfig();
         chatManagementConfig = loadChatManagementConfig();
         staff2faConfig = loadStaff2faConfig();
+        realtimeConfig = loadRealtimeConfig();
         punishmentTypeItems = loadPunishmentTypeItems();
     }
 
@@ -87,13 +95,8 @@ public class ConfigManager {
         Map<Integer, String> items = new HashMap<>(getDefaultPunishmentTypeItems());
         try {
             Map<?, ?> itemsMap = null;
-            Path configFile = dataFolder.resolve("config.yml");
-            if (Files.exists(configFile)) try (InputStream is = Files.newInputStream(configFile)) {
-                Yaml yaml = new Yaml();
-                Map<String, Object> root = yaml.load(is);
-                if (root != null && root.containsKey("punishment_type_items_by_ordinal")) {
-                    itemsMap = (Map<?, ?>) root.get("punishment_type_items_by_ordinal");
-                }
+            if (runtimeConfigSource.root().containsKey("punishment_type_items_by_ordinal")) {
+                itemsMap = (Map<?, ?>) runtimeConfigSource.root().get("punishment_type_items_by_ordinal");
             }
 
             if (itemsMap != null) for (Map.Entry<?, ?> entry : itemsMap.entrySet()) {
@@ -113,8 +116,8 @@ public class ConfigManager {
 
     private StaffChatConfig loadStaffChatConfig() {
         StaffChatConfig config = new StaffChatConfig();
-        Map<String, Object> data = loadSection(dataFolder, "staff_chat.yml", "staff_chat", logger);
-        if (data == null) return config;
+        Map<String, Object> data = runtimeConfigSource.section("staff_chat.yml", "staff_chat");
+        if (data.isEmpty()) return config;
 
         Object enabled = data.get("enabled");
         if (enabled != null) config.enabled = Boolean.TRUE.equals(enabled);
@@ -128,8 +131,8 @@ public class ConfigManager {
 
     private ChatManagementConfig loadChatManagementConfig() {
         ChatManagementConfig config = new ChatManagementConfig();
-        Map<String, Object> data = loadSection(dataFolder, "chat_management.yml", "chat_management", logger);
-        if (data == null) return config;
+        Map<String, Object> data = runtimeConfigSource.section("chat_management.yml", "chat_management");
+        if (data.isEmpty()) return config;
 
         if (data.containsKey("clear_lines")) {
             Object val = data.get("clear_lines");
@@ -149,29 +152,14 @@ public class ConfigManager {
     private StandingGuiConfig loadStandingGuiConfig() {
         StandingGuiConfig config = new StandingGuiConfig();
         try {
-            Map<String, Object> gui = null;
-
-            Path configFile = dataFolder.resolve("config.yml");
-            if (Files.exists(configFile)) try (InputStream is = Files.newInputStream(configFile)) {
-                Yaml yaml = new Yaml();
-                Map<String, Object> root = yaml.load(is);
-                if (root != null && root.containsKey("standing_gui")) {
-                    gui = (Map<String, Object>) root.get("standing_gui");
-                }
+            Map<String, Object> gui;
+            if (runtimeConfigSource.root().containsKey("standing_gui")) {
+                gui = (Map<String, Object>) runtimeConfigSource.root().get("standing_gui");
+            } else {
+                gui = runtimeConfigSource.dedicatedSection("standing_gui.yml", "standing_gui");
             }
 
-            if (gui == null) {
-                Path dedicatedFile = dataFolder.resolve("standing_gui.yml");
-                if (Files.exists(dedicatedFile)) try (InputStream is = Files.newInputStream(dedicatedFile)) {
-                    Yaml yaml = new Yaml();
-                    Map<String, Object> data = yaml.load(is);
-                    if (data != null && data.containsKey("standing_gui")) {
-                        gui = (Map<String, Object>) data.get("standing_gui");
-                    } else if (data != null) gui = data;
-                }
-            }
-
-            if (gui == null) return config;
+            if (gui.isEmpty()) return config;
 
             if (gui.containsKey("social_status")) {
                 Map<String, Object> social = (Map<String, Object>) gui.get("social_status");
@@ -188,12 +176,22 @@ public class ConfigManager {
 
     private Staff2faConfig loadStaff2faConfig() {
         Staff2faConfig config = new Staff2faConfig();
-        Map<String, Object> data = loadSection(dataFolder, "staff_2fa.yml", "staff_2fa", logger);
-        if (data == null) return config;
-
-        if (data.containsKey("enabled")) config.enabled = Boolean.TRUE.equals(data.get("enabled"));
-
+        config.enabled = loadEnabledBoolean("staff_2fa.yml", "staff_2fa", config.enabled);
         return config;
+    }
+
+    private RealtimeConfig loadRealtimeConfig() {
+        RealtimeConfig config = new RealtimeConfig();
+        config.enabled = loadEnabledBoolean("realtime.yml", "realtime", config.enabled);
+        return config;
+    }
+
+    private boolean loadEnabledBoolean(String fileName, String sectionName, boolean defaultValue) {
+        Map<String, Object> data = runtimeConfigSource.section(fileName, sectionName);
+        if (data.isEmpty()) return defaultValue;
+
+        if (data.containsKey("enabled")) return Boolean.TRUE.equals(data.get("enabled"));
+        return defaultValue;
     }
 
     private static Map<Integer, String> getDefaultPunishmentTypeItems() {
@@ -217,32 +215,6 @@ public class ConfigManager {
         items.put(16, "minecraft:experience_bottle");
         items.put(17, "minecraft:barrier");
         return items;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> loadSection(Path dataFolder, String fileName, String sectionName, PluginLogger logger) {
-        Path dedicatedFile = dataFolder.resolve(fileName);
-        if (Files.exists(dedicatedFile)) {
-            try (InputStream is = Files.newInputStream(dedicatedFile)) {
-                Yaml yaml = new Yaml();
-                Map<String, Object> data = yaml.load(is);
-                if (data != null) return data;
-            } catch (Exception e) { logger.warning("Failed to load " + fileName + ": " + e.getMessage()); }
-        }
-
-        Path configFile = dataFolder.resolve("config.yml");
-        if (Files.exists(configFile)) {
-            try (InputStream is = Files.newInputStream(configFile)) {
-                Yaml yaml = new Yaml();
-                Map<String, Object> root = yaml.load(is);
-                if (root != null && root.containsKey(sectionName)) {
-                    Object section = root.get(sectionName);
-                    if (section instanceof Map) return (Map<String, Object>) section;
-                }
-            } catch (Exception e) { logger.warning("Failed to load " + sectionName + " from config.yml: " + e.getMessage()); }
-        }
-
-        return null;
     }
 
     private void createDefaultGuiConfigFiles() {
@@ -287,25 +259,37 @@ public class ConfigManager {
     }
 
     private void migratePunishGuiSection(List<String> lines) throws IOException {
-        Path targetFile = dataFolder.resolve("punish_gui.yml");
-        if (Files.exists(targetFile)) return;
-
-        String punishContent = extractAndUnindentSection(lines, "punish_gui");
-        if (punishContent == null) return;
-
-        Files.write(targetFile, (punishContent.replaceAll("\\s+$", "") + "\n").getBytes(StandardCharsets.UTF_8));
-        logger.info("Migrated punish GUI config from config.yml to punish_gui.yml");
+        migrateGuiSection(
+                lines,
+                "punish_gui.yml",
+                "punish_gui",
+                "Migrated punish GUI config from config.yml to punish_gui.yml"
+        );
     }
 
     private void migrateReportGuiSection(List<String> lines) throws IOException {
-        Path targetFile = dataFolder.resolve("report_gui.yml");
+        migrateGuiSection(
+                lines,
+                "report_gui.yml",
+                "report_gui",
+                "Migrated report_gui from config.yml to report_gui.yml"
+        );
+    }
+
+    private void migrateGuiSection(
+            List<String> lines,
+            String fileName,
+            String sectionName,
+            String successMessage
+    ) throws IOException {
+        Path targetFile = dataFolder.resolve(fileName);
         if (Files.exists(targetFile)) return;
 
-        String content = extractAndUnindentSection(lines, "report_gui");
+        String content = extractAndUnindentSection(lines, sectionName);
         if (content == null) return;
 
         Files.write(targetFile, (content.replaceAll("\\s+$", "") + "\n").getBytes(StandardCharsets.UTF_8));
-        logger.info("Migrated report_gui from config.yml to report_gui.yml");
+        logger.info(successMessage);
     }
 
     static String extractAndUnindentSection(List<String> lines, String key) {

@@ -7,7 +7,7 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.Map;
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public final class ServerSwitchHandler {
     private ServerSwitchHandler() {}

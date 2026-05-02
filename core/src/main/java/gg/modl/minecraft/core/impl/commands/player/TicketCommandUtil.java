@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core.impl.commands.player;
 
 import revxrsal.commands.command.CommandActor;
+import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
@@ -10,10 +11,11 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import java.util.function.Supplier;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public class TicketCommandUtil {
     private static final long COOLDOWN_MS = 60_000;
@@ -44,65 +46,100 @@ public class TicketCommandUtil {
         if (profile != null) profile.getCooldowns().set("ticket:" + cooldownType);
     }
 
+    public void submitPlayerFormTicket(CommandActor actor, ModlHttpClient httpClient, Platform platform,
+                                       LocaleManager localeManager, String panelUrl,
+                                       String ticketType, String displayType, String titlePrefix) {
+        if (checkCooldown(actor, ticketType, localeManager)) return;
+
+        AbstractPlayer player = platform.getAbstractPlayer(actor.uniqueId(), false);
+        String createdServer = platform.getPlayerServer(actor.uniqueId());
+        String title = titlePrefix == null ? null : titlePrefix + player.getUsername();
+
+        CreateTicketRequest request = new CreateTicketRequest(
+            player.getUuid().toString(),
+            ticketType,
+            player.getUsername(),
+            title,
+            null, null,
+            null,
+            "normal",
+            createdServer,
+            null,
+            listOf()
+        );
+
+        submitUnfinishedTicket(actor, httpClient, platform, localeManager, panelUrl, request, displayType, ticketType);
+    }
+
     public void submitFinishedTicket(CommandActor actor, ModlHttpClient httpClient, Platform platform,
                                      LocaleManager localeManager, String panelUrl,
                                      CreateTicketRequest request, String ticketType, String cooldownType) {
-        actor.reply(localeManager.getMessage("messages.submitting", mapOf("type", ticketType.toLowerCase())));
-
-        CompletableFuture<CreateTicketResponse> future = httpClient.createTicket(request);
-
-        future.thenAccept(response -> {
-            if (response.isSuccess() && response.getTicketId() != null) {
-                setCooldown(actor.uniqueId(), cooldownType);
-                actor.reply(localeManager.getMessage("messages.success", mapOf("type", ticketType)));
-                actor.reply(localeManager.getMessage("messages.ticket_id", mapOf("ticketId", response.getTicketId())));
-
-                String ticketUrl = panelUrl + "/ticket/" + response.getTicketId();
-                sendClickableTicketMessage(actor, platform, localeManager,
-                        localeManager.getMessage("messages.view_ticket_label"), ticketUrl, response.getTicketId());
-                actor.reply(localeManager.getMessage("messages.evidence_note"));
-            } else {
-                actor.reply(localeManager.getMessage("messages.failed_submit", mapOf("type", ticketType.toLowerCase(), "error", localeManager.sanitizeErrorMessage(response.getMessage()))));
-                actor.reply(localeManager.getMessage("messages.try_again"));
-            }
-        }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) actor.reply(localeManager.getMessage("api_errors.panel_restarting"));
-            else {
-                actor.reply(localeManager.getMessage("messages.failed_submit", mapOf("type", ticketType.toLowerCase(), "error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
-                actor.reply(localeManager.getMessage("messages.try_again"));
-            }
-            return null;
-        });
+        submitTicket(actor, platform, localeManager, panelUrl, ticketType, cooldownType,
+                () -> httpClient.createTicket(request), true);
     }
 
     public void submitUnfinishedTicket(CommandActor actor, ModlHttpClient httpClient, Platform platform,
                                        LocaleManager localeManager, String panelUrl,
                                        CreateTicketRequest request, String ticketType, String cooldownType) {
-        actor.reply(localeManager.getMessage("messages.creating", mapOf("type", ticketType.toLowerCase())));
+        submitTicket(actor, platform, localeManager, panelUrl, ticketType, cooldownType,
+                () -> httpClient.createUnfinishedTicket(request), false);
+    }
 
-        CompletableFuture<CreateTicketResponse> future = httpClient.createUnfinishedTicket(request);
+    public boolean denySelfReport(CommandActor actor, AbstractPlayer reporter, AbstractPlayer targetPlayer,
+                                  LocaleManager localeManager) {
+        if (!targetPlayer.getUsername().equalsIgnoreCase(reporter.getUsername())) return false;
 
+        actor.reply(localeManager.getMessage("messages.cannot_report_self"));
+        return true;
+    }
+
+    private void submitTicket(CommandActor actor, Platform platform, LocaleManager localeManager,
+                              String panelUrl, String ticketType, String cooldownType,
+                              Supplier<CompletableFuture<CreateTicketResponse>> submitter, boolean finished) {
+        String lowerTicketType = ticketType.toLowerCase();
+        String startKey = finished ? "messages.submitting" : "messages.creating";
+        actor.reply(localeManager.getMessage(startKey, mapOf("type", lowerTicketType)));
+
+        CompletableFuture<CreateTicketResponse> future = submitter.get();
         future.thenAccept(response -> {
             if (response.isSuccess() && response.getTicketId() != null) {
-                setCooldown(actor.uniqueId(), cooldownType);
-                actor.reply(localeManager.getMessage("messages.created", mapOf("type", ticketType)));
-                actor.reply(localeManager.getMessage("messages.ticket_id", mapOf("ticketId", response.getTicketId())));
-
-                String formUrl = panelUrl + "/ticket/" + response.getTicketId();
-                sendClickableTicketMessage(actor, platform, localeManager,
-                        localeManager.getMessage("messages.complete_form_label", mapOf("type", ticketType.toLowerCase())), formUrl, response.getTicketId());
+                handleTicketSuccess(actor, platform, localeManager, panelUrl, response, ticketType,
+                        cooldownType, lowerTicketType, finished);
             } else {
-                actor.reply(localeManager.getMessage("messages.failed_create", mapOf("type", ticketType.toLowerCase(), "error", localeManager.sanitizeErrorMessage(response.getMessage()))));
-                actor.reply(localeManager.getMessage("messages.try_again"));
+                handleTicketFailure(actor, localeManager, ticketType, response.getMessage(), finished);
             }
         }).exceptionally(throwable -> {
             if (throwable.getCause() instanceof PanelUnavailableException) actor.reply(localeManager.getMessage("api_errors.panel_restarting"));
-            else {
-                actor.reply(localeManager.getMessage("messages.failed_create", mapOf("type", ticketType.toLowerCase(), "error", localeManager.sanitizeErrorMessage(throwable.getMessage()))));
-                actor.reply(localeManager.getMessage("messages.try_again"));
-            }
+            else handleTicketFailure(actor, localeManager, ticketType, throwable.getMessage(), finished);
             return null;
         });
+    }
+
+    private void handleTicketSuccess(CommandActor actor, Platform platform, LocaleManager localeManager,
+                                     String panelUrl, CreateTicketResponse response, String ticketType,
+                                     String cooldownType, String lowerTicketType, boolean finished) {
+        setCooldown(actor.uniqueId(), cooldownType);
+
+        String successKey = finished ? "messages.success" : "messages.created";
+        actor.reply(localeManager.getMessage(successKey, mapOf("type", ticketType)));
+        actor.reply(localeManager.getMessage("messages.ticket_id", mapOf("ticketId", response.getTicketId())));
+
+        String ticketUrl = panelUrl + "/ticket/" + response.getTicketId();
+        String label = finished
+                ? localeManager.getMessage("messages.view_ticket_label")
+                : localeManager.getMessage("messages.complete_form_label", mapOf("type", lowerTicketType));
+        sendClickableTicketMessage(actor, platform, localeManager, label, ticketUrl, response.getTicketId());
+
+        if (finished) actor.reply(localeManager.getMessage("messages.evidence_note"));
+    }
+
+    private void handleTicketFailure(CommandActor actor, LocaleManager localeManager, String ticketType,
+                                     String errorMessage, boolean finished) {
+        String lowerTicketType = ticketType.toLowerCase();
+        String failureKey = finished ? "messages.failed_submit" : "messages.failed_create";
+        actor.reply(localeManager.getMessage(failureKey,
+                mapOf("type", lowerTicketType, "error", localeManager.sanitizeErrorMessage(errorMessage))));
+        actor.reply(localeManager.getMessage("messages.try_again"));
     }
 
     public void sendClickableTicketMessage(CommandActor actor, Platform platform, LocaleManager localeManager,

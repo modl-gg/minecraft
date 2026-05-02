@@ -13,7 +13,7 @@ import gg.modl.minecraft.core.command.RequiresPermission;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.Set;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.setOf;
 
 @Command("mute")
 public class MuteCommand extends AbstractManualPunishmentCommand {

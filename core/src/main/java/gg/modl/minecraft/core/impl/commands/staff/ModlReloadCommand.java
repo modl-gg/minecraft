@@ -8,7 +8,7 @@ import revxrsal.commands.annotation.Description;
 import revxrsal.commands.annotation.Subcommand;
 import revxrsal.commands.command.CommandActor;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor @Command("modl")
 public class ModlReloadCommand {

@@ -1,5 +1,7 @@
 package gg.modl.minecraft.core.impl.menus.pagination;
 
+import lombok.Value;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -78,7 +80,7 @@ public class PaginatedDataSource<T> {
         return isFetching;
     }
 
-    @lombok.Value
+    @Value
     public static class FetchResult<T> {
         List<T> items;
         int totalCount;

@@ -41,10 +41,7 @@ public class ReportCommand {
             return;
         }
 
-        if (targetPlayer.getUsername().equalsIgnoreCase(reporter.getUsername())) {
-            actor.reply(localeManager.getMessage("messages.cannot_report_self"));
-            return;
-        }
+        if (ticketUtil.denySelfReport(actor, reporter, targetPlayer, localeManager)) return;
 
         if (!targetPlayer.isOnline()) {
             actor.reply(localeManager.getMessage("messages.player_not_online"));

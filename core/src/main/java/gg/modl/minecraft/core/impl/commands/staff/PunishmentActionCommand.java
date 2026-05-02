@@ -17,7 +17,7 @@ import revxrsal.commands.annotation.Command;
 import revxrsal.commands.command.CommandActor;
 
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class PunishmentActionCommand {

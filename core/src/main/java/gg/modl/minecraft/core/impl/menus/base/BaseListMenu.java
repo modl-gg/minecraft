@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
+import dev.simplix.cirrus.model.CallResult;
 
 public abstract class BaseListMenu<T> extends AbstractBrowser<T> {
 
@@ -68,7 +69,7 @@ public abstract class BaseListMenu<T> extends AbstractBrowser<T> {
     protected void registerActionHandlers() {
         registerActionHandler("back", click -> {
             handleBack(click);
-            return dev.simplix.cirrus.model.CallResult.DENY_GRABBING;
+            return CallResult.DENY_GRABBING;
         });
     }
 

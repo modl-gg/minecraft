@@ -1,6 +1,10 @@
 package gg.modl.minecraft.core.service.database;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class DatabaseConfig {

@@ -1,12 +1,35 @@
 package gg.modl.minecraft.fabric.v1_21_11.handler;
 
 import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.PacketEventsAPI;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.protocol.player.TextureProperty;
 import com.github.retrooper.packetevents.protocol.player.UserProfile;
 import com.github.retrooper.packetevents.protocol.score.ScoreFormat;
 import com.github.retrooper.packetevents.util.Vector3d;
-import com.github.retrooper.packetevents.wrapper.play.server.*;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDisplayScoreboard;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoRemove;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerResetScore;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerScoreboardObjective;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerUpdateScore;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
@@ -24,11 +47,25 @@ import net.minecraft.world.GameMode;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import java.util.Set;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.LoreComponent;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.inventory.SimpleInventory;
+import net.minecraft.item.Item;
+import net.minecraft.screen.GenericContainerScreenHandler;
+import net.minecraft.screen.ScreenHandlerType;
+import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.BlockPos;
 
 public class FabricStaffModeHandler {
     private final MinecraftServer server;
@@ -118,9 +155,9 @@ public class FabricStaffModeHandler {
             setupHotbar(staffPlayer, staffModeConfig.getTargetHotbar());
             refreshScoreboard(staffPlayer);
             if (targetPlayer != null) {
-                staffPlayer.teleport((net.minecraft.server.world.ServerWorld) targetPlayer.getEntityWorld(),
+                staffPlayer.teleport((ServerWorld) targetPlayer.getEntityWorld(),
                         targetPlayer.getX(), targetPlayer.getY(), targetPlayer.getZ(),
-                        java.util.Set.of(), targetPlayer.getYaw(), targetPlayer.getPitch(), false);
+                        Set.of(), targetPlayer.getYaw(), targetPlayer.getPitch(), false);
             }
         }
     }
@@ -175,7 +212,7 @@ public class FabricStaffModeHandler {
     }
 
     private void hidePlayerFrom(ServerPlayerEntity toHide, ServerPlayerEntity viewer) {
-        var peApi = PacketEvents.getAPI();
+        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
         if (peApi == null) return;
         peApi.getPlayerManager().sendPacket(viewer,
                 new WrapperPlayServerPlayerInfoRemove(toHide.getUuid()));
@@ -184,12 +221,12 @@ public class FabricStaffModeHandler {
     }
 
     private void showPlayerTo(ServerPlayerEntity toShow, ServerPlayerEntity viewer) {
-        var peApi = PacketEvents.getAPI();
+        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
         if (peApi == null) return;
 
-        com.mojang.authlib.GameProfile mojangProfile = toShow.getGameProfile();
+        GameProfile mojangProfile = toShow.getGameProfile();
         List<TextureProperty> textureProperties = new ArrayList<>();
-        for (com.mojang.authlib.properties.Property prop : mojangProfile.properties().get("textures")) {
+        for (Property prop : mojangProfile.properties().get("textures")) {
             textureProperties.add(new TextureProperty("textures", prop.value(), prop.signature()));
         }
         UserProfile profile = new UserProfile(toShow.getUuid(), mojangProfile.name(), textureProperties);
@@ -199,7 +236,7 @@ public class FabricStaffModeHandler {
 
         WrapperPlayServerPlayerInfoUpdate.PlayerInfo info = new WrapperPlayServerPlayerInfoUpdate.PlayerInfo(
                 profile, true, toShow.networkHandler.getLatency(), peGameMode,
-                net.kyori.adventure.text.Component.text(toShow.getName().getString()), null
+                Component.text(toShow.getName().getString()), null
         );
 
         peApi.getPlayerManager().sendPacket(viewer,
@@ -269,8 +306,8 @@ public class FabricStaffModeHandler {
             player.getHungerManager().setFoodLevel(snapshot.foodLevel);
             player.experienceProgress = snapshot.exp;
             player.experienceLevel = snapshot.level;
-            player.teleport((net.minecraft.server.world.ServerWorld) player.getEntityWorld(), snapshot.x, snapshot.y, snapshot.z,
-                    java.util.Set.of(), snapshot.yaw, snapshot.pitch, false);
+            player.teleport((ServerWorld) player.getEntityWorld(), snapshot.x, snapshot.y, snapshot.z,
+                    Set.of(), snapshot.yaw, snapshot.pitch, false);
         } else {
             player.getInventory().clear();
             player.changeGameMode(GameMode.SURVIVAL);
@@ -309,12 +346,12 @@ public class FabricStaffModeHandler {
     private ItemStack createItemStack(String itemId, String name, List<String> lore) {
         String materialName = itemId.replace("minecraft:", "");
         Identifier id = Identifier.of("minecraft", materialName);
-        net.minecraft.item.Item item = Registries.ITEM.containsId(id) ? Registries.ITEM.get(id) : Items.STONE;
+        Item item = Registries.ITEM.containsId(id) ? Registries.ITEM.get(id) : Items.STONE;
         ItemStack stack = new ItemStack(item, 1);
         String displayName = localeManager.colorize(name);
-        stack.set(net.minecraft.component.DataComponentTypes.CUSTOM_NAME, Text.literal(displayName));
+        stack.set(DataComponentTypes.CUSTOM_NAME, Text.literal(displayName));
         if (lore != null && !lore.isEmpty()) {
-            stack.set(net.minecraft.component.DataComponentTypes.LORE, new net.minecraft.component.type.LoreComponent(
+            stack.set(DataComponentTypes.LORE, new LoreComponent(
                     lore.stream().<Text>map(line -> Text.literal(localeManager.colorize(line))).toList()
             ));
         }
@@ -336,7 +373,7 @@ public class FabricStaffModeHandler {
         StaffModeConfig.ScoreboardConfig config = getScoreboardConfig(player.getUuid());
         if (!config.isEnabled()) return;
 
-        var peApi = PacketEvents.getAPI();
+        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
         if (peApi == null) return;
 
         scoreboardActive.add(player.getUuid());
@@ -363,7 +400,7 @@ public class FabricStaffModeHandler {
         if (!scoreboardActive.remove(player.getUuid())) return;
         previousScoreEntries.remove(player.getUuid());
 
-        var peApi = PacketEvents.getAPI();
+        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
         if (peApi == null) return;
 
         peApi.getPlayerManager().sendPacket(player,
@@ -396,7 +433,7 @@ public class FabricStaffModeHandler {
     }
 
     private void updateScoreboard(ServerPlayerEntity player) {
-        var peApi = PacketEvents.getAPI();
+        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
         if (peApi == null) return;
 
         StaffModeConfig.ScoreboardConfig config = getScoreboardConfig(player.getUuid());
@@ -518,12 +555,12 @@ public class FabricStaffModeHandler {
     }
 
     private void clearVanishedMobTargets() {
-        for (net.minecraft.server.world.ServerWorld world : server.getWorlds()) {
-            for (net.minecraft.entity.Entity entity : world.iterateEntities()) {
-                if (!(entity instanceof net.minecraft.entity.mob.MobEntity mob)) {
+        for (ServerWorld world : server.getWorlds()) {
+            for (Entity entity : world.iterateEntities()) {
+                if (!(entity instanceof MobEntity mob)) {
                     continue;
                 }
-                net.minecraft.entity.LivingEntity target = mob.getTarget();
+                LivingEntity target = mob.getTarget();
                 if (target instanceof ServerPlayerEntity player && vanished.contains(player.getUuid())) {
                     mob.setTarget(null);
                 }
@@ -572,8 +609,8 @@ public class FabricStaffModeHandler {
         }
 
         ServerPlayerEntity target = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
-        player.teleport((net.minecraft.server.world.ServerWorld) target.getEntityWorld(), target.getX(), target.getY(), target.getZ(),
-                java.util.Set.of(), target.getYaw(), target.getPitch(), false);
+        player.teleport((ServerWorld) target.getEntityWorld(), target.getX(), target.getY(), target.getZ(),
+                Set.of(), target.getYaw(), target.getPitch(), false);
         player.sendMessage(Text.literal(localeManager.getMessage("staff_mode.random_teleport.teleported",
                 mapOf("player", target.getName().getString()))), false);
     }
@@ -619,37 +656,37 @@ public class FabricStaffModeHandler {
         ServerPlayerEntity target = resolveTarget(player.getUuid());
         if (target == null) return;
 
-        player.openHandledScreen(new net.minecraft.screen.SimpleNamedScreenHandlerFactory(
-                (syncId, playerInv, p) -> new net.minecraft.screen.GenericContainerScreenHandler(
-                        net.minecraft.screen.ScreenHandlerType.GENERIC_9X5, syncId, playerInv,
+        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
+                (syncId, playerInv, p) -> new GenericContainerScreenHandler(
+                        ScreenHandlerType.GENERIC_9X5, syncId, playerInv,
                         new LivePlayerInventoryView(target), 5),
                 Text.literal(target.getName().getString() + "'s Inventory")));
     }
 
     private static final String SILENT_CONTAINER_PREFIX = "\u00a78Viewing: ";
 
-    public void openSilentContainer(ServerPlayerEntity player, net.minecraft.inventory.Inventory container, net.minecraft.util.math.BlockPos pos) {
+    public void openSilentContainer(ServerPlayerEntity player, Inventory container, BlockPos pos) {
         int size = container.size();
         // Round up to nearest multiple of 9 for chest-style GUI, max 54 (6 rows)
         int rows = Math.min(6, Math.max(1, (size + 8) / 9));
         int guiSize = rows * 9;
 
-        net.minecraft.inventory.SimpleInventory viewInventory = new net.minecraft.inventory.SimpleInventory(guiSize);
+        SimpleInventory viewInventory = new SimpleInventory(guiSize);
         for (int i = 0; i < size && i < guiSize; i++) {
             viewInventory.setStack(i, container.getStack(i).copy());
         }
 
-        net.minecraft.screen.ScreenHandlerType<?> handlerType = switch (rows) {
-            case 1 -> net.minecraft.screen.ScreenHandlerType.GENERIC_9X1;
-            case 2 -> net.minecraft.screen.ScreenHandlerType.GENERIC_9X2;
-            case 3 -> net.minecraft.screen.ScreenHandlerType.GENERIC_9X3;
-            case 4 -> net.minecraft.screen.ScreenHandlerType.GENERIC_9X4;
-            case 5 -> net.minecraft.screen.ScreenHandlerType.GENERIC_9X5;
-            default -> net.minecraft.screen.ScreenHandlerType.GENERIC_9X6;
+        ScreenHandlerType<?> handlerType = switch (rows) {
+            case 1 -> ScreenHandlerType.GENERIC_9X1;
+            case 2 -> ScreenHandlerType.GENERIC_9X2;
+            case 3 -> ScreenHandlerType.GENERIC_9X3;
+            case 4 -> ScreenHandlerType.GENERIC_9X4;
+            case 5 -> ScreenHandlerType.GENERIC_9X5;
+            default -> ScreenHandlerType.GENERIC_9X6;
         };
 
-        player.openHandledScreen(new net.minecraft.screen.SimpleNamedScreenHandlerFactory(
-                (syncId, playerInv, p) -> new net.minecraft.screen.GenericContainerScreenHandler(
+        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
+                (syncId, playerInv, p) -> new GenericContainerScreenHandler(
                         handlerType, syncId, playerInv, viewInventory, rows),
                 Text.literal(SILENT_CONTAINER_PREFIX + pos.getX() + "," + pos.getY() + "," + pos.getZ())));
     }
@@ -657,8 +694,8 @@ public class FabricStaffModeHandler {
     private void handleTeleportToTarget(ServerPlayerEntity player) {
         ServerPlayerEntity target = resolveTarget(player.getUuid());
         if (target != null) {
-            player.teleport((net.minecraft.server.world.ServerWorld) target.getEntityWorld(), target.getX(), target.getY(), target.getZ(),
-                    java.util.Set.of(), target.getYaw(), target.getPitch(), false);
+            player.teleport((ServerWorld) target.getEntityWorld(), target.getX(), target.getY(), target.getZ(),
+                    Set.of(), target.getYaw(), target.getPitch(), false);
             player.sendMessage(Text.literal(localeManager.getMessage("staff_mode.teleport.teleported",
                     mapOf("player", target.getName().getString()))), false);
         } else {
@@ -782,7 +819,7 @@ public class FabricStaffModeHandler {
         }
     }
 
-    private static final class LivePlayerInventoryView implements net.minecraft.inventory.Inventory {
+    private static final class LivePlayerInventoryView implements Inventory {
         private static final int VIEW_SIZE = 45;
 
         private final ServerPlayerEntity target;
@@ -829,7 +866,7 @@ public class FabricStaffModeHandler {
         }
 
         @Override
-        public boolean canPlayerUse(net.minecraft.entity.player.PlayerEntity player) {
+        public boolean canPlayerUse(PlayerEntity player) {
             return target.isAlive();
         }
 

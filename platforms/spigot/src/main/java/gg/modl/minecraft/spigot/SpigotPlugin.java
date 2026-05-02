@@ -9,15 +9,18 @@ import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.api.http.request.StartupRequest;
-import gg.modl.minecraft.core.boot.*;
+import gg.modl.minecraft.core.boot.BootConfig;
+import gg.modl.minecraft.core.boot.BootConfigMigrator;
+import gg.modl.minecraft.core.boot.PlatformType;
+import gg.modl.minecraft.core.boot.StartupClient;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 import gg.modl.minecraft.core.plugin.PluginInfo;
-import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import gg.modl.minecraft.spigot.bridge.BridgeComponent;
+import gg.modl.minecraft.spigot.bridge.SpigotStandaloneLocalBridgeHandler;
 import gg.modl.minecraft.spigot.bridge.folia.FoliaSchedulerHelper;
 import gg.modl.minecraft.bridge.reporter.TicketCreator;
 import org.bukkit.Bukkit;
@@ -29,11 +32,14 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import com.alessiodp.libby.logging.LogLevel;
+import org.slf4j.Logger;
 
 public class SpigotPlugin extends JavaPlugin {
     private static final int MIN_SYNC_POLLING_RATE = 1;
@@ -211,29 +217,9 @@ public class SpigotPlugin extends JavaPlugin {
 
         // Standalone: dispatch bridge actions directly to local handlers
         // instead of routing through TCP
-        loader.getBridgeService().setLocalHandler(new BridgeService.LocalBridgeHandler() {
-            @Override public void onStaffModeEnter(String staffUuid) {
-                bridgeComponent.getStaffModeHandler().enterStaffMode(staffUuid);
-            }
-            @Override public void onStaffModeExit(String staffUuid) {
-                bridgeComponent.getStaffModeHandler().exitStaffMode(staffUuid);
-            }
-            @Override public void onVanishEnter(String staffUuid) {
-                bridgeComponent.getStaffModeHandler().vanishFromBridge(staffUuid);
-            }
-            @Override public void onVanishExit(String staffUuid) {
-                bridgeComponent.getStaffModeHandler().unvanishFromBridge(staffUuid);
-            }
-            @Override public void onFreezePlayer(String targetUuid, String staffUuid) {
-                bridgeComponent.getFreezeHandler().freeze(targetUuid, staffUuid);
-            }
-            @Override public void onUnfreezePlayer(String targetUuid) {
-                bridgeComponent.getFreezeHandler().unfreeze(targetUuid);
-            }
-            @Override public void onTargetRequest(String staffUuid, String targetUuid) {
-                bridgeComponent.getStaffModeHandler().setTarget(staffUuid, targetUuid);
-            }
-        });
+        loader.getBridgeService().setLocalHandler(new SpigotStandaloneLocalBridgeHandler(
+                bridgeComponent.getStaffModeHandler(),
+                bridgeComponent.getFreezeHandler()));
 
         getServer().getPluginManager().registerEvents(new SpigotListener(
                 platform, loader.getCache(), loader.getHttpClientHolder(), loader.getChatMessageCache(),
@@ -298,9 +284,9 @@ public class SpigotPlugin extends JavaPlugin {
         try {
             // Use reflection to call spigot-sv module (Java 17) from spigot module (Java 8)
             Class<?> svClass = Class.forName("io.github._4drian3d.signedvelocity.paper.SignedVelocity");
-            java.lang.reflect.Method initMethod = svClass.getMethod("init", JavaPlugin.class, org.slf4j.Logger.class);
+            Method initMethod = svClass.getMethod("init", JavaPlugin.class, Logger.class);
             // getSLF4JLogger() is Paper-only; call via reflection
-            java.lang.reflect.Method getSlf4j = getClass().getMethod("getSLF4JLogger");
+            Method getSlf4j = getClass().getMethod("getSLF4JLogger");
             Object slf4jLogger = getSlf4j.invoke(this);
             initMethod.invoke(null, this, slf4jLogger);
             getLogger().info("[SignedVelocity] Embedded listeners registered");
@@ -356,7 +342,7 @@ public class SpigotPlugin extends JavaPlugin {
 
     private void setupLibby() {
         libraryManager = new BukkitLibraryManager(this);
-        libraryManager.setLogLevel(com.alessiodp.libby.logging.LogLevel.WARN);
+        libraryManager.setLogLevel(LogLevel.WARN);
         libraryManager.addMavenCentral();
         libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");

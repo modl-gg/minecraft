@@ -54,7 +54,7 @@ public class Cache {
     public String getSkinTexture(UUID playerUuid) {
         CachedTexture entry = skinTextureCache.get(playerUuid);
         if (entry == null) return null;
-        if (System.currentTimeMillis() - entry.cachedAt > TEXTURE_TTL_MS) {
+        if (entry.isExpired(System.currentTimeMillis())) {
             skinTextureCache.remove(playerUuid);
             return null;
         }
@@ -63,13 +63,17 @@ public class Cache {
 
     private void evictExpiredTextures() {
         long now = System.currentTimeMillis();
-        skinTextureCache.entrySet().removeIf(e -> now - e.getValue().cachedAt > TEXTURE_TTL_MS);
+        skinTextureCache.entrySet().removeIf(e -> e.getValue().isExpired(now));
     }
 
     @AllArgsConstructor
     private static class CachedTexture {
         final String value;
         final long cachedAt;
+
+        private boolean isExpired(long now) {
+            return now - cachedAt > TEXTURE_TTL_MS;
+        }
     }
 
     public String getStaffDisplayName(UUID playerUuid) {

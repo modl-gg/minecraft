@@ -1,17 +1,19 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.command.ConsumeRemaining;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
-import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.StaffChatService;
 import gg.modl.minecraft.core.service.StaffChatService.ChatMode;
+import gg.modl.minecraft.core.util.StaffCommandUtil;
+import gg.modl.minecraft.core.util.StaffCommandUtil.StaffDisplay;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.command.CommandActor;
 
 import java.util.UUID;
@@ -25,7 +27,7 @@ public class StaffChatCommand {
     private final StaffChatConfig staffChatConfig;
 
     @Description("Toggle staff chat mode or send a message to staff chat")
-    public void staffChat(CommandActor actor, @revxrsal.commands.annotation.Optional @ConsumeRemaining String message) {
+    public void staffChat(CommandActor actor, @Optional @ConsumeRemaining String message) {
         if (message == null) message = "";
 
         if (!staffChatConfig.isEnabled()) {
@@ -57,11 +59,8 @@ public class StaffChatCommand {
         }
 
         UUID senderUuid = actor.uniqueId();
-        AbstractPlayer player = platform.getPlayer(senderUuid);
-        String inGameName = player != null ? player.getName() : "Staff";
-        String display = cache.getStaffDisplayName(senderUuid);
-        String panelName = display != null ? display : inGameName;
+        StaffDisplay display = StaffCommandUtil.resolvePlayerDisplay(senderUuid, platform, cache, "Staff");
 
-        platform.staffBroadcast(staffChatConfig.formatMessage(inGameName, panelName, message));
+        platform.staffBroadcast(staffChatConfig.formatMessage(display.getInGameName(), display.getPanelName(), message));
     }
 }

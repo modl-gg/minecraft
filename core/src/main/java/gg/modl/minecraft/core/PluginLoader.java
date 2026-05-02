@@ -5,12 +5,16 @@ import revxrsal.commands.Lamp;
 import revxrsal.commands.annotation.dynamic.Annotations;
 import revxrsal.commands.command.CommandActor;
 import revxrsal.commands.annotation.Named;
+import revxrsal.commands.annotation.list.AnnotationList;
 import revxrsal.commands.parameter.ParameterType;
 import revxrsal.commands.parameter.StringParameterType;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.response.StartupResponse;
+import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.config.ConfigManager;
+import gg.modl.minecraft.core.config.RuntimeConfigSource;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.LoginCache;
 import gg.modl.minecraft.core.cache.CachedProfileRegistry;
@@ -57,11 +61,24 @@ import gg.modl.minecraft.core.impl.commands.staff.punishments.PardonCommand;
 import gg.modl.minecraft.core.impl.commands.staff.punishments.PunishCommand;
 import gg.modl.minecraft.core.impl.commands.staff.punishments.WarnCommand;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
-import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.locale.MessageRenderer;
 import gg.modl.minecraft.core.plugin.PluginInfo;
-import gg.modl.minecraft.core.service.*;
+import gg.modl.minecraft.core.realtime.MinecraftRealtimeClient;
+import gg.modl.minecraft.core.service.BridgeService;
+import gg.modl.minecraft.core.service.ChatCommandLogService;
+import gg.modl.minecraft.core.service.ChatManagementService;
+import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.service.FreezeService;
+import gg.modl.minecraft.core.service.MaintenanceService;
+import gg.modl.minecraft.core.service.NetworkChatInterceptService;
+import gg.modl.minecraft.core.service.Staff2faService;
+import gg.modl.minecraft.core.service.StaffChatService;
+import gg.modl.minecraft.core.service.StaffModeService;
+import gg.modl.minecraft.core.service.UpdateCheckerService;
+import gg.modl.minecraft.core.service.VanishService;
+import static gg.modl.minecraft.core.util.Java8Collections.entry;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOfEntries;
 import gg.modl.minecraft.core.service.database.DatabaseConfig;
 import gg.modl.minecraft.core.service.sync.SyncService;
 import gg.modl.minecraft.core.util.DateFormatter;
@@ -84,7 +101,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import gg.modl.minecraft.core.util.PluginLogger;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @Getter
 public class PluginLoader {
@@ -111,6 +127,7 @@ public class PluginLoader {
     private final StaffModeService staffModeService;
     private final VanishService vanishService;
     private final BridgeService bridgeService;
+    private final MinecraftRealtimeClient realtimeClient;
     private final boolean queryMojang, debugMode;
 
     public ModlHttpClient getHttpClient() {
@@ -134,7 +151,8 @@ public class PluginLoader {
         this.httpClientHolder = httpManager.getHttpClientHolder();
         this.logger = platform.getLogger();
 
-        Map<String, Object> configYml = readConfigYml(dataDirectory, this.logger);
+        RuntimeConfigSource runtimeConfigSource = configManager.getRuntimeConfigSource();
+        Map<String, Object> configYml = runtimeConfigSource.root();
         String configuredLocale = readLocaleFromConfig(configYml, this.logger);
 
         this.localeManager = new LocaleManager(configuredLocale);
@@ -167,6 +185,7 @@ public class PluginLoader {
         }
 
         syncService.start();
+        this.realtimeClient = startRealtimeClientIfEnabled(platform, httpManager);
 
         UpdateCheckerConfig updateCheckerConfig = loadUpdateCheckerConfig(configYml, logger);
         this.updateCheckerService = new UpdateCheckerService(logger, this.debugMode, PluginInfo.VERSION);
@@ -201,7 +220,7 @@ public class PluginLoader {
             builder.parameterTypes(types -> {
                 types.addParameterTypeFactory(new ParameterType.Factory<CommandActor>() {
                     @Override
-                    public <T> ParameterType<CommandActor, T> create(Type type, revxrsal.commands.annotation.list.AnnotationList annotations, Lamp<CommandActor> lamp) {
+                    public <T> ParameterType<CommandActor, T> create(Type type, AnnotationList annotations, Lamp<CommandActor> lamp) {
                         if (!(type instanceof Class) || type != String.class) return null;
                         if (!annotations.contains(ConsumeRemaining.class)) return null;
                         @SuppressWarnings("unchecked")
@@ -315,21 +334,6 @@ public class PluginLoader {
         return PlayerLookupUtil.fetchAccount(target, httpClient);
     }
 
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> readConfigYml(Path dataDirectory, PluginLogger logger) {
-        try {
-            Path configFile = dataDirectory.resolve("config.yml");
-            if (!Files.exists(configFile)) return Collections.emptyMap();
-            try (InputStream inputStream = Files.newInputStream(configFile)) {
-                Map<String, Object> config = new Yaml().load(inputStream);
-                return config != null ? config : Collections.emptyMap();
-            }
-        } catch (Exception e) {
-            logger.warning("Failed to read config.yml: " + e.getMessage());
-            return Collections.emptyMap();
-        }
-    }
-
     private static String readLocaleFromConfig(Map<String, Object> config, PluginLogger logger) {
         if (config.containsKey("locale")) {
             String locale = (String) config.get("locale");
@@ -431,14 +435,10 @@ public class PluginLoader {
                 this.localeManager.setConfigValues(localeConfig);
 
                 String dateFormat = this.localeManager.getDateFormatPattern();
-                MenuItems.setDateFormat(dateFormat);
                 DateFormatter.setDateFormat(dateFormat);
 
                 String timezone = (String) localeConfig.getOrDefault("timezone", "");
-                if (timezone != null && !timezone.isEmpty()) {
-                    MenuItems.setTimezone(timezone);
-                    DateFormatter.setTimezone(timezone);
-                }
+                DateFormatter.setTimezone(timezone);
             }
         } catch (Exception e) {
             logger.warning("Failed to load locale config: " + e.getMessage());
@@ -510,16 +510,41 @@ public class PluginLoader {
     }
 
     public void shutdown() {
+        if (realtimeClient != null) realtimeClient.stop();
         if (updateCheckerService != null) updateCheckerService.stop();
         if (syncService != null) syncService.stop();
         if (loginCache != null) loginCache.shutdown();
         if (asyncCommandExecutor != null) asyncCommandExecutor.shutdown();
     }
 
+    private MinecraftRealtimeClient startRealtimeClientIfEnabled(Platform platform, HttpManager httpManager) {
+        StartupResponse startupResponse = StartupClient.getLastStartupResponse();
+        boolean localEnabled = configManager.getRealtimeConfig() != null && configManager.getRealtimeConfig().isEnabled();
+        if (startupResponse != null && !httpManager.getPanelUrl().equals(startupResponse.getPanelUrl())) {
+            startupResponse = null;
+        }
+        if (!MinecraftRealtimeClient.canStart(localEnabled, startupResponse)) {
+            if (debugMode && localEnabled) logger.info("[Realtime] Startup response did not enable realtime; staying on HTTP polling only");
+            return null;
+        }
+
+        MinecraftRealtimeClient client = new MinecraftRealtimeClient(
+            httpManager.getApiKey(),
+            startupResponse,
+            platform.getServerName(),
+            syncService,
+            logger,
+            debugMode
+        );
+        client.start();
+        if (debugMode) logger.info("[Realtime] Client started beside authoritative HTTP polling");
+        return client;
+    }
+
     private void reloadRuntimeConfiguration() {
         configManager.reloadAll();
         cache.setPunishmentTypeItems(configManager.getPunishmentTypeItems());
-        Map<String, Object> freshConfig = readConfigYml(this.dataDirectory, this.logger);
+        Map<String, Object> freshConfig = configManager.getRuntimeConfigSource().root();
         UpdateCheckerConfig updateCheckerConfig = loadUpdateCheckerConfig(freshConfig, this.logger);
         updateCheckerService.reload(updateCheckerConfig.enabled, updateCheckerConfig.intervalMinutes);
     }

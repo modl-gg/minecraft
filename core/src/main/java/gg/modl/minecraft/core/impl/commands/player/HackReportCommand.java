@@ -16,7 +16,7 @@ import gg.modl.minecraft.core.service.ReplayService;
 import lombok.RequiredArgsConstructor;
 
 import java.util.concurrent.CompletableFuture;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 
 @RequiredArgsConstructor
 public class HackReportCommand {
@@ -40,10 +40,7 @@ public class HackReportCommand {
             return;
         }
 
-        if (targetPlayer.getUsername().equalsIgnoreCase(reporter.getUsername())) {
-            actor.reply(localeManager.getMessage("messages.cannot_report_self"));
-            return;
-        }
+        if (ticketUtil.denySelfReport(actor, reporter, targetPlayer, localeManager)) return;
 
         String description = details != null && !details.isEmpty() ? details : null;
         String createdServer = platform.getPlayerServer(actor.uniqueId());

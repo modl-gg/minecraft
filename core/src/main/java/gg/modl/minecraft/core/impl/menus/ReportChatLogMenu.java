@@ -13,11 +13,12 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ReportGuiConfig;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
-import java.util.List;
 import java.util.Map;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public class ReportChatLogMenu extends SimpleMenu {
 
@@ -155,16 +156,7 @@ public class ReportChatLogMenu extends SimpleMenu {
     }
 
     private CirrusItem buildTargetHead(String localeKey) {
-        List<String> skullLines = locale.getMessageList(localeKey, mapOf("player", target.getUsername()));
-        CirrusItem head = MenuItems.playerHead(
-                skullLines.get(0),
-                skullLines.subList(1, skullLines.size())
-        );
-        if (platform.getCache() != null) {
-            String texture = platform.getCache().getSkinTexture(target.getUuid());
-            if (texture != null) head = head.texture(texture);
-        }
-        return head;
+        return ReportRenderUtil.buildTargetHead(locale, platform, target, localeKey);
     }
 
     private void openDetailsMenu(Click click) {

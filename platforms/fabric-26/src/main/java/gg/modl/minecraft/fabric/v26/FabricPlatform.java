@@ -39,6 +39,8 @@ import java.util.Collection;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
 
 public class FabricPlatform implements Platform {
     private final MinecraftServer server;
@@ -260,8 +262,8 @@ public class FabricPlatform implements Platform {
         if (player == null) {
             return null;
         }
-        com.mojang.authlib.GameProfile profile = player.getGameProfile();
-        com.mojang.authlib.properties.Property property = profile.properties()
+        GameProfile profile = player.getGameProfile();
+        Property property = profile.properties()
                 .get("textures")
                 .stream()
                 .findFirst()
@@ -351,8 +353,9 @@ public class FabricPlatform implements Platform {
             Component adventureComponent = AdventureSerializer.serializer().fromJson(fixedJson);
             String normalizedJson = AdventureSerializer.toJson(adventureComponent);
             JsonElement jsonElement = JsonParser.parseString(normalizedJson);
-            var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
-            var nativeComponent = ComponentSerialization.CODEC.parse(ops, jsonElement).result().orElse(null);
+            RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
+            net.minecraft.network.chat.Component nativeComponent =
+                    ComponentSerialization.CODEC.parse(ops, jsonElement).result().orElse(null);
             if (nativeComponent != null) {
                 player.sendSystemMessage(nativeComponent, false);
                 return;
@@ -371,8 +374,8 @@ public class FabricPlatform implements Platform {
         String normalizedMessage = message == null ? "" : message;
         try {
             String json = AdventureSerializer.toJson(CirrusChatElement.ofLegacyText(normalizedMessage).asComponent());
-            var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
-            var nativeComponent = ComponentSerialization.CODEC.parse(ops, JsonParser.parseString(json))
+            RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
+            net.minecraft.network.chat.Component nativeComponent = ComponentSerialization.CODEC.parse(ops, JsonParser.parseString(json))
                     .result().orElse(null);
             if (nativeComponent != null) {
                 return nativeComponent;
