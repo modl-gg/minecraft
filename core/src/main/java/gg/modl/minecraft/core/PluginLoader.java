@@ -3,9 +3,10 @@ package gg.modl.minecraft.core;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.Lamp;
 import revxrsal.commands.annotation.dynamic.Annotations;
+import revxrsal.commands.annotation.list.AnnotationList;
 import revxrsal.commands.command.CommandActor;
 import revxrsal.commands.annotation.Named;
-import revxrsal.commands.annotation.list.AnnotationList;
+import revxrsal.commands.exception.SendableException;
 import revxrsal.commands.parameter.ParameterType;
 import revxrsal.commands.parameter.StringParameterType;
 import gg.modl.minecraft.api.AbstractPlayer;
@@ -38,9 +39,14 @@ import gg.modl.minecraft.core.impl.commands.staff.StaffListCommand;
 import gg.modl.minecraft.core.impl.commands.staff.StaffModeCommand;
 import gg.modl.minecraft.core.impl.commands.staff.ReplayCommand;
 import gg.modl.minecraft.core.impl.commands.staff.TargetCommand;
+import gg.modl.minecraft.core.command.AdminOnly;
 import gg.modl.minecraft.core.command.ConfiguredCommandAliases;
 import gg.modl.minecraft.core.command.ConsumeRemaining;
+import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.command.PlayerQuerySuggestions;
+import gg.modl.minecraft.core.command.RequiresPermission;
+import gg.modl.minecraft.core.command.StaffNo2fa;
+import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.commands.player.ApplyCommand;
 import gg.modl.minecraft.core.impl.commands.player.BugReportCommand;
 import gg.modl.minecraft.core.impl.commands.player.ChatReportCommand;
@@ -82,6 +88,8 @@ import static gg.modl.minecraft.core.util.Java8Collections.mapOfEntries;
 import gg.modl.minecraft.core.service.database.DatabaseConfig;
 import gg.modl.minecraft.core.service.sync.SyncService;
 import gg.modl.minecraft.core.util.DateFormatter;
+import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.util.Permissions;
 import gg.modl.minecraft.core.util.PlayerLookupUtil;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.PunishmentActionMessages;
@@ -198,6 +206,8 @@ public class PluginLoader {
         this.lamp = platform.buildLamp(builder -> {
             builder.annotationReplacer(Command.class, (element, annotation) ->
                 remapCommandAnnotation(annotation, configuredCommandAliases));
+            builder.commandCondition(context ->
+                enforceCommandAccess(context.command().annotations(), context.actor()));
             builder.suggestionProviders(suggestionProviders -> suggestionProviders.addProviderFactoryLast((type, annotations, lamp) -> {
                 if (type instanceof Class) {
                     Class<?> clazz = (Class<?>) type;
@@ -604,5 +614,43 @@ public class PluginLoader {
 
     private static void initializeStaffPermissions(ModlHttpClient httpClient, Cache cache, PluginLogger logger, boolean debugMode) {
         StaffPermissionLoader.load(httpClient, cache, logger, debugMode, false);
+    }
+
+    private void enforceCommandAccess(AnnotationList annotations, CommandActor actor) {
+        if (annotations.contains(PlayerOnly.class) && actor.uniqueId() == null) {
+            throw deny(localeManager.getMessage("general.players_only"));
+        }
+
+        if (annotations.contains(StaffOnly.class)
+                && actor.uniqueId() != null
+                && !PermissionUtil.isStaff(actor, cache)) {
+            throw deny(localeManager.getMessage("general.no_permission"));
+        }
+
+        if (annotations.contains(AdminOnly.class)
+                && actor.uniqueId() != null
+                && !cache.hasPermission(actor.uniqueId(), Permissions.ADMIN)) {
+            throw deny(localeManager.getMessage("general.no_permission"));
+        }
+
+        RequiresPermission requiresPermission = annotations.get(RequiresPermission.class);
+        if (requiresPermission != null && !PermissionUtil.hasPermission(actor, cache, requiresPermission.value())) {
+            throw deny(localeManager.getMessage("general.no_permission"));
+        }
+
+        if (annotations.contains(StaffNo2fa.class)
+                && actor.uniqueId() != null
+                && !PermissionUtil.isStaff(actor, cache)) {
+            throw deny(localeManager.getMessage("general.no_permission"));
+        }
+    }
+
+    private static SendableException deny(String message) {
+        return new SendableException(message) {
+            @Override
+            public void sendTo(CommandActor actor) {
+                actor.reply(message);
+            }
+        };
     }
 }
