@@ -12,6 +12,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Duration;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 import java.io.InputStream;
@@ -59,9 +60,13 @@ public class ModlBackendReplayUploader {
     }
 
     public CompletableFuture<String> uploadAsync(File replayFile, String mcVersion) {
+        return uploadAsync(replayFile, mcVersion, null, null);
+    }
+
+    public CompletableFuture<String> uploadAsync(File replayFile, String mcVersion, UUID targetUuid, String targetName) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                InitResponse init = initUpload(replayFile, mcVersion);
+                InitResponse init = initUpload(replayFile, mcVersion, targetUuid, targetName);
                 uploadToStorage(replayFile, init.uploadUrl);
                 confirmUpload(init.replayId);
                 return init.replayId;
@@ -71,10 +76,16 @@ public class ModlBackendReplayUploader {
         });
     }
 
-    private InitResponse initUpload(File file, String mcVersion) throws Exception {
+    private InitResponse initUpload(File file, String mcVersion, UUID targetUuid, String targetName) throws Exception {
         JsonObject body = new JsonObject();
         body.addProperty("mcVersion", mcVersion);
         body.addProperty("fileSize", file.length());
+        if (targetUuid != null) {
+            body.addProperty("targetUuid", targetUuid.toString());
+        }
+        if (targetName != null && !targetName.isEmpty()) {
+            body.addProperty("targetName", targetName);
+        }
 
         HttpURLConnection connection = (HttpURLConnection) new URL(backendUrl + "/v1/minecraft/replays/upload").openConnection();
         try {

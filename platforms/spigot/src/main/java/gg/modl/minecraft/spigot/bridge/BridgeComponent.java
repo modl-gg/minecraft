@@ -227,7 +227,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
                                 return CompletableFuture.completedFuture(ReplayCaptureResult.error());
                             }
 
-                            return uploader.uploadAsync(replayFile, recordingConfig.mcVersion())
+                            return uploader.uploadAsync(replayFile, recordingConfig.mcVersion(), targetUuid, targetName)
                                     .thenApply(ReplayCaptureResult::ok)
                                     .whenComplete((replayId, ex) -> {
                                         if (ex != null) {
@@ -420,6 +420,25 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         return resolveBlockStateId(block, BridgeComponent::resolveModernBlockStateId, BridgeComponent::resolveLegacyBlockStateId);
     }
 
+    static int recordingDeltaMs(long nowMs, long recordingStartMs) {
+        long elapsedMs = nowMs - recordingStartMs;
+        if (elapsedMs <= 0L) {
+            return 0;
+        }
+        if (elapsedMs >= Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        return (int) elapsedMs;
+    }
+
+    private int recordingDeltaMs(UUID playerId) {
+        if (packetRecorder == null) {
+            return 0;
+        }
+
+        return recordingDeltaMs(System.currentTimeMillis(), packetRecorder.getRecordingStartTime(playerId));
+    }
+
     private static int resolveModernBlockStateId(Object blockData) {
         try {
             Class<?> blockDataClass = Class.forName("org.bukkit.block.data.BlockData");
@@ -443,7 +462,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         Block block = event.getBlockPlaced();
         int stateId = resolveBlockStateId(block);
         recordingManager.enqueueEvent(player.getUniqueId(),
-                new BlockChangeEvent(0, block.getX(), (short) block.getY(), block.getZ(), stateId));
+                new BlockChangeEvent(recordingDeltaMs(player.getUniqueId()), block.getX(), (short) block.getY(), block.getZ(), stateId));
     }
 
     @SuppressWarnings("deprecation")
@@ -454,7 +473,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         Block block = event.getBlock();
         int previousStateId = resolveBlockStateId(block);
         recordingManager.enqueueEvent(player.getUniqueId(),
-                new BlockChangeEvent(0, block.getX(), (short) block.getY(), block.getZ(), previousStateId));
+                new BlockChangeEvent(recordingDeltaMs(player.getUniqueId()), block.getX(), (short) block.getY(), block.getZ(), previousStateId));
     }
 
     @EventHandler
