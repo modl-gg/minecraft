@@ -9,6 +9,7 @@ import gg.modl.minecraft.core.impl.menus.staff.RecentPunishmentsMenu;
 import gg.modl.minecraft.core.impl.menus.staff.SettingsMenu;
 import gg.modl.minecraft.core.impl.menus.staff.StaffReportsMenu;
 import gg.modl.minecraft.core.impl.menus.staff.TicketsMenu;
+import gg.modl.minecraft.core.util.ClickableJsonMessage;
 
 import java.util.UUID;
 import java.util.function.BiConsumer;
@@ -37,15 +38,14 @@ public final class StaffNavigationHandlers {
 
         registrar.accept("openPanel", click -> {
             click.clickedMenu().close();
-            String escapedUrl = panelUrl.replace("\"", "\\\"");
-            String panelJson = String.format(
-                    "{\"text\":\"\",\"extra\":[" +
-                    "{\"text\":\"Staff Panel: \",\"color\":\"gold\"}," +
-                    "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-                    "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                    "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-                    escapedUrl, panelUrl
-            );
+            String panelJson = ClickableJsonMessage.empty()
+                    .extra(ClickableJsonMessage.text("Staff Panel: ").color("gold"))
+                    .extra(ClickableJsonMessage.text(panelUrl)
+                            .color("aqua")
+                            .underlined(true)
+                            .openUrl(panelUrl)
+                            .hoverText("Click to open in browser"))
+                    .toJson();
             platform.sendJsonMessage(viewerUuid, panelJson);
         });
 

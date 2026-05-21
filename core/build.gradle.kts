@@ -18,7 +18,11 @@ dependencies {
 
     testImplementation("io.github.revxrsal:lamp.common:${property("lamp.version")}")
     testImplementation("gg.modl:proto:${property("proto.version")}")
+    testImplementation("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
+    testImplementation("gg.modl.minecraft.packetevents:packetevents-api:${property("packetevents.version")}")
     testImplementation("org.java-websocket:Java-WebSocket:${property("java.websocket.version")}")
+    testImplementation("net.kyori:adventure-api:${property("adventure.version")}")
+    testImplementation("net.kyori:adventure-text-serializer-legacy:${property("adventure.version")}")
     testImplementation(platform("org.junit:junit-bom:${property("junit.bom.version")}"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("com.google.code.gson:gson:${property("gson.version")}")

@@ -10,6 +10,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.ClickableJsonMessage;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -151,23 +152,16 @@ public class TicketCommandUtil {
 
         String clickText = localeManager.getMessage("messages.click_to_view");
         String hoverText = localeManager.getMessage("messages.click_to_view_hover", mapOf("ticketId", ticketId));
-        String json = String.format(
-            "{\"text\":\"\",\"extra\":[" +
-            "{\"text\":\"\",\"color\":\"gold\"}," +
-            "{\"text\":\"%s: \",\"color\":\"gray\"}," +
-            "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"%s\"}}]}",
-            escapeJson(message), escapeJson(clickText), ticketUrl, escapeJson(hoverText));
+        String json = ClickableJsonMessage.empty()
+                .extra(ClickableJsonMessage.text("").color("gold"))
+                .extra(ClickableJsonMessage.text(message + ": ").color("gray"))
+                .extra(ClickableJsonMessage.text(clickText)
+                        .color("aqua")
+                        .underlined(true)
+                        .openUrl(ticketUrl)
+                        .hoverText(hoverText))
+                .toJson();
         UUID senderUuid = actor.uniqueId();
         platform.runOnMainThread(() -> platform.sendJsonMessage(senderUuid, json));
-    }
-
-    private static String escapeJson(String text) {
-        return text.replace("\\", "\\\\")
-                   .replace("\"", "\\\"")
-                   .replace("\n", "\\n")
-                   .replace("\r", "")
-                   .replace("\t", "\\t");
     }
 }

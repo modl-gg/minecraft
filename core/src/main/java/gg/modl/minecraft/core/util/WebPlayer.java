@@ -13,10 +13,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.logging.Logger;
 import com.google.gson.JsonArray;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Data @AllArgsConstructor
 public class WebPlayer {
@@ -36,6 +39,10 @@ public class WebPlayer {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
     private static final long SYNC_TIMEOUT_MS = 10_000;
+    private static final int LOOKUP_QUEUE_CAPACITY = 64;
+    private static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5L;
+    private static final Object EXECUTOR_LOCK = new Object();
+    private static volatile ThreadPoolExecutor LOOKUP_EXECUTOR = createLookupExecutor();
 
     public static CompletableFuture<WebPlayer> get(String username) {
         return fromUrl(MOJANG_PROFILE_URL + username);
@@ -109,11 +116,55 @@ public class WebPlayer {
                 } finally {
                     if (connection != null) connection.disconnect();
                 }
-            });
+            }, lookupExecutor());
         } catch (Exception e) {
             logger.warning("Error creating request for Mojang API URL " + rawUrl + ": " + e.getMessage());
             return CompletableFuture.completedFuture(INVALID);
         }
+    }
+
+    public static void shutdown() {
+        ThreadPoolExecutor executor;
+        synchronized (EXECUTOR_LOCK) {
+            executor = LOOKUP_EXECUTOR;
+            LOOKUP_EXECUTOR = createLookupExecutor();
+        }
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) executor.shutdownNow();
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static ThreadPoolExecutor lookupExecutor() {
+        ThreadPoolExecutor executor = LOOKUP_EXECUTOR;
+        if (!executor.isShutdown() && !executor.isTerminated()) return executor;
+        synchronized (EXECUTOR_LOCK) {
+            executor = LOOKUP_EXECUTOR;
+            if (executor.isShutdown() || executor.isTerminated()) {
+                LOOKUP_EXECUTOR = createLookupExecutor();
+            }
+            return LOOKUP_EXECUTOR;
+        }
+    }
+
+    private static ThreadPoolExecutor createLookupExecutor() {
+        AtomicInteger threadCounter = new AtomicInteger();
+        return new ThreadPoolExecutor(
+                1,
+                4,
+                60L,
+                TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(LOOKUP_QUEUE_CAPACITY),
+                r -> {
+                    Thread thread = new Thread(r, "modl-web-player-" + threadCounter.incrementAndGet());
+                    thread.setDaemon(true);
+                    return thread;
+                },
+                new ThreadPoolExecutor.AbortPolicy()
+        );
     }
 
     public static String getSkinId(JsonObject json) {

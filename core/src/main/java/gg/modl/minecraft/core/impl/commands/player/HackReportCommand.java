@@ -47,7 +47,7 @@ public class HackReportCommand {
 
         ReplayService replayService = platform.getReplayService();
         CompletableFuture<String> replayFuture;
-        if (replayService != null && replayService.isReplayAvailable(targetPlayer.getUuid())) {
+        if (replayService != null && replayService.shouldAttemptCapture(targetPlayer.getUuid())) {
             replayFuture = replayService.captureReplay(targetPlayer.getUuid(), targetPlayer.getUsername());
         } else {
             replayFuture = CompletableFuture.completedFuture(null);

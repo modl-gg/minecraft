@@ -21,6 +21,7 @@ import gg.modl.minecraft.core.util.Permissions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class SettingsMenu extends BaseStaffMenu {
@@ -132,8 +133,11 @@ public class SettingsMenu extends BaseStaffMenu {
         Consumer<CirrusPlayerWrapper> returnToSettings = p ->
                 new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p);
 
-        registerActionHandler("staffMembers", ActionHandlers.openMenu(
-                new StaffMembersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings)));
+        registerActionHandler("staffMembers", click -> {
+            StaffMembersMenu menu = new StaffMembersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin,
+                    panelUrl, returnToSettings);
+            displayWhenLoaded(menu.getDataFuture(), click.player(), menu::display);
+        });
 
         if (canModifySettings) {
             registerActionHandler("editRoles", ActionHandlers.openMenu(
@@ -143,8 +147,11 @@ public class SettingsMenu extends BaseStaffMenu {
         }
 
         if (canManageStaff) {
-            registerActionHandler("manageStaff", ActionHandlers.openMenu(
-                    new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings)));
+            registerActionHandler("manageStaff", click -> {
+                StaffListMenu menu = new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin,
+                        panelUrl, returnToSettings);
+                displayWhenLoaded(menu.getDataFuture(), click.player(), menu::display);
+            });
         }
 
         StaffNavigationHandlers.registerAll(
@@ -152,6 +159,16 @@ public class SettingsMenu extends BaseStaffMenu {
                 platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
         registerActionHandler("openSettings", click -> {});
+    }
+
+    void displayWhenLoaded(CompletableFuture<Void> dataFuture, CirrusPlayerWrapper player,
+                           Consumer<CirrusPlayerWrapper> displayAction) {
+        displayWhenLoaded(platform, dataFuture, player, displayAction);
+    }
+
+    static void displayWhenLoaded(Platform platform, CompletableFuture<Void> dataFuture, CirrusPlayerWrapper player,
+                                  Consumer<CirrusPlayerWrapper> displayAction) {
+        dataFuture.thenRun(() -> platform.runOnMainThread(() -> displayAction.accept(player)));
     }
 
     private void handleToggleNotifications(Click click) {

@@ -1,7 +1,48 @@
+import java.io.File
+import java.security.MessageDigest
+
 repositories {
     maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")
     maven("https://repo.grim.ac/snapshots")
     maven("https://repo.polar.top/repository/polar/")
+}
+
+val vulcanApiJar = layout.projectDirectory.file("libs/VulcanAPI.jar")
+val vulcanApiSha256 = "fecd55639488c55b5a997604161dfb59f6845852ebe73971881cf6f39b65ed97"
+
+fun sha256Hex(file: File): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    file.inputStream().use { input ->
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            val bytesRead = input.read(buffer)
+            if (bytesRead == -1) break
+            digest.update(buffer, 0, bytesRead)
+        }
+    }
+    return digest.digest().joinToString("") { "%02x".format(it) }
+}
+
+val verifyVulcanApiJar by tasks.registering {
+    group = "verification"
+    description = "Verifies the vendored Vulcan API jar checksum."
+
+    inputs.file(vulcanApiJar)
+
+    doLast {
+        val jarFile = vulcanApiJar.asFile
+        if (!jarFile.isFile) {
+            throw GradleException("Missing vendored Vulcan API jar: ${jarFile.relativeTo(projectDir)}")
+        }
+
+        val actualSha256 = sha256Hex(jarFile)
+        if (actualSha256 != vulcanApiSha256) {
+            throw GradleException(
+                "Vulcan API jar checksum mismatch for ${jarFile.relativeTo(projectDir)}. " +
+                        "Expected $vulcanApiSha256 but found $actualSha256."
+            )
+        }
+    }
 }
 
 dependencies {
@@ -84,4 +125,8 @@ tasks.jar {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.named("compileJava") {
+    dependsOn(verifyVulcanApiJar)
 }

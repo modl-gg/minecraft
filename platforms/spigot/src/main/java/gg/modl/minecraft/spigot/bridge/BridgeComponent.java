@@ -59,6 +59,7 @@ import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
 import gg.modl.minecraft.bridge.BridgeTask;
 import java.util.concurrent.TimeUnit;
+import top.polar.api.loader.LoaderApi;
 
 public class BridgeComponent extends AbstractBridgeComponent implements Listener {
     private final JavaPlugin plugin;
@@ -69,6 +70,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
     private RecordingManager recordingManager;
     private PacketRecorder packetRecorder;
+    private ModlBackendReplayUploader replayUploader;
     private BridgeTask replayCleanupTask;
     private final Map<UUID, Integer> worldChangeGeneration = new ConcurrentHashMap<>();
 
@@ -81,7 +83,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         try {
             Class.forName("top.polar.api.loader.LoaderApi");
             polarAvailable = true;
-            top.polar.api.loader.LoaderApi.registerEnableCallback(() -> {
+            LoaderApi.registerEnableCallback(() -> {
                 if (plugin.isEnabled()) {
                     hookPolar();
                 }
@@ -198,7 +200,8 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         packetRecorder.register();
 
         String serverDomain = extractDomain(panelUrl);
-        ModlBackendReplayUploader uploader = new ModlBackendReplayUploader(backendUrl, apiKey, serverDomain, plugin.getLogger());
+        replayUploader = new ModlBackendReplayUploader(backendUrl, apiKey, serverDomain, plugin.getLogger());
+        ModlBackendReplayUploader uploader = replayUploader;
 
         this.replayService = new ReplayService() {
             @Override
@@ -229,13 +232,11 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
                             return uploader.uploadAsync(replayFile, recordingConfig.mcVersion())
                                     .thenApply(ReplayCaptureResult::ok)
-                                    .whenComplete((replayId, ex) -> {
+                                    .whenComplete((result, ex) -> {
                                         if (ex != null) {
                                             pluginLogger.warning("[bridge] Replay upload failed for " + targetName + ": " + ex.getMessage());
                                         }
-                                        if (!config.isReplaySaveLocal()) {
-                                            replayFile.delete();
-                                        }
+                                        cleanupReplayFileAfterUpload(replayFile, config.isReplaySaveLocal(), result, ex);
                                     });
                     });
             }
@@ -290,7 +291,14 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         if (packetRecorder != null) {
             packetRecorder.unregister();
         }
+        if (replayUploader != null) {
+            replayUploader.close();
+            replayUploader = null;
+        }
         if (staffModeHandler != null) staffModeHandler.shutdown();
+        if (context.getScheduler() instanceof SpigotBridgeScheduler) {
+            ((SpigotBridgeScheduler) context.getScheduler()).shutdown();
+        }
     }
 
     private void startRecordingForPlayer(Player player) {
@@ -418,6 +426,17 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
     static int resolveBlockStateId(Block block) {
         return resolveBlockStateId(block, BridgeComponent::resolveModernBlockStateId, BridgeComponent::resolveLegacyBlockStateId);
+    }
+
+    static void cleanupReplayFileAfterUpload(File replayFile, boolean saveLocal,
+                                             ReplayCaptureResult uploadResult, Throwable uploadFailure) {
+        if (saveLocal) {
+            return;
+        }
+        if (!replayFile.delete()) {
+            java.util.logging.Logger.getLogger("modl-bridge")
+                    .warning("[bridge] Failed to delete replay file " + replayFile.getAbsolutePath());
+        }
     }
 
     private static int resolveModernBlockStateId(Object blockData) {

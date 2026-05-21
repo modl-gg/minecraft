@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -80,7 +81,7 @@ class BootConfigTest {
         proxy.setWizardProxyPort(25592);
 
         proxy.save(tempDir);
-        String proxyContent = readBootConfig();
+        String proxyContent = normalizeLineEndings(readBootConfig());
 
         assertTrue(proxyContent.contains("mode: proxy\n"));
         assertTrue(proxyContent.contains("api-key: proxy-key\n"));
@@ -96,7 +97,7 @@ class BootConfigTest {
         bridgeOnly.setWizardProxyPort(25592);
 
         bridgeOnly.save(tempDir);
-        String bridgeOnlyContent = readBootConfig();
+        String bridgeOnlyContent = normalizeLineEndings(readBootConfig());
 
         assertTrue(bridgeOnlyContent.contains("mode: bridge-only\n"));
         assertTrue(bridgeOnlyContent.contains("proxy-host: 10.0.0.25\n"));
@@ -108,29 +109,61 @@ class BootConfigTest {
     void saveTemplatePreservesCurrentVisibleOutput() throws IOException {
         BootConfig.saveTemplate(tempDir);
 
-        assertEquals(BootConfigYaml.template(), readBootConfig());
+        assertEquals(normalizeLineEndings(BootConfigYaml.template()), normalizeLineEndings(readBootConfig()));
         assertEquals("# modl.gg Boot Configuration\n"
                 + "# Edit this file and restart the server.\n"
                 + "# To register a new server, visit https://modl.gg/register\n"
                 + "#\n"
                 + "# mode: standalone | bridge-only | proxy\n"
-                + "mode: proxy\n"
+                + "mode: standalone\n"
                 + "\n"
                 + "# Your API key from the modl.gg panel\n"
                 + "api-key: \"your-api-key-here\"\n"
                 + "\n"
-                + "# Uncomment to use the testing API (api.modl.top)\n"
-                + "# testing-api: true\n"
+                + "# Use the testing API (api.modl.top) instead of production\n"
+                + "testing-api: false\n"
+                + "\n"
+                + "# Proxy type (bridge-only mode): velocity | bungeecord\n"
+                + "# proxy-type: velocity\n"
                 + "\n"
                 + "# Proxy connection target (bridge-only mode)\n"
                 + "# proxy-host: \"127.0.0.1\"\n"
                 + "# proxy-port: 25590\n"
                 + "\n"
-                + "# Bridge listen port (proxy mode only — backends connect to this port)\n"
-                + "# bridge-port: 25590\n", readBootConfig());
+                + "# Bridge listen port (proxy mode only - backends connect to this port)\n"
+                + "# bridge-port: 25590\n", normalizeLineEndings(readBootConfig()));
+    }
+
+    @Test
+    void generatedTemplateMatchesShippedBootResource() throws IOException {
+        String resourceBootConfig = readResource("/boot.yml");
+
+        assertEquals(normalizeLineEndings(resourceBootConfig), normalizeLineEndings(BootConfigYaml.template()));
+    }
+
+    @Test
+    void shippedConfigAvoidsUnsafeLiteBansFallbackCredentials() throws IOException {
+        String config = readResource("/config.yml");
+
+        assertFalse(config.contains("host: \"localhost\""));
+        assertFalse(config.contains("database: \"minecraft\""));
+        assertFalse(config.contains("username: \"root\""));
+        assertFalse(config.contains("password: \"\""));
+        assertTrue(config.contains("table_prefix: \"litebans_\""));
     }
 
     private String readBootConfig() throws IOException {
         return new String(Files.readAllBytes(tempDir.resolve("boot.yml")), StandardCharsets.UTF_8);
+    }
+
+    private String readResource(String resourceName) throws IOException {
+        try (InputStream inputStream = BootConfigTest.class.getResourceAsStream(resourceName)) {
+            assertTrue(inputStream != null, "Missing resource " + resourceName);
+            return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+        }
+    }
+
+    private static String normalizeLineEndings(String content) {
+        return content.replace("\r\n", "\n");
     }
 }

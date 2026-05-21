@@ -1,9 +1,8 @@
 package gg.modl.minecraft.bridge.locale;
 
+import gg.modl.minecraft.bridge.resource.BridgeYamlResource;
 import gg.modl.minecraft.core.locale.LegacyTextRenderer;
-import org.yaml.snakeyaml.Yaml;
 
-import java.io.InputStream;
 import java.util.Collections;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -20,13 +19,9 @@ public class BridgeLocaleManager {
     }
 
     private void load() {
-        try (InputStream is = getClass().getResourceAsStream(LOCALE_RESOURCE)) {
-            if (is == null) {
-                logger.warning("Could not find " + LOCALE_RESOURCE + " in resources");
-                return;
-            }
-            Map<String, Object> data = new Yaml().load(is);
-            if (data != null) {
+        try {
+            Map<String, Object> data = BridgeYamlResource.loadResourceMap(getClass(), LOCALE_RESOURCE);
+            if (!data.isEmpty()) {
                 messages = data;
             }
         } catch (Exception e) {

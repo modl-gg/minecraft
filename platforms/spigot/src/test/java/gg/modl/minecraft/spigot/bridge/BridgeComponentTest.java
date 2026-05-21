@@ -1,19 +1,29 @@
 package gg.modl.minecraft.spigot.bridge;
 
+import gg.modl.minecraft.core.service.ReplayCaptureResult;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class BridgeComponentTest {
+    @TempDir
+    Path tempDir;
+
     public interface ModernBlockAccess {
         Object getBlockData();
     }
@@ -59,5 +69,47 @@ class BridgeComponentTest {
         assertEquals(77, stateId);
         verify(block).getType();
         verify(block).getData();
+    }
+
+    @Test
+    void cleanupDeletesReplayFileAfterSuccessfulUploadWhenLocalSaveIsDisabled() throws IOException {
+        File replayFile = createReplayFile();
+
+        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, false, ReplayCaptureResult.ok("replay-id"), null);
+
+        assertFalse(replayFile.exists());
+    }
+
+    @Test
+    void cleanupDeletesReplayFileAfterFailedUploadWhenLocalSaveIsDisabled() throws IOException {
+        File replayFile = createReplayFile();
+
+        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, false, null, new RuntimeException("upload failed"));
+
+        assertFalse(replayFile.exists());
+    }
+
+    @Test
+    void cleanupKeepsReplayFileWhenLocalSaveIsEnabled() throws IOException {
+        File replayFile = createReplayFile();
+
+        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, true, ReplayCaptureResult.ok("replay-id"), null);
+
+        assertTrue(replayFile.exists());
+    }
+
+    @Test
+    void cleanupKeepsReplayFileAfterFailedUploadWhenLocalSaveIsEnabled() throws IOException {
+        File replayFile = createReplayFile();
+
+        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, true, null, new RuntimeException("upload failed"));
+
+        assertTrue(replayFile.exists());
+    }
+
+    private File createReplayFile() throws IOException {
+        File replayFile = tempDir.resolve("capture.modlreplay").toFile();
+        assertTrue(replayFile.createNewFile());
+        return replayFile;
     }
 }

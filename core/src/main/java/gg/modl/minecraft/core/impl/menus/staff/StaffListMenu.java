@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> {
@@ -54,6 +55,7 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
     private String viewerRole;
     private final Map<String, String> selectedRoles = new HashMap<>();
     private final boolean hasPermission;
+    @Getter private CompletableFuture<Void> dataFuture;
 
     public StaffListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                          boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
@@ -65,7 +67,9 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         this.hasPermission = cache != null && cache.hasPermission(viewerUuid, Permissions.STAFF_MANAGE);
 
         if (hasPermission)
-            fetchStaffAndRoles();
+            this.dataFuture = fetchStaffAndRoles();
+        else
+            this.dataFuture = CompletableFuture.completedFuture(null);
     }
 
     private StaffListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -85,53 +89,60 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         if (existingRoleOrders != null) this.roleOrders = new HashMap<>(existingRoleOrders);
         this.viewerRole = viewerRole;
         if (existingSelections != null) this.selectedRoles.putAll(existingSelections);
+        this.dataFuture = CompletableFuture.completedFuture(null);
     }
 
-    private void fetchStaffAndRoles() {
-        httpClient.getRoles().thenAccept(response -> {
-            if (response != null && response.getRoles() != null) {
-                availableRoles.clear();
-                roleOrders.clear();
-                for (RolesListResponse.RoleEntry role : response.getRoles()) {
-                    roleOrders.put(role.getName(), role.getOrder());
-                    if (!SUPER_ADMIN_ROLE.equals(role.getName()))
-                        availableRoles.add(role.getName());
+    private CompletableFuture<Void> fetchStaffAndRoles() {
+        CompletableFuture<Void> rolesFuture = httpClient.getRoles().thenAccept(response -> {
+            if (response == null || !response.isSuccess() || response.getRoles() == null) {
+                throw new IllegalStateException("Failed to load staff roles");
+            }
+
+            availableRoles.clear();
+            roleOrders.clear();
+            for (RolesListResponse.RoleEntry role : response.getRoles()) {
+                roleOrders.put(role.getName(), role.getOrder());
+                if (!SUPER_ADMIN_ROLE.equals(role.getName()))
+                    availableRoles.add(role.getName());
+            }
+        });
+
+        CompletableFuture<Void> staffFuture = httpClient.getStaffList().thenAccept(response -> {
+            if (response == null || !response.isSuccess() || response.getStaff() == null) {
+                throw new IllegalStateException("Failed to load staff members");
+            }
+
+            staffMembers.clear();
+            for (StaffListResponse.StaffEntry entry : response.getStaff()) {
+                UUID uuid = null;
+                if (entry.getMinecraftUuid() != null) {
+                    try {
+                        uuid = UUID.fromString(entry.getMinecraftUuid());
+                    } catch (Exception ignored) {}
+                }
+                String displayName = entry.getMinecraftUsername() != null ? entry.getMinecraftUsername() : entry.getUsername();
+                staffMembers.add(new StaffMember(entry.getId(), uuid, displayName, entry.getRole()));
+
+                if (uuid != null && uuid.equals(viewerUuid)) {
+                    viewerRole = entry.getRole();
                 }
             }
-        }).exceptionally(e -> null);
 
-        httpClient.getStaffList().thenAccept(response -> {
-            if (response != null && response.getStaff() != null) {
-                staffMembers.clear();
-                for (StaffListResponse.StaffEntry entry : response.getStaff()) {
-                    UUID uuid = null;
-                    if (entry.getMinecraftUuid() != null) {
-                        try {
-                            uuid = UUID.fromString(entry.getMinecraftUuid());
-                        } catch (Exception ignored) {}
-                    }
-                    String displayName = entry.getMinecraftUsername() != null ? entry.getMinecraftUsername() : entry.getUsername();
-                    staffMembers.add(new StaffMember(entry.getId(), uuid, displayName, entry.getRole()));
-
-                    if (uuid != null && uuid.equals(viewerUuid)) {
-                        viewerRole = entry.getRole();
-                    }
-                }
-
-                if (platform.getCache() != null) {
-                    for (StaffMember staff : staffMembers) {
-                        if (staff.getUuid() != null && platform.getCache().getSkinTexture(staff.getUuid()) == null) {
-                            final UUID staffUuid = staff.getUuid();
-                            WebPlayer.get(staffUuid).thenAccept(wp -> {
-                                if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
-                                    platform.getCache().cacheSkinTexture(staffUuid, wp.getTextureValue());
-                                }
-                            });
-                        }
+            if (platform.getCache() != null) {
+                for (StaffMember staff : staffMembers) {
+                    if (staff.getUuid() != null && platform.getCache().getSkinTexture(staff.getUuid()) == null) {
+                        final UUID staffUuid = staff.getUuid();
+                        WebPlayer.get(staffUuid).thenAccept(wp -> {
+                            if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
+                                platform.getCache().cacheSkinTexture(staffUuid, wp.getTextureValue());
+                            }
+                        });
                     }
                 }
             }
-        }).exceptionally(e -> null);
+        });
+
+        return CompletableFuture.allOf(rolesFuture, staffFuture);
     }
 
     private int getRoleOrder(String roleName) {

@@ -109,21 +109,21 @@ final class PlayerCommandListener implements Listener<CommandExecuteEvent> {
     }
 
     private boolean isProxyCommand(final String command) {
-        final int firstIndexOfSpace = command.indexOf(' ');
+        final String trimmedCommand = command.stripLeading();
+        final int firstIndexOfWhitespace = firstWhitespaceIndex(trimmedCommand);
 
-        if (firstIndexOfSpace == -1) {
-            return commandManager.hasCommand(command);
-        } else if (firstIndexOfSpace == 0) {
-            final String[] arguments = command.split(" ");
-            for (final String argument : arguments) {
-                if (argument.isBlank()) continue;
-                return commandManager.hasCommand(argument);
-            }
-            final String firstArgument = command.substring(0, firstIndexOfSpace);
-            return commandManager.hasCommand(firstArgument);
-        } else {
-            final String firstArgument = command.substring(0, firstIndexOfSpace);
-            return commandManager.hasCommand(firstArgument);
+        if (firstIndexOfWhitespace == -1) {
+            return commandManager.hasCommand(trimmedCommand);
         }
+
+        final String firstArgument = trimmedCommand.substring(0, firstIndexOfWhitespace);
+        return commandManager.hasCommand(firstArgument);
+    }
+
+    private static int firstWhitespaceIndex(final String command) {
+        for (int i = 0; i < command.length(); i++) {
+            if (Character.isWhitespace(command.charAt(i))) return i;
+        }
+        return -1;
     }
 }

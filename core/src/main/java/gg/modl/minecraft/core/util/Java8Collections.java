@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -183,11 +184,25 @@ public final class Java8Collections {
             });
 
     public static <T> CompletableFuture<T> orTimeout(CompletableFuture<T> future, long timeout, TimeUnit unit) {
-        TIMEOUT_SCHEDULER.schedule(() -> {
+        return orTimeout(future, timeout, unit, TIMEOUT_SCHEDULER);
+    }
+
+    public static void shutdown() {
+        if (!TIMEOUT_SCHEDULER.isShutdown()) TIMEOUT_SCHEDULER.shutdownNow();
+    }
+
+    static <T> CompletableFuture<T> orTimeout(
+            CompletableFuture<T> future,
+            long timeout,
+            TimeUnit unit,
+            ScheduledExecutorService scheduler
+    ) {
+        ScheduledFuture<?> timeoutTask = scheduler.schedule(() -> {
             if (!future.isDone()) {
                 future.completeExceptionally(new TimeoutException());
             }
         }, timeout, unit);
+        future.whenComplete((result, failure) -> timeoutTask.cancel(false));
         return future;
     }
 }

@@ -325,7 +325,6 @@ api_errors:
   panel_unavailable: "&cEl panel no está disponible temporalmente. Por favor inténtalo de nuevo en breve."
   connection_failed: "&cFalló la conexión al panel. Por favor inténtalo de nuevo en un momento."
   ban_check_failed: "&cNo se pudo verificar el estado de baneo. Inicio de sesión temporalmente restringido por seguridad."
-  menus_require_v2: "&cLos menús dentro del juego requieren la API V2. La nueva API estará disponible el 11/02/2026."
 
 pardon:
   processing_id: "&7Procesando perdón para la sanción ID: &e{id}&7..."
@@ -340,7 +339,6 @@ pardon:
   error_wrong_type_mute: "&cLa sanción &e#{id}&c no es un silenciamiento. Usa &e/pardon {id}&c para perdonar cualquier tipo de sanción."
   staff_notification_id: "&7&o[{issuer}: perdonó la sanción #{id}&7&o]"
   staff_notification_player: "&7&o[{issuer}: perdonó la sanción de tipo {type} de {player}&7&o]"
-  disabled_v1: "&cEsta función está temporalmente deshabilitada dentro del juego hasta el 11/2/2026 como parte de la migración a V2. Por favor usa el panel en su lugar."
 
 warn:
   player_message: "&c&lHas recibido una advertencia de {issuer}.\n&fRazón: &7{reason}\n&7Por favor revisa las reglas del servidor y ajusta tu comportamiento en consecuencia."

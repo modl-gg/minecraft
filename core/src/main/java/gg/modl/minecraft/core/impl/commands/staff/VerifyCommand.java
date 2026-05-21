@@ -7,6 +7,7 @@ import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.command.StaffNo2fa;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.Staff2faService;
+import gg.modl.minecraft.core.util.ClickableJsonMessage;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
@@ -18,10 +19,6 @@ import java.util.logging.Logger;
 @RequiredArgsConstructor
 public class VerifyCommand {
     private static final Logger logger = Logger.getLogger(VerifyCommand.class.getName());
-    private static final String VERIFY_LINK_JSON =
-            "{\"text\":\"%s\",\"color\":\"green\",\"bold\":true," +
-            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-            "\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"Click to open verification page\"}}";
 
     private final Platform platform;
     private final LocaleManager localeManager;
@@ -49,18 +46,22 @@ public class VerifyCommand {
             return;
         }
 
-        httpClientHolder.getClient().generateStaff2faToken(senderUuid.toString(), player.getIpAddress()).thenAccept(response -> {
+        httpClientHolder.getClient().generateStaff2faToken(senderUuid.toString(), player.getIpAddress()).thenAccept(response -> platform.runOnMainThread(() -> {
             actor.reply(localeManager.getMessage("verify.header"));
             actor.reply(localeManager.getMessage("verify.instructions"));
 
-            String jsonMessage = String.format(VERIFY_LINK_JSON,
-                    localeManager.getMessage("verify.click_here"), response.getVerifyUrl());
+            String jsonMessage = ClickableJsonMessage.text(localeManager.getMessage("verify.click_here"))
+                    .color("green")
+                    .bold(true)
+                    .openUrl(response.getVerifyUrl())
+                    .hoverContents("Click to open verification page")
+                    .toJson();
             platform.sendJsonMessage(senderUuid, jsonMessage);
 
             actor.reply(localeManager.getMessage("verify.footer"));
-        }).exceptionally(ex -> {
+        })).exceptionally(ex -> {
             logger.warning("Failed to generate 2FA token for " + senderUuid + ": " + ex.getMessage());
-            actor.reply(localeManager.getMessage("verify.error"));
+            platform.runOnMainThread(() -> actor.reply(localeManager.getMessage("verify.error")));
             return null;
         });
     }

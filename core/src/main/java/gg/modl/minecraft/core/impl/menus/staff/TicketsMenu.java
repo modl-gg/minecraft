@@ -16,6 +16,7 @@ import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.ClickableJsonMessage;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -175,15 +176,14 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         click.clickedMenu().close();
 
         String ticketUrl = panelUrl + "/ticket/" + ticket.getId();
-        String escapedUrl = ticketUrl.replace("\"", "\\\"");
-        String json = String.format(
-            "{\"text\":\"\",\"extra\":[" +
-            "{\"text\":\"Ticket #%s: \",\"color\":\"gold\"}," +
-            "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-            ticket.getId(), escapedUrl, ticketUrl
-        );
+        String json = ClickableJsonMessage.empty()
+                .extra(ClickableJsonMessage.text("Ticket #" + ticket.getId() + ": ").color("gold"))
+                .extra(ClickableJsonMessage.text(ticketUrl)
+                        .color("aqua")
+                        .underlined(true)
+                        .openUrl(ticketUrl)
+                        .hoverText("Click to open in browser"))
+                .toJson();
         platform.sendJsonMessage(viewerUuid, json);
     }
 

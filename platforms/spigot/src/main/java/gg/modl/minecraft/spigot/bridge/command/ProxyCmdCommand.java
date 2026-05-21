@@ -38,13 +38,9 @@ public class ProxyCmdCommand implements CommandExecutor {
 
         String fullCommand = String.join(" ", args);
 
-        if (bridgeClient.isConnected()) {
-            bridgeClient.sendMessage(PROXY_CMD_ACTION, fullCommand);
-            plugin.getLogger().info("Forwarded command to proxy: " + fullCommand);
-            sender.sendMessage(localeManager.getMessage("command.proxycmd.sent", mapOf("command", fullCommand)));
-        } else {
-            sender.sendMessage(localeManager.getMessage("command.proxycmd.failed"));
-        }
+        bridgeClient.sendMessage(PROXY_CMD_ACTION, fullCommand);
+        plugin.getLogger().info("Forwarded command to proxy: " + fullCommand);
+        sender.sendMessage(localeManager.getMessage("command.proxycmd.sent", mapOf("command", fullCommand)));
 
         return true;
     }

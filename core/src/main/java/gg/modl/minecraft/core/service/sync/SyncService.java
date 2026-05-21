@@ -25,12 +25,15 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -55,6 +58,8 @@ public class SyncService {
     private static final int MIN_POLLING_RATE_SECONDS = 1,
             INITIAL_SYNC_DELAY_SECONDS = 5, MAINTENANCE_CYCLE_INTERVAL = 60;
     private static final long SYNC_HTTP_TIMEOUT_SECONDS = 5, SYNC_TASK_TIMEOUT_SECONDS = 10, EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5;
+    // Mirrors backend MinecraftSyncController @Pattern validation; any mismatch causes the whole sync batch to 400.
+    private static final Pattern MINECRAFT_USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.]{2,16}$");
 
     private final Platform platform;
     private final HttpClientHolder httpClientHolder;
@@ -224,10 +229,32 @@ public class SyncService {
         request.setServerName(platform.getServerName());
         request.setServerInstanceId(StartupClient.getServerInstanceId());
         if (chatCommandLogService != null) {
-            request.setChatLogs(chatCommandLogService.drainChatBuffer());
-            request.setCommandLogs(chatCommandLogService.drainCommandBuffer());
+            List<SyncRequest.ChatLogEntry> chatLogs = chatCommandLogService.drainChatBuffer();
+            List<SyncRequest.CommandLogEntry> commandLogs = chatCommandLogService.drainCommandBuffer();
+            int chatBefore = chatLogs == null ? 0 : chatLogs.size();
+            int commandBefore = commandLogs == null ? 0 : commandLogs.size();
+            List<SyncRequest.ChatLogEntry> filteredChat = filterByUsername(chatLogs, SyncRequest.ChatLogEntry::getUsername);
+            List<SyncRequest.CommandLogEntry> filteredCommand = filterByUsername(commandLogs, SyncRequest.CommandLogEntry::getUsername);
+            int droppedChat = chatBefore - filteredChat.size();
+            int droppedCommand = commandBefore - filteredCommand.size();
+            if (droppedChat > 0 || droppedCommand > 0) {
+                logger.warning("Dropped sync entries with invalid usernames: chat=" + droppedChat + ", command=" + droppedCommand);
+            }
+            request.setChatLogs(filteredChat);
+            request.setCommandLogs(filteredCommand);
         }
         return request;
+    }
+
+    static <T> List<T> filterByUsername(List<T> entries, Function<T, String> usernameAccessor) {
+        if (entries == null || entries.isEmpty()) return new ArrayList<>();
+        List<T> retained = new ArrayList<>(entries.size());
+        for (T entry : entries) {
+            if (entry == null) continue;
+            String username = usernameAccessor.apply(entry);
+            if (username != null && MINECRAFT_USERNAME_PATTERN.matcher(username).matches()) retained.add(entry);
+        }
+        return retained;
     }
 
     private void handleSyncException(CompletionException e) {
@@ -398,6 +425,10 @@ public class SyncService {
         try {
             DatabaseProvider databaseProvider = platform.createLiteBansDatabaseProvider();
             if (databaseProvider == null) {
+                if (databaseConfig == null) {
+                    logger.warning("LiteBans migration is not configured (database block missing or contains sentinel placeholders); skipping migration");
+                    return false;
+                }
                 databaseProvider = new JdbcDatabaseProvider(databaseConfig, logger);
             }
             migrationService = new MigrationService(logger, httpClientHolder.getClient(), apiUrl, apiKey, dataFolder, databaseProvider, localeManager.getMessage("config.default_reason"));

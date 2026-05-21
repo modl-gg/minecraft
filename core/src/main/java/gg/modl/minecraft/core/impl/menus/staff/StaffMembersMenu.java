@@ -93,45 +93,47 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
     private CompletableFuture<Void> fetchStaffMembers() {
         Cache cache = platform.getCache();
         return httpClient.getStaffList().thenAccept(response -> {
-            if (response != null && response.isSuccess() && response.getStaff() != null) {
-                staffMembers.clear();
-                for (StaffListResponse.StaffEntry entry : response.getStaff()) {
-                    UUID uuid = null;
-                    if (entry.getMinecraftUuid() != null) {
-                        try {
-                            uuid = UUID.fromString(entry.getMinecraftUuid());
-                        } catch (Exception ignored) {}
-                    }
+            if (response == null || !response.isSuccess() || response.getStaff() == null) {
+                throw new IllegalStateException("Failed to load staff members");
+            }
 
-                    CachedProfile staffProfile = uuid != null && cache != null ? cache.getPlayerProfile(uuid) : null;
-                    boolean online = staffProfile != null;
-                    long sessionDuration = online ? staffProfile.getSessionDuration() : 0;
+            staffMembers.clear();
+            for (StaffListResponse.StaffEntry entry : response.getStaff()) {
+                UUID uuid = null;
+                if (entry.getMinecraftUuid() != null) {
+                    try {
+                        uuid = UUID.fromString(entry.getMinecraftUuid());
+                    } catch (Exception ignored) {}
+                }
 
-                    staffMembers.add(new StaffMemberEntry(
-                            entry.getId(),
-                            entry.getUsername(),
-                            entry.getRole(),
-                            uuid,
-                            entry.getMinecraftUsername(),
-                            entry.getLastServer(),
-                            entry.getLastSeen(),
-                            entry.getTotalPlaytimeMs(),
-                            entry.getPunishmentsIssuedCount(),
-                            online,
-                            sessionDuration
-                    ));
+                CachedProfile staffProfile = uuid != null && cache != null ? cache.getPlayerProfile(uuid) : null;
+                boolean online = staffProfile != null;
+                long sessionDuration = online ? staffProfile.getSessionDuration() : 0;
 
-                    if (uuid != null && cache != null && cache.getSkinTexture(uuid) == null) {
-                        final UUID staffUuid = uuid;
-                        WebPlayer.get(staffUuid).thenAccept(wp -> {
-                            if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
-                                cache.cacheSkinTexture(staffUuid, wp.getTextureValue());
-                            }
-                        });
-                    }
+                staffMembers.add(new StaffMemberEntry(
+                        entry.getId(),
+                        entry.getUsername(),
+                        entry.getRole(),
+                        uuid,
+                        entry.getMinecraftUsername(),
+                        entry.getLastServer(),
+                        entry.getLastSeen(),
+                        entry.getTotalPlaytimeMs(),
+                        entry.getPunishmentsIssuedCount(),
+                        online,
+                        sessionDuration
+                ));
+
+                if (uuid != null && cache != null && cache.getSkinTexture(uuid) == null) {
+                    final UUID staffUuid = uuid;
+                    WebPlayer.get(staffUuid).thenAccept(wp -> {
+                        if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
+                            cache.cacheSkinTexture(staffUuid, wp.getTextureValue());
+                        }
+                    });
                 }
             }
-        }).exceptionally(e -> null);
+        });
     }
 
     private List<String> buildLore(StaffMemberEntry entry) {

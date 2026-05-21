@@ -54,6 +54,13 @@ update_checker:
   # Default: 60 minutes. Minimum: 1 minute
   interval_minutes: 60
 
+# Public IP Enrichment
+# Resolves geolocation/ISP/proxy metadata for player IPs via an HTTPS provider.
+# Used by the panel to populate pendingIpLookups. Only https:// URLs are accepted.
+ip-lookup:
+  enabled: true
+  url: "https://ipwho.is/{ip}"
+
 # Commands that muted players cannot use
 # List command names without the leading slash
 muted_commands:
@@ -117,11 +124,11 @@ migration:
       # Database connection details for LiteBans migration
       # The plugin will try to auto-detect from LiteBans config first
       # If LiteBans is not found, these settings will be used as fallback
-      host: "localhost"
+      host: "litebans-database-host"
       port: 3306
-      database: "minecraft"
-      username: "root"
-      password: ""
+      database: "litebans_database"
+      username: "litebans_user"
+      password: "change-me"
       # Supported types: mysql, mariadb, postgresql, h2
       type: "mysql"
       # Table prefix for LiteBans tables (default: "litebans_")

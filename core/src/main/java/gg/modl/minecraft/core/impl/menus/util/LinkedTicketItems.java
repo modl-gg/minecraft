@@ -8,6 +8,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.TicketsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.ClickableJsonMessage;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.StringUtil;
 
@@ -126,15 +127,14 @@ public final class LinkedTicketItems {
         String panelUrl = PunishmentMessages.getPanelUrl();
         if (panelUrl != null && !panelUrl.isEmpty()) {
             String ticketUrl = panelUrl + "/ticket/" + ticket.getId();
-            String escapedUrl = ticketUrl.replace("\"", "\\\"");
-            String json = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"Ticket #%s: \",\"color\":\"gold\"}," +
-                "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-                ticket.getId(), escapedUrl, ticketUrl
-            );
+            String json = ClickableJsonMessage.empty()
+                    .extra(ClickableJsonMessage.text("Ticket #" + ticket.getId() + ": ").color("gold"))
+                    .extra(ClickableJsonMessage.text(ticketUrl)
+                            .color("aqua")
+                            .underlined(true)
+                            .openUrl(ticketUrl)
+                            .hoverText("Click to open in browser"))
+                    .toJson();
             platform.sendJsonMessage(viewerUuid, json);
         } else {
             platform.sendMessage(viewerUuid, MenuItems.COLOR_GOLD + "Ticket #" + ticket.getId());

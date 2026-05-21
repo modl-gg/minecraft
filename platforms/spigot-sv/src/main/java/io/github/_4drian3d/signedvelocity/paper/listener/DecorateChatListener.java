@@ -32,13 +32,12 @@ public final class DecorateChatListener implements EventListener<AsyncChatDecora
             return;
         }
         this.chatQueue.dataFrom(player.getUniqueId())
-                .nextResultWithoutAdvance()
-                .thenAccept(result -> {
+                .acceptNextResultWithoutAdvance(result -> {
                     final String modifiedChat = result.toModify();
                     if (modifiedChat != null) {
                         event.result(Component.text(modifiedChat));
                     }
-                }).join();
+                });
     }
 
     @Override

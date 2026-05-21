@@ -9,10 +9,10 @@ import gg.modl.minecraft.bridge.reporter.AutoReporter;
 import gg.modl.minecraft.bridge.reporter.TicketCreator;
 import gg.modl.minecraft.bridge.reporter.detection.ViolationTracker;
 import gg.modl.minecraft.bridge.reporter.hook.AntiCheatHook;
+import gg.modl.minecraft.bridge.resource.BridgeYamlResource;
 import gg.modl.minecraft.bridge.statwipe.StatWipeHandler;
 import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.util.PluginLogger;
-import gg.modl.minecraft.core.util.YamlMergeUtil;
 import lombok.Getter;
 
 import java.io.IOException;
@@ -55,7 +55,7 @@ public abstract class AbstractBridgeComponent {
 
         prepareBridgeConfig(dataFolder);
         prepareBridgeLocale(logger);
-        prepareStaffModeConfig(dataFolder);
+        prepareStaffModeConfig();
         startLifecycleServices(dataFolder, logger);
         initializePlatformHandlers();
         connectBridgeClientIfConfigured(connectToProxy, logger);
@@ -70,11 +70,7 @@ public abstract class AbstractBridgeComponent {
     }
 
     private void prepareBridgeConfig(Path dataFolder) {
-        if (!BridgeConfig.exists(dataFolder)) {
-            context.saveDefaultResource("bridge-config.yml");
-        }
-        YamlMergeUtil.mergeWithDefaults("/bridge-config.yml",
-                dataFolder.resolve("bridge-config.yml"), pluginLogger);
+        BridgeYamlResource.ensureDefaultFile(context, "bridge-config.yml", pluginLogger);
 
         try {
             bridgeConfig = BridgeConfig.load(dataFolder);
@@ -89,12 +85,8 @@ public abstract class AbstractBridgeComponent {
         localeManager = new BridgeLocaleManager(logger);
     }
 
-    private void prepareStaffModeConfig(Path dataFolder) {
-        if (!dataFolder.resolve("staff_mode.yml").toFile().exists()) {
-            context.saveDefaultResource("staff_mode.yml");
-        }
-        YamlMergeUtil.mergeWithDefaults("/staff_mode.yml",
-                dataFolder.resolve("staff_mode.yml"), pluginLogger);
+    private void prepareStaffModeConfig() {
+        BridgeYamlResource.ensureDefaultFile(context, "staff_mode.yml", pluginLogger);
     }
 
     private void startLifecycleServices(Path dataFolder, Logger logger) {

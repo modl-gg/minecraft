@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -40,17 +41,14 @@ class ModlFabricModTest {
     }
 
     @Test
-    void routes12111AndNewerTo12111Implementation() {
+    void routes12111To12111Implementation() {
         assertEquals(
                 "gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl",
                 ModlFabricMod.selectImplementationClass("1.21.11"));
-        assertEquals(
-                "gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl",
-                ModlFabricMod.selectImplementationClass("1.21.12"));
     }
 
     @Test
-    void preservesOlderRoutingBoundaries() {
+    void routesSupportedBoundariesExplicitly() {
         assertEquals(
                 "gg.modl.minecraft.fabric.v1_21_1.ModlFabricModImpl",
                 ModlFabricMod.selectImplementationClass("1.21.1"));
@@ -63,6 +61,19 @@ class ModlFabricModTest {
         assertEquals(
                 "gg.modl.minecraft.fabric.v26.ModlFabricModImpl",
                 ModlFabricMod.selectImplementationClass("26.1.2"));
+    }
+
+    @Test
+    void rejectsMalformedVersions() {
+        assertThrows(IllegalArgumentException.class, () -> ModlFabricMod.selectImplementationClass("foo"));
+        assertThrows(IllegalArgumentException.class, () -> ModlFabricMod.selectImplementationClass("1.21"));
+    }
+
+    @Test
+    void rejectsUnsupportedFutureVersions() {
+        assertThrows(IllegalArgumentException.class, () -> ModlFabricMod.selectImplementationClass("1.21.12"));
+        assertThrows(IllegalArgumentException.class, () -> ModlFabricMod.selectImplementationClass("1.21.99"));
+        assertThrows(IllegalArgumentException.class, () -> ModlFabricMod.selectImplementationClass("1.22.0"));
     }
 
     @Test

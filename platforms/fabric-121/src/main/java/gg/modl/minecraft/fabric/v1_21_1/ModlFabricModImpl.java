@@ -364,6 +364,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
     }
 
     private void onServerStopping(MinecraftServer server) {
+        if (fabricListener != null) fabricListener.shutdown();
         if (pluginLoader != null) pluginLoader.shutdown();
         if (cirrus != null) cirrus.shutdown();
         if (bridgeComponent != null) bridgeComponent.disable();

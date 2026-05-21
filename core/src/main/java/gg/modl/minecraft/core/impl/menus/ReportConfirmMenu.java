@@ -19,6 +19,7 @@ import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.service.ReplayService;
+import gg.modl.minecraft.core.util.ClickableJsonMessage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -151,7 +152,7 @@ public class ReportConfirmMenu extends SimpleMenu {
 
         CompletableFuture<String> replayFuture;
         ReplayService replayService = platform.getReplayService();
-        if (reportData.isAttachReplay() && replayService != null && replayService.isReplayAvailable(target.getUuid())) {
+        if (reportData.isAttachReplay() && replayService != null && replayService.shouldAttemptCapture(target.getUuid())) {
             replayFuture = replayService.captureReplay(target.getUuid(), target.getUsername());
         } else {
             replayFuture = CompletableFuture.completedFuture(null);
@@ -203,15 +204,15 @@ public class ReportConfirmMenu extends SimpleMenu {
     }
 
     private void sendClickableTicketLink(String ticketUrl, String ticketId) {
-        String clickableMessage = String.format(
-                "{\"text\":\"\",\"extra\":[" +
-                "{\"text\":\"\",\"color\":\"gold\"}," +
-                "{\"text\":\"View your ticket: \",\"color\":\"gray\"}," +
-                "{\"text\":\"[Click to view]\",\"color\":\"aqua\",\"underlined\":true," +
-                "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-                "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket %s\"}}]}",
-                ticketUrl, ticketId
-        );
+        String clickableMessage = ClickableJsonMessage.empty()
+                .extra(ClickableJsonMessage.text("").color("gold"))
+                .extra(ClickableJsonMessage.text("View your ticket: ").color("gray"))
+                .extra(ClickableJsonMessage.text("[Click to view]")
+                        .color("aqua")
+                        .underlined(true)
+                        .openUrl(ticketUrl)
+                        .hoverText("Click to view ticket " + ticketId))
+                .toJson();
 
         UUID reporterUuid = reporter.getUuid();
         platform.runOnMainThread(() -> platform.sendJsonMessage(reporterUuid, clickableMessage));

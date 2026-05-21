@@ -1,12 +1,9 @@
 package gg.modl.minecraft.bridge.config;
 
+import gg.modl.minecraft.bridge.resource.BridgeYamlResource;
 import lombok.Data;
 import lombok.Getter;
-import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -30,15 +27,15 @@ public class StaffModeConfig {
 
     @SuppressWarnings("unchecked")
     public StaffModeConfig(Path dataFolder, Logger logger) {
-        File configFile = dataFolder.resolve("staff_mode.yml").toFile();
-        if (!configFile.exists()) {
+        Path configFile = dataFolder.resolve("staff_mode.yml");
+        if (!configFile.toFile().exists()) {
             setDefaults();
             return;
         }
 
-        try (InputStream is = new FileInputStream(configFile)) {
-            Map<String, Object> data = new Yaml().load(is);
-            if (data == null) {
+        try {
+            Map<String, Object> data = BridgeYamlResource.loadMap(configFile);
+            if (data.isEmpty()) {
                 setDefaults();
                 return;
             }
