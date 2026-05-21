@@ -11,6 +11,7 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.ModifyPunishmentMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.ClickableJsonMessage;
 import gg.modl.minecraft.core.util.CommandUtil;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
@@ -21,12 +22,6 @@ import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class PunishmentActionCommand {
-    private static final String UPLOAD_LINK_JSON =
-            "{\"text\":\"\",\"extra\":[" +
-            "{\"text\":\"Click here to upload evidence\",\"color\":\"green\",\"underlined\":true,\"bold\":true," +
-            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Opens in your browser\"}}" +
-            "]}";
     private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
@@ -141,7 +136,14 @@ public class PunishmentActionCommand {
             }
 
             String uploadUrl = panelUrl + "/upload-evidence/" + response.getToken();
-            String json = String.format(UPLOAD_LINK_JSON, uploadUrl);
+            String json = ClickableJsonMessage.empty()
+                    .extra(ClickableJsonMessage.text("Click here to upload evidence")
+                            .color("green")
+                            .underlined(true)
+                            .bold(true)
+                            .openUrl(uploadUrl)
+                            .hoverText("Opens in your browser"))
+                    .toJson();
 
             platform.runOnMainThread(() -> platform.sendJsonMessage(senderUuid, json));
         }).exceptionally(throwable -> {

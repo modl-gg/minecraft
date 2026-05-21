@@ -24,10 +24,10 @@ report-violation-threshold:
   default: 10
 
 # Replay recording settings
-# Enable replay recording
-replay-enabled: true
-# Automatically start recording all players on join
-replay-auto-record: true
+# Enable replay recording. Disabled by default; opt in only after reviewing server policy and storage.
+replay-enabled: false
+# Automatically start recording all players on join. Requires replay-enabled.
+replay-auto-record: false
 # Buffer duration in seconds (how much history to keep)
 replay-buffer-duration: 60
 # Maximum recording duration in seconds
@@ -36,8 +36,8 @@ replay-max-duration: 300
 replay-radius: 64
 # Minimum interval between movement packets in milliseconds
 replay-move-throttle: 50
-# Save replay files to local disk after capture (default: false, files are deleted after upload)
-replay-save-local: false
+# Save replay files to local disk after capture (default: true, files are kept until TTL cleanup)
+replay-save-local: true
 # How long to keep local replay files in minutes before auto-deleting (only used if replay-save-local is true)
 # Default 7 days
 replay-local-ttl: 10080

@@ -26,10 +26,18 @@ dependencies {
 
     compileOnly("gg.modl.minecraft.packetevents:packetevents-api:${property("packetevents.version")}")
     compileOnly("gg.modl.minecraft.packetevents:packetevents-velocity:${property("packetevents.version")}")
+
+    testImplementation(platform("org.junit:junit-bom:${property("junit.bom.version")}"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.jar {
     manifest {
         attributes("Automatic-Module-Name" to "gg.modl.minecraft.platform.velocity.plugin")
     }
+}
+
+tasks.test {
+    useJUnitPlatform()
 }

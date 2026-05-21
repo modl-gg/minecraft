@@ -23,23 +23,22 @@ public final class PunishmentActionMessages {
         String configuredCommandPath = commandPath;
         if (configuredCommandPath == null || configuredCommandPath.trim().isEmpty()) return null;
 
-        return String.format(
-            "{\"text\":\"\",\"extra\":[" +
-            "{\"text\":\"Punishment #%s: \",\"color\":\"yellow\"}," +
-            "{\"text\":\"[Modify]\",\"color\":\"gold\"," +
-             "\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/%s modify %s\"}," +
-             "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to modify this punishment\"}}," +
-            "{\"text\":\" \"}," +
-            "{\"text\":\"[Link Evidence]\",\"color\":\"aqua\"," +
-             "\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/%s link-evidence %s\"}," +
-             "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to link a URL as evidence\"}}," +
-            "{\"text\":\" \"}," +
-            "{\"text\":\"[Upload Evidence]\",\"color\":\"green\"," +
-             "\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/%s upload-evidence %s\"}," +
-             "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to upload files as evidence\"}}" +
-            "]}",
-            punishmentId, configuredCommandPath, punishmentId, configuredCommandPath, punishmentId,
-            configuredCommandPath, punishmentId
-        );
+        return ClickableJsonMessage.empty()
+                .extra(ClickableJsonMessage.text("Punishment #" + punishmentId + ": ").color("yellow"))
+                .extra(ClickableJsonMessage.text("[Modify]")
+                        .color("gold")
+                        .runCommand("/" + configuredCommandPath + " modify " + punishmentId)
+                        .hoverText("Click to modify this punishment"))
+                .extra(ClickableJsonMessage.text(" "))
+                .extra(ClickableJsonMessage.text("[Link Evidence]")
+                        .color("aqua")
+                        .runCommand("/" + configuredCommandPath + " link-evidence " + punishmentId)
+                        .hoverText("Click to link a URL as evidence"))
+                .extra(ClickableJsonMessage.text(" "))
+                .extra(ClickableJsonMessage.text("[Upload Evidence]")
+                        .color("green")
+                        .runCommand("/" + configuredCommandPath + " upload-evidence " + punishmentId)
+                        .hoverText("Click to upload files as evidence"))
+                .toJson();
     }
 }

@@ -22,6 +22,7 @@ import gg.modl.minecraft.core.service.sync.SyncService;
 import gg.modl.minecraft.core.util.ChatEventHandler;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.ListenerHelper;
+import gg.modl.minecraft.core.util.LoginExecutor;
 import gg.modl.minecraft.core.util.LoginHandler;
 import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.RejectedExecutionException;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import java.util.concurrent.TimeUnit;
 import net.minecraft.text.Text;
@@ -43,6 +45,8 @@ import net.minecraft.text.Text;
 @RequiredArgsConstructor
 public class FabricListener {
     private static final long LOGIN_TIMEOUT_SECONDS = 10;
+    private static final int LOGIN_EXECUTOR_THREADS = 4;
+    private static final int LOGIN_QUEUE_CAPACITY = 64;
 
     private final FabricPlatform platform;
     private final Cache cache;
@@ -64,6 +68,8 @@ public class FabricListener {
     private final CachedProfileRegistry registry;
     private final boolean debugMode;
     private final MinecraftServer server;
+    private final LoginExecutor loginExecutor = new LoginExecutor(
+            "modl-fabric-login", LOGIN_EXECUTOR_THREADS, LOGIN_QUEUE_CAPACITY);
 
     private ModlHttpClient getHttpClient() {
         return httpClientHolder.getClient();
@@ -80,8 +86,8 @@ public class FabricListener {
         String playerName = player.getName().getString();
         String ipAddress = player.getIp();
 
-        CompletableFuture.runAsync(() -> {
-            try {
+        try {
+            loginExecutor.runAsync(() -> {
                 LoginCache.CachedLoginResult cached = loginCache.getCachedLoginResult(uuid);
                 if (cached != null) {
                     platform.getLogger().debug("Using cached login result for " + playerName);
@@ -105,6 +111,7 @@ public class FabricListener {
                     Map<String, Object> ipInfo = (Map<String, Object>) data[1];
                     String skinHash = (String) data[2];
                     return getHttpClient().playerLogin(request)
+                            .orTimeout(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                             .thenAccept(response -> {
                                 loginCache.cacheLoginResult(uuid, response, ipInfo, skinHash);
                                 ListenerHelper.handlePendingIpLookups(
@@ -119,18 +126,25 @@ public class FabricListener {
                     LoginHandler.LoginResult errorResult = LoginHandler.handleLoginError(error);
                     if (errorResult instanceof LoginHandler.LoginResult.Denied) {
                         LoginHandler.LoginResult.Denied denied = (LoginHandler.LoginResult.Denied) errorResult;
-                        server.execute(() -> platform.kickPlayer(
-                                platform.getAbstractPlayer(uuid, false), denied.getMessage()));
+                        kickForLoginFailure(uuid, denied.getMessage());
                     } else {
-                        completeJoin(uuid, playerName, null);
+                        kickForLoginFailure(uuid, "Unable to verify ban status. Login temporarily restricted for safety.");
                     }
                     return null;
-                }).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            } catch (Exception e) {
-                platform.getLogger().warning("Async login timed out for " + playerName + ": " + e.getMessage());
-                completeJoin(uuid, playerName, null);
-            }
-        });
+                });
+            });
+        } catch (RejectedExecutionException e) {
+            platform.getLogger().warning("Login executor rejected " + playerName + " - blocking login for safety");
+            kickForLoginFailure(uuid, "Login verification is temporarily unavailable. Please try again.");
+        }
+    }
+
+    private void kickForLoginFailure(UUID uuid, String reason) {
+        server.execute(() -> platform.kickPlayer(platform.getAbstractPlayer(uuid, false), reason));
+    }
+
+    public void shutdown() {
+        loginExecutor.shutdown();
     }
 
     private void handleLoginSuccess(UUID uuid, String playerName, String ipAddress,
@@ -142,8 +156,7 @@ public class FabricListener {
 
         if (result instanceof LoginHandler.LoginResult.Denied) {
             LoginHandler.LoginResult.Denied denied = (LoginHandler.LoginResult.Denied) result;
-            server.execute(() -> platform.kickPlayer(
-                    platform.getAbstractPlayer(uuid, false), denied.getMessage()));
+            kickForLoginFailure(uuid, denied.getMessage());
             return;
         }
 

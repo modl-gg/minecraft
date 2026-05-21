@@ -93,6 +93,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import com.google.gson.JsonObject;
 import gg.modl.minecraft.core.plugin.PluginInfo;
@@ -104,6 +105,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10), LOGIN_TIMEOUT = Duration.ofSeconds(15),
             SYNC_TIMEOUT = Duration.ofSeconds(20);
     private static final int MAX_LOG_BODY_LENGTH = 1000, HTTP_BAD_GATEWAY = 502;
+    private static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5L;
     private static final String[] FALLBACK_DATE_PATTERNS = {
             "yyyy-MM-dd'T'HH:mm:ss.SSSX",
             "yyyy-MM-dd'T'HH:mm:ssX",
@@ -125,9 +127,10 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         this.debugMode = debugMode;
         this.circuitBreaker = new CircuitBreaker();
 
+        AtomicInteger threadCounter = new AtomicInteger();
         this.executor = new ThreadPoolExecutor(0, 8, 60L, TimeUnit.SECONDS,
                 new SynchronousQueue<>(), r -> {
-            Thread t = new Thread(r, "modl-http");
+            Thread t = new Thread(r, "modl-http-" + threadCounter.incrementAndGet());
             t.setDaemon(true);
             t.setPriority(Thread.NORM_PRIORITY);
             return t;
@@ -136,6 +139,16 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .registerTypeAdapter(Date.class, flexibleDateDeserializer())
                 .create();
         this.logger = Logger.getLogger(ModlHttpClientV2Impl.class.getName());
+    }
+
+    public void shutdown() {
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) executor.shutdownNow();
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 
     private static JsonDeserializer<Date> flexibleDateDeserializer() {

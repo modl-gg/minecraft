@@ -260,6 +260,7 @@ public class SpigotPlugin extends JavaPlugin {
 
     @Override
     public synchronized void onDisable() {
+        shutdownSignedVelocity();
         if (bridgeComponent != null) bridgeComponent.disable();
         if (loader != null) loader.shutdown();
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
@@ -292,6 +293,19 @@ public class SpigotPlugin extends JavaPlugin {
             getLogger().info("[SignedVelocity] Embedded listeners registered");
         } catch (Exception e) {
             getLogger().warning("[SignedVelocity] Failed to initialize: " + e);
+            e.printStackTrace();
+        }
+    }
+
+    private void shutdownSignedVelocity() {
+        try {
+            Class<?> svClass = Class.forName("io.github._4drian3d.signedvelocity.paper.SignedVelocity");
+            Method shutdownMethod = svClass.getMethod("shutdown");
+            shutdownMethod.invoke(null);
+        } catch (ClassNotFoundException ignored) {
+            // SignedVelocity is optional and only loaded on Paper bridge deployments.
+        } catch (Exception e) {
+            getLogger().warning("[SignedVelocity] Failed to shutdown: " + e);
             e.printStackTrace();
         }
     }

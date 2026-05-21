@@ -75,16 +75,19 @@ public class FreezeHandler implements Listener {
 
         event.setCancelled(true);
 
+        UUID playerUuid = player.getUniqueId();
         String message = localeManager.getMessage("freeze.chat",
                 mapOf("player", player.getName(), "message", event.getMessage()));
 
-        if (staffModeHandler != null) {
-            Bukkit.getOnlinePlayers().stream()
-                    .filter(online -> staffModeHandler.isInStaffMode(online.getUniqueId()))
-                    .forEach(online -> online.sendMessage(message));
-        }
+        scheduler.runSync(() -> {
+            if (staffModeHandler != null) {
+                Bukkit.getOnlinePlayers().stream()
+                        .filter(online -> staffModeHandler.isInStaffMode(online.getUniqueId()))
+                        .forEach(online -> sendScheduledMessage(online.getUniqueId(), message));
+            }
 
-        player.sendMessage(message);
+            sendScheduledMessage(playerUuid, message);
+        });
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -128,6 +131,15 @@ public class FreezeHandler implements Listener {
             Player player = Bukkit.getPlayer(target);
             if (player != null) {
                 player.sendMessage(localeManager.getMessage(messageKey));
+            }
+        });
+    }
+
+    private void sendScheduledMessage(UUID target, String message) {
+        scheduler.runForPlayer(target, () -> {
+            Player player = Bukkit.getPlayer(target);
+            if (player != null) {
+                player.sendMessage(message);
             }
         });
     }

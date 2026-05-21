@@ -42,6 +42,7 @@ public class BungeePlugin extends Plugin {
     private ProxyBridgeRuntime bridgeRuntime;
     private PluginLogger pluginLogger;
     private BootConfig bootConfig;
+    private BungeeListener bungeeListener;
 
     @Override
     public synchronized void onEnable() {
@@ -97,7 +98,7 @@ public class BungeePlugin extends Plugin {
         this.loader = new PluginLoader(platform, getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
         configureBridgeExecutor(platform, bootConfig, panelUrl);
 
-        getProxy().getPluginManager().registerListener(this, new BungeeListener(
+        bungeeListener = new BungeeListener(
                 platform, loader.getCache(), loader.getHttpClientHolder(), loader.getChatMessageCache(),
                 loader.getSyncService(), loader.getLocaleManager(),
                 mutedCommands, this, loader.getStaffChatService(),
@@ -106,7 +107,8 @@ public class BungeePlugin extends Plugin {
                 loader.getChatCommandLogService(), loader.getStaff2faService(),
                 loader.getConfigManager().getStaffChatConfig(), loader.getLoginCache(),
                 loader.getBridgeService(), loader.getCachedProfileRegistry(),
-                loader.isDebugMode()));
+                loader.isDebugMode());
+        getProxy().getPluginManager().registerListener(this, bungeeListener);
 
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
         getProxy().getPluginManager().registerListener(this, new AsyncCommandInterceptor(asyncExecutor, getProxy()));
@@ -116,6 +118,7 @@ public class BungeePlugin extends Plugin {
 
     @Override
     public synchronized void onDisable() {
+        if (bungeeListener != null) bungeeListener.shutdown();
         if (bridgeRuntime != null) bridgeRuntime.shutdown();
         if (loader != null) loader.shutdown();
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();

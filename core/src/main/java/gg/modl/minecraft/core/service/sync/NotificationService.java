@@ -9,6 +9,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.ClickableJsonMessage;
 import gg.modl.minecraft.core.util.PluginLogger;
 import lombok.Setter;
 
@@ -85,20 +86,26 @@ class NotificationService {
         String clickValue;
         if (isGameplayReport) {
             clickAction = "run_command";
-            clickValue = "/target " + escapeJson(reportedPlayer);
+            clickValue = "/target " + reportedPlayer;
             hoverText += (hoverText.isEmpty() ? "" : "\n\n") + "Click to target " + reportedPlayer;
         } else {
             clickAction = "open_url";
             clickValue = ticketUrl;
         }
 
-        String json = String.format(
-            "{\"text\":\"\",\"extra\":[" +
-            "{\"text\":\"[%s]\",\"color\":\"gray\",\"italic\":true," +
-            "\"clickEvent\":{\"action\":\"%s\",\"value\":\"%s\"}," +
-            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"%s\"}}]}",
-            escapeJson(notification.getMessage()), clickAction, clickValue, escapeJson(hoverText)
-        );
+        ClickableJsonMessage link = ClickableJsonMessage.text("[" + notification.getMessage() + "]")
+                .color("gray")
+                .italic(true)
+                .hoverText(hoverText);
+        if ("run_command".equals(clickAction)) {
+            link.runCommand(clickValue);
+        } else {
+            link.openUrl(clickValue);
+        }
+
+        String json = ClickableJsonMessage.empty()
+                .extra(link)
+                .toJson();
         platform.staffJsonBroadcast(json);
     }
 
@@ -299,15 +306,15 @@ class NotificationService {
     }
 
     private String buildClickableTicketJson(String message, String ticketUrl, String ticketId) {
-        return String.format(
-            "{\"text\":\"\",\"extra\":[" +
-            "{\"text\":\"[Ticket] \",\"color\":\"gold\"}," +
-            "{\"text\":\"%s \",\"color\":\"white\"}," +
-            "{\"text\":\"[Click to view]\",\"color\":\"aqua\",\"underlined\":true," +
-            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket %s\"}}]}",
-            message.replace("\"", "\\\""), ticketUrl, ticketId
-        );
+        return ClickableJsonMessage.empty()
+                .extra(ClickableJsonMessage.text("[Ticket] ").color("gold"))
+                .extra(ClickableJsonMessage.text(message + " ").color("white"))
+                .extra(ClickableJsonMessage.text("[Click to view]")
+                        .color("aqua")
+                        .underlined(true)
+                        .openUrl(ticketUrl)
+                        .hoverText("Click to view ticket " + ticketId))
+                .toJson();
     }
 
     private String buildTicketHoverText(String subject, String firstReply) {
@@ -327,11 +334,4 @@ class NotificationService {
         return val instanceof String ? (String) val : "";
     }
 
-    private String escapeJson(String text) {
-        return text.replace("\\", "\\\\")
-                   .replace("\"", "\\\"")
-                   .replace("\n", "\\n")
-                   .replace("\r", "")
-                   .replace("\t", "\\t");
-    }
 }

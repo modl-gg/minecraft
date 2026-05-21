@@ -15,6 +15,7 @@ import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.service.sync.SyncService;
@@ -159,6 +160,11 @@ public final class ListenerHelper {
         if (profile != null && profile.getStaffModeState() != StaffModeService.StaffModeState.OFF && bridgeService != null) {
             String panelName = cache.getDisplayName(uuid, playerName);
             bridgeService.sendStaffModeExit(uuid.toString(), playerName, panelName);
+        }
+
+        ReplayService replayService = platform.getReplayService();
+        if (replayService != null) {
+            replayService.onPlayerDisconnect(uuid);
         }
 
         registry.destroyProfile(uuid);

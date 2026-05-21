@@ -95,6 +95,8 @@ import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.util.PunishmentTypeCacheManager;
 import gg.modl.minecraft.core.util.StaffPermissionLoader;
+import gg.modl.minecraft.core.util.IpApiClient;
+import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.Getter;
 import org.yaml.snakeyaml.Yaml;
 
@@ -122,6 +124,7 @@ public class PluginLoader {
     private final LocaleManager localeManager;
     private final LoginCache loginCache;
     private final AsyncCommandExecutor asyncCommandExecutor;
+    private final HttpManager httpManager;
     private final Path dataDirectory;
     private final PluginLogger logger;
     private final ConfigManager configManager;
@@ -144,6 +147,7 @@ public class PluginLoader {
 
     public PluginLoader(Platform platform, Path dataDirectory, ChatMessageCache chatMessageCache, HttpManager httpManager, int syncPollingRateSeconds) {
         this.dataDirectory = dataDirectory;
+        this.httpManager = httpManager;
         this.debugMode = httpManager.isDebugHttp();
         this.chatMessageCache = chatMessageCache;
         this.queryMojang = httpManager.isQueryMojang();
@@ -198,6 +202,9 @@ public class PluginLoader {
         UpdateCheckerConfig updateCheckerConfig = loadUpdateCheckerConfig(configYml, logger);
         this.updateCheckerService = new UpdateCheckerService(logger, this.debugMode, PluginInfo.VERSION);
         this.updateCheckerService.start(updateCheckerConfig.enabled, updateCheckerConfig.intervalMinutes);
+
+        IpLookupConfig ipLookupConfig = loadIpLookupConfig(configYml, logger);
+        IpApiClient.initialize(ipLookupConfig.enabled, ipLookupConfig.url);
 
         Map<String, String> commandAliases = loadCommandAliases(configYml, logger);
         ConfiguredCommandAliases configuredCommandAliases = new ConfiguredCommandAliases(commandAliases);
@@ -455,43 +462,59 @@ public class PluginLoader {
         }
     }
 
+    static final String LITEBANS_HOST_PLACEHOLDER = "litebans-database-host";
+    static final String LITEBANS_DATABASE_PLACEHOLDER = "litebans_database";
+    static final String LITEBANS_USERNAME_PLACEHOLDER = "litebans_user";
+    static final String LITEBANS_PASSWORD_PLACEHOLDER = "change-me";
+
     @SuppressWarnings("unchecked")
-    private DatabaseConfig loadDatabaseConfig(Map<String, Object> config, Path dataDirectory, PluginLogger logger) {
+    static DatabaseConfig loadDatabaseConfig(Map<String, Object> config, Path dataDirectory, PluginLogger logger) {
         try {
-            if (config.containsKey("migration")) {
-                Map<String, Object> migration = (Map<String, Object>) config.get("migration");
-                Map<String, Object> litebans = (Map<String, Object>) migration.get("litebans");
-                Map<String, Object> database = (Map<String, Object>) litebans.get("database");
+            if (!config.containsKey("migration")) return null;
+            Map<String, Object> migration = (Map<String, Object>) config.get("migration");
+            if (migration == null) return null;
+            Map<String, Object> litebans = (Map<String, Object>) migration.get("litebans");
+            if (litebans == null) return null;
+            Map<String, Object> database = (Map<String, Object>) litebans.get("database");
+            if (database == null) return null;
 
-                String host = (String) database.getOrDefault("host", "localhost");
-                int port = parseIntegerValue(database.getOrDefault("port", 3306), 3306);
-                String dbName = (String) database.getOrDefault("database", "minecraft");
-                String username = (String) database.getOrDefault("username", "root");
-                String password = (String) database.getOrDefault("password", "");
-                String type = (String) database.getOrDefault("type", "mysql");
-                String tablePrefix = (String) database.getOrDefault("table_prefix", "litebans_");
-
-                DatabaseConfig.DatabaseType dbType = DatabaseConfig.DatabaseType.fromString(type);
-
-                String detectedPrefix = detectLiteBansTablePrefix(dataDirectory, logger);
-                if (detectedPrefix != null) {
-                    tablePrefix = detectedPrefix;
-                }
-
-                return new DatabaseConfig(host, dbName, username, password, dbType, tablePrefix, port);
+            String host = (String) database.get("host");
+            String username = (String) database.get("username");
+            String password = (String) database.get("password");
+            if (host == null || username == null || password == null) return null;
+            if (LITEBANS_HOST_PLACEHOLDER.equals(host)
+                    || LITEBANS_USERNAME_PLACEHOLDER.equals(username)
+                    || LITEBANS_PASSWORD_PLACEHOLDER.equals(password)) {
+                return null;
             }
+
+            int port = parseIntegerValue(database.getOrDefault("port", 3306), 3306);
+            String dbName = (String) database.getOrDefault("database", LITEBANS_DATABASE_PLACEHOLDER);
+            String type = (String) database.getOrDefault("type", "mysql");
+            String tablePrefix = (String) database.getOrDefault("table_prefix", "litebans_");
+
+            DatabaseConfig.DatabaseType dbType = DatabaseConfig.DatabaseType.fromString(type);
+
+            String detectedPrefix = detectLiteBansTablePrefix(dataDirectory, logger);
+            if (detectedPrefix != null) {
+                tablePrefix = detectedPrefix;
+            }
+
+            return new DatabaseConfig(host, dbName, username, password, dbType, tablePrefix, port);
         } catch (Exception e) {
             logger.warning("Failed to load database config: " + e.getMessage());
         }
 
-        return createDefaultDatabaseConfig();
+        return null;
     }
 
     private DatabaseConfig createDefaultDatabaseConfig() {
-        return new DatabaseConfig("localhost", "minecraft", "root", "", DatabaseConfig.DatabaseType.MYSQL, "litebans_", 3306);
+        return new DatabaseConfig(LITEBANS_HOST_PLACEHOLDER, LITEBANS_DATABASE_PLACEHOLDER,
+                LITEBANS_USERNAME_PLACEHOLDER, LITEBANS_PASSWORD_PLACEHOLDER,
+                DatabaseConfig.DatabaseType.MYSQL, "litebans_", 3306);
     }
 
-    private String detectLiteBansTablePrefix(Path dataDirectory, PluginLogger logger) {
+    private static String detectLiteBansTablePrefix(Path dataDirectory, PluginLogger logger) {
         try {
             Path litebansConfig = dataDirectory.getParent().resolve("LiteBans").resolve("config.yml");
 
@@ -525,6 +548,11 @@ public class PluginLoader {
         if (syncService != null) syncService.stop();
         if (loginCache != null) loginCache.shutdown();
         if (asyncCommandExecutor != null) asyncCommandExecutor.shutdown();
+        IpApiClient.shutdown();
+        WebPlayer.shutdown();
+        gg.modl.minecraft.core.impl.menus.util.PlayerHeadItemBuilder.shutdown();
+        gg.modl.minecraft.core.util.Java8Collections.shutdown();
+        if (httpManager != null) httpManager.shutdown();
     }
 
     private MinecraftRealtimeClient startRealtimeClientIfEnabled(Platform platform, HttpManager httpManager) {
@@ -609,6 +637,44 @@ public class PluginLoader {
         private UpdateCheckerConfig(boolean enabled, int intervalMinutes) {
             this.enabled = enabled;
             this.intervalMinutes = intervalMinutes;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static IpLookupConfig loadIpLookupConfig(Map<String, Object> config, PluginLogger logger) {
+        boolean enabled = true;
+        String url = "https://ipwho.is/{ip}";
+
+        try {
+            if (config.containsKey("ip-lookup")) {
+                Object node = config.get("ip-lookup");
+                if (node instanceof Map) {
+                    Map<String, Object> ipLookup = (Map<String, Object>) node;
+
+                    Object enabledValue = ipLookup.get("enabled");
+                    if (enabledValue instanceof Boolean) enabled = (Boolean) enabledValue;
+                    else if (enabledValue instanceof String) enabled = Boolean.parseBoolean((String) enabledValue);
+
+                    Object urlValue = ipLookup.get("url");
+                    if (urlValue instanceof String && !((String) urlValue).isBlank()) {
+                        url = (String) urlValue;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("Failed to load ip-lookup config: " + e.getMessage());
+        }
+
+        return new IpLookupConfig(enabled, url);
+    }
+
+    private static final class IpLookupConfig {
+        private final boolean enabled;
+        private final String url;
+
+        private IpLookupConfig(boolean enabled, String url) {
+            this.enabled = enabled;
+            this.url = url;
         }
     }
 

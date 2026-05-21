@@ -12,6 +12,7 @@ import gg.modl.minecraft.api.http.request.CreatePlayerNoteRequest;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource;
+import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource.FetchResult;
 import gg.modl.minecraft.core.impl.menus.util.InspectContext;
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
@@ -36,6 +37,7 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
     private static final int PAGE_SIZE = 7;
 
     private final PaginatedDataSource<Note> dataSource;
+    private int pageRefreshRequest;
 
     public NotesMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                      Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
@@ -49,15 +51,15 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
 
         int totalCount = inspectContext != null ? inspectContext.noteCount() : targetAccount.getNotes().size();
         dataSource = new PaginatedDataSource<>(PAGE_SIZE, (page, limit) -> {
-            CompletableFuture<PaginatedDataSource.FetchResult<Note>> future = new CompletableFuture<>();
+            CompletableFuture<FetchResult<Note>> future = new CompletableFuture<>();
             httpClient.getPlayerNotes(targetUuid, page, limit).thenAccept(response -> {
                 if (response.getStatus() == 200) {
-                    future.complete(new PaginatedDataSource.FetchResult<>(response.getNotes(), response.getTotalCount()));
+                    future.complete(new FetchResult<>(response.getNotes(), response.getTotalCount()));
                 } else {
-                    future.complete(new PaginatedDataSource.FetchResult<>(listOf(), 0));
+                    future.complete(new FetchResult<>(listOf(), 0));
                 }
             }).exceptionally(e -> {
-                future.complete(new PaginatedDataSource.FetchResult<>(listOf(), totalCount));
+                future.complete(new FetchResult<>(listOf(), totalCount));
                 return null;
             });
             return future;
@@ -87,14 +89,14 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
     protected boolean interceptNextPage(Click click) {
         int nextPage = currentPageIndex().get() + 1;
         if (!dataSource.isPageLoaded(nextPage)) {
-            dataSource.setOnDataLoaded(() -> {
+            int refreshRequest = ++pageRefreshRequest;
+            dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1, () -> {
+                if (refreshRequest != pageRefreshRequest) return;
                 NotesMenu newMenu = new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
                 newMenu.dataSource.initialize(dataSource.getAllLoadedItems(), dataSource.getTotalCount());
-                newMenu.display(click.player());
                 newMenu.setInitialPage(nextPage);
                 newMenu.display(click.player());
             });
-            dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1);
             return true;
         }
         dataSource.prefetchIfNeeded(nextPage);

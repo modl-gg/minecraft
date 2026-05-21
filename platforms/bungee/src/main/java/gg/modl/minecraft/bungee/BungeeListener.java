@@ -42,16 +42,26 @@ import net.md_5.bungee.event.EventHandler;
 import net.md_5.bungee.event.EventPriority;
 
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.net.SocketAddress;
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RequiredArgsConstructor
 public class BungeeListener implements Listener {
+    private static final long LOGIN_TIMEOUT_SECONDS = 5;
+    private static final int LOGIN_EXECUTOR_MAX_THREADS = 4;
+    private static final int LOGIN_EXECUTOR_QUEUE_CAPACITY = 64;
+    private static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5;
+    private static final AtomicInteger LOGIN_THREAD_COUNTER = new AtomicInteger();
+
     private final BungeePlatform platform;
     private final Cache cache;
     private final HttpClientHolder httpClientHolder;
@@ -72,8 +82,7 @@ public class BungeeListener implements Listener {
     private final BridgeService bridgeService;
     private final CachedProfileRegistry registry;
     private final boolean debugMode;
-
-    private static final long LOGIN_TIMEOUT_SECONDS = 5;
+    private final ThreadPoolExecutor loginExecutor = createLoginExecutor();
 
     private ModlHttpClient getHttpClient() {
         return httpClientHolder.getClient();
@@ -82,19 +91,56 @@ public class BungeeListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(LoginEvent event) {
         event.registerIntent(plugin);
+        scheduleLoginCheck(event);
+    }
 
-        CompletableFuture.runAsync(() -> {
-            try {
-                performLoginCheck(event);
-            } catch (TimeoutException e) {
-                platform.getLogger().warning("Login check timed out for " + event.getConnection().getName() + " - blocking login for safety");
-                denyLogin(event, "Login verification timed out. Please try again.");
-            } catch (Exception e) {
-                handleLoginException(event, e);
-            } finally {
-                event.completeIntent(plugin);
-            }
-        });
+    public void shutdown() {
+        loginExecutor.shutdown();
+        try {
+            if (!loginExecutor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) loginExecutor.shutdownNow();
+        } catch (InterruptedException e) {
+            loginExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private ThreadPoolExecutor createLoginExecutor() {
+        return new ThreadPoolExecutor(
+                1,
+                LOGIN_EXECUTOR_MAX_THREADS,
+                60L,
+                TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(LOGIN_EXECUTOR_QUEUE_CAPACITY),
+                runnable -> {
+                    Thread thread = new Thread(runnable, "modl-bungee-login-" + LOGIN_THREAD_COUNTER.incrementAndGet());
+                    thread.setDaemon(true);
+                    return thread;
+                },
+                new ThreadPoolExecutor.AbortPolicy()
+        );
+    }
+
+    private void runLoginCheck(LoginEvent event) {
+        try {
+            performLoginCheck(event);
+        } catch (TimeoutException e) {
+            platform.getLogger().warning("Login check timed out for " + event.getConnection().getName() + " - blocking login for safety");
+            denyLogin(event, "Login verification timed out. Please try again.");
+        } catch (Exception e) {
+            handleLoginException(event, e);
+        } finally {
+            event.completeIntent(plugin);
+        }
+    }
+
+    private void scheduleLoginCheck(LoginEvent event) {
+        try {
+            CompletableFuture.runAsync(() -> runLoginCheck(event), loginExecutor);
+        } catch (RejectedExecutionException e) {
+            platform.getLogger().warning("Login check executor rejected " + event.getConnection().getName() + " - blocking login for safety");
+            denyLogin(event, "Login verification is temporarily unavailable. Please try again.");
+            event.completeIntent(plugin);
+        }
     }
 
     private void performLoginCheck(LoginEvent event) throws Exception {

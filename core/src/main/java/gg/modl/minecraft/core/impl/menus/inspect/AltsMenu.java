@@ -13,6 +13,7 @@ import gg.modl.minecraft.api.http.response.LinkedAccountsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource;
+import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource.FetchResult;
 import gg.modl.minecraft.core.impl.menus.util.InspectContext;
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
@@ -45,6 +46,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
     private static final int INITIAL_LOAD_PAGES = 2;
 
     private final PaginatedDataSource<Account> dataSource;
+    private int pageRefreshRequest;
 
     public AltsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                     Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
@@ -57,16 +59,16 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         activeTab = InspectTab.ALTS;
 
         dataSource = new PaginatedDataSource<>(PAGE_SIZE, (page, limit) -> {
-            CompletableFuture<PaginatedDataSource.FetchResult<Account>> future = new CompletableFuture<>();
+            CompletableFuture<FetchResult<Account>> future = new CompletableFuture<>();
             httpClient.getLinkedAccounts(targetUuid, page, limit).thenAccept(response -> {
                 if (response.getStatus() == 200) {
                     cacheSkinTextures(response.getLinkedAccounts());
-                    future.complete(new PaginatedDataSource.FetchResult<>(response.getLinkedAccounts(), response.getTotalCount()));
+                    future.complete(new FetchResult<>(response.getLinkedAccounts(), response.getTotalCount()));
                 } else {
-                    future.complete(new PaginatedDataSource.FetchResult<>(listOf(), 0));
+                    future.complete(new FetchResult<>(listOf(), 0));
                 }
             }).exceptionally(e -> {
-                future.complete(new PaginatedDataSource.FetchResult<>(listOf(), 0));
+                future.complete(new FetchResult<>(listOf(), 0));
                 return null;
             });
             return future;
@@ -114,14 +116,14 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
     protected boolean interceptNextPage(Click click) {
         int nextPage = currentPageIndex().get() + 1;
         if (!dataSource.isPageLoaded(nextPage)) {
-            dataSource.setOnDataLoaded(() -> {
+            int refreshRequest = ++pageRefreshRequest;
+            dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1, () -> {
+                if (refreshRequest != pageRefreshRequest) return;
                 AltsMenu newMenu = new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
                 newMenu.dataSource.initialize(dataSource.getAllLoadedItems(), dataSource.getTotalCount());
-                newMenu.display(click.player());
                 newMenu.setInitialPage(nextPage);
                 newMenu.display(click.player());
             });
-            dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1);
             return true;
         }
         dataSource.prefetchIfNeeded(nextPage);

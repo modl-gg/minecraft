@@ -14,8 +14,8 @@ public class SyncRequest {
     private @NotNull List<OnlinePlayer> onlinePlayers;
     private @Nullable String serverName;
     private @Nullable String serverInstanceId;
-    private transient @Nullable List<ChatLogEntry> chatLogs;
-    private transient @Nullable List<CommandLogEntry> commandLogs;
+    private @Nullable List<ChatLogEntry> chatLogs;
+    private @Nullable List<CommandLogEntry> commandLogs;
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class OnlinePlayer {

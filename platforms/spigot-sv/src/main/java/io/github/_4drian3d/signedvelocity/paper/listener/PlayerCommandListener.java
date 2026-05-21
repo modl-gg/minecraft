@@ -7,6 +7,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
+
 public final class PlayerCommandListener implements EventListener<PlayerCommandPreprocessEvent>, LocalExecutionDetector {
     private static final Class<?> CHAT_COMMAND_PACKET;
     private static final Class<?> CHAT_COMMAND_SIGNED_PACKET;
@@ -51,8 +53,7 @@ public final class PlayerCommandListener implements EventListener<PlayerCommandP
 
         final Player player = event.getPlayer();
         this.commandQueue.dataFrom(player.getUniqueId())
-                .nextResult()
-                .thenAccept(result -> {
+                .acceptNextResult(result -> {
                     if (result.cancelled()) {
                         debugLogger.debug(() -> "[COMMAND] Canceled Command. Command: " + event.getMessage());
                         event.setCancelled(true);
@@ -67,7 +68,7 @@ public final class PlayerCommandListener implements EventListener<PlayerCommandP
                             event.setMessage(modified);
                         }
                     }
-                }).join();
+                });
     }
 
     @Override
@@ -80,7 +81,7 @@ public final class PlayerCommandListener implements EventListener<PlayerCommandP
         return WALKER.walk(stream -> stream.limit(15)
                 .map(StackWalker.StackFrame::getMethodType)
                 .noneMatch(method -> {
-                    var parameters = method.parameterList();
+                    List<Class<?>> parameters = method.parameterList();
                     return (CHAT_COMMAND_PACKET != null && parameters.contains(CHAT_COMMAND_PACKET))
                             || (CHAT_COMMAND_SIGNED_PACKET != null && parameters.contains(CHAT_COMMAND_SIGNED_PACKET));
                 }));

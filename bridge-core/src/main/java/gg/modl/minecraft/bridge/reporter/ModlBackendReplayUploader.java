@@ -5,51 +5,73 @@ import com.google.gson.JsonObject;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
-import java.io.InputStream;
 
-public class ModlBackendReplayUploader {
+public class ModlBackendReplayUploader implements AutoCloseable {
 
     private final String backendUrl;
     private final String apiKey;
     private final String serverDomain;
     private final Logger logger;
     private final Gson gson;
+    private final ExecutorService uploadExecutor;
+    private final boolean ownsUploadExecutor;
+    private final AtomicBoolean closed = new AtomicBoolean(false);
+    private final ConcurrentHashMap.KeySetView<CompletableFuture<String>, Boolean> pendingUploads =
+            ConcurrentHashMap.newKeySet();
 
     private static final String USER_AGENT = "modl-minecraft";
     private static final int CONNECT_TIMEOUT_MS = (int) Duration.ofSeconds(10).toMillis();
     private static final int READ_TIMEOUT_MS = (int) Duration.ofSeconds(30).toMillis();
     private static final int UPLOAD_READ_TIMEOUT_MS = (int) Duration.ofMinutes(5).toMillis();
-
     public ModlBackendReplayUploader(String backendUrl, String apiKey, String serverDomain, Logger logger) {
+        this(backendUrl, apiKey, serverDomain, logger, createUploadExecutor(), true);
+    }
+
+    ModlBackendReplayUploader(String backendUrl, String apiKey, String serverDomain, Logger logger,
+                              ExecutorService uploadExecutor) {
+        this(backendUrl, apiKey, serverDomain, logger, uploadExecutor, false);
+    }
+
+    private ModlBackendReplayUploader(String backendUrl, String apiKey, String serverDomain, Logger logger,
+                                      ExecutorService uploadExecutor, boolean ownsUploadExecutor) {
         this.backendUrl = normalizeBackendUrl(backendUrl);
         this.apiKey = apiKey;
         this.serverDomain = serverDomain;
         this.logger = logger;
         this.gson = new Gson();
+        this.uploadExecutor = uploadExecutor;
+        this.ownsUploadExecutor = ownsUploadExecutor;
     }
 
     private static String normalizeBackendUrl(String backendUrl) {
-        if (backendUrl == null) {
-            return null;
-        }
-
-        String normalized = backendUrl.trim();
+        URI uri = parseTrustedHttpUri(backendUrl, "backend URL", false);
+        String normalized = uri.toString();
         while (normalized.endsWith("/")) {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
 
+        int schemeSeparator = normalized.indexOf("://");
         int lastSlash = normalized.lastIndexOf('/');
-        if (lastSlash > normalized.indexOf("://") + 2) {
+        if (lastSlash > schemeSeparator + 2) {
             String lastSegment = normalized.substring(lastSlash + 1);
             if (lastSegment.matches("v\\d+")) {
                 return normalized.substring(0, lastSlash);
@@ -64,16 +86,52 @@ public class ModlBackendReplayUploader {
     }
 
     public CompletableFuture<String> uploadAsync(File replayFile, String mcVersion, UUID targetUuid, String targetName) {
-        return CompletableFuture.supplyAsync(() -> {
+        throwIfClosed();
+
+        CompletableFuture<String> future = new CompletableFuture<>();
+        pendingUploads.add(future);
+        if (closed.get()) {
+            pendingUploads.remove(future);
+            RejectedExecutionException exception = new RejectedExecutionException("Replay uploader is closed");
+            future.completeExceptionally(exception);
+            throw exception;
+        }
+
+        Runnable uploadTask = () -> {
             try {
+                throwIfClosed();
                 InitResponse init = initUpload(replayFile, mcVersion, targetUuid, targetName);
+                throwIfClosed();
                 uploadToStorage(replayFile, init.uploadUrl);
+                throwIfClosed();
                 confirmUpload(init.replayId);
-                return init.replayId;
+                future.complete(init.replayId);
             } catch (Exception e) {
-                throw new RuntimeException("Replay upload failed: " + e.getMessage(), e);
+                future.completeExceptionally(new RuntimeException("Replay upload failed: " + e.getMessage(), e));
+            } finally {
+                pendingUploads.remove(future);
             }
-        });
+        };
+
+        try {
+            uploadExecutor.execute(uploadTask);
+        } catch (RejectedExecutionException e) {
+            pendingUploads.remove(future);
+            future.completeExceptionally(e);
+            throw e;
+        }
+
+        return future;
+    }
+
+    @Override
+    public void close() {
+        closed.set(true);
+        RejectedExecutionException closedException = new RejectedExecutionException("Replay uploader is closed");
+        pendingUploads.forEach(future -> future.completeExceptionally(closedException));
+        if (ownsUploadExecutor) {
+            uploadExecutor.shutdownNow();
+        }
     }
 
     private InitResponse initUpload(File file, String mcVersion, UUID targetUuid, String targetName) throws Exception {
@@ -87,7 +145,7 @@ public class ModlBackendReplayUploader {
             body.addProperty("targetName", targetName);
         }
 
-        HttpURLConnection connection = (HttpURLConnection) new URL(backendUrl + "/v1/minecraft/replays/upload").openConnection();
+        HttpURLConnection connection = openBackendConnection("/v1/minecraft/replays/upload");
         try {
             connection.setRequestMethod("POST");
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
@@ -124,18 +182,19 @@ public class ModlBackendReplayUploader {
     }
 
     private void uploadToStorage(File file, String presignedUrl) throws Exception {
-        HttpURLConnection connection = (HttpURLConnection) new URL(presignedUrl).openConnection();
+        URL uploadUrl = parseTrustedHttpUri(presignedUrl, "presigned upload URL", true).toURL();
+        HttpURLConnection connection = (HttpURLConnection) uploadUrl.openConnection();
         try {
             connection.setRequestMethod("PUT");
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
             connection.setReadTimeout(UPLOAD_READ_TIMEOUT_MS);
             connection.setRequestProperty("Content-Type", "application/octet-stream");
             connection.setRequestProperty("User-Agent", USER_AGENT);
+            connection.setFixedLengthStreamingMode(file.length());
             connection.setDoOutput(true);
 
-            byte[] fileBytes = Files.readAllBytes(file.toPath());
             try (OutputStream os = connection.getOutputStream()) {
-                os.write(fileBytes);
+                Files.copy(file.toPath(), os);
             }
 
             int statusCode = connection.getResponseCode();
@@ -149,7 +208,7 @@ public class ModlBackendReplayUploader {
     }
 
     private void confirmUpload(String replayId) throws Exception {
-        HttpURLConnection connection = (HttpURLConnection) new URL(backendUrl + "/v1/minecraft/replays/confirm/" + replayId).openConnection();
+        HttpURLConnection connection = openBackendConnection("/v1/minecraft/replays/confirm/" + replayId);
         try {
             connection.setRequestMethod("POST");
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
@@ -190,6 +249,64 @@ public class ModlBackendReplayUploader {
         } catch (Exception e) {
             return "";
         }
+    }
+
+    private HttpURLConnection openBackendConnection(String path) throws Exception {
+        URL url = URI.create(backendUrl + path).toURL();
+        return (HttpURLConnection) url.openConnection();
+    }
+
+    private static URI parseTrustedHttpUri(String rawUrl, String label, boolean allowQuery) {
+        if (rawUrl == null) {
+            throw new IllegalArgumentException("Unsupported " + label + ": missing URL");
+        }
+
+        String trimmed = rawUrl.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("Unsupported " + label + ": missing URL");
+        }
+
+        URI uri;
+        try {
+            uri = URI.create(trimmed);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unsupported " + label + ": malformed URL", e);
+        }
+
+        String scheme = uri.getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+            throw new IllegalArgumentException("Unsupported " + label + ": scheme must be http or https");
+        }
+        if (uri.getHost() == null || uri.getHost().trim().isEmpty()) {
+            throw new IllegalArgumentException("Unsupported " + label + ": missing host");
+        }
+        if (!allowQuery && uri.getRawQuery() != null) {
+            throw new IllegalArgumentException("Unsupported " + label + ": query is not allowed");
+        }
+        if (uri.getRawFragment() != null) {
+            throw new IllegalArgumentException("Unsupported " + label + ": query and fragment are not allowed");
+        }
+
+        return uri;
+    }
+
+    private void throwIfClosed() {
+        if (closed.get()) {
+            throw new RejectedExecutionException("Replay uploader is closed");
+        }
+    }
+
+    private static ExecutorService createUploadExecutor() {
+        return Executors.newSingleThreadExecutor(new ThreadFactory() {
+            private final AtomicInteger nextId = new AtomicInteger(1);
+
+            @Override
+            public Thread newThread(Runnable runnable) {
+                Thread thread = new Thread(runnable, "modl-replay-upload-" + nextId.getAndIncrement());
+                thread.setDaemon(true);
+                return thread;
+            }
+        });
     }
 
     private static class InitResponse {

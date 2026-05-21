@@ -9,6 +9,8 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -130,7 +132,8 @@ public class Cache {
     }
 
     public void cacheStaffPermissions(UUID playerUuid, String staffUsername, String staffId, String staffRole, List<String> permissions) {
-        staffPermissionsCache.put(playerUuid, new StaffPermissions(staffUsername, staffId, staffRole, permissions));
+        List<String> cachedPermissions = Collections.unmodifiableList(new ArrayList<>(permissions));
+        staffPermissionsCache.put(playerUuid, new StaffPermissions(staffUsername, staffId, staffRole, cachedPermissions));
     }
 
     public void removeStaffPermissions(UUID playerUuid) {

@@ -46,6 +46,12 @@ public class HttpManager {
         }
     }
 
+    public void shutdown() {
+        if (httpClient instanceof ModlHttpClientV2Impl) {
+            ((ModlHttpClientV2Impl) httpClient).shutdown();
+        }
+    }
+
     /**
      * Swaps .modl.gg ↔ .modl.top in the panel URL based on the testing API flag.
      */

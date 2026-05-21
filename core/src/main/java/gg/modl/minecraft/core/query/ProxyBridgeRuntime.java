@@ -6,10 +6,12 @@ import gg.modl.minecraft.core.boot.BootConfig;
 import gg.modl.minecraft.core.util.PluginLogger;
 
 public final class ProxyBridgeRuntime {
-    private final BridgeServer bridgeServer;
+    private final Runnable bridgeShutdown;
+    private final BridgeReplayService bridgeReplayService;
 
-    private ProxyBridgeRuntime(BridgeServer bridgeServer) {
-        this.bridgeServer = bridgeServer;
+    ProxyBridgeRuntime(Runnable bridgeShutdown, BridgeReplayService bridgeReplayService) {
+        this.bridgeShutdown = bridgeShutdown;
+        this.bridgeReplayService = bridgeReplayService;
     }
 
     public static ProxyBridgeRuntime startIfProxy(
@@ -38,10 +40,11 @@ public final class ProxyBridgeRuntime {
         dispatcher.setBridgeReplayService(bridgeReplayService);
         platform.setReplayService(bridgeReplayService);
 
-        return new ProxyBridgeRuntime(bridgeServer);
+        return new ProxyBridgeRuntime(bridgeServer::shutdown, bridgeReplayService);
     }
 
     public void shutdown() {
-        bridgeServer.shutdown();
+        bridgeShutdown.run();
+        bridgeReplayService.shutdown();
     }
 }

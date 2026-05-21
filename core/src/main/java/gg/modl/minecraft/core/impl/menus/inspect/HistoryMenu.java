@@ -16,6 +16,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource;
+import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource.FetchResult;
 import gg.modl.minecraft.core.impl.menus.util.InspectContext;
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
@@ -42,7 +43,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
     private final Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
     private final PaginatedDataSource<Punishment> dataSource;
-    private int pendingPage = -1;
+    private int pageRefreshRequest;
 
     public HistoryMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                        Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
@@ -58,15 +59,15 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
         int totalCount = inspectContext != null ? inspectContext.punishmentCount() : targetAccount.getPunishments().size();
         dataSource = new PaginatedDataSource<>(PAGE_SIZE, (page, limit) -> {
-            CompletableFuture<PaginatedDataSource.FetchResult<Punishment>> future = new CompletableFuture<>();
+            CompletableFuture<FetchResult<Punishment>> future = new CompletableFuture<>();
             httpClient.getPlayerPunishments(targetUuid, page, limit).thenAccept(response -> {
                 if (response.getStatus() == 200) {
-                    future.complete(new PaginatedDataSource.FetchResult<>(response.getPunishments(), response.getTotalCount()));
+                    future.complete(new FetchResult<>(response.getPunishments(), response.getTotalCount()));
                 } else {
-                    future.complete(new PaginatedDataSource.FetchResult<>(listOf(), 0));
+                    future.complete(new FetchResult<>(listOf(), 0));
                 }
             }).exceptionally(e -> {
-                future.complete(new PaginatedDataSource.FetchResult<>(listOf(), totalCount));
+                future.complete(new FetchResult<>(listOf(), totalCount));
                 return null;
             });
             return future;
@@ -93,17 +94,14 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     protected boolean interceptNextPage(Click click) {
         int nextPage = currentPageIndex().get() + 1;
         if (!dataSource.isPageLoaded(nextPage)) {
-            pendingPage = nextPage;
-            dataSource.setOnDataLoaded(() -> {
-                pendingPage = -1;
+            int refreshRequest = ++pageRefreshRequest;
+            dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1, () -> {
+                if (refreshRequest != pageRefreshRequest) return;
                 HistoryMenu newMenu = new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
                 newMenu.dataSource.initialize(dataSource.getAllLoadedItems(), dataSource.getTotalCount());
-                newMenu.display(click.player());
                 newMenu.setInitialPage(nextPage);
-                click.player().sendMessage(""); // force display refresh
                 newMenu.display(click.player());
             });
-            dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1);
             return true;
         }
         dataSource.prefetchIfNeeded(nextPage);

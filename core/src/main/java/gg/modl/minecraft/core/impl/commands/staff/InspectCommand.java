@@ -17,6 +17,7 @@ import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.InspectContext;
+import gg.modl.minecraft.core.util.ClickableJsonMessage;
 import gg.modl.minecraft.core.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
@@ -42,13 +43,7 @@ import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 public class InspectCommand {
     private static final String STATUS_ACTIVE = "Active", STATUS_PARDONED = "Pardoned", STATUS_INACTIVE = "Inactive",
             DURATION_PERMANENT = "Permanent", COLOR_YES = "&cYes", COLOR_NO = "&aNo",
-            COLOR_ACTIVE = "&a", COLOR_INACTIVE = "&7",
-            PROFILE_LINK_JSON =
-            "{\"text\":\"\",\"extra\":[" +
-            "{\"text\":\"  \",\"color\":\"gold\"}," +
-            "{\"text\":\"View Web Profile\",\"color\":\"aqua\",\"underlined\":true," +
-            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view %s's profile\"}}]}";
+            COLOR_ACTIVE = "&a", COLOR_INACTIVE = "&7";
     private static final int MAX_NOTES_DISPLAYED = 3, MAX_LINKED_ACCOUNTS_DISPLAYED = 5;
 
     private final HttpClientHolder httpClientHolder;
@@ -310,7 +305,14 @@ public class InspectCommand {
             String profileUrl = panelUrl + "/panel?player=" + data.getMinecraftUuid();
 
             if (actor.uniqueId() != null) {
-                String profileMessage = String.format(PROFILE_LINK_JSON, profileUrl, playerName);
+                String profileMessage = ClickableJsonMessage.empty()
+                        .extra(ClickableJsonMessage.text("  ").color("gold"))
+                        .extra(ClickableJsonMessage.text("View Web Profile")
+                                .color("aqua")
+                                .underlined(true)
+                                .openUrl(profileUrl)
+                                .hoverText("Click to view " + playerName + "'s profile"))
+                        .toJson();
                 UUID senderUuid = actor.uniqueId();
                 platform.runOnMainThread(() -> platform.sendJsonMessage(senderUuid, profileMessage));
             } else {

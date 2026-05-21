@@ -57,8 +57,10 @@ public class StaffListCommand {
         StaffMembersMenu menu = new StaffMembersMenu(
                 platform, httpClientHolder.getClient(), viewerUuid, viewerName, isAdmin, panelUrl, null);
         menu.getDataFuture().thenRun(() -> {
-            CirrusPlayerWrapper player = platform.getPlayerWrapper(viewerUuid);
-            if (player != null) menu.display(player);
+            platform.runOnMainThread(() -> {
+                CirrusPlayerWrapper player = platform.getPlayerWrapper(viewerUuid);
+                if (player != null) menu.display(player);
+            });
         });
     }
 
