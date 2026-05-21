@@ -107,6 +107,21 @@ class BridgeComponentTest {
         assertTrue(replayFile.exists());
     }
 
+    @Test
+    void recordingDeltaMsReturnsElapsedTimeSinceRecordingStarted() {
+        assertEquals(2500, BridgeComponent.recordingDeltaMs(12_500L, 10_000L));
+    }
+
+    @Test
+    void recordingDeltaMsClampsNegativeElapsedTimeToZero() {
+        assertEquals(0, BridgeComponent.recordingDeltaMs(9_500L, 10_000L));
+    }
+
+    @Test
+    void recordingDeltaMsClampsElapsedTimeAboveIntegerMaxValue() {
+        assertEquals(Integer.MAX_VALUE, BridgeComponent.recordingDeltaMs(Integer.MAX_VALUE + 2L, 0L));
+    }
+
     private File createReplayFile() throws IOException {
         File replayFile = tempDir.resolve("capture.modlreplay").toFile();
         assertTrue(replayFile.createNewFile());
