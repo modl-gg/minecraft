@@ -81,12 +81,30 @@ class BridgeComponentTest {
     }
 
     @Test
-    void cleanupDeletesReplayFileAfterFailedUploadWhenLocalSaveIsDisabled() throws IOException {
+    void cleanupKeepsReplayFileAfterFailedUploadWhenLocalSaveIsDisabled() throws IOException {
         File replayFile = createReplayFile();
 
         BridgeComponent.cleanupReplayFileAfterUpload(replayFile, false, null, new RuntimeException("upload failed"));
 
-        assertFalse(replayFile.exists());
+        assertTrue(replayFile.exists());
+    }
+
+    @Test
+    void cleanupKeepsReplayFileWhenUploadResultIsMissing() throws IOException {
+        File replayFile = createReplayFile();
+
+        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, false, null, null);
+
+        assertTrue(replayFile.exists());
+    }
+
+    @Test
+    void cleanupKeepsReplayFileWhenUploadResultIsNotOk() throws IOException {
+        File replayFile = createReplayFile();
+
+        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, false, ReplayCaptureResult.error(), null);
+
+        assertTrue(replayFile.exists());
     }
 
     @Test

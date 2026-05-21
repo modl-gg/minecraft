@@ -14,7 +14,6 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Duration;
-import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -87,9 +86,7 @@ public class ModlBackendReplayUploader implements AutoCloseable {
     }
 
     public CompletableFuture<String> uploadAsync(File replayFile, String mcVersion, UUID targetUuid, String targetName) {
-        if (closed.get()) {
-            throw new RejectedExecutionException("Replay uploader is closed");
-        }
+        throwIfClosed();
 
         CompletableFuture<String> future = new CompletableFuture<>();
         pendingUploads.add(future);
@@ -102,8 +99,11 @@ public class ModlBackendReplayUploader implements AutoCloseable {
 
         Runnable uploadTask = () -> {
             try {
+                throwIfClosed();
                 InitResponse init = initUpload(replayFile, mcVersion, targetUuid, targetName);
+                throwIfClosed();
                 uploadToStorage(replayFile, init.uploadUrl);
+                throwIfClosed();
                 confirmUpload(init.replayId);
                 future.complete(init.replayId);
             } catch (Exception e) {
@@ -280,9 +280,6 @@ public class ModlBackendReplayUploader implements AutoCloseable {
         if (uri.getHost() == null || uri.getHost().trim().isEmpty()) {
             throw new IllegalArgumentException("Unsupported " + label + ": missing host");
         }
-        if ("http".equalsIgnoreCase(scheme) && !isLoopbackHost(uri.getHost())) {
-            throw new IllegalArgumentException("Unsupported " + label + ": http requires a loopback host");
-        }
         if (!allowQuery && uri.getRawQuery() != null) {
             throw new IllegalArgumentException("Unsupported " + label + ": query is not allowed");
         }
@@ -293,16 +290,10 @@ public class ModlBackendReplayUploader implements AutoCloseable {
         return uri;
     }
 
-    private static boolean isLoopbackHost(String host) {
-        String normalized = host.toLowerCase(Locale.ROOT);
-        if (normalized.endsWith(".")) {
-            normalized = normalized.substring(0, normalized.length() - 1);
+    private void throwIfClosed() {
+        if (closed.get()) {
+            throw new RejectedExecutionException("Replay uploader is closed");
         }
-
-        return "localhost".equals(normalized)
-                || "127.0.0.1".equals(normalized)
-                || "::1".equals(normalized)
-                || "0:0:0:0:0:0:0:1".equals(normalized);
     }
 
     private static ExecutorService createUploadExecutor() {

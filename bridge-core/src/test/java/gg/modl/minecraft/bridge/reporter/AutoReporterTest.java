@@ -17,11 +17,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AutoReporterTest {
 
@@ -114,26 +117,83 @@ class AutoReporterTest {
     }
 
     @Test
-    void cooldownIsNotSetWhenTicketCreationFails() throws IOException {
+    void ticketCreationFailureIsLoggedWithoutSettingCooldown() throws IOException {
         BridgeConfig config = loadConfig();
         ThrowingTicketCreator ticketCreator = new ThrowingTicketCreator();
         ViolationTracker violationTracker = new ViolationTracker();
-        AutoReporter autoReporter = new AutoReporter(
-                Logger.getLogger("test"),
-                config,
-                ticketCreator,
-                violationTracker
-        );
-        UUID playerUuid = UUID.randomUUID();
-        violationTracker.addViolation(playerUuid, SOURCE, CHECK_NAME, "verbose");
+        Logger logger = isolatedLogger("ticket-failure-no-replay");
+        CapturingHandler handler = attachWarningHandler(logger);
+        try {
+            AutoReporter autoReporter = new AutoReporter(logger, config, ticketCreator, violationTracker);
+            UUID playerUuid = UUID.randomUUID();
+            violationTracker.addViolation(playerUuid, SOURCE, CHECK_NAME, "verbose");
 
-        assertThrows(RuntimeException.class,
-                () -> autoReporter.checkAndReport(playerUuid, PLAYER_NAME, SOURCE, CHECK_NAME));
-        assertEquals(1, ticketCreator.attempts);
+            autoReporter.checkAndReport(playerUuid, PLAYER_NAME, SOURCE, CHECK_NAME);
+            assertEquals(1, ticketCreator.attempts);
+            assertEquals(1, handler.warnings.size());
+            assertTrue(handler.warnings.get(0).getMessage().contains("Ticket creation failed"));
 
-        assertThrows(RuntimeException.class,
-                () -> autoReporter.checkAndReport(playerUuid, PLAYER_NAME, SOURCE, CHECK_NAME));
-        assertEquals(2, ticketCreator.attempts);
+            autoReporter.checkAndReport(playerUuid, PLAYER_NAME, SOURCE, CHECK_NAME);
+            assertEquals(2, ticketCreator.attempts);
+            assertEquals(2, handler.warnings.size());
+        } finally {
+            logger.removeHandler(handler);
+        }
+    }
+
+    @Test
+    void ticketCreationFailureInReplayHandlerIsLoggedWithoutSettingCooldown() throws IOException {
+        BridgeConfig config = loadConfig();
+        ThrowingTicketCreator ticketCreator = new ThrowingTicketCreator();
+        ViolationTracker violationTracker = new ViolationTracker();
+        Logger logger = isolatedLogger("ticket-failure-with-replay");
+        CapturingHandler handler = attachWarningHandler(logger);
+        try {
+            AutoReporter autoReporter = new AutoReporter(logger, config, ticketCreator, violationTracker);
+            FakeReplayService replayService = new FakeReplayService();
+            replayService.status = ReplayCaptureStatus.OK;
+            replayService.captureFuture = CompletableFuture.completedFuture(ReplayCaptureResult.ok("replay-xyz"));
+            autoReporter.setReplayService(replayService);
+            UUID playerUuid = UUID.randomUUID();
+            violationTracker.addViolation(playerUuid, SOURCE, CHECK_NAME, "verbose");
+
+            autoReporter.checkAndReport(playerUuid, PLAYER_NAME, SOURCE, CHECK_NAME);
+            assertEquals(1, ticketCreator.attempts);
+            assertEquals(1, handler.warnings.size());
+            assertTrue(handler.warnings.get(0).getMessage().contains("Ticket creation failed"));
+
+            autoReporter.checkAndReport(playerUuid, PLAYER_NAME, SOURCE, CHECK_NAME);
+            assertEquals(2, ticketCreator.attempts);
+            assertEquals(2, handler.warnings.size());
+        } finally {
+            logger.removeHandler(handler);
+        }
+    }
+
+    private static Logger isolatedLogger(String name) {
+        Logger logger = Logger.getLogger("AutoReporterTest." + name + "." + UUID.randomUUID());
+        logger.setUseParentHandlers(false);
+        return logger;
+    }
+
+    private static CapturingHandler attachWarningHandler(Logger logger) {
+        CapturingHandler handler = new CapturingHandler();
+        logger.addHandler(handler);
+        return handler;
+    }
+
+    private static final class CapturingHandler extends Handler {
+        private final List<LogRecord> warnings = new ArrayList<>();
+
+        @Override
+        public void publish(LogRecord record) {
+            if (record.getLevel().intValue() >= Level.WARNING.intValue()) {
+                warnings.add(record);
+            }
+        }
+
+        @Override public void flush() {}
+        @Override public void close() throws SecurityException {}
     }
 
     private TestFixture createFixture() throws IOException {

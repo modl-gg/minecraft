@@ -23,6 +23,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -303,58 +304,11 @@ class ModlBackendReplayUploaderTest {
     }
 
     @Test
-    void acceptsLocalHttpBackendUrlsForDevelopmentAndTests() {
+    void acceptsHttpBackendUrls() {
         assertDoesNotThrow(() -> new ModlBackendReplayUploader(
                 "http://127.0.0.1:8080/v2", "secret-key", "server.example.com", Logger.getLogger("test")));
-    }
-
-    @Test
-    void rejectsRemoteHttpBackendUrlsBeforeUpload() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> new ModlBackendReplayUploader(
-                        "http://api.example.com/v2", "secret-key", "server.example.com", Logger.getLogger("test")));
-
-        assertTrue(exception.getMessage().contains("Unsupported backend URL"));
-        assertTrue(exception.getMessage().contains("http requires a loopback host"));
-    }
-
-    @Test
-    void rejectsRemoteHttpPresignedUploadUrlsBeforeStorageRequest() throws Exception {
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        List<String> observedPaths = new CopyOnWriteArrayList<>();
-        String baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
-
-        server.createContext("/v1/minecraft/replays/upload", exchange -> {
-            observedPaths.add(exchange.getRequestURI().getPath());
-            byte[] response = ("{\"replayId\":\"replay-remote-http-storage\","
-                    + "\"uploadUrl\":\"http://storage.example.com/upload?signature=abc\"}")
-                    .getBytes(StandardCharsets.UTF_8);
-            exchange.sendResponseHeaders(200, response.length);
-            exchange.getResponseBody().write(response);
-            exchange.close();
-        });
-        server.createContext("/", exchange -> {
-            observedPaths.add(exchange.getRequestURI().getPath());
-            exchange.sendResponseHeaders(500, 0);
-            exchange.close();
-        });
-        server.start();
-
-        try {
-            File replayFile = Files.write(tempDir.resolve("remote-http-storage.replay"),
-                    "replay".getBytes(StandardCharsets.UTF_8)).toFile();
-            ModlBackendReplayUploader uploader = new ModlBackendReplayUploader(
-                    baseUrl, "secret-key", "server.example.com", Logger.getLogger("test"));
-
-            ExecutionException exception = assertThrows(ExecutionException.class,
-                    () -> uploader.uploadAsync(replayFile, "1.21.11").get());
-
-            assertTrue(exception.getCause().getCause().getMessage().contains("Unsupported presigned upload URL"));
-            assertTrue(exception.getCause().getCause().getMessage().contains("http requires a loopback host"));
-            assertEquals(List.of("/v1/minecraft/replays/upload"), observedPaths);
-        } finally {
-            server.stop(0);
-        }
+        assertDoesNotThrow(() -> new ModlBackendReplayUploader(
+                "http://api.example.com/v2", "secret-key", "server.example.com", Logger.getLogger("test")));
     }
 
     @Test
@@ -471,6 +425,68 @@ class ModlBackendReplayUploaderTest {
             server.stop(0);
             serverExecutor.shutdownNow();
             serverExecutor.awaitTermination(5, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
+    void closeSkipsRemainingUploadStagesForInFlightUpload() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        ExecutorService serverExecutor = Executors.newCachedThreadPool();
+        ExecutorService uploadExecutor = Executors.newSingleThreadExecutor();
+        AtomicInteger storageHits = new AtomicInteger();
+        AtomicInteger confirmHits = new AtomicInteger();
+        CountDownLatch initStarted = new CountDownLatch(1);
+        CountDownLatch releaseInit = new CountDownLatch(1);
+        String baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
+
+        server.setExecutor(serverExecutor);
+        server.createContext("/v1/minecraft/replays/upload", exchange -> {
+            initStarted.countDown();
+            try { releaseInit.await(5, TimeUnit.SECONDS); }
+            catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            byte[] response = ("{\"replayId\":\"replay-abort\",\"uploadUrl\":\"" + baseUrl + "/storage\"}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.createContext("/storage", exchange -> {
+            storageHits.incrementAndGet();
+            exchange.sendResponseHeaders(200, 0);
+            exchange.close();
+        });
+        server.createContext("/v1/minecraft/replays/confirm/replay-abort", exchange -> {
+            confirmHits.incrementAndGet();
+            exchange.sendResponseHeaders(200, 0);
+            exchange.close();
+        });
+        server.start();
+
+        try {
+            File replayFile = Files.write(tempDir.resolve("abort-after-close.replay"),
+                    "replay".getBytes(StandardCharsets.UTF_8)).toFile();
+            ModlBackendReplayUploader uploader = new ModlBackendReplayUploader(
+                    baseUrl, "secret-key", "server.example.com", Logger.getLogger("test"), uploadExecutor);
+
+            CompletableFuture<String> upload = uploader.uploadAsync(replayFile, "1.21.11");
+            assertTrue(initStarted.await(5, TimeUnit.SECONDS));
+            uploader.close();
+            releaseInit.countDown();
+
+            assertThrows(ExecutionException.class, () -> upload.get(5, TimeUnit.SECONDS));
+
+            // Wait for the upload task to finish on the single-threaded executor.
+            uploadExecutor.submit(() -> {}).get(5, TimeUnit.SECONDS);
+
+            assertEquals(0, storageHits.get(), "storage should not be hit after close");
+            assertEquals(0, confirmHits.get(), "confirm should not be hit after close");
+        } finally {
+            releaseInit.countDown();
+            server.stop(0);
+            serverExecutor.shutdownNow();
+            serverExecutor.awaitTermination(5, TimeUnit.SECONDS);
+            uploadExecutor.shutdownNow();
+            uploadExecutor.awaitTermination(5, TimeUnit.SECONDS);
         }
     }
 

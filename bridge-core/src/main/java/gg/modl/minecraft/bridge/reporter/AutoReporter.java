@@ -114,11 +114,15 @@ public class AutoReporter {
                     if (replayId != null) {
                         logger.info("[bridge] Replay captured for auto-report: " + playerName + " -> " + replayId);
                     }
-                    ticketCreator.createTicket(
-                            uuidStr, anticheatName, TICKET_TYPE, subject, description,
-                            uuidStr, playerName, null, TICKET_PRIORITY, config.getServerName(), reportReplayId
-                    );
-                    markReportSubmitted(uuid);
+                    try {
+                        ticketCreator.createTicket(
+                                uuidStr, anticheatName, TICKET_TYPE, subject, description,
+                                uuidStr, playerName, null, TICKET_PRIORITY, config.getServerName(), reportReplayId
+                        );
+                        markReportSubmitted(uuid);
+                    } catch (Exception e) {
+                        logger.log(Level.WARNING, "[bridge] Ticket creation failed for auto-report: " + playerName, e);
+                    }
                 } finally {
                     reportsInFlight.remove(uuid);
                 }
@@ -138,11 +142,15 @@ public class AutoReporter {
     private void createTicketWithoutReplay(UUID uuid, String uuidStr, String anticheatName,
                                            String subject, String description, String playerName) {
         try {
-            ticketCreator.createTicket(
-                    uuidStr, anticheatName, TICKET_TYPE, subject, description,
-                    uuidStr, playerName, null, TICKET_PRIORITY, config.getServerName()
-            );
-            markReportSubmitted(uuid);
+            try {
+                ticketCreator.createTicket(
+                        uuidStr, anticheatName, TICKET_TYPE, subject, description,
+                        uuidStr, playerName, null, TICKET_PRIORITY, config.getServerName()
+                );
+                markReportSubmitted(uuid);
+            } catch (Exception e) {
+                logger.log(Level.WARNING, "[bridge] Ticket creation failed for auto-report: " + playerName, e);
+            }
         } finally {
             reportsInFlight.remove(uuid);
         }
