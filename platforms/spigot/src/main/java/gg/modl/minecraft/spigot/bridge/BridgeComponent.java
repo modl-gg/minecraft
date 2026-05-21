@@ -209,6 +209,9 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
                 packetRecorder.cleanupPlayer(targetUuid);
 
+                Player localPlayer = Bukkit.getPlayer(targetUuid);
+                String resolvedName = localPlayer != null ? localPlayer.getName() : targetName;
+
                 return recordingManager.stopRecordingAsync(targetUuid)
                         .thenCompose(metadata -> {
                             File replayFile = metadata != null ? metadata.getOutputFile() : null;
@@ -223,15 +226,15 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
                             }
 
                             if (replayFile == null || !replayFile.exists()) {
-                                pluginLogger.warning("[bridge] No replay file found for " + targetName + " after stopping recording");
+                                pluginLogger.warning("[bridge] No replay file found for " + resolvedName + " after stopping recording");
                                 return CompletableFuture.completedFuture(ReplayCaptureResult.error());
                             }
 
-                            return uploader.uploadAsync(replayFile, recordingConfig.mcVersion(), targetUuid, targetName)
+                            return uploader.uploadAsync(replayFile, recordingConfig.mcVersion(), targetUuid, resolvedName)
                                     .thenApply(ReplayCaptureResult::ok)
                                     .whenComplete((replayId, ex) -> {
                                         if (ex != null) {
-                                            pluginLogger.warning("[bridge] Replay upload failed for " + targetName + ": " + ex.getMessage());
+                                            pluginLogger.warning("[bridge] Replay upload failed for " + resolvedName + ": " + ex.getMessage());
                                         }
                                         if (!config.isReplaySaveLocal()) {
                                             replayFile.delete();
@@ -459,6 +462,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
     public void onBlockPlace(BlockPlaceEvent event) {
         if (recordingManager == null) return;
         Player player = event.getPlayer();
+        if (!recordingManager.isRecording(player.getUniqueId())) return;
         Block block = event.getBlockPlaced();
         int stateId = resolveBlockStateId(block);
         recordingManager.enqueueEvent(player.getUniqueId(),
@@ -470,6 +474,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
     public void onBlockBreak(BlockBreakEvent event) {
         if (recordingManager == null) return;
         Player player = event.getPlayer();
+        if (!recordingManager.isRecording(player.getUniqueId())) return;
         Block block = event.getBlock();
         int previousStateId = resolveBlockStateId(block);
         recordingManager.enqueueEvent(player.getUniqueId(),
