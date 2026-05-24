@@ -22,8 +22,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -54,6 +58,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
@@ -215,51 +220,41 @@ public class FabricStaffModeHandler {
     }
 
     private void showPlayerTo(ServerPlayer toShow, ServerPlayer viewer) {
-        var peApi = PacketEvents.getAPI();
-        if (peApi == null) {
+        if (toShow == null || viewer == null || toShow == viewer) {
             return;
         }
 
-        com.mojang.authlib.GameProfile mojangProfile = toShow.getGameProfile();
-        List<TextureProperty> textureProperties = new ArrayList<>();
-        for (com.mojang.authlib.properties.Property property : mojangProfile.properties().get("textures")) {
-            textureProperties.add(new TextureProperty("textures", property.value(), property.signature()));
-        }
-        UserProfile profile = new UserProfile(toShow.getUUID(), mojangProfile.name(), textureProperties);
+        viewer.connection.send(
 
-        com.github.retrooper.packetevents.protocol.player.GameMode peGameMode =
-                com.github.retrooper.packetevents.protocol.player.GameMode.values()[
-                        toShow.gameMode.getGameModeForPlayer().ordinal()];
+                ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(toShow))
+        );
 
-        WrapperPlayServerPlayerInfoUpdate.PlayerInfo info =
-                new WrapperPlayServerPlayerInfoUpdate.PlayerInfo(
-                        profile, true, toShow.connection.latency(), peGameMode,
-                        net.kyori.adventure.text.Component.text(toShow.getName().getString()), null
-                );
+        ServerEntity trackerEntry = new ServerEntity(
+                toShow.level(),
+                toShow,
+                toShow.getType().updateInterval(),
+                toShow.getType().trackDeltas(),
+                new ServerEntity.Synchronizer() {
+                    @Override
+                    public void sendToTrackingPlayers(Packet<? super ClientGamePacketListener> packet) {
+                    }
 
-        peApi.getPlayerManager().sendPacket(viewer,
-                new WrapperPlayServerPlayerInfoUpdate(
-                        EnumSet.of(
-                                WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER,
-                                WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_LISTED,
-                                WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_LATENCY,
-                                WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_GAME_MODE
-                        ),
-                        info
-                ));
+                    @Override
+                    public void sendToTrackingPlayersAndSelf(Packet<? super ClientGamePacketListener> packet) {
+                    }
 
-        peApi.getPlayerManager().sendPacket(viewer,
-                new WrapperPlayServerSpawnEntity(
-                        toShow.getId(),
-                        Optional.of(toShow.getUUID()),
-                        EntityTypes.PLAYER,
-                        new Vector3d(toShow.getX(), toShow.getY(), toShow.getZ()),
-                        toShow.getXRot(),
-                        toShow.getYRot(),
-                        toShow.getYRot(),
-                        0,
-                        Optional.of(new Vector3d(0, 0, 0))
-                ));
+
+                    @Override
+                    public void sendToTrackingPlayersFiltered(
+                            Packet<? super ClientGamePacketListener> packet,
+                            Predicate<ServerPlayer> predicate
+                    ) {
+                    }
+                }
+        );
+
+        trackerEntry.sendPairingData(viewer,packet -> viewer.connection.send(packet)
+        );
     }
 
     private void updateVanishHotbarItem(ServerPlayer player, boolean isVanished) {

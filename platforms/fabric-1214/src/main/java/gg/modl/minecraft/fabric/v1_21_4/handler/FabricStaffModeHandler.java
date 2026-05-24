@@ -15,8 +15,10 @@ import lombok.Setter;
 import net.kyori.adventure.text.Component;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.EntityTrackerEntry;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -183,48 +185,24 @@ public class FabricStaffModeHandler {
                 new WrapperPlayServerDestroyEntities(toHide.getId()));
     }
 
+
     private void showPlayerTo(ServerPlayerEntity toShow, ServerPlayerEntity viewer) {
-        var peApi = PacketEvents.getAPI();
-        if (peApi == null) return;
-
-        com.mojang.authlib.GameProfile mojangProfile = toShow.getGameProfile();
-        List<TextureProperty> textureProperties = new ArrayList<>();
-        for (com.mojang.authlib.properties.Property prop : mojangProfile.getProperties().get("textures")) {
-            textureProperties.add(new TextureProperty("textures", prop.value(), prop.signature()));
+        if (toShow == null || viewer == null || toShow == viewer) {
+            return;
         }
-        UserProfile profile = new UserProfile(toShow.getUuid(), mojangProfile.getName(), textureProperties);
 
-        com.github.retrooper.packetevents.protocol.player.GameMode peGameMode =
-                com.github.retrooper.packetevents.protocol.player.GameMode.values()[toShow.interactionManager.getGameMode().ordinal()];
+        viewer.networkHandler.sendPacket(PlayerListS2CPacket.entryFromPlayer(List.of(toShow)));
 
-        WrapperPlayServerPlayerInfoUpdate.PlayerInfo info = new WrapperPlayServerPlayerInfoUpdate.PlayerInfo(
-                profile, true, toShow.networkHandler.getLatency(), peGameMode,
-                net.kyori.adventure.text.Component.text(toShow.getName().getString()), null
+        EntityTrackerEntry trackerEntry = new EntityTrackerEntry(
+                toShow.getServerWorld(),
+                toShow,
+                toShow.getType().getTrackTickInterval(),
+                toShow.getType().alwaysUpdateVelocity(),
+                packet -> {
+                }
         );
 
-        peApi.getPlayerManager().sendPacket(viewer,
-                new WrapperPlayServerPlayerInfoUpdate(
-                        EnumSet.of(
-                                WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER,
-                                WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_LISTED,
-                                WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_LATENCY,
-                                WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_GAME_MODE
-                        ),
-                        info
-                ));
-
-        peApi.getPlayerManager().sendPacket(viewer,
-                new WrapperPlayServerSpawnEntity(
-                        toShow.getId(),
-                        Optional.of(toShow.getUuid()),
-                        EntityTypes.PLAYER,
-                        new Vector3d(toShow.getX(), toShow.getY(), toShow.getZ()),
-                        toShow.getPitch(),
-                        toShow.getYaw(),
-                        toShow.getYaw(),
-                        0,
-                        Optional.of(new Vector3d(0, 0, 0))
-                ));
+        trackerEntry.sendPackets(viewer, packet -> viewer.networkHandler.sendPacket(packet));
     }
 
     private void updateVanishHotbarItem(ServerPlayerEntity player, boolean isVanished) {
