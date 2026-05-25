@@ -597,14 +597,16 @@ public class PluginLoader {
             throw deny(localeManager.getMessage("general.players_only"));
         }
 
+        if (actor.uniqueId() == null) {
+            return;
+        }
+
         if (annotations.contains(StaffOnly.class)
-                && actor.uniqueId() != null
                 && !PermissionUtil.isStaff(actor, cache)) {
             throw deny(localeManager.getMessage("general.no_permission"));
         }
 
         if (annotations.contains(AdminOnly.class)
-                && actor.uniqueId() != null
                 && !cache.hasPermission(actor.uniqueId(), Permissions.ADMIN)) {
             throw deny(localeManager.getMessage("general.no_permission"));
         }
@@ -615,7 +617,6 @@ public class PluginLoader {
         }
 
         if (annotations.contains(StaffNo2fa.class)
-                && actor.uniqueId() != null
                 && !PermissionUtil.isStaff(actor, cache)) {
             throw deny(localeManager.getMessage("general.no_permission"));
         }
