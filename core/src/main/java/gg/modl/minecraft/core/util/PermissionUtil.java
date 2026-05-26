@@ -10,12 +10,12 @@ import java.util.UUID;
 public final class PermissionUtil {
     private PermissionUtil() {}
     public static boolean hasPermission(CommandActor actor, Cache cache, String permission) {
-        if (actor.uniqueId() == null) return true;
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) return true;
         return cache.hasPermission(actor.uniqueId(), permission);
     }
 
     public static boolean hasAnyPermission(CommandActor actor, Cache cache, String... permissions) {
-        if (actor.uniqueId() == null) return true;
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) return true;
         for (String permission : permissions) {
             if (hasPermission(actor, cache, permission)) return true;
         }
@@ -23,13 +23,13 @@ public final class PermissionUtil {
     }
 
     public static SyncResponse.ActiveStaffMember getStaffMember(CommandActor actor, Cache cache) {
-        if (actor.uniqueId() == null) return null;
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) return null;
         CachedProfile profile = cache.getPlayerProfile(actor.uniqueId());
         return profile != null ? profile.getStaffMember() : null;
     }
 
     public static boolean isStaff(CommandActor actor, Cache cache) {
-        if (actor.uniqueId() == null) return false;
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) return false;
         return isStaff(actor.uniqueId(), cache);
     }
 
@@ -44,3 +44,4 @@ public final class PermissionUtil {
         return "punishment.apply." + punishmentTypeName.toLowerCase().replace(" ", "-");
     }
 }
+

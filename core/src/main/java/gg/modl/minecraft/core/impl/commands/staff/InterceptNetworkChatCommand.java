@@ -21,7 +21,7 @@ public class InterceptNetworkChatCommand {
 
     @Description("Toggle network chat interception")
     public void toggle(CommandActor actor) {
-        if (actor.uniqueId() == null) {
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
             actor.reply(localeManager.getMessage("general.players_only"));
             return;
         }
@@ -37,3 +37,4 @@ public class InterceptNetworkChatCommand {
         else actor.reply(localeManager.getMessage("intercept_chat.disabled"));
     }
 }
+

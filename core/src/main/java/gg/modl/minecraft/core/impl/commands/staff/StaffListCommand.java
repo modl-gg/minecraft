@@ -42,7 +42,7 @@ public class StaffListCommand {
         int page = flag != null ? Pagination.parsePrintFlags(flag) : 0;
         boolean printMode = page > 0;
 
-        if (printMode || actor.uniqueId() == null) {
+        if (printMode || gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
             printStaffList(actor, Math.max(1, page));
             return;
         }
@@ -124,3 +124,4 @@ public class StaffListCommand {
         private final boolean vanished;
     }
 }
+

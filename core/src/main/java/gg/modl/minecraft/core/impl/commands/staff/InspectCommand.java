@@ -71,7 +71,7 @@ public class InspectCommand {
 
         boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
 
-        if (actor.uniqueId() == null || printMode) {
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor) || printMode) {
             printLookup(actor, playerQuery);
             return;
         }
@@ -324,3 +324,4 @@ public class InspectCommand {
     }
 
 }
+

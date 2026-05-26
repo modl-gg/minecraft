@@ -38,7 +38,7 @@ public class StaffChatCommand {
             return;
         }
 
-        if (actor.uniqueId() == null) {
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
             actor.reply(localeManager.getMessage("general.players_only"));
             return;
         }
@@ -51,7 +51,7 @@ public class StaffChatCommand {
     }
 
     private void sendStaffChatMessage(CommandActor actor, String message) {
-        if (actor.uniqueId() == null) {
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
             platform.staffBroadcast(staffChatConfig.formatMessage("Console", "Console", message));
             return;
         }
@@ -65,3 +65,4 @@ public class StaffChatCommand {
         platform.staffBroadcast(staffChatConfig.formatMessage(inGameName, panelName, message));
     }
 }
+
