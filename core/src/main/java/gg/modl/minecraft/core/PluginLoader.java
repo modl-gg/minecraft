@@ -593,11 +593,11 @@ public class PluginLoader {
     }
 
     private void enforceCommandAccess(AnnotationList annotations, CommandActor actor) {
-        if (annotations.contains(PlayerOnly.class) && actor.uniqueId() == null) {
+        if (annotations.contains(PlayerOnly.class) && gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
             throw deny(localeManager.getMessage("general.players_only"));
         }
 
-        if (actor.uniqueId() == null) {
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
             return;
         }
 
@@ -631,3 +631,4 @@ public class PluginLoader {
         };
     }
 }
+

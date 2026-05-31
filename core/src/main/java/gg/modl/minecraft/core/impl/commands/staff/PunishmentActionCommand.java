@@ -36,7 +36,7 @@ public class PunishmentActionCommand {
     @Command("punishment_action")
     @StaffOnly
     public void punishmentAction(CommandActor actor, String action, String punishmentId) {
-        if (actor.uniqueId() == null) {
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
             actor.reply(localeManager.getMessage("general.gui_requires_player"));
             return;
         }
@@ -150,3 +150,4 @@ public class PunishmentActionCommand {
         });
     }
 }
+

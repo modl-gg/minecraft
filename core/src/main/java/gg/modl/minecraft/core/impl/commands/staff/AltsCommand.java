@@ -43,7 +43,7 @@ public class AltsCommand {
         int page = Pagination.parsePrintFlags(flags);
         boolean printMode = page > 0;
 
-        if (actor.uniqueId() == null || printMode) {
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor) || printMode) {
             printAlts(actor, playerQuery, Math.max(1, page));
             return;
         }
@@ -137,3 +137,4 @@ public class AltsCommand {
     }
 
 }
+

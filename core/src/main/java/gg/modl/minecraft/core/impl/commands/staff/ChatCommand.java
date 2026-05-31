@@ -48,7 +48,7 @@ public class ChatCommand {
             return;
         }
 
-        if (actor.uniqueId() == null) {
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
             actor.reply(localeManager.getMessage("general.players_only"));
             return;
         }
@@ -144,14 +144,15 @@ public class ChatCommand {
     }
 
     private String getInGameName(CommandActor actor) {
-        if (actor.uniqueId() == null) return "Console";
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) return "Console";
         AbstractPlayer player = platform.getPlayer(actor.uniqueId());
         return player != null ? player.getUsername() : "Staff";
     }
 
     private String getPanelName(CommandActor actor, String fallback) {
-        if (actor.uniqueId() == null) return "Console";
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) return "Console";
         String display = cache.getStaffDisplayName(actor.uniqueId());
         return display != null ? display : fallback;
     }
 }
+
