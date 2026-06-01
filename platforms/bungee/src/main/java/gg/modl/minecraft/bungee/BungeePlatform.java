@@ -115,7 +115,7 @@ public class BungeePlatform implements Platform {
     @Override
     @SuppressWarnings("unchecked")
     public Lamp<BungeeCommandActor> buildLamp(Consumer<Lamp.Builder<? extends CommandActor>> configurator) {
-        Lamp.Builder<BungeeCommandActor> builder = BungeeLamp.builder(plugin);
+        Lamp.Builder<BungeeCommandActor> builder = BungeeLamp.builder(plugin, new ConsoleAwareBungeeActor.Factory());
         configurator.accept((Lamp.Builder) builder);
         return builder.build();
     }
