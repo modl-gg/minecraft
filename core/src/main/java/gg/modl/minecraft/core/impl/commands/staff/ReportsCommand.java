@@ -65,7 +65,7 @@ public class ReportsCommand {
             return;
         }
 
-        if (actor.uniqueId() == null) {
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
             if (actualPlayerQuery != null && !actualPlayerQuery.isEmpty()) {
                 printPlayerReports(actor, actualPlayerQuery, Math.max(1, page));
             } else actor.reply(localeManager.getMessage("general.invalid_syntax"));
@@ -200,3 +200,4 @@ public class ReportsCommand {
     }
 
 }
+

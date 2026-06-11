@@ -50,7 +50,7 @@ public class ChatCommand {
             return;
         }
 
-        if (actor.uniqueId() == null) {
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
             actor.reply(localeManager.getMessage("general.players_only"));
             return;
         }

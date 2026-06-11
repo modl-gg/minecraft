@@ -70,6 +70,8 @@ dependencies {
     // Command framework
     compileOnly("io.github.revxrsal:lamp.common:${property("lamp.version")}")
     compileOnly("io.github.revxrsal:lamp.bukkit:${property("lamp.version")}")
+    compileOnly("io.github.revxrsal:lamp.brigadier:${property("lamp.version")}")
+    compileOnly("com.mojang:brigadier:1.2.9")
 
     // Cirrus menu system
     compileOnly("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")

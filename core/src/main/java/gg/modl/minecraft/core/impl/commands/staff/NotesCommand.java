@@ -40,7 +40,7 @@ public class NotesCommand {
         int page = Pagination.parsePrintFlags(flags);
         boolean printMode = page > 0;
 
-        if (actor.uniqueId() == null || printMode) {
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor) || printMode) {
             printNotes(actor, playerQuery, Math.max(1, page));
             return;
         }
@@ -114,3 +114,4 @@ public class NotesCommand {
     }
 
 }
+

@@ -145,7 +145,7 @@ public class TicketCommandUtil {
 
     public void sendClickableTicketMessage(CommandActor actor, Platform platform, LocaleManager localeManager,
                                             String message, String ticketUrl, String ticketId) {
-        if (actor.uniqueId() == null) {
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
             actor.reply(localeManager.getMessage("messages.console_ticket_url", mapOf("message", message, "url", ticketUrl)));
             return;
         }
@@ -165,3 +165,4 @@ public class TicketCommandUtil {
         platform.runOnMainThread(() -> platform.sendJsonMessage(senderUuid, json));
     }
 }
+

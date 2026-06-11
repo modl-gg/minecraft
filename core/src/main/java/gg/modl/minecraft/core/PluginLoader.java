@@ -683,18 +683,20 @@ public class PluginLoader {
     }
 
     private void enforceCommandAccess(AnnotationList annotations, CommandActor actor) {
-        if (annotations.contains(PlayerOnly.class) && actor.uniqueId() == null) {
+        if (annotations.contains(PlayerOnly.class) && gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
             throw deny(localeManager.getMessage("general.players_only"));
         }
 
+        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
+            return;
+        }
+
         if (annotations.contains(StaffOnly.class)
-                && actor.uniqueId() != null
                 && !PermissionUtil.isStaff(actor, cache)) {
             throw deny(localeManager.getMessage("general.no_permission"));
         }
 
         if (annotations.contains(AdminOnly.class)
-                && actor.uniqueId() != null
                 && !cache.hasPermission(actor.uniqueId(), Permissions.ADMIN)) {
             throw deny(localeManager.getMessage("general.no_permission"));
         }
@@ -705,7 +707,6 @@ public class PluginLoader {
         }
 
         if (annotations.contains(StaffNo2fa.class)
-                && actor.uniqueId() != null
                 && !PermissionUtil.isStaff(actor, cache)) {
             throw deny(localeManager.getMessage("general.no_permission"));
         }
@@ -720,3 +721,4 @@ public class PluginLoader {
         };
     }
 }
+

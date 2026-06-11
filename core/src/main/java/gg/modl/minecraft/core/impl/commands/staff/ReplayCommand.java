@@ -120,7 +120,7 @@ public class ReplayCommand {
 
     private UUID resolveTargetUuid(CommandActor actor, String targetName) {
         if (targetName == null || targetName.isEmpty()) {
-            if (actor.uniqueId() == null) {
+            if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
                 actor.reply(localeManager.getMessage("replay.console_specify_player"));
                 return null;
             }
@@ -141,3 +141,4 @@ public class ReplayCommand {
         return fallback != null && !fallback.isEmpty() ? fallback : uuid.toString();
     }
 }
+
