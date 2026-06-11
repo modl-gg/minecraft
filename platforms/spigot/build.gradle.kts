@@ -3,6 +3,7 @@ import java.security.MessageDigest
 
 repositories {
     maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")
+    maven("https://libraries.minecraft.net/")
     maven("https://repo.grim.ac/snapshots")
     maven("https://repo.polar.top/repository/polar/")
 }
