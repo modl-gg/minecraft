@@ -141,6 +141,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         this.logger = Logger.getLogger(ModlHttpClientV2Impl.class.getName());
     }
 
+    @Override
     public void shutdown() {
         executor.shutdown();
         try {

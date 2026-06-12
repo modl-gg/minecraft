@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core.realtime;
 
 import gg.modl.minecraft.api.http.response.StartupResponse;
+import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.service.sync.SyncService;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.proto.modl.v1.Ack;
@@ -100,6 +101,7 @@ public class MinecraftRealtimeClient {
 
     public void stop() {
         running = false;
+        syncService.setRealtimeConnected(false);
         WebSocketClient current = client;
         if (current != null) {
             try {
@@ -178,9 +180,11 @@ public class MinecraftRealtimeClient {
                 case SERVER_HELLO:
                     reconnectAttempt = 0;
                     send(source, buildSubscribe());
-                    if (connectedOnce) {
-                        syncService.forceSync("realtime reconnect");
-                    }
+                    // Baseline on every accept, including the first: the periodic poll that previously
+                    // established the initial baseline is gone, and reconnect must reconcile anything
+                    // missed while disconnected (against lastSyncTimestamp).
+                    syncService.setRealtimeConnected(true);
+                    syncService.runBaselineFetch(connectedOnce ? "realtime reconnect" : "realtime connect");
                     connectedOnce = true;
                     if (debugMode) logger.info("[Realtime] ServerHello accepted " + envelope.getServerHello().getAcceptedTopicsCount() + " topics");
                     break;
@@ -191,12 +195,31 @@ public class MinecraftRealtimeClient {
                     handleReconnectAdvice(envelope);
                     break;
                 case PERMISSION_INVALIDATED:
+                    applyDomainEvent(envelope, () -> syncService.refreshStaffPermissionsNow());
+                    break;
                 case PUNISHMENT_TYPE_INVALIDATED:
-                    if (recentEventIds.markIfNew(envelope.getEventId())) {
-                        syncService.forceSync("realtime invalidation");
-                    } else if (debugMode) {
-                        logger.info("[Realtime] Suppressed duplicate invalidation " + envelope.getEventId());
-                    }
+                    applyDomainEvent(envelope, () -> syncService.refreshPunishmentTypesNow());
+                    break;
+                case PUNISHMENT_PUSH:
+                    applyDomainEvent(envelope, () -> applyPunishmentPush(envelope.getPunishmentPush()));
+                    break;
+                case PLAYER_NOTIFICATION_PUSH:
+                    applyDomainEvent(envelope, () -> applyPlayerNotificationPush(envelope.getPlayerNotificationPush()));
+                    break;
+                case STAFF_NOTIFICATION_PUSH:
+                    applyDomainEvent(envelope, () -> applyStaffNotificationPush(envelope.getStaffNotificationPush()));
+                    break;
+                case STAT_WIPE_PUSH:
+                    applyDomainEvent(envelope, () -> applyStatWipePush(envelope.getStatWipePush()));
+                    break;
+                case STAFF_2FA_PUSH:
+                    applyDomainEvent(envelope, () -> applyStaff2faPush(envelope.getStaff2FaPush()));
+                    break;
+                case MIGRATION_TASK_PUSH:
+                    applyDomainEvent(envelope, () -> applyMigrationTaskPush(envelope.getMigrationTaskPush()));
+                    break;
+                case ACTIVE_STAFF_PUSH:
+                    applyDomainEvent(envelope, () -> applyActiveStaffPush(envelope.getActiveStaffPush()));
                     break;
                 case PRESENCE_INVALIDATED:
                 case PRESENCE_SNAPSHOT:
@@ -218,6 +241,95 @@ public class MinecraftRealtimeClient {
         }
     }
 
+    /**
+     * Runs a domain-event apply on {@code SyncService}'s single-thread sync executor so it serializes
+     * with the on-connect/resync baseline fetch (which does a full-set staff reconciliation that
+     * evicts), preventing interleave/reorder against an in-flight baseline (M3). Never runs on the
+     * websocket read thread, keeping the read callback non-blocking.
+     *
+     * <p>Dedup and mark-seen both happen on that single executor thread, after a successful apply: a
+     * redelivered event is suppressed only once it has actually been applied, so a transient apply
+     * failure leaves the {@code event_id} unmarked. The backend does not replay individual events, so
+     * a failed apply is reconciled by the next on-(re)connect baseline fetch rather than per-event
+     * redelivery (m10).</p>
+     */
+    private void applyDomainEvent(RealtimeEnvelope envelope, Runnable apply) {
+        String eventId = envelope.getEventId();
+        boolean accepted = syncService.submitRealtimeApply(() -> {
+            if (recentEventIds.contains(eventId)) {
+                if (debugMode) logger.info("[Realtime] Suppressed duplicate event " + eventId);
+                return;
+            }
+            try {
+                apply.run();
+                recentEventIds.markIfNew(eventId);
+            } catch (Exception e) {
+                logger.warning("[Realtime] Failed to apply " + envelope.getPayloadCase()
+                    + " (reconciled on next baseline sync): " + e.getMessage());
+            }
+        });
+        if (!accepted && running && debugMode) {
+            logger.info("[Realtime] Dropped " + envelope.getPayloadCase() + "; sync service unavailable");
+        }
+    }
+
+    private void applyPunishmentPush(gg.modl.proto.modl.v1.PunishmentPushEvent event) {
+        SyncResponse.SyncData data = RealtimeEventMappers.fromPunishmentPush(event);
+        for (SyncResponse.ModifiedPunishment modified : data.getRecentlyModifiedPunishments()) {
+            syncService.applyModifiedPunishment(modified);
+        }
+        for (SyncResponse.PendingPunishment pending : data.getPendingPunishments()) {
+            syncService.applyPendingPunishment(pending);
+        }
+    }
+
+    private void applyPlayerNotificationPush(gg.modl.proto.modl.v1.PlayerNotificationPushEvent event) {
+        SyncResponse.SyncData data = RealtimeEventMappers.fromPlayerNotificationPush(event);
+        for (SyncResponse.PlayerNotification notification : data.getPlayerNotifications()) {
+            // Player-scoped push notifications must carry a target; an empty target would fan out as a
+            // broadcast in NotificationService. The backend always populates it, so drop the anomaly.
+            String target = notification.getTargetPlayerUuid();
+            if (target == null || target.isEmpty()) {
+                if (debugMode) logger.info("[Realtime] Dropping player notification " + notification.getId() + " with empty target");
+                continue;
+            }
+            syncService.applyPlayerNotification(notification);
+        }
+    }
+
+    private void applyStaffNotificationPush(gg.modl.proto.modl.v1.StaffNotificationPushEvent event) {
+        SyncResponse.SyncData data = RealtimeEventMappers.fromStaffNotificationPush(event);
+        for (SyncResponse.StaffNotification notification : data.getStaffNotifications()) {
+            syncService.applyStaffNotification(notification);
+        }
+    }
+
+    private void applyStatWipePush(gg.modl.proto.modl.v1.StatWipePushEvent event) {
+        SyncResponse.SyncData data = RealtimeEventMappers.fromStatWipePush(event);
+        for (SyncResponse.PendingStatWipe statWipe : data.getPendingStatWipes()) {
+            syncService.applyStatWipe(statWipe);
+        }
+    }
+
+    private void applyStaff2faPush(gg.modl.proto.modl.v1.Staff2faPushEvent event) {
+        SyncResponse.SyncData data = RealtimeEventMappers.fromStaff2faPush(event);
+        for (SyncResponse.Staff2faVerification verification : data.getStaff2faVerifications()) {
+            syncService.applyStaff2faVerification(verification);
+        }
+    }
+
+    private void applyMigrationTaskPush(gg.modl.proto.modl.v1.MigrationTaskPushEvent event) {
+        SyncResponse.MigrationTask task = RealtimeEventMappers.fromMigrationTaskPush(event);
+        if (task != null) syncService.applyMigrationTask(task);
+    }
+
+    private void applyActiveStaffPush(gg.modl.proto.modl.v1.ActiveStaffPushEvent event) {
+        SyncResponse.SyncData data = RealtimeEventMappers.fromActiveStaffPush(event);
+        for (SyncResponse.ActiveStaffMember staffMember : data.getActiveStaffMembers()) {
+            syncService.applyActiveStaffMember(staffMember);
+        }
+    }
+
     private void handleReconnectAdvice(RealtimeEnvelope envelope) {
         if (envelope.getReconnectAdvice().getAction() == ReconnectAction.RECONNECT_ACTION_STOP) {
             logger.warning("[Realtime] Backend requested realtime stop: " + envelope.getReconnectAdvice().getMessage());
@@ -229,12 +341,15 @@ public class MinecraftRealtimeClient {
             reconnectDelayOverrideMs = (long) envelope.getReconnectAdvice().getRetryAfterMs();
         }
         if (envelope.getReconnectAdvice().getAction() == ReconnectAction.RECONNECT_ACTION_RESYNC) {
-            syncService.forceSync("realtime reconnect advice");
+            // Explicit "you missed events" signal: rebaseline against lastSyncTimestamp.
+            syncService.runBaselineFetch("realtime resync advice");
         }
     }
 
     private void handleClose(int code, String reason) {
         cancelHeartbeat();
+        // Live channel is down; let the slow fallback fetch resume until we reconnect.
+        syncService.setRealtimeConnected(false);
         if (debugMode && running) logger.info("[Realtime] WebSocket closed (" + code + "): " + reason);
         if (!shouldReconnectAfterClose(code) || terminallyRejected) {
             running = false;
@@ -360,6 +475,12 @@ public class MinecraftRealtimeClient {
         Set<Topic> topics = new HashSet<>();
         topics.add(Topic.TOPIC_MINECRAFT_PERMISSIONS);
         topics.add(Topic.TOPIC_MINECRAFT_PUNISHMENT_TYPES);
+        topics.add(Topic.TOPIC_MINECRAFT_STAFF_NOTIFICATIONS);
+        topics.add(Topic.TOPIC_MINECRAFT_PUNISHMENTS);
+        topics.add(Topic.TOPIC_MINECRAFT_PLAYER_NOTIFICATIONS);
+        topics.add(Topic.TOPIC_MINECRAFT_STAFF_2FA);
+        topics.add(Topic.TOPIC_MINECRAFT_MIGRATION_TASKS);
+        topics.add(Topic.TOPIC_MINECRAFT_STAT_WIPES);
         return topics;
     }
 }

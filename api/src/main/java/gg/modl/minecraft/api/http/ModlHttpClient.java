@@ -540,4 +540,10 @@ public interface ModlHttpClient {
      * @return a future containing the paginated linked accounts
      */
     @NotNull CompletableFuture<LinkedAccountsResponse> getLinkedAccounts(@NotNull UUID uuid, int page, int limit);
+
+    /**
+     * Releases any resources held by this client (e.g. the request thread pool). Implementations
+     * that hold no resources may no-op.
+     */
+    void shutdown();
 }

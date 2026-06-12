@@ -36,15 +36,17 @@ chat_management:
 
 # Sync Configuration
 sync:
-  # How often to sync with the panel (in seconds)
-  # Default: 2 seconds. Minimum: 1 second
-  polling_rate: 2
+  # DEPRECATED: sync is now websocket-push driven; this value no longer controls a periodic poll.
+  # It is only used as the interval (in seconds, minimum 30) for the slow fallback fetch that runs
+  # while the websocket is unavailable, so a kill-switched or older backend still stays in sync.
+  polling_rate: 60
 
 # Realtime Configuration
-# Adds a non-authoritative WebSocket beside HTTP polling for low-risk cache invalidation hints.
-# HTTP sync remains authoritative. Keep disabled unless instructed to enable for rollout.
+# The WebSocket is the live channel: the backend pushes punishments, notifications, and other
+# deltas, and each (re)connect performs one full baseline fetch. Disable only to fall back to the
+# slow HTTP fetch above (kill-switch).
 realtime:
-  enabled: false
+  enabled: true
 
 # Update Checker Configuration
 update_checker:

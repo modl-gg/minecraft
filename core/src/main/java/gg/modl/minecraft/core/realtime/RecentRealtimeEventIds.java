@@ -28,4 +28,11 @@ class RecentRealtimeEventIds {
         }
         return true;
     }
+
+    synchronized boolean contains(String eventId) {
+        if (eventId == null || eventId.trim().isEmpty()) {
+            return false;
+        }
+        return eventIds.contains(eventId);
+    }
 }
