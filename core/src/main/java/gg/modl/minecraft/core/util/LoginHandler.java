@@ -70,11 +70,13 @@ public final class LoginHandler {
             return new LoginResult.Denied("Unable to verify ban status. Login temporarily restricted for safety.");
         }
 
-        if (cause instanceof TimeoutException) {
+        if (cause instanceof TimeoutException || cause instanceof java.io.InterruptedIOException) {
             return new LoginResult.Denied("Login verification timed out. Please try again.");
         }
 
-        return null;
+        // Fail closed: any unclassified verification failure restricts login rather than letting a
+        // potentially-banned player through unverified.
+        return new LoginResult.Denied("Unable to verify ban status. Login temporarily restricted for safety.");
     }
 
     public static void cacheLoginData(

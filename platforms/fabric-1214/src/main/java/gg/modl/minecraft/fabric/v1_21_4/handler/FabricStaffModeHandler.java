@@ -54,10 +54,7 @@ import com.mojang.authlib.properties.Property;
 import java.util.Set;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.LoreComponent;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;
@@ -66,6 +63,7 @@ import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 
 public class FabricStaffModeHandler {
     private final MinecraftServer server;
@@ -86,7 +84,12 @@ public class FabricStaffModeHandler {
     private final Map<UUID, PlayerSnapshot> snapshots = new ConcurrentHashMap<>();
     private final Set<UUID> scoreboardActive = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Set<String>> previousScoreEntries = new ConcurrentHashMap<>();
+    private final Set<String> warnedItemIds = ConcurrentHashMap.newKeySet();
     private ScheduledExecutorService scoreboardExecutor;
+
+    private static final int VANISH_TARGET_CLEAR_INTERVAL_TICKS = 10;
+    private static final double VANISH_TARGET_CLEAR_RADIUS = 48.0;
+    private int vanishClearTickCounter = 0;
 
     public FabricStaffModeHandler(MinecraftServer server, BridgeConfig bridgeConfig,
                                    FabricFreezeHandler freezeHandler,
@@ -109,11 +112,16 @@ public class FabricStaffModeHandler {
 
     public void enterStaffMode(String staffUuid) {
         UUID uuid = UUID.fromString(staffUuid);
-        staffModeActive.add(uuid);
 
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
         if (player == null) return;
+        // Idempotent: only run setup on a genuine OFF->STAFF transition for an online player.
+        if (!staffModeActive.add(uuid)) return;
 
+        applyStaffModeSetup(player);
+    }
+
+    private void applyStaffModeSetup(ServerPlayerEntity player) {
         saveSnapshot(player);
         player.getInventory().clear();
         player.changeGameMode(GameMode.CREATIVE);
@@ -133,7 +141,7 @@ public class FabricStaffModeHandler {
 
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
         if (player == null) {
-            snapshots.remove(uuid);
+            // Keep the snapshot so the real inventory is restored on rejoin (see onPlayerJoin).
             vanished.remove(uuid);
             return;
         }
@@ -141,6 +149,15 @@ public class FabricStaffModeHandler {
         removeScoreboard(player);
         unvanish(player);
         restoreSnapshot(player);
+
+        // This player is now a normal (non-staff) observer; re-hide every vanished player from them.
+        for (UUID vanishedUuid : vanished) {
+            if (vanishedUuid.equals(uuid)) continue;
+            ServerPlayerEntity vanishedPlayer = server.getPlayerManager().getPlayer(vanishedUuid);
+            if (vanishedPlayer != null) {
+                hidePlayerFrom(vanishedPlayer, player);
+            }
+        }
     }
 
     public void setTarget(String staffUuid, String targetUuid) {
@@ -205,7 +222,9 @@ public class FabricStaffModeHandler {
     private void unvanish(ServerPlayerEntity staff) {
         vanished.remove(staff.getUuid());
         for (ServerPlayerEntity online : server.getPlayerManager().getPlayerList()) {
-            if (!online.equals(staff)) {
+            // Mirror vanish()'s exclusion: staff-mode viewers were never sent the hide packets,
+            // so re-spawning the player for them would duplicate an entity they already see.
+            if (!online.equals(staff) && !staffModeActive.contains(online.getUuid())) {
                 showPlayerTo(staff, online);
             }
         }
@@ -277,6 +296,8 @@ public class FabricStaffModeHandler {
     }
 
     private void saveSnapshot(ServerPlayerEntity player) {
+        // Never clobber a live snapshot of the player's real inventory.
+        if (snapshots.containsKey(player.getUuid())) return;
         int size = player.getInventory().size();
         ItemStack[] allSlots = new ItemStack[size];
         for (int i = 0; i < size; i++) {
@@ -299,7 +320,7 @@ public class FabricStaffModeHandler {
         if (snapshot != null) {
             player.getInventory().clear();
             for (int i = 0; i < snapshot.inventoryContents.length && i < player.getInventory().size(); i++) {
-                player.getInventory().setStack(i, snapshot.inventoryContents[i]);
+                player.getInventory().setStack(i, snapshot.inventoryContents[i].copy());
             }
             player.changeGameMode(snapshot.gameMode);
             player.setHealth(Math.min(snapshot.health, player.getMaxHealth()));
@@ -346,7 +367,16 @@ public class FabricStaffModeHandler {
     private ItemStack createItemStack(String itemId, String name, List<String> lore) {
         String materialName = itemId.replace("minecraft:", "");
         Identifier id = Identifier.of("minecraft", materialName);
-        Item item = Registries.ITEM.containsId(id) ? Registries.ITEM.get(id) : Items.STONE;
+        Item item;
+        if (Registries.ITEM.containsId(id)) {
+            item = Registries.ITEM.get(id);
+        } else {
+            if (warnedItemIds.add(itemId)) {
+                gg.modl.minecraft.fabric.v1_21_4.ModlFabricModImpl.LOGGER.warn(
+                        "[staff-mode] Unknown hotbar item id '{}', using STONE", itemId);
+            }
+            item = Items.STONE;
+        }
         ItemStack stack = new ItemStack(item, 1);
         String displayName = localeManager.colorize(name);
         stack.set(DataComponentTypes.CUSTOM_NAME, Text.literal(displayName));
@@ -457,12 +487,14 @@ public class FabricStaffModeHandler {
         Set<String> usedEntries = new HashSet<>();
 
         for (String line : lines) {
+            // Truncate (color-code-safe) FIRST, then de-dup in the truncated domain so two
+            // identical >=40-char lines don't collapse to the same scoreboard entry.
             String resolved = localeManager.colorize(replacePlaceholders(line, player));
+            resolved = truncateColorSafe(resolved, SCOREBOARD_MAX_LINE_LENGTH);
             while (usedEntries.contains(resolved)) {
-                resolved += "\u00a7r";
-            }
-            if (resolved.length() > SCOREBOARD_MAX_LINE_LENGTH) {
-                resolved = resolved.substring(0, SCOREBOARD_MAX_LINE_LENGTH);
+                resolved = truncateColorSafe(
+                        truncateColorSafe(resolved, SCOREBOARD_MAX_LINE_LENGTH - 2) + "\u00a7r",
+                        SCOREBOARD_MAX_LINE_LENGTH);
             }
             usedEntries.add(resolved);
             newEntries.add(resolved);
@@ -486,6 +518,12 @@ public class FabricStaffModeHandler {
         }
 
         previousScoreEntries.put(player.getUuid(), newEntries);
+    }
+
+    private static String truncateColorSafe(String s, int n) {
+        if (s == null || s.length() <= n) return s;
+        if (n > 0 && s.charAt(n - 1) == '§') return s.substring(0, n - 1);
+        return s.substring(0, n);
     }
 
     private StaffModeConfig.ScoreboardConfig getScoreboardConfig(UUID uuid) {
@@ -531,13 +569,16 @@ public class FabricStaffModeHandler {
     }
 
     public void onTick() {
-        if (!vanished.isEmpty()) {
+        if (!vanished.isEmpty() && (++vanishClearTickCounter % VANISH_TARGET_CLEAR_INTERVAL_TICKS == 0)) {
             clearVanishedMobTargets();
         }
         if (staffModeActive.isEmpty()) return;
         for (UUID uuid : staffModeActive) {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
             if (player == null) continue;
+            // Safety net: never wipe the inventory of an active staffer whose snapshot was
+            // never captured (e.g. offline-enter race) — see enterStaffMode/onPlayerJoin.
+            if (!snapshots.containsKey(uuid)) continue;
             if (player.getHungerManager().getFoodLevel() < 20) {
                 player.getHungerManager().setFoodLevel(20);
             }
@@ -554,15 +595,13 @@ public class FabricStaffModeHandler {
     }
 
     private void clearVanishedMobTargets() {
-        for (ServerWorld world : server.getWorlds()) {
-            for (Entity entity : world.iterateEntities()) {
-                if (!(entity instanceof MobEntity mob)) {
-                    continue;
-                }
-                LivingEntity target = mob.getTarget();
-                if (target instanceof ServerPlayerEntity player && vanished.contains(player.getUuid())) {
-                    mob.setTarget(null);
-                }
+        for (UUID vanishedUuid : vanished) {
+            ServerPlayerEntity vp = server.getPlayerManager().getPlayer(vanishedUuid);
+            if (vp == null) continue;
+            ServerWorld world = (ServerWorld) vp.getEntityWorld();
+            Box box = vp.getBoundingBox().expand(VANISH_TARGET_CLEAR_RADIUS);
+            for (MobEntity mob : world.getEntitiesByClass(MobEntity.class, box, m -> m.getTarget() == vp)) {
+                mob.setTarget(null);
             }
         }
     }
@@ -655,10 +694,16 @@ public class FabricStaffModeHandler {
         ServerPlayerEntity target = resolveTarget(player.getUuid());
         if (target == null) return;
 
+        // Read-only point-in-time copy so clicks can never write through to the target's
+        // live inventory.
+        SimpleInventory view = new SimpleInventory(45);
+        for (int i = 0; i < 45 && i < target.getInventory().size(); i++) {
+            view.setStack(i, target.getInventory().getStack(i).copy());
+        }
+
         player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
                 (syncId, playerInv, p) -> new GenericContainerScreenHandler(
-                        ScreenHandlerType.GENERIC_9X5, syncId, playerInv,
-                        new LivePlayerInventoryView(target), 5),
+                        ScreenHandlerType.GENERIC_9X5, syncId, playerInv, view, 5),
                 Text.literal(target.getName().getString() + "'s Inventory")));
     }
 
@@ -723,6 +768,23 @@ public class FabricStaffModeHandler {
     }
 
     public void onPlayerJoin(ServerPlayerEntity player) {
+        UUID joiningId = player.getUuid();
+
+        // Staff member entered staff mode while offline on this node: apply setup now so the
+        // snapshot is captured before any onTick wipe.
+        if (staffModeActive.contains(joiningId) && !snapshots.containsKey(joiningId)) {
+            server.execute(() -> applyStaffModeSetup(player));
+        }
+        // Staff member exited staff mode while offline: restore + consume their real inventory.
+        if (!staffModeActive.contains(joiningId) && snapshots.containsKey(joiningId)) {
+            server.execute(() -> restoreSnapshot(player));
+        }
+        // Cross-server /target: replay the teleport/hotbar now that the staff member is present.
+        UUID targetUuid = targetMap.get(joiningId);
+        if (targetUuid != null) {
+            setTarget(joiningId.toString(), targetUuid.toString());
+        }
+
         if (!staffModeActive.contains(player.getUuid())) {
             server.execute(() -> {
                 for (UUID vanishedUuid : vanished) {
@@ -785,9 +847,18 @@ public class FabricStaffModeHandler {
                 restoreSnapshot(player);
             }
         }
+        for (UUID uuid : vanished) {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+            if (player != null) {
+                unvanish(player);
+            }
+        }
         scoreboardActive.clear();
         previousScoreEntries.clear();
         staffModeActive.clear();
+        vanished.clear();
+        targetMap.clear();
+        snapshots.clear();
     }
 
     private static class PlayerSnapshot {
@@ -817,65 +888,4 @@ public class FabricStaffModeHandler {
         }
     }
 
-    private static final class LivePlayerInventoryView implements Inventory {
-        private static final int VIEW_SIZE = 45;
-
-        private final ServerPlayerEntity target;
-
-        private LivePlayerInventoryView(ServerPlayerEntity target) {
-            this.target = target;
-        }
-
-        @Override
-        public int size() {
-            return VIEW_SIZE;
-        }
-
-        @Override
-        public boolean isEmpty() {
-            return target.getInventory().isEmpty();
-        }
-
-        @Override
-        public ItemStack getStack(int slot) {
-            return slot < target.getInventory().size() ? target.getInventory().getStack(slot) : ItemStack.EMPTY;
-        }
-
-        @Override
-        public ItemStack removeStack(int slot, int amount) {
-            return slot < target.getInventory().size() ? target.getInventory().removeStack(slot, amount) : ItemStack.EMPTY;
-        }
-
-        @Override
-        public ItemStack removeStack(int slot) {
-            return slot < target.getInventory().size() ? target.getInventory().removeStack(slot) : ItemStack.EMPTY;
-        }
-
-        @Override
-        public void setStack(int slot, ItemStack stack) {
-            if (slot < target.getInventory().size()) {
-                target.getInventory().setStack(slot, stack);
-            }
-        }
-
-        @Override
-        public void markDirty() {
-            target.getInventory().markDirty();
-        }
-
-        @Override
-        public boolean canPlayerUse(PlayerEntity player) {
-            return target.isAlive();
-        }
-
-        @Override
-        public boolean isValid(int slot, ItemStack stack) {
-            return slot < target.getInventory().size() && target.getInventory().isValid(slot, stack);
-        }
-
-        @Override
-        public void clear() {
-            target.getInventory().clear();
-        }
-    }
 }

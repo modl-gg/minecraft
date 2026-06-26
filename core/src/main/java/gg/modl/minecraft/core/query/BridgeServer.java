@@ -8,6 +8,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -69,6 +70,7 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
+                .childOption(ChannelOption.TCP_NODELAY, true)
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
@@ -135,25 +137,35 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
 
     @Override
     public void executeStatWipe(String username, String uuid, String punishmentId, StatWipeCallback callback) {
-        String firstServerName = null;
-
-        for (Map.Entry<String, Channel> entry : connectedServers.entrySet()) {
-            Channel ch = entry.getValue();
-            if (!ch.isActive()) continue;
-
-            byte[] data = buildMessage("STAT_WIPE", username, uuid, punishmentId);
-            if (data != null) {
-                sendRaw(ch, data);
-                if (firstServerName == null) firstServerName = entry.getKey();
-                logger.info("[bridge] Sent stat wipe to " + entry.getKey() + " for " + username);
-            }
+        byte[] data = buildMessage("STAT_WIPE", username, uuid, punishmentId);
+        if (data == null) {
+            callback.onComplete(false, null);
+            return;
         }
 
-        if (firstServerName != null) {
-            callback.onComplete(true, firstServerName);
+        // Dispatch over the same set used by availability/broadcast (authenticatedChannels), and always
+        // invoke a terminal callback so SyncService.handleStatWipeResult runs on every path.
+        Channel delivered = null;
+        for (Channel ch : authenticatedChannels) {
+            if (!ch.isActive()) continue;
+            sendRaw(ch, data);
+            if (delivered == null) delivered = ch;
+            logger.info("[bridge] Sent stat wipe to " + describeChannel(ch) + " for " + username);
+        }
+
+        if (delivered != null) {
+            callback.onComplete(true, describeChannel(delivered));
         } else {
             logger.warning("[bridge] No connected backends for stat wipe of " + username);
+            callback.onComplete(false, null);
         }
+    }
+
+    private String describeChannel(Channel ch) {
+        for (Map.Entry<String, Channel> e : connectedServers.entrySet()) {
+            if (e.getValue().equals(ch)) return e.getKey();
+        }
+        return String.valueOf(ch.remoteAddress());
     }
 
     private void broadcastToOthers(byte[] data, Channel except) {
@@ -295,7 +307,11 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
 
                 if ("BRIDGE_HELLO".equals(action)) {
                     String serverName = in.readUTF();
-                    connectedServers.put(serverName, ctx.channel());
+                    Channel previous = connectedServers.put(serverName, ctx.channel());
+                    if (previous != null && previous != ctx.channel()) {
+                        logger.warning("[bridge] Backend name '" + serverName + "' re-registered on a new channel ("
+                                + ctx.channel().remoteAddress() + "); replacing previous mapping (" + previous.remoteAddress() + ")");
+                    }
                     logger.info("[bridge] Backend registered: " + serverName + " (" + ctx.channel().remoteAddress() + ")");
                     return;
                 }

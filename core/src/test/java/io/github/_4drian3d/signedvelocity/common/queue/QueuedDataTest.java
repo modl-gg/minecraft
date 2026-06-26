@@ -140,6 +140,73 @@ final class QueuedDataTest {
         assertSame(SignedResult.allowed(), queue.dataFrom(uuid).nextResult().get(1, TimeUnit.SECONDS));
     }
 
+    @Test
+    void completeSatisfiesAdvancingWaiterEvenWhenNonAdvancingWaiterIsAheadInQueue() throws Exception {
+        TestScheduler scheduler = new TestScheduler();
+        QueuedData data = new QueuedData(scheduler, 20);
+
+        Future<SignedResult> peek = data.nextResultWithoutAdvance(); // advance=false, enqueued first
+        Future<SignedResult> consume = data.nextResult();            // advance=true
+        assertEquals(2, data.pendingWaiters());
+
+        data.complete(SignedResult.cancel());
+
+        // Both waiters receive the real proxy verdict (peek + the advancing consume).
+        assertSame(SignedResult.cancel(), peek.get(1, TimeUnit.SECONDS));
+        assertSame(SignedResult.cancel(), consume.get(1, TimeUnit.SECONDS));
+        // The advancing waiter consumed it, so the queue is drained and nothing leaked into results.
+        assertEquals(0, data.pendingWaiters());
+        // A fresh advancing request must now register a NEW pending waiter (proves results is empty / no leak).
+        data.nextResult();
+        assertEquals(1, data.pendingWaiters());
+    }
+
+    @Test
+    void singleAdvancingWaiterReceivesVerdictWithNoShiftByOne() throws Exception {
+        TestScheduler scheduler = new TestScheduler();
+        QueuedData data = new QueuedData(scheduler, 20);
+
+        Future<SignedResult> consume = data.nextResult();
+        data.complete(SignedResult.cancel());
+
+        assertSame(SignedResult.cancel(), consume.get(1, TimeUnit.SECONDS));
+        assertEquals(0, data.pendingWaiters());
+        // The decision was delivered to the correct waiter; a subsequent request registers a NEW pending
+        // waiter (results is empty), confirming the verdict did not leak/shift to the next message.
+        data.nextResult();
+        assertEquals(1, data.pendingWaiters());
+    }
+
+    @Test
+    void nonAdvancingPeekLeavesResultForFollowingAdvancingRead() throws Exception {
+        TestScheduler scheduler = new TestScheduler();
+        QueuedData data = new QueuedData(scheduler, 20);
+
+        Future<SignedResult> peek = data.nextResultWithoutAdvance();
+        SignedResult modify = SignedResult.modify("x");
+        data.complete(modify);
+
+        // Peek waiter resolves to the modify result...
+        assertSame(modify, peek.get(1, TimeUnit.SECONDS));
+        // ...and a following advancing read still observes the same modify result (peek-leaves-value invariant).
+        assertSame(modify, data.nextResult().get(1, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void cancelledMessageStillAdvancesQueueSoNextMessageGetsItsOwnVerdict() {
+        QueuedData data = new QueuedData();
+        data.complete(SignedResult.cancel());
+        SignedResult clean = SignedResult.modify("clean text");
+        data.complete(clean);
+
+        data.acceptNextResult(result -> { /* msg #1 cancelled by another plugin: discard */ });
+
+        AtomicReference<SignedResult> applied = new AtomicReference<>();
+        data.acceptNextResult(applied::set);
+        assertEquals("clean text", applied.get().toModify());
+        assertEquals(0, data.pendingWaiters());
+    }
+
     private static QueuedData getUnchecked(Future<QueuedData> future) {
         try {
             return future.get(1, TimeUnit.SECONDS);

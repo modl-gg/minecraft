@@ -35,8 +35,10 @@ import net.minecraft.server.network.ServerPlayerEntity;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import java.util.concurrent.TimeUnit;
@@ -70,6 +72,7 @@ public class FabricListener {
     private final MinecraftServer server;
     private final LoginExecutor loginExecutor = new LoginExecutor(
             "modl-fabric-login", LOGIN_EXECUTOR_THREADS, LOGIN_QUEUE_CAPACITY);
+    private final Set<UUID> pendingVerdicts = ConcurrentHashMap.newKeySet();
 
     private ModlHttpClient getHttpClient() {
         return httpClientHolder.getClient();
@@ -86,15 +89,19 @@ public class FabricListener {
         String playerName = player.getName().getString();
         String ipAddress = player.getIp();
 
+        pendingVerdicts.add(uuid);
+
+        // Synchronous cached fast-path (already on the main thread): deny banned players
+        // before they enter the world when the verdict is already known.
+        LoginCache.CachedLoginResult cached = loginCache.getCachedLoginResult(uuid);
+        if (cached != null) {
+            platform.getLogger().debug("Using cached login result for " + playerName);
+            handleLoginSuccess(uuid, playerName, ipAddress, cached.getResponse(), cached.getIpInfo());
+            return;
+        }
+
         try {
             loginExecutor.runAsync(() -> {
-                LoginCache.CachedLoginResult cached = loginCache.getCachedLoginResult(uuid);
-                if (cached != null) {
-                    platform.getLogger().debug("Using cached login result for " + playerName);
-                    handleLoginSuccess(uuid, playerName, ipAddress, cached.getResponse(), cached.getIpInfo());
-                    return;
-                }
-
                 CompletableFuture<Map<String, Object>> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
                 CompletableFuture<WebPlayer> webPlayerFuture = WebPlayer.get(uuid);
 
@@ -140,6 +147,7 @@ public class FabricListener {
     }
 
     private void kickForLoginFailure(UUID uuid, String reason) {
+        pendingVerdicts.remove(uuid);
         server.execute(() -> platform.kickPlayer(platform.getAbstractPlayer(uuid, false), reason));
     }
 
@@ -165,7 +173,9 @@ public class FabricListener {
 
     private void completeJoin(UUID uuid, String playerName,
                               PlayerLoginResponse response) {
+        pendingVerdicts.remove(uuid);
         server.execute(() -> {
+            if (!platform.isOnline(uuid)) return;
             ListenerHelper.handlePlayerJoin(uuid, playerName,
                     platform, cache, localeManager, staff2faService, syncService);
             cacheSkinTexture(uuid);
@@ -189,6 +199,7 @@ public class FabricListener {
     }
 
     private void onPlayerDisconnect(ServerPlayerEntity player) {
+        pendingVerdicts.remove(player.getUuid());
         ListenerHelper.handlePlayerDisconnect(
                 player.getUuid(), player.getName().getString(),
                 getHttpClient(), cache, platform, localeManager,
@@ -196,6 +207,9 @@ public class FabricListener {
     }
 
     private boolean onChatMessage(SignedMessage message, ServerPlayerEntity player, MessageType.Parameters params) {
+        if (pendingVerdicts.contains(player.getUuid())) {
+            return false;
+        }
         ChatEventHandler.Result result = ChatEventHandler.handleChat(
                 player.getUuid(), player.getName().getString(), message.getContent().getString(),
                 platform.getServerName(),

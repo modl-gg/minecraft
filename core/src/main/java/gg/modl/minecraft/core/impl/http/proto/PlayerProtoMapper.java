@@ -44,12 +44,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 /**
  * Maps player-domain DTOs to/from their proto V3 counterparts. The inverse of the backend
  * {@code MinecraftPlayerProtoMapper}: domain&rarr;proto for requests, proto&rarr;domain for responses.
  */
 public final class PlayerProtoMapper {
+
+    private static final Logger LOGGER = Logger.getLogger(PlayerProtoMapper.class.getName());
 
     private PlayerProtoMapper() {
     }
@@ -437,6 +440,7 @@ public final class PlayerProtoMapper {
         try {
             return Modification.Type.valueOf(value);
         } catch (IllegalArgumentException ignored) {
+            LOGGER.fine("Dropping unknown modification type from wire: " + value);
             return null;
         }
     }

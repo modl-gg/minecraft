@@ -51,23 +51,29 @@ public class WarnCommand {
         );
 
         httpClientHolder.getClient().createPlayerNote(noteRequest).thenAccept(response -> {
-            String targetName = target.getUsernames().get(0).getUsername();
-            notifyTargetIfOnline(target, issuerName, warnArgs.reason);
+            final String targetName = target.getUsernames().isEmpty()
+                    ? target.getMinecraftUuid().toString()
+                    : target.getUsernames().get(0).getUsername();
+            platform.runOnMainThread(() -> {
+                notifyTargetIfOnline(target, issuerName, warnArgs.reason);
 
-            actor.reply(localeManager.getMessage("warn.success", mapOf(
-                "target", targetName, "reason", warnArgs.reason
-            )));
-
-            if (!warnArgs.silent) {
-                platform.staffBroadcast(localeManager.getMessage("warn.staff_notification", mapOf(
-                    "issuer", issuerName, "target", targetName, "reason", warnArgs.reason
+                actor.reply(localeManager.getMessage("warn.success", mapOf(
+                    "target", targetName, "reason", warnArgs.reason
                 )));
-            }
+
+                if (!warnArgs.silent) {
+                    platform.staffBroadcast(localeManager.getMessage("warn.staff_notification", mapOf(
+                        "issuer", issuerName, "target", targetName, "reason", warnArgs.reason
+                    )));
+                }
+            });
         }).exceptionally(throwable -> {
-            if (throwable.getCause() instanceof PanelUnavailableException) actor.reply(localeManager.getMessage("api_errors.panel_restarting"));
-            else actor.reply(localeManager.getMessage("warn.error", mapOf(
-                    "error", localeManager.sanitizeErrorMessage(throwable.getMessage())
-                )));
+            platform.runOnMainThread(() -> {
+                if (throwable.getCause() instanceof PanelUnavailableException) actor.reply(localeManager.getMessage("api_errors.panel_restarting"));
+                else actor.reply(localeManager.getMessage("warn.error", mapOf(
+                        "error", localeManager.sanitizeErrorMessage(throwable.getMessage())
+                    )));
+            });
             return null;
         });
     }

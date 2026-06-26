@@ -2,8 +2,10 @@ package gg.modl.minecraft.core.impl.http;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Parser;
+import gg.modl.minecraft.api.http.ApiClientException;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
+import java.io.File;
 import gg.modl.minecraft.api.http.request.AddPunishmentEvidenceRequest;
 import gg.modl.minecraft.api.http.request.AddPunishmentNoteRequest;
 import gg.modl.minecraft.api.http.request.ChangePunishmentDurationRequest;
@@ -104,10 +106,11 @@ import java.util.logging.Logger;
 public class ModlHttpClientV3Impl implements ModlHttpClient {
     private static final String HEADER_API_KEY = "X-API-Key", HEADER_SERVER_DOMAIN = "X-Server-Domain",
         HEADER_CONTENT_TYPE = "Content-Type", HEADER_ACCEPT = "Accept",
+        HEADER_ACTING_STAFF_ID = "X-Acting-Staff-Id",
         CONTENT_TYPE_PROTOBUF = "application/x-protobuf";
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10), LOGIN_TIMEOUT = Duration.ofSeconds(15),
         SYNC_TIMEOUT = Duration.ofSeconds(20);
-    private static final int HTTP_BAD_GATEWAY = 502;
+    private static final int HTTP_BAD_GATEWAY = 502, STATUS_UNREACHABLE = -1;
     private static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5L;
 
     private final @NotNull String baseUrl, apiKey, serverDomain;
@@ -494,9 +497,9 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
     }
 
     @NotNull @Override
-    public CompletableFuture<Void> updateStaffRole(@NotNull String staffId, @NotNull String roleName) {
+    public CompletableFuture<Void> updateStaffRole(@NotNull String staffId, @NotNull String roleName, String actingStaffId) {
         return patchVoid("/minecraft/staff/" + staffId + "/role",
-            StaffRoleProtoMapper.toUpdateStaffRoleRequest(roleName).toByteArray());
+            StaffRoleProtoMapper.toUpdateStaffRoleRequest(roleName).toByteArray(), actingStaffId);
     }
 
     @NotNull @Override
@@ -512,9 +515,9 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
     }
 
     @NotNull @Override
-    public CompletableFuture<Void> updateRolePermissions(@NotNull String roleId, @NotNull List<String> permissions) {
+    public CompletableFuture<Void> updateRolePermissions(@NotNull String roleId, @NotNull List<String> permissions, String actingStaffId) {
         return patchVoid("/minecraft/roles/" + roleId + "/permissions",
-            StaffRoleProtoMapper.toUpdateRolePermissionsRequest(permissions).toByteArray());
+            StaffRoleProtoMapper.toUpdateRolePermissionsRequest(permissions).toByteArray(), actingStaffId);
     }
 
     @NotNull @Override
@@ -528,6 +531,11 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
     @NotNull @Override
     public CompletableFuture<Void> updateMigrationStatus(@NotNull MigrationStatusUpdateRequest request) {
         return legacyClient.updateMigrationStatus(request);
+    }
+
+    @NotNull @Override
+    public CompletableFuture<Boolean> uploadMigrationFile(@NotNull File file) {
+        return legacyClient.uploadMigrationFile(file);
     }
 
     @NotNull @Override
@@ -563,6 +571,10 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
 
     private CompletableFuture<Void> patchVoid(String endpoint, byte[] body) {
         return sendVoid(new ProtoRequest(baseUrl + endpoint, "PATCH", body, null));
+    }
+
+    private CompletableFuture<Void> patchVoid(String endpoint, byte[] body, String actingStaffId) {
+        return sendVoid(new ProtoRequest(baseUrl + endpoint, "PATCH", body, null, actingStaffId));
     }
 
     private CompletableFuture<Void> sendVoid(ProtoRequest request) {
@@ -613,6 +625,10 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
                 throw toError(requestId, request, statusCode, responseBody);
             } catch (RuntimeException e) {
                 throw e;
+            } catch (java.io.IOException e) {
+                // Socket-level failure (connect-refused, DNS, read-timeout) -> panel unreachable (fail-closed on login).
+                throw new PanelUnavailableException(request.url, STATUS_UNREACHABLE,
+                    "V3 API unreachable: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             } catch (Exception e) {
                 throw new RuntimeException("V3 HTTP request failed", e);
             } finally {
@@ -622,9 +638,10 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
             .exceptionally(throwable -> {
                 // Single funnel for circuit-breaker accounting: every failed call records exactly
                 // once here (toError() classifies/logs but no longer records, to avoid double-counting).
+                // 4xx client outcomes (ApiClientException) are routine and must NOT count.
                 Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
                     ? throwable.getCause() : throwable;
-                circuitBreaker.recordFailure();
+                if (!(cause instanceof ApiClientException)) circuitBreaker.recordFailure();
                 if (cause instanceof RuntimeException) throw (RuntimeException) cause;
                 throw new RuntimeException("V3 HTTP request failed", throwable);
             });
@@ -642,6 +659,9 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
         connection.setRequestProperty(HEADER_SERVER_DOMAIN, serverDomain);
         connection.setRequestProperty("User-Agent", "modl-minecraft/" + PluginInfo.VERSION);
         connection.setRequestProperty(HEADER_ACCEPT, CONTENT_TYPE_PROTOBUF);
+        if (request.actingStaffId != null && !request.actingStaffId.trim().isEmpty()) {
+            connection.setRequestProperty(HEADER_ACTING_STAFF_ID, request.actingStaffId);
+        }
 
         if (request.body != null) {
             connection.setRequestProperty(HEADER_CONTENT_TYPE, CONTENT_TYPE_PROTOBUF);
@@ -687,19 +707,23 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
         }
 
         // Classify/log only; circuit-breaker accounting happens once in the send() exceptionally funnel.
-        if (statusCode == HTTP_BAD_GATEWAY) {
-            return new PanelUnavailableException(request.url, HTTP_BAD_GATEWAY,
-                "V3 API is temporarily unavailable (502 Bad Gateway)");
+        // Any 5xx is treated as "panel unreachable" (fail-closed on the login path); 4xx is a routine
+        // client outcome that must NOT count toward the circuit breaker.
+        if (statusCode >= 500 && statusCode < 600) {
+            if (debugMode) logger.warning(String.format("[V3-REQ-%s] HTTP %d - %s %s: %s", requestId, statusCode, request.method, request.url, message));
+            return new PanelUnavailableException(request.url, statusCode,
+                "V3 API is temporarily unavailable (HTTP " + statusCode + ")");
         } else if (statusCode == HttpURLConnection.HTTP_NOT_FOUND) {
             if (debugMode) logger.fine(String.format("[V3-REQ-%s] Not found (404): %s - %s", requestId, request.url, message));
         } else if (statusCode == 401 || statusCode == 403) {
             logger.severe(String.format("[V3-REQ-%s] Authentication failed - check API key and server domain", requestId));
-        } else if (statusCode == 405 || statusCode == HttpURLConnection.HTTP_INTERNAL_ERROR) {
+        } else if (statusCode == 405) {
             logger.severe(String.format("[V3-REQ-%s] HTTP %d - %s %s: %s", requestId, statusCode, request.method, request.url, message));
         } else {
             logger.warning(String.format("[V3-REQ-%s] %s", requestId, message));
         }
 
+        if (statusCode >= 400 && statusCode < 500) return new ApiClientException(statusCode, message);
         return new RuntimeException(message);
     }
 
@@ -716,12 +740,18 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
         final String method;
         final byte[] body;
         final Duration timeout;
+        final String actingStaffId;
 
         ProtoRequest(String url, String method, byte[] body, Duration timeout) {
+            this(url, method, body, timeout, null);
+        }
+
+        ProtoRequest(String url, String method, byte[] body, Duration timeout, String actingStaffId) {
             this.url = url;
             this.method = method;
             this.body = body;
             this.timeout = timeout;
+            this.actingStaffId = actingStaffId;
         }
     }
 }

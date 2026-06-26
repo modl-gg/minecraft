@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.util;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,6 +18,7 @@ public final class CircuitBreaker {
     private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
     private final AtomicInteger failureCount = new AtomicInteger(0);
     private final AtomicLong nextRetryTime = new AtomicLong(0);
+    private final AtomicBoolean probeInFlight = new AtomicBoolean(false);
     private final int failureThreshold;
     private final long timeoutMillis, retryTimeoutMillis;
 
@@ -35,10 +37,16 @@ public final class CircuitBreaker {
         long currentTime = System.currentTimeMillis();
 
         if (currentState == State.OPEN) {
-            return currentTime >= nextRetryTime.get() && state.compareAndSet(State.OPEN, State.HALF_OPEN);
-        } else {
-            return true;
+            if (currentTime >= nextRetryTime.get() && state.compareAndSet(State.OPEN, State.HALF_OPEN)) {
+                probeInFlight.set(true);
+                return probeInFlight.compareAndSet(true, false);
+            }
+            return false;
         }
+        if (currentState == State.HALF_OPEN) {
+            return probeInFlight.compareAndSet(true, false);
+        }
+        return true;
     }
 
     public void recordSuccess() {
@@ -59,7 +67,10 @@ public final class CircuitBreaker {
         int failures = failureCount.incrementAndGet();
 
         if (currentState == State.HALF_OPEN) {
-            if (state.compareAndSet(State.HALF_OPEN, State.OPEN)) nextRetryTime.set(currentTime + retryTimeoutMillis);
+            if (state.compareAndSet(State.HALF_OPEN, State.OPEN)) {
+                nextRetryTime.set(currentTime + retryTimeoutMillis);
+                probeInFlight.set(false);
+            }
         } else if (currentState == State.CLOSED && failures >= failureThreshold) {
             if (state.compareAndSet(State.CLOSED, State.OPEN)) nextRetryTime.set(currentTime + timeoutMillis);
         }
@@ -69,5 +80,6 @@ public final class CircuitBreaker {
         state.set(State.CLOSED);
         failureCount.set(0);
         nextRetryTime.set(0);
+        probeInFlight.set(false);
     }
 }

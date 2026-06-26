@@ -126,8 +126,10 @@ public class ModlHelpCommand {
     }
 
     private void addEntry(List<HelpEntry> entries, String localeKey) {
-        String usage = localeManager.getMessage("help." + localeKey + ".usage");
-        if (usage == null || usage.isEmpty() || usage.startsWith("§cMissing")) return;
+        String usageKey = "help." + localeKey + ".usage";
+        if (!localeManager.hasMessage(usageKey)) return;
+        String usage = localeManager.getMessage(usageKey);
+        if (usage.isEmpty()) return;
         String description = localeManager.getMessage("help." + localeKey + ".description");
         entries.add(new HelpEntry(usage, description));
     }

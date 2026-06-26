@@ -240,4 +240,8 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
     public FabricStaffModeHandler getFabricStaffModeHandler() {
         return fabricStaffModeHandler;
     }
+
+    public MinecraftServer getServer() {
+        return server;
+    }
 }

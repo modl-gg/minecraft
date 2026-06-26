@@ -24,9 +24,16 @@ public class StreamingJsonWriter implements AutoCloseable {
         this.jsonWriter.setIndent("  ");
         this.gson = new Gson();
         this.defaultReason = defaultReason;
-        jsonWriter.beginObject();
-        jsonWriter.name("players");
-        jsonWriter.beginArray();
+        try {
+            jsonWriter.beginObject();
+            jsonWriter.name("players");
+            jsonWriter.beginArray();
+        } catch (IOException e) {
+            try {
+                jsonWriter.close();
+            } catch (IOException ignored) {}
+            throw e;
+        }
     }
 
     public void writePlayer(PlayerData playerData) throws IOException {
@@ -156,11 +163,13 @@ public class StreamingJsonWriter implements AutoCloseable {
     @Override
     public void close() throws IOException {
         if (closed) return;
-        jsonWriter.endArray();
-        jsonWriter.endObject();
-        jsonWriter.close();
-        fileWriter.close();
         closed = true;
+        try {
+            jsonWriter.endArray();
+            jsonWriter.endObject();
+        } finally {
+            jsonWriter.close();
+        }
     }
 
     public static class PlayerData {

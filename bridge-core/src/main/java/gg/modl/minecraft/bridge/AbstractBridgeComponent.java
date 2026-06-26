@@ -69,6 +69,10 @@ public abstract class AbstractBridgeComponent {
         unregisterAntiCheatHooks();
     }
 
+    public BridgeScheduler getScheduler() {
+        return context.getScheduler();
+    }
+
     private void prepareBridgeConfig(Path dataFolder) {
         BridgeYamlResource.ensureDefaultFile(context, "bridge-config.yml", pluginLogger);
 

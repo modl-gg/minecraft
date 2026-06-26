@@ -11,7 +11,6 @@ import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -86,19 +85,13 @@ public class JoinListener {
                 .thenApply(wp -> wp != null && wp.isValid() ? wp.getSkin() : null)
                 .exceptionally(t -> null);
 
-        Map<String, Object> ipInfo = null;
-        String skinHash = null;
-        try {
-            ipInfo = ipInfoFuture.getNow(null);
-            skinHash = skinHashFuture.getNow(null);
-        } catch (Exception ignored) {}
-
-        PlayerLoginRequest request = new PlayerLoginRequest(
+        // Await both async lookups (bounded) before building the request so skinHash/ipInfo
+        // are actually populated instead of always null (getNow returned the fallback).
+        PlayerLoginRequest request = ListenerHelper.buildLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getUsername(),
-                ipAddress, skinHash, platform.getServerName(), ipInfo
-        );
-        request.setServerInstanceId(StartupClient.getServerInstanceId());
+                ipAddress, platform.getServerName(),
+                ipInfoFuture, skinHashFuture, LOGIN_TIMEOUT_SECONDS, platform.getLogger());
 
         try {
             PlayerLoginResponse response = getHttpClient().playerLogin(request).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);

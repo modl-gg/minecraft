@@ -73,24 +73,24 @@ public class SpigotPlatform implements Platform {
 
     @Override
     public void broadcast(String string) {
-        Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', string));
+        runOnMainThread(() -> Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', string)));
     }
 
     @Override
     public void staffBroadcast(String string) {
         String message = ChatColor.translateAlternateColorCodes('&', string);
-        Bukkit.getOnlinePlayers().stream()
+        runOnMainThread(() -> Bukkit.getOnlinePlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
             .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
-            .forEach(player -> player.sendMessage(message));
+            .forEach(player -> player.sendMessage(message)));
     }
 
     @Override
     public void staffJsonBroadcast(String jsonMessage) {
-        Bukkit.getOnlinePlayers().stream()
+        runOnMainThread(() -> Bukkit.getOnlinePlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
             .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
-            .forEach(player -> player.spigot().sendMessage(ComponentSerializer.parse(jsonMessage)));
+            .forEach(player -> player.spigot().sendMessage(ComponentSerializer.parse(jsonMessage))));
     }
 
     @Override
@@ -203,6 +203,7 @@ public class SpigotPlatform implements Platform {
 
     @Override
     public void kickPlayer(AbstractPlayer player, String reason) {
+        if (player == null) return;
         Player bukkitPlayer = Bukkit.getPlayer(player.getUuid());
         if (bukkitPlayer != null && bukkitPlayer.isOnline()) bukkitPlayer.kickPlayer(StringUtil.unescapeNewlines(reason));
     }

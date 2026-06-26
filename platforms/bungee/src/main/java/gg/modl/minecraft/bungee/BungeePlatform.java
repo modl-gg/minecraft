@@ -175,6 +175,7 @@ public class BungeePlatform implements Platform {
 
     @Override
     public void kickPlayer(AbstractPlayer player, String reason) {
+        if (player == null) return;
         ProxiedPlayer bungeePlayer = ProxyServer.getInstance().getPlayer(player.getUuid());
         if (bungeePlayer != null && bungeePlayer.isConnected()) bungeePlayer.disconnect(new TextComponent(StringUtil.unescapeNewlines(reason)));
     }

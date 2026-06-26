@@ -16,25 +16,32 @@ public final class PunishmentTypeParser {
     private static final int MAX_ADMINISTRATIVE_ORDINAL = 5;
 
     public static void populateRegistry(List<PunishmentTypesResponse.PunishmentTypeData> types) {
-        PunishmentTypeRegistry.registerAdministrativeTypes();
+        // Rebuild into a fresh staging map and publish atomically so stale/removed ordinals are cleared
+        // (no more lingering ban/mute classification for deleted custom types until restart).
+        PunishmentTypeRegistry.beginRebuild();
+        try {
+            PunishmentTypeRegistry.registerAdministrativeTypes();
 
-        for (PunishmentTypesResponse.PunishmentTypeData type : types) {
-            int ordinal = type.getOrdinal();
-            if (ordinal <= MAX_ADMINISTRATIVE_ORDINAL) continue;
+            for (PunishmentTypesResponse.PunishmentTypeData type : types) {
+                int ordinal = type.getOrdinal();
+                if (ordinal <= MAX_ADMINISTRATIVE_ORDINAL) continue;
 
-            if (Boolean.TRUE.equals(type.getPermanentUntilSkinChange()) ||
-                Boolean.TRUE.equals(type.getPermanentUntilUsernameChange())) {
-                PunishmentTypeRegistry.register(ordinal, true, false);
-                continue;
+                if (Boolean.TRUE.equals(type.getPermanentUntilSkinChange()) ||
+                    Boolean.TRUE.equals(type.getPermanentUntilUsernameChange())) {
+                    PunishmentTypeRegistry.register(ordinal, true, false);
+                    continue;
+                }
+
+                Object durations = type.getDurations();
+                if (durations != null) {
+                    DurationInfo info = parseDurations(durations);
+                    PunishmentTypeRegistry.register(ordinal, info.hasBan, info.hasMute);
+                } else {
+                    PunishmentTypeRegistry.register(ordinal, false, false);
+                }
             }
-
-            Object durations = type.getDurations();
-            if (durations != null) {
-                DurationInfo info = parseDurations(durations);
-                PunishmentTypeRegistry.register(ordinal, info.hasBan, info.hasMute);
-            } else {
-                PunishmentTypeRegistry.register(ordinal, false, false);
-            }
+        } finally {
+            PunishmentTypeRegistry.commitRebuild();
         }
     }
 

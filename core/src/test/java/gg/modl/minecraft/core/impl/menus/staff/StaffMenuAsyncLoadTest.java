@@ -125,7 +125,14 @@ class StaffMenuAsyncLoadTest {
 
         dataFuture.completeExceptionally(new IllegalStateException("load failed"));
 
-        assertEquals(0, platform.mainThreadScheduleCount());
+        // The failure branch schedules exactly one main-thread task (to notify the player).
+        assertEquals(1, platform.mainThreadScheduleCount());
+        assertEquals(0, displayCount.get());
+
+        platform.runScheduledTask();
+
+        // The player is notified of the failure; display still never happens.
+        assertNotNull(platform.lastMessage());
         assertEquals(0, displayCount.get());
     }
 
@@ -214,6 +221,9 @@ class StaffMenuAsyncLoadTest {
         private final Cache cache;
         private final AtomicInteger mainThreadScheduleCount = new AtomicInteger();
         private final AtomicReference<Runnable> scheduledTask = new AtomicReference<>();
+        private final AtomicReference<String> lastMessage = new AtomicReference<>();
+        private final gg.modl.minecraft.core.locale.LocaleManager localeManager =
+                new gg.modl.minecraft.core.locale.LocaleManager();
 
         private TestPlatform(Cache cache) {
             this.cache = cache;
@@ -228,6 +238,11 @@ class StaffMenuAsyncLoadTest {
                         if ("getAbstractPlayer".equals(method.getName()))
                             return new AbstractPlayer((UUID) args[0], "ModlStaff", true);
                         if ("getPlayerWrapper".equals(method.getName())) return null;
+                        if ("getLocaleManager".equals(method.getName())) return localeManager;
+                        if ("sendMessage".equals(method.getName())) {
+                            lastMessage.set((String) args[1]);
+                            return null;
+                        }
                         if ("runOnMainThread".equals(method.getName())) {
                             mainThreadScheduleCount.incrementAndGet();
                             scheduledTask.set((Runnable) args[0]);
@@ -240,6 +255,10 @@ class StaffMenuAsyncLoadTest {
 
         private int mainThreadScheduleCount() {
             return mainThreadScheduleCount.get();
+        }
+
+        private String lastMessage() {
+            return lastMessage.get();
         }
 
         private void runScheduledTask() {

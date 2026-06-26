@@ -144,7 +144,7 @@ class PunishmentExecutor {
 
             if (modType == Modification.Type.MANUAL_PARDON || modType == Modification.Type.SYSTEM_PARDON || modType == Modification.Type.APPEAL_ACCEPT) {
                 handlePardon(uuid, username, punishmentId);
-            } else if (modType == Modification.Type.MANUAL_DURATION_CHANGE || modType == Modification.Type.APPEAL_DURATION_CHANGE) {
+            } else if (modType == Modification.Type.MANUAL_DURATION_CHANGE) {
                 handleDurationChange(uuid, username, punishmentId, modification.getEffectiveDuration(), modification.getTimestamp());
             }
         } catch (Exception e) {

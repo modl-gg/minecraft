@@ -23,12 +23,13 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class IpApiClientTest {
-    private static final String SUCCESS_BODY = "{\"ip\":\"8.8.8.8\",\"success\":true,\"country_code\":\"US\",\"region\":\"California\",\"city\":\"Mountain View\",\"connection\":{\"isp\":\"Google LLC\"},\"security\":{\"is_proxy\":false}}";
+    private static final String SUCCESS_BODY = "{\"ip\":\"8.8.8.8\",\"success\":true,\"country_code\":\"US\",\"region\":\"California\",\"city\":\"Mountain View\",\"connection\":{\"isp\":\"Google LLC\"},\"security\":{\"proxy\":false,\"hosting\":true}}";
     private static final CapturingUrlHandler CAPTURING_URL_HANDLER = new CapturingUrlHandler();
 
     static {
@@ -61,6 +62,7 @@ class IpApiClientTest {
         assertTrue(thread.getName().startsWith("modl-ip-api-"));
         assertTrue(executor.getMaximumPoolSize() <= 2);
         assertFalse(executor.getQueue().remainingCapacity() == Integer.MAX_VALUE);
+        assertInstanceOf(ThreadPoolExecutor.AbortPolicy.class, executor.getRejectedExecutionHandler());
     }
 
     @Test
@@ -76,7 +78,19 @@ class IpApiClientTest {
         assertEquals("California", ipInfo.get("regionName"));
         assertEquals("Google LLC", ipInfo.get("as"));
         assertEquals(Boolean.FALSE, ipInfo.get("proxy"));
-        assertEquals(Boolean.FALSE, ipInfo.get("hosting"));
+        assertEquals(Boolean.TRUE, ipInfo.get("hosting"));
+    }
+
+    @Test
+    void legacy_is_prefixed_security_keys_are_honored() throws Exception {
+        CAPTURING_URL_HANDLER.setResponse(HttpURLConnection.HTTP_OK,
+                "{\"ip\":\"8.8.8.8\",\"success\":true,\"country_code\":\"US\",\"connection\":{\"isp\":\"Google LLC\"},\"security\":{\"is_proxy\":true,\"is_hosting\":true}}");
+
+        Map<String, Object> ipInfo = IpApiClient.getIpInfo("8.8.8.8").get(2, TimeUnit.SECONDS);
+
+        assertNotNull(ipInfo);
+        assertEquals(Boolean.TRUE, ipInfo.get("proxy"));
+        assertEquals(Boolean.TRUE, ipInfo.get("hosting"));
     }
 
     @Test

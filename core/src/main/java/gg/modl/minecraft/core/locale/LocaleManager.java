@@ -28,6 +28,9 @@ public class LocaleManager {
     private static final Pattern JAVA_PREFIX_PATTERN = Pattern.compile("^java\\.[a-zA-Z0-9_.]+: .+");
     private static final Pattern LOCALE_PATH_PATTERN = Pattern.compile(".*\\.[a-z_]+\\.[a-z_]+.*");
 
+    private static final String MISSING_MESSAGE_PREFIX = "&cMissing locale: ";
+    private static final String MISSING_LIST_PREFIX = "&cMissing locale list: ";
+
     @Getter private Map<String, Object> messages;
     private Map<String, Object> configValues;
     private final String currentLocale;
@@ -96,7 +99,31 @@ public class LocaleManager {
 
             return colorize(message);
         }
-        return "&cMissing locale: " + path;
+        return MISSING_MESSAGE_PREFIX + path;
+    }
+
+    /**
+     * Returns true when {@code path} resolves to an authored String value, mirroring
+     * getMessage()'s exact resolution (including the {@code config.} prefix fallback).
+     * This is the precise inverse of "getMessage would return the missing sentinel".
+     */
+    public boolean hasMessage(String path) {
+        Object value;
+        if (path.startsWith("config.")) {
+            String configPath = path.substring(7);
+            value = getNestedValue(configValues, configPath);
+            if (value == null) value = getNestedValue(messages, path);
+        } else {
+            value = getNestedValue(messages, path);
+        }
+        return value instanceof String;
+    }
+
+    /**
+     * Returns true when {@code path} resolves to an authored list value.
+     */
+    public boolean hasMessageList(String path) {
+        return getNestedValue(messages, path) instanceof List;
     }
 
     @SuppressWarnings("unchecked")
@@ -113,7 +140,7 @@ public class LocaleManager {
                     .map(line -> replacePlaceholders(line, placeholders))
                     .collect(Collectors.toList());
         }
-        return listOf("&cMissing locale list: " + path);
+        return listOf(MISSING_LIST_PREFIX + path);
     }
 
     private String resolveAsJoinedLines(String path, Map<String, String> variables) {
@@ -334,8 +361,10 @@ public class LocaleManager {
         String format = getMessage("config.date_format");
         try {
             SimpleDateFormat dateFormat = new SimpleDateFormat(format);
-            String tz = getMessage("config.timezone");
-            if (tz != null && !tz.isEmpty() && !tz.startsWith("\u00a7cMissing")) dateFormat.setTimeZone(TimeZone.getTimeZone(tz));
+            if (hasMessage("config.timezone")) {
+                String tz = getMessage("config.timezone");
+                if (tz != null && !tz.isEmpty()) dateFormat.setTimeZone(TimeZone.getTimeZone(tz));
+            }
             return dateFormat.format(date);
         } catch (Exception e) {
             return date.toString();

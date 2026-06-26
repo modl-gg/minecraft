@@ -19,16 +19,14 @@ public final class Modification {
         return effectiveDuration;
     }
 
+    // Mirrors the backend authority PunishmentModificationType (name() is the wire encoding); must stay in sync.
     public enum Type {
-        MANUAL_DURATION_CHANGE,
         MANUAL_PARDON,
-        SYSTEM_PARDON,
-        APPEAL_REJECT,
-        APPEAL_DURATION_CHANGE,
         APPEAL_ACCEPT,
-        SET_ALT_BLOCKING_TRUE,
-        SET_WIPING_TRUE,
-        SET_ALT_BLOCKING_FALSE,
-        SET_WIPING_FALSE,
+        SYSTEM_PARDON,
+        MANUAL_DURATION_CHANGE,
+        ROLLBACK,
+        REMOVE,
+        REVOKE,
     }
 }

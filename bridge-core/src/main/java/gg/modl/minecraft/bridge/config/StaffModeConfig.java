@@ -47,9 +47,8 @@ public class StaffModeConfig {
             Optional.ofNullable((Map<?, ?>) data.get("staff_scoreboard")).map(this::parseScoreboard).ifPresent(s -> staffScoreboard = s);
             Optional.ofNullable((Map<?, ?>) data.get("target_scoreboard")).map(this::parseScoreboard).ifPresent(s -> targetScoreboard = s);
 
-            if (staffHotbar.isEmpty() && targetHotbar.isEmpty()) {
-                setDefaults();
-            }
+            if (staffHotbar.isEmpty()) setStaffDefaults();
+            if (targetHotbar.isEmpty()) setTargetDefaults();
         } catch (Exception e) {
             logger.warning("[StaffMode] Failed to load staff_mode.yml: " + e.getMessage());
             setDefaults();
@@ -102,10 +101,17 @@ public class StaffModeConfig {
     }
 
     private void setDefaults() {
+        setStaffDefaults();
+        setTargetDefaults();
+    }
+
+    private void setStaffDefaults() {
         staffHotbar.put(0, createHotbarItem("minecraft:lead", "&eTarget Player", ACTION_TARGET_SELECTOR));
         staffHotbar.put(3, createVanishToggleItem());
         staffHotbar.put(8, createHotbarItem("minecraft:compass", "&6Staff Menu", ACTION_STAFF_MENU));
+    }
 
+    private void setTargetDefaults() {
         targetHotbar.put(0, createHotbarItem("minecraft:ice", "&bFreeze Target", "freeze_target"));
         targetHotbar.put(3, createHotbarItem("minecraft:nether_star", "&cStop Targeting", "stop_target"));
         targetHotbar.put(4, createHotbarItem("minecraft:book", "&eInspect Target", "inspect_target"));

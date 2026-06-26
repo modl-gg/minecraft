@@ -56,7 +56,11 @@ public class StaffListCommand {
 
         StaffMembersMenu menu = new StaffMembersMenu(
                 platform, httpClientHolder.getClient(), viewerUuid, viewerName, isAdmin, panelUrl, null);
-        menu.getDataFuture().thenRun(() -> {
+        menu.getDataFuture().whenComplete((unused, throwable) -> {
+            if (throwable != null) {
+                gg.modl.minecraft.core.util.CommandUtil.handleException(actor, throwable, localeManager);
+                return;
+            }
             platform.runOnMainThread(() -> {
                 CirrusPlayerWrapper player = platform.getPlayerWrapper(viewerUuid);
                 if (player != null) menu.display(player);

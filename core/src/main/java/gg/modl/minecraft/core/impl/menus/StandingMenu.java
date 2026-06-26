@@ -86,7 +86,7 @@ public class StandingMenu extends BaseListMenu<Punishment> {
 
     @Override
     protected CirrusItem map(Punishment punishment) {
-        if (punishment.getId().isEmpty()) {
+        if (punishment.getId() == null || punishment.getId().isEmpty()) {
             return createEmptyPlaceholder("No punishments");
         }
 
@@ -140,10 +140,8 @@ public class StandingMenu extends BaseListMenu<Punishment> {
     }
 
     private CirrusItem buildStatusItem(String itemId, String localeBasePath, String status, int points) {
-        String displayStatus = localeManager.getMessage("standing_gui.status_display." + status);
-        if (displayStatus.startsWith("§cMissing")) {
-            displayStatus = status;
-        }
+        String statusKey = "standing_gui.status_display." + status;
+        String displayStatus = localeManager.hasMessage(statusKey) ? localeManager.getMessage(statusKey) : status;
 
         Map<String, String> placeholders = mapOf(
                 "status", displayStatus,
@@ -167,7 +165,7 @@ public class StandingMenu extends BaseListMenu<Punishment> {
     }
 
     private String buildStatusString(Punishment punishment, Long effectiveDuration) {
-        Date pardonDate = findPardonDate(punishment);
+        Date pardonDate = punishment.getPardonDate();
         if (pardonDate != null) {
             long ago = System.currentTimeMillis() - pardonDate.getTime();
             return "pardoned " + MenuItems.formatDuration(ago > 0 ? ago : 0) + " ago";
@@ -217,21 +215,10 @@ public class StandingMenu extends BaseListMenu<Punishment> {
         return punishment.getReason();
     }
 
-    private Date findPardonDate(Punishment punishment) {
-        for (Modification mod : punishment.getModifications()) {
-            if (mod.getType() == Modification.Type.MANUAL_PARDON ||
-                    mod.getType() == Modification.Type.APPEAL_ACCEPT) {
-                return mod.getIssued();
-            }
-        }
-        return null;
-    }
-
     private Long getEffectiveDuration(Punishment punishment) {
         Long duration = punishment.getDuration();
         for (Modification mod : punishment.getModifications()) {
-            if (mod.getType() == Modification.Type.MANUAL_DURATION_CHANGE ||
-                    mod.getType() == Modification.Type.APPEAL_DURATION_CHANGE) {
+            if (mod.getType() == Modification.Type.MANUAL_DURATION_CHANGE) {
                 Long modDuration = mod.getEffectiveDuration();
                 duration = (modDuration == null || modDuration <= 0) ? null : modDuration;
             }
@@ -240,7 +227,7 @@ public class StandingMenu extends BaseListMenu<Punishment> {
     }
 
     private boolean isPunishmentActive(Punishment punishment, Long effectiveDuration) {
-        if (findPardonDate(punishment) != null) return false;
+        if (punishment.getPardonDate() != null) return false;
         if (!punishment.isActive()) return false;
         if (punishment.getStarted() == null) return false;
         if (effectiveDuration == null || effectiveDuration <= 0) return true;

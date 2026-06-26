@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
+import dev.simplix.cirrus.Cirrus;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -65,10 +66,10 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
                     cacheSkinTextures(response.getLinkedAccounts());
                     future.complete(new FetchResult<>(response.getLinkedAccounts(), response.getTotalCount()));
                 } else {
-                    future.complete(new FetchResult<>(listOf(), 0));
+                    future.complete(new FetchResult<>(listOf(), 0, false));
                 }
             }).exceptionally(e -> {
-                future.complete(new FetchResult<>(listOf(), 0));
+                future.complete(new FetchResult<>(listOf(), 0, false));
                 return null;
             });
             return future;
@@ -205,10 +206,9 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
                 String pDate = MenuItems.formatDate(p.getIssued());
                 String pType = p.getTypeCategory();
                 String pRemaining = "Permanent";
-                Long duration = p.getDuration();
-                if (duration != null && duration > 0 && p.getStarted() != null) {
-                    long expiryTime = p.getStarted().getTime() + duration;
-                    long remaining = expiryTime - System.currentTimeMillis();
+                Date effectiveExpiry = p.getEffectiveExpiry();
+                if (effectiveExpiry != null) {
+                    long remaining = effectiveExpiry.getTime() - System.currentTimeMillis();
                     pRemaining = MenuItems.formatDuration(remaining > 0 ? remaining : 0);
                 }
                 String formattedPunishment = activeFormat
@@ -288,9 +288,10 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
     protected void handleClick(Click click, Account alt) {
         if (alt.getMinecraftUuid() == null) return;
 
-        Consumer<CirrusPlayerWrapper> backToAlts = player ->
-                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext)
-                        .display(player);
+        Consumer<CirrusPlayerWrapper> backToAlts = player -> Cirrus.executor().execute(() -> {
+            AltsMenu m = new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
+            platform.runOnMainThread(() -> m.display(player));
+        });
 
         ActionHandlers.openMenu(
                 new InspectMenu(platform, httpClient, viewerUuid, viewerName, alt, backToAlts))

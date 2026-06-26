@@ -90,6 +90,7 @@ public class StaffModeHandler implements Listener {
     private final Set<UUID> vanished = ConcurrentHashMap.newKeySet();
     private final Map<UUID, PlayerSnapshot> snapshots = new ConcurrentHashMap<>();
     private final Map<UUID, Scoreboard> activeScoreboards = new ConcurrentHashMap<>();
+    private final Set<String> warnedMaterials = ConcurrentHashMap.newKeySet();
     private ScheduledExecutorService scoreboardExecutor;
 
     public void register() {
@@ -108,8 +109,15 @@ public class StaffModeHandler implements Listener {
                     restoreSnapshot(p);
                     removeScoreboard(p);
                 });
+        vanished.stream()
+                .map(Bukkit::getPlayer)
+                .filter(p -> p != null && p.isOnline())
+                .forEach(this::unvanish);
         activeScoreboards.clear();
         staffModeActive.clear();
+        vanished.clear();
+        targetMap.clear();
+        snapshots.clear();
     }
 
     private void runOnMainOrGlobal(Runnable task) {
@@ -175,12 +183,14 @@ public class StaffModeHandler implements Listener {
         Set<String> usedEntries = new HashSet<>();
 
         for (String line : lines) {
+            // Truncate (color-code-safe) FIRST, then de-dup in the truncated domain so two
+            // identical >=40-char lines don't collapse to the same scoreboard entry.
             String resolved = localeManager.colorize(replacePlaceholders(line, player));
+            resolved = truncateColorSafe(resolved, SCOREBOARD_MAX_LINE_LENGTH);
             while (usedEntries.contains(resolved)) {
-                resolved += "\u00a7r";
-            }
-            if (resolved.length() > SCOREBOARD_MAX_LINE_LENGTH) {
-                resolved = resolved.substring(0, SCOREBOARD_MAX_LINE_LENGTH);
+                resolved = truncateColorSafe(
+                        truncateColorSafe(resolved, SCOREBOARD_MAX_LINE_LENGTH - 2) + "\u00a7r",
+                        SCOREBOARD_MAX_LINE_LENGTH);
             }
             usedEntries.add(resolved);
             obj.getScore(resolved).setScore(score--);
@@ -229,6 +239,12 @@ public class StaffModeHandler implements Listener {
         return staffModeActive.contains(uuid);
     }
 
+    private static String truncateColorSafe(String s, int n) {
+        if (s == null || s.length() <= n) return s;
+        if (n > 0 && s.charAt(n - 1) == '§') return s.substring(0, n - 1);
+        return s.substring(0, n);
+    }
+
     private StaffModeConfig.ScoreboardConfig getScoreboardConfig(UUID uuid) {
         return targetMap.containsKey(uuid) ? staffModeConfig.getTargetScoreboard() : staffModeConfig.getStaffScoreboard();
     }
@@ -260,9 +276,11 @@ public class StaffModeHandler implements Listener {
 
     public void enterStaffMode(String staffUuid) {
         UUID uuid = UUID.fromString(staffUuid);
-        staffModeActive.add(uuid);
+        if (staffModeActive.contains(uuid)) return;
 
         runForOnlinePlayer(uuid, player -> {
+            // Idempotent: only run setup on a genuine OFF->STAFF transition for an online player.
+            if (!staffModeActive.add(player.getUniqueId())) return;
             saveSnapshot(player);
             player.getInventory().clear();
             player.getInventory().setArmorContents(new ItemStack[4]);
@@ -285,7 +303,7 @@ public class StaffModeHandler implements Listener {
         runForPlayer(uuid, () -> {
             Player player = Bukkit.getPlayer(uuid);
             if (player == null || !player.isOnline()) {
-                snapshots.remove(uuid);
+                // Keep the snapshot so the real inventory is restored on rejoin (see onPlayerJoin).
                 vanished.remove(uuid);
                 return;
             }
@@ -293,6 +311,15 @@ public class StaffModeHandler implements Listener {
             removeScoreboard(player);
             unvanish(player);
             restoreSnapshot(player);
+
+            // This player is now a normal (non-staff) observer; re-hide every vanished player from them.
+            for (UUID vanishedUuid : vanished) {
+                if (vanishedUuid.equals(uuid)) continue;
+                Player vanishedPlayer = Bukkit.getPlayer(vanishedUuid);
+                if (vanishedPlayer != null && vanishedPlayer.isOnline()) {
+                    player.hidePlayer(vanishedPlayer);
+                }
+            }
         });
     }
 
@@ -399,10 +426,13 @@ public class StaffModeHandler implements Listener {
         }
     }
 
-    private static Material parseMaterial(String name) {
+    private Material parseMaterial(String name) {
         try {
             return Material.valueOf(name.replace("minecraft:", "").toUpperCase());
         } catch (IllegalArgumentException e) {
+            if (warnedMaterials.add(name)) {
+                plugin.getLogger().warning("[staff-mode] Unknown hotbar material '" + name + "', using STONE");
+            }
             return Material.STONE;
         }
     }
@@ -428,6 +458,8 @@ public class StaffModeHandler implements Listener {
     }
 
     private void saveSnapshot(Player player) {
+        // Never clobber a live snapshot of the player's real inventory.
+        if (snapshots.containsKey(player.getUniqueId())) return;
         snapshots.put(player.getUniqueId(), new PlayerSnapshot(
                 cloneItemArray(player.getInventory().getContents()),
                 cloneItemArray(player.getInventory().getArmorContents()),
@@ -602,7 +634,15 @@ public class StaffModeHandler implements Listener {
     private void handleOpenInventory(Player player) {
         Player target = resolveTarget(player.getUniqueId());
         if (target != null) {
-            player.openInventory(target.getInventory());
+            // Read-only point-in-time copy so clicks can never write through to the target's
+            // live inventory. SILENT_CONTAINER_PREFIX makes onInventoryClick treat it as read-only.
+            Inventory copy = Bukkit.createInventory(null, 54,
+                    SILENT_CONTAINER_PREFIX + target.getName() + "'s Inventory");
+            ItemStack[] contents = target.getInventory().getContents();
+            for (int i = 0; i < contents.length && i < 54; i++) {
+                copy.setItem(i, contents[i] == null ? null : contents[i].clone());
+            }
+            player.openInventory(copy);
         }
     }
 
@@ -682,10 +722,6 @@ public class StaffModeHandler implements Listener {
         Player player = (Player) event.getWhoClicked();
         if (!staffModeActive.contains(player.getUniqueId())) return;
 
-        Player target = resolveTarget(player.getUniqueId());
-        if (target != null && event.getInventory().equals(target.getInventory())) {
-            return;
-        }
         if (event.getView().getTitle().startsWith(SILENT_CONTAINER_PREFIX)) {
             return;
         }
@@ -721,6 +757,21 @@ public class StaffModeHandler implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player joining = event.getPlayer();
+        UUID joiningId = joining.getUniqueId();
+
+        // Staff member exited staff mode while offline: restore + consume their real inventory.
+        if (!staffModeActive.contains(joiningId) && snapshots.containsKey(joiningId)) {
+            runForPlayer(joiningId, () -> {
+                Player p = Bukkit.getPlayer(joiningId);
+                if (p != null && p.isOnline()) restoreSnapshot(p);
+            });
+        }
+        // Cross-server /target: replay the teleport/hotbar now that the staff member is present.
+        UUID targetUuid = targetMap.get(joiningId);
+        if (targetUuid != null) {
+            setTarget(joiningId.toString(), targetUuid.toString());
+        }
+
         if (!staffModeActive.contains(joining.getUniqueId())) {
             for (UUID vanishedUuid : vanished) {
                 Player vanishedPlayer = Bukkit.getPlayer(vanishedUuid);

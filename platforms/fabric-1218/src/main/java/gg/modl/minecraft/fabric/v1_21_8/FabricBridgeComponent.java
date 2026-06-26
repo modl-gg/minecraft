@@ -53,6 +53,10 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
         this.fabricContext = context;
     }
 
+    public MinecraftServer getServer() {
+        return server;
+    }
+
     @Override
     protected void initFreezeHandler(BridgeLocaleManager localeManager) {
         fabricFreezeHandler = new FabricFreezeHandler(server, localeManager);

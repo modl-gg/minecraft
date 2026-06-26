@@ -12,12 +12,17 @@ public class DirectStatWipeExecutor implements StatWipeExecutor {
 
     @Override
     public void executeStatWipe(String username, String uuid, String punishmentId, StatWipeCallback callback) {
-        StatWipeHandler handler = bridgeComponent.getStatWipeHandler();
+        final StatWipeHandler handler = bridgeComponent.getStatWipeHandler();
         if (handler == null) {
             return; // will retry on next sync
         }
 
-        boolean success = handler.execute(username, uuid, punishmentId);
-        callback.onComplete(success, serverName);
+        // Stat-wipe dispatches console commands; hop to the main/server thread so they
+        // never run from the async login/sync/realtime threads (runSync is inline when
+        // already on the primary thread, and Folia-correct).
+        bridgeComponent.getScheduler().runSync(() -> {
+            boolean success = handler.execute(username, uuid, punishmentId);
+            callback.onComplete(success, serverName);
+        });
     }
 }

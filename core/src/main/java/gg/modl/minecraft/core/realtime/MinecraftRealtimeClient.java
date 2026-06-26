@@ -2,6 +2,7 @@ package gg.modl.minecraft.core.realtime;
 
 import gg.modl.minecraft.api.http.response.StartupResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
+import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.service.sync.SyncService;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.proto.modl.v1.Ack;
@@ -46,7 +47,7 @@ public class MinecraftRealtimeClient {
     private final String realtimeUrl;
     private final int protocolVersion;
     private final List<Topic> topics;
-    private final String serverName;
+    private final Platform platform;
     private final String serverInstanceId;
     private final SyncService syncService;
     private final PluginLogger logger;
@@ -65,7 +66,7 @@ public class MinecraftRealtimeClient {
     private volatile ScheduledFuture<?> heartbeatTask;
     private volatile Long reconnectDelayOverrideMs;
 
-    public MinecraftRealtimeClient(String apiKey, StartupResponse startupResponse, String serverName,
+    public MinecraftRealtimeClient(String apiKey, StartupResponse startupResponse, Platform platform,
                                    SyncService syncService, PluginLogger logger, boolean debugMode) {
         this.apiKey = apiKey;
         this.realtimeUrl = startupResponse.getRealtimeUrl();
@@ -74,7 +75,7 @@ public class MinecraftRealtimeClient {
             : 1;
         this.serverInstanceId = normalize(startupResponse.getServerInstanceId());
         this.topics = parseTopics(startupResponse.getRealtimeTopics(), serverInstanceId);
-        this.serverName = serverName;
+        this.platform = platform;
         this.syncService = syncService;
         this.logger = logger;
         this.debugMode = debugMode;
@@ -405,6 +406,7 @@ public class MinecraftRealtimeClient {
             .setClientKind(ClientKind.CLIENT_KIND_MINECRAFT_PLUGIN)
             .setProtocolVersion(protocolVersion)
             .addAllSupportedTopics(topics);
+        String serverName = platform.getServerName();
         if (serverName != null && !serverName.trim().isEmpty()) {
             hello.setServerName(serverName);
         }

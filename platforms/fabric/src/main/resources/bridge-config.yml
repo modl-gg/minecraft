@@ -16,6 +16,9 @@ anticheat-name: "Anti-cheat"
 # Server name used in bridge communication
 server-name: "Server 1"
 
+# Enable verbose bridge/auto-reporter debug logging
+debug: false
+
 # Cooldown in seconds between auto-reports per player
 report-cooldown: 60
 

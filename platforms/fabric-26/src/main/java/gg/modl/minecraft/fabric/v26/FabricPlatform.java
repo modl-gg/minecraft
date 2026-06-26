@@ -68,43 +68,53 @@ public class FabricPlatform implements Platform {
 
     @Override
     public void broadcast(String string) {
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            sendLegacyMessage(player, string);
-        }
+        server.execute(() -> {
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                sendLegacyMessage(player, string);
+            }
+        });
     }
 
     @Override
     public void staffBroadcast(String string) {
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (isAuthenticatedStaff(player.getUUID())) {
-                sendLegacyMessage(player, string);
+        server.execute(() -> {
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if (isAuthenticatedStaff(player.getUUID())) {
+                    sendLegacyMessage(player, string);
+                }
             }
-        }
+        });
     }
 
     @Override
     public void staffJsonBroadcast(String jsonMessage) {
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (isAuthenticatedStaff(player.getUUID())) {
-                sendJsonToPlayer(player, jsonMessage);
+        server.execute(() -> {
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if (isAuthenticatedStaff(player.getUUID())) {
+                    sendJsonToPlayer(player, jsonMessage);
+                }
             }
-        }
+        });
     }
 
     @Override
     public void sendMessage(UUID uuid, String message) {
-        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
-        if (player != null) {
-            sendLegacyMessage(player, StringUtil.unescapeNewlines(message));
-        }
+        server.execute(() -> {
+            ServerPlayer player = server.getPlayerList().getPlayer(uuid);
+            if (player != null) {
+                sendLegacyMessage(player, StringUtil.unescapeNewlines(message));
+            }
+        });
     }
 
     @Override
     public void sendJsonMessage(UUID uuid, String jsonMessage) {
-        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
-        if (player != null) {
-            sendJsonToPlayer(player, jsonMessage);
-        }
+        server.execute(() -> {
+            ServerPlayer player = server.getPlayerList().getPlayer(uuid);
+            if (player != null) {
+                sendJsonToPlayer(player, jsonMessage);
+            }
+        });
     }
 
     @Override
@@ -224,6 +234,7 @@ public class FabricPlatform implements Platform {
 
     @Override
     public void kickPlayer(AbstractPlayer player, String reason) {
+        if (player == null) return;
         ServerPlayer serverPlayer = server.getPlayerList().getPlayer(player.getUuid());
         if (serverPlayer != null) {
             serverPlayer.connection.disconnect(parseLegacyText(StringUtil.unescapeNewlines(reason)));

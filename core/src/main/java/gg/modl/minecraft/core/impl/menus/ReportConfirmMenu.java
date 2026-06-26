@@ -14,6 +14,7 @@ import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.api.http.response.CreateTicketResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ReportGuiConfig;
+import gg.modl.minecraft.core.impl.commands.player.TicketCommandUtil;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -181,10 +182,13 @@ public class ReportConfirmMenu extends SimpleMenu {
 
             future.thenAccept(response -> {
                 if (response.isSuccess() && response.getTicketId() != null) {
+                    new TicketCommandUtil(platform.getCache()).setCooldown(reporter.getUuid(),
+                            reportData.isChatReport() ? "chat" : "player");
+
                     sendMessage(locale.getMessage("messages.success", mapOf("type", "Report")));
                     sendMessage(locale.getMessage("messages.ticket_id", mapOf("ticketId", response.getTicketId())));
 
-                    String ticketUrl = panelUrl + "/panel/tickets/" + response.getTicketId();
+                    String ticketUrl = panelUrl + "/ticket/" + response.getTicketId();
                     sendClickableTicketLink(ticketUrl, response.getTicketId());
                     sendMessage(locale.getMessage("messages.evidence_note"));
                 } else {

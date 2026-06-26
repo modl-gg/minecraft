@@ -30,17 +30,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import gg.modl.minecraft.core.util.PluginLogger;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
 
 @RequiredArgsConstructor
 public class MigrationService {
-    private static final String HEADER_API_KEY = "X-API-Key", IMPORT_SOURCE = "litebans";
-    private static final int HTTP_PAYLOAD_TOO_LARGE = 413, PROGRESS_LOG_INTERVAL = 100,
+    private static final String IMPORT_SOURCE = "litebans";
+    private static final int PROGRESS_LOG_INTERVAL = 100,
             BAN_TYPE_ORDINAL = 2, MUTE_TYPE_ORDINAL = 1;
 
     private final PluginLogger logger;
@@ -98,6 +92,7 @@ public class MigrationService {
                         logger.warning("Failed to close JSON writer: " + e.getMessage());
                     }
                 }
+                closeDatabaseProvider();
             }
         }, migrationExecutor);
     }
@@ -379,7 +374,7 @@ public class MigrationService {
 
                 updateMigrationProgress(taskId, "uploading_json", "Uploading migration file to panel...", 0, null);
 
-                boolean success = uploadFileMultipart(jsonFile);
+                boolean success = httpClient.uploadMigrationFile(jsonFile).join();
                 if (!success) logger.severe("File upload failed");
                 return success;
             } catch (Exception e) {
@@ -399,33 +394,6 @@ public class MigrationService {
         }, migrationExecutor);
     }
 
-    private boolean uploadFileMultipart(File file) throws Exception {
-        try (CloseableHttpClient httpClient =
-                HttpClients.createDefault()) {
-
-            MultipartEntityBuilder builder =
-                MultipartEntityBuilder.create();
-            builder.addBinaryBody("migrationFile", file,
-                ContentType.APPLICATION_JSON, file.getName());
-
-            String uploadUrl = apiUrl + "/minecraft/migration/upload";
-            HttpPost httpPost =
-                new HttpPost(uploadUrl);
-            httpPost.setHeader(HEADER_API_KEY, apiKey);
-            httpPost.setEntity(builder.build());
-
-            return httpClient.execute(httpPost, response -> {
-                int statusCode = response.getCode();
-                String responseBody = EntityUtils.toString(response.getEntity());
-
-                if (statusCode >= 200 && statusCode < 300) return true;
-                if (statusCode == HTTP_PAYLOAD_TOO_LARGE) logger.severe("File too large: " + responseBody);
-                else logger.severe("Upload failed with status " + statusCode + ": " + responseBody);
-                return false;
-            });
-        }
-    }
-
     private void updateMigrationProgress(String taskId, String status, String message,
                                          Integer recordsProcessed, Integer totalRecords) {
         try {
@@ -435,7 +403,17 @@ public class MigrationService {
         }
     }
 
+    private void closeDatabaseProvider() {
+        if (databaseProvider == null) return;
+        try {
+            databaseProvider.close();
+        } catch (Exception e) {
+            logger.warning("Failed to close migration database provider: " + e.getMessage());
+        }
+    }
+
     public void shutdown() {
         migrationExecutor.shutdown();
+        closeDatabaseProvider();
     }
 }

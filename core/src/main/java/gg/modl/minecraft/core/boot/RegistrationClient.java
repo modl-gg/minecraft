@@ -27,9 +27,8 @@ public class RegistrationClient {
         if (serverName != null && !serverName.isEmpty()) body.addProperty("serverName", serverName);
         if (subdomain != null && !subdomain.isEmpty()) body.addProperty("customDomain", subdomain);
 
-        String baseUrl = apiBase.replace("/registration", "/server");
         String responseBody = JsonPostSupport.postJson(
-                baseUrl + "/check-availability", TIMEOUT, body.toString(), Collections.emptyMap());
+                apiBase + "/check-availability", TIMEOUT, body.toString(), Collections.emptyMap());
         return gson.fromJson(responseBody, AvailabilityResponse.class);
     }
 
@@ -132,7 +131,19 @@ public class RegistrationClient {
         }
 
         public boolean isFailed() {
-            return "FAILED".equals(provisioningStatus);
+            return "FAILED".equals(normalizeStatus(provisioningStatus));
+        }
+
+        public String humanReadableStatus() {
+            String n = normalizeStatus(provisioningStatus);
+            return n.isEmpty() ? "pending" : n.toLowerCase();
+        }
+
+        private static String normalizeStatus(String raw) {
+            if (raw == null) return "";
+            String s = raw.trim().toUpperCase();
+            String prefix = "PROVISIONING_STATUS_";
+            return s.startsWith(prefix) ? s.substring(prefix.length()) : s;
         }
     }
 }

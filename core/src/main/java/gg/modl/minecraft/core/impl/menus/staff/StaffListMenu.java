@@ -160,8 +160,15 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
     private boolean canModify(StaffMember staff) {
         if (isSuperAdmin(staff)) return false;
         if (isViewerSelf(staff)) return false;
-        if (viewerRole == null) return false;
-        int viewerOrder = getRoleOrder(viewerRole);
+
+        // A super-admin viewer (admin flag, or their cached MC role) is top authority even if their uuid
+        // is not linked in the staff list (viewerRole stays null). Backend still enforces, so a wrong
+        // client-side flag cannot escalate.
+        boolean viewerIsSuperAdmin = isAdmin
+                || (platform.getCache() != null && SUPER_ADMIN_ROLE.equalsIgnoreCase(platform.getCache().getStaffRole(viewerUuid)));
+        if (!viewerIsSuperAdmin && viewerRole == null) return false;
+
+        int viewerOrder = viewerIsSuperAdmin ? Integer.MIN_VALUE : getRoleOrder(viewerRole);
         int targetOrder = getRoleOrder(staff.getCurrentRole());
         return viewerOrder < targetOrder;
     }
@@ -299,7 +306,8 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         sendMessage(MenuItems.COLOR_YELLOW + "Applying role " + MenuItems.COLOR_GREEN + selectedRole +
                 MenuItems.COLOR_YELLOW + " to " + staff.getUsername() + "...");
 
-        httpClient.updateStaffRole(staff.getId(), selectedRole).thenAccept(v -> {
+        String actingStaffId = platform.getCache() != null ? platform.getCache().getStaffId(viewerUuid) : null;
+        httpClient.updateStaffRole(staff.getId(), selectedRole, actingStaffId).thenAccept(v -> {
             sendMessage(MenuItems.COLOR_GREEN + "Role updated successfully!");
             selectedRoles.remove(staff.getId());
 

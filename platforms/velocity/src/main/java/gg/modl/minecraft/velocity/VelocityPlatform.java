@@ -238,6 +238,7 @@ public class VelocityPlatform implements Platform {
 
     @Override
     public void kickPlayer(AbstractPlayer player, String reason) {
+        if (player == null) return;
         server.getPlayer(player.getUuid()).ifPresent(velocityPlayer -> velocityPlayer.disconnect(colorize(StringUtil.unescapeNewlines(reason))));
     }
 

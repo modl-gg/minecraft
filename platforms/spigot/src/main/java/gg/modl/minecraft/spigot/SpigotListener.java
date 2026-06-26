@@ -128,7 +128,9 @@ public class SpigotListener implements Listener {
         LoginCache.PreLoginResult preLoginResult = loginCache.getAndRemovePreLoginResult(event.getPlayer().getUniqueId());
 
         if (preLoginResult == null) {
-            platform.getLogger().warning("No pre-login result found for " + event.getPlayer().getName() + " - allowing login as fallback");
+            platform.getLogger().warning("No pre-login result found for " + event.getPlayer().getName() + " - blocking login for safety");
+            event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
+            event.setKickMessage(localeManager.getMessage("api_errors.ban_check_failed"));
             return;
         }
 
@@ -142,13 +144,20 @@ public class SpigotListener implements Listener {
                 event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
                 event.setKickMessage(denied.getMessage());
             } else {
-                platform.getLogger().severe("Failed to check punishments for " + event.getPlayer().getName() + ": " + preLoginResult.getError().getMessage());
+                // Fail closed: any unclassified login-check error (e.g. a 502 wrapped in a
+                // CompletionException, a 500, or a parse failure) must not let an unverified
+                // player join.
+                platform.getLogger().severe("Failed to verify ban status for " + event.getPlayer().getName() + ": " + preLoginResult.getError().getMessage() + " - blocking login for safety");
+                event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
+                event.setKickMessage(localeManager.getMessage("api_errors.ban_check_failed"));
             }
             return;
         }
 
         if (!preLoginResult.isSuccess()) {
-            platform.getLogger().warning("Invalid pre-login result for " + event.getPlayer().getName() + " - allowing login as fallback");
+            platform.getLogger().warning("Invalid pre-login result for " + event.getPlayer().getName() + " - blocking login for safety");
+            event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
+            event.setKickMessage(localeManager.getMessage("api_errors.ban_check_failed"));
             return;
         }
 

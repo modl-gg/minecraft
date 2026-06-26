@@ -6,6 +6,7 @@ import revxrsal.commands.annotation.Named;
 import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.AbstractPlayer;
+import gg.modl.minecraft.api.http.ApiClientException;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PardonPlayerRequest;
 import gg.modl.minecraft.api.http.request.PardonPunishmentRequest;
@@ -104,6 +105,11 @@ public class PardonCommand {
 
             if (cause instanceof PanelUnavailableException) {
                 actor.reply(localeManager.getMessage("api_errors.panel_restarting"));
+                return null;
+            }
+
+            if (cause instanceof ApiClientException && ((ApiClientException) cause).getStatusCode() == 404) {
+                pardonByPlayerName(actor, target, issuerName, issuerId, reason, expectedType);
                 return null;
             }
 

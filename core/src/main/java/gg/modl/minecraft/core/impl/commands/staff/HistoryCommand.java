@@ -2,12 +2,10 @@ package gg.modl.minecraft.core.impl.commands.staff;
 
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.Modification;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.HistoryMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -39,7 +37,7 @@ public class HistoryCommand {
 
     @Command("history")
     @Description("Open the punishment history menu for a player, or use -p to print to chat")
-    @PlayerOnly @StaffOnly
+    @StaffOnly
     public void history(CommandActor actor, @Named("player") String playerQuery, @Optional String flags) {
         if (flags == null) flags = "";
         int page = Pagination.parsePrintFlags(flags);
@@ -124,7 +122,7 @@ public class HistoryCommand {
                 if (isKick)
                     actor.reply(localeManager.getMessage("print.history.entry_kick", vars));
                 else {
-                    Date pardonDate = findPardonDate(punishment);
+                    Date pardonDate = punishment.getPardonDate();
 
                     if (pardonDate != null) {
                         long pardonedAgo = System.currentTimeMillis() - pardonDate.getTime();
@@ -159,14 +157,6 @@ public class HistoryCommand {
         }
 
         actor.reply(localeManager.getMessage("print.history.footer"));
-    }
-
-    private Date findPardonDate(Punishment punishment) {
-        for (Modification mod : punishment.getModifications())
-            if (mod.getType() == Modification.Type.MANUAL_PARDON ||
-                mod.getType() == Modification.Type.APPEAL_ACCEPT)
-                return mod.getIssued();
-        return null;
     }
 
 }

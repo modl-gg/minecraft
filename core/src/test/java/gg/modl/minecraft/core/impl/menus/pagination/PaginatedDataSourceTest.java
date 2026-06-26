@@ -67,6 +67,24 @@ class PaginatedDataSourceTest {
         assertTrue(callbackCompleted.await(1, TimeUnit.SECONDS));
 
         assertEquals(Arrays.asList(5, 6, 7, 8), dataSource.getAllLoadedItems());
+        // The stale completion is from an older generation and is ignored, so the count stays fresh.
+        assertEquals(8, dataSource.getTotalCount());
+        assertEquals(4, dataSource.getTotalMenuPages());
+    }
+
+    @Test
+    void failedFetchDoesNotZeroTotalCount() {
+        CompletableFuture<FetchResult<Integer>> pendingFetch = new CompletableFuture<>();
+        PaginatedDataSource<Integer> dataSource = new PaginatedDataSource<>(2, (page, limit) -> pendingFetch);
+        dataSource.initialize(Arrays.asList(1, 2), 6);
+
+        assertTrue(dataSource.fetchPage(2, null));
+        // A failed fetch completes normally with success=false; it must not clobber the known-good count.
+        pendingFetch.complete(new FetchResult<>(Collections.emptyList(), 0, false));
+
+        assertEquals(Arrays.asList(1, 2), dataSource.getAllLoadedItems());
+        assertEquals(6, dataSource.getTotalCount());
+        assertEquals(3, dataSource.getTotalMenuPages());
     }
 
     @Test

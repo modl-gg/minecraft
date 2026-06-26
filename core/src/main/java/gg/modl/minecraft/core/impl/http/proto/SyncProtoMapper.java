@@ -14,6 +14,7 @@ import gg.modl.proto.modl.v1.SyncPendingStatWipe;
 import gg.modl.proto.modl.v1.SyncPlayerNotification;
 import gg.modl.proto.modl.v1.SyncPunishmentModification;
 import gg.modl.proto.modl.v1.SyncPunishmentWithModifications;
+import gg.modl.proto.modl.v1.SyncServerStatus;
 import gg.modl.proto.modl.v1.SyncStaff2faVerification;
 import gg.modl.proto.modl.v1.SyncStaffNotification;
 
@@ -37,6 +38,18 @@ public final class SyncProtoMapper {
 
         if (request.getServerName() != null) builder.setServerName(request.getServerName());
         if (request.getServerInstanceId() != null) builder.setServerInstanceId(request.getServerInstanceId());
+
+        if (request.getServerStatus() != null) {
+            SyncRequest.ServerStatus s = request.getServerStatus();
+            SyncServerStatus.Builder status = SyncServerStatus.newBuilder()
+                .setOnlinePlayerCount(s.getOnlinePlayerCount())
+                .setMaxPlayers(s.getMaxPlayers())
+                .setTimestamp(String.valueOf(s.getTimestamp()));
+            if (s.getServerVersion() != null) status.setServerVersion(s.getServerVersion());
+            if (s.getPlatformType() != null) status.setPlatformType(s.getPlatformType());
+            if (s.getPluginVersion() != null) status.setPluginVersion(s.getPluginVersion());
+            builder.setServerStatus(status.build());
+        }
 
         if (request.getOnlinePlayers() != null) {
             request.getOnlinePlayers().forEach(player -> builder.addOnlinePlayers(SyncOnlinePlayer.newBuilder()

@@ -9,6 +9,7 @@ import org.yaml.snakeyaml.Yaml;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
@@ -50,7 +51,7 @@ public class BridgeConfig {
     private int replayLocalTtl = DEFAULT_REPLAY_LOCAL_TTL;
 
     public int getReportViolationThreshold(String checkName) {
-        Integer checkSpecific = reportViolationThresholds.get(checkName.toLowerCase());
+        Integer checkSpecific = reportViolationThresholds.get(checkName.toLowerCase(Locale.ROOT));
         if (checkSpecific != null) return checkSpecific;
         Integer defaultVal = reportViolationThresholds.get("default");
         return defaultVal != null ? defaultVal : DEFAULT_VIOLATION_THRESHOLD;
@@ -98,6 +99,7 @@ public class BridgeConfig {
         config.anticheatName = getStr(data, "anticheat-name", "Anti-cheat");
         config.serverName = getStr(data, "server-name", "Server 1");
         config.reportCooldown = getInt(data, "report-cooldown", DEFAULT_REPORT_COOLDOWN);
+        config.debug = getBool(data, "debug", false);
 
         Object cmds = data.get("stat-wipe-commands");
         if (cmds instanceof List<?>) {
@@ -112,9 +114,10 @@ public class BridgeConfig {
             Map<?, ?> threshMap = (Map<?, ?>) threshObj;
             Map<String, Integer> thresholds = new LinkedHashMap<>();
             for (Map.Entry<?, ?> entry : threshMap.entrySet()) {
-                String key = String.valueOf(entry.getKey());
-                int val = entry.getValue() instanceof Number ? ((Number) entry.getValue()).intValue() : DEFAULT_VIOLATION_THRESHOLD;
-                thresholds.put(key, val);
+                String key = String.valueOf(entry.getKey()).toLowerCase(Locale.ROOT);
+                if (entry.getValue() instanceof Number) {
+                    thresholds.put(key, ((Number) entry.getValue()).intValue());
+                }
             }
             config.reportViolationThresholds = thresholds;
         }
@@ -138,6 +141,7 @@ public class BridgeConfig {
         map.put("stat-wipe-commands", statWipeCommands);
         map.put("anticheat-name", anticheatName);
         map.put("server-name", serverName);
+        map.put("debug", debug);
         map.put("report-cooldown", reportCooldown);
         map.put("report-violation-threshold", reportViolationThresholds);
         map.put("replay-enabled", replayEnabled);

@@ -111,7 +111,9 @@ public class BungeePlugin extends Plugin {
         getProxy().getPluginManager().registerListener(this, bungeeListener);
 
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
-        getProxy().getPluginManager().registerListener(this, new AsyncCommandInterceptor(asyncExecutor, getProxy()));
+        getProxy().getPluginManager().registerListener(this, new AsyncCommandInterceptor(
+                asyncExecutor, getProxy(), loader.getCache(), loader.getFreezeService(),
+                loader.getChatCommandLogService(), loader.getLocaleManager(), mutedCommands));
 
         getLogger().info("Successfully booted modl.gg platform plugin!");
     }

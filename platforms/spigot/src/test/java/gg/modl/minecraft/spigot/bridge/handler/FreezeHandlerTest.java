@@ -5,7 +5,10 @@ import gg.modl.minecraft.bridge.BridgeTask;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -73,6 +76,60 @@ class FreezeHandlerTest {
 
         verify(frozenPlayer).sendMessage("Frozen: hello");
         verify(staffPlayer).sendMessage("Frozen: hello");
+    }
+
+    @Test
+    void frozenPlayerCannotDropClickOrInteract() {
+        JavaPlugin plugin = mock(JavaPlugin.class);
+        BridgeLocaleManager localeManager = mock(BridgeLocaleManager.class);
+        RecordingScheduler scheduler = new RecordingScheduler();
+        FreezeHandler freezeHandler = new FreezeHandler(plugin, localeManager, scheduler);
+
+        Player frozenPlayer = mock(Player.class);
+        UUID frozenUuid = UUID.randomUUID();
+        when(frozenPlayer.getUniqueId()).thenReturn(frozenUuid);
+        freezeHandler.freeze(frozenUuid.toString(), UUID.randomUUID().toString());
+
+        PlayerDropItemEvent dropEvent = mock(PlayerDropItemEvent.class);
+        when(dropEvent.getPlayer()).thenReturn(frozenPlayer);
+        freezeHandler.onDropItem(dropEvent);
+        verify(dropEvent).setCancelled(true);
+
+        InventoryClickEvent clickEvent = mock(InventoryClickEvent.class);
+        when(clickEvent.getWhoClicked()).thenReturn(frozenPlayer);
+        freezeHandler.onInventoryClick(clickEvent);
+        verify(clickEvent).setCancelled(true);
+
+        PlayerInteractEvent interactEvent = mock(PlayerInteractEvent.class);
+        when(interactEvent.getPlayer()).thenReturn(frozenPlayer);
+        freezeHandler.onInteract(interactEvent);
+        verify(interactEvent).setCancelled(true);
+    }
+
+    @Test
+    void unfrozenPlayerDropClickAndInteractNotCancelled() {
+        JavaPlugin plugin = mock(JavaPlugin.class);
+        BridgeLocaleManager localeManager = mock(BridgeLocaleManager.class);
+        RecordingScheduler scheduler = new RecordingScheduler();
+        FreezeHandler freezeHandler = new FreezeHandler(plugin, localeManager, scheduler);
+
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(UUID.randomUUID());
+
+        PlayerDropItemEvent dropEvent = mock(PlayerDropItemEvent.class);
+        when(dropEvent.getPlayer()).thenReturn(player);
+        freezeHandler.onDropItem(dropEvent);
+        verify(dropEvent, never()).setCancelled(true);
+
+        InventoryClickEvent clickEvent = mock(InventoryClickEvent.class);
+        when(clickEvent.getWhoClicked()).thenReturn(player);
+        freezeHandler.onInventoryClick(clickEvent);
+        verify(clickEvent, never()).setCancelled(true);
+
+        PlayerInteractEvent interactEvent = mock(PlayerInteractEvent.class);
+        when(interactEvent.getPlayer()).thenReturn(player);
+        freezeHandler.onInteract(interactEvent);
+        verify(interactEvent, never()).setCancelled(true);
     }
 
     private static class RecordingScheduler implements BridgeScheduler {

@@ -29,6 +29,7 @@ class NotificationService {
     private static final int MAX_HOVER_TEXT_LENGTH = 200;
     private static final long NOTIFICATION_INITIAL_DELAY_MS = 2000, NOTIFICATION_INTER_DELAY_MS = 1500,
             HTTP_TIMEOUT_SECONDS = 5;
+    private static final int MAX_ACK_BATCH_SIZE = 100;
 
     private final Platform platform;
     private final HttpClientHolder httpClientHolder;
@@ -196,10 +197,6 @@ class NotificationService {
             List<String> deliveredIds = new ArrayList<>();
             List<String> expiredIds = new ArrayList<>();
             deliverNotificationsWithDelay(playerUuid, toProcess, deliveredIds, expiredIds);
-
-            for (String id : expiredIds) profile.removeNotification(id);
-            for (String id : deliveredIds) profile.removeNotification(id);
-            if (!deliveredIds.isEmpty()) acknowledgeNotifications(playerUuid, deliveredIds);
         } catch (Exception e) {
             logger.severe("Error delivering pending notifications: " + e.getMessage());
         }
@@ -248,6 +245,7 @@ class NotificationService {
                 AbstractPlayer player = platform.getPlayer(playerUuid);
                 if (player == null || !player.isOnline()) {
                     if (debugMode) logger.info("Player " + playerUuid + " disconnected during notification delivery");
+                    finalizePendingNotificationDelivery(playerUuid, deliveredIds, expiredIds);
                     return;
                 }
                 deliverPendingNotificationToPlayer(playerUuid, pending);
@@ -283,13 +281,26 @@ class NotificationService {
     }
 
     private void acknowledgeNotifications(UUID playerUuid, List<String> notificationIds) {
+        if (notificationIds == null || notificationIds.isEmpty()) return;
+        if (notificationIds.size() <= MAX_ACK_BATCH_SIZE) {
+            sendAcknowledgeBatch(playerUuid, notificationIds);
+            return;
+        }
+        for (int i = 0; i < notificationIds.size(); i += MAX_ACK_BATCH_SIZE) {
+            List<String> batch = new ArrayList<>(notificationIds.subList(i,
+                    Math.min(i + MAX_ACK_BATCH_SIZE, notificationIds.size())));
+            sendAcknowledgeBatch(playerUuid, batch);
+        }
+    }
+
+    private void sendAcknowledgeBatch(UUID playerUuid, List<String> batch) {
         try {
             NotificationAcknowledgeRequest request = new NotificationAcknowledgeRequest(
-                    playerUuid.toString(), Instant.now().toString(), notificationIds);
+                    playerUuid.toString(), Instant.now().toString(), batch);
 
             orTimeout(httpClientHolder.getClient().acknowledgeNotifications(request)
                     .thenAccept(response -> {
-                        if (debugMode) logger.info("Acknowledged " + notificationIds.size() + " notifications for " + playerUuid);
+                        if (debugMode) logger.info("Acknowledged " + batch.size() + " notifications for " + playerUuid);
                     })
                     .exceptionally(throwable -> {
                         Throwable cause = throwable.getCause();

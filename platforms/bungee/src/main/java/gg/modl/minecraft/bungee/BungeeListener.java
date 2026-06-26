@@ -4,7 +4,6 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
-import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.LoginCache;
@@ -151,22 +150,16 @@ public class BungeeListener implements Listener {
                 .thenApply(wp -> wp != null && wp.isValid() ? wp.getSkin() : null)
                 .exceptionally(t -> null);
 
-        Map<String, Object> ipInfo = null;
-        String skinHash = null;
-        try {
-            ipInfo = ipInfoFuture.getNow(null);
-            skinHash = skinHashFuture.getNow(null);
-        } catch (Exception ignored) {}
-
-        PlayerLoginRequest request = new PlayerLoginRequest(
+        // Await both async lookups (bounded) before building the request so skinHash/ipInfo
+        // are actually populated instead of always null (getNow returned the fallback).
+        PlayerLoginRequest request = ListenerHelper.buildLoginRequest(
                 event.getConnection().getUniqueId().toString(),
                 event.getConnection().getName(),
-                ipAddress, skinHash, platform.getServerName(), ipInfo
-        );
-        request.setServerInstanceId(StartupClient.getServerInstanceId());
+                ipAddress, platform.getServerName(),
+                ipInfoFuture, skinHashFuture, LOGIN_TIMEOUT_SECONDS, platform.getLogger());
 
         PlayerLoginResponse response = getHttpClient().playerLogin(request).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        loginCache.cacheLoginResult(event.getConnection().getUniqueId(), response, ipInfo, skinHash);
+        loginCache.cacheLoginResult(event.getConnection().getUniqueId(), response, request.getIpInfo(), request.getSkinHash());
         ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getConnection().getUniqueId().toString(), ipAddress, ipInfoFuture, platform.getLogger());
 
         LoginHandler.LoginResult result = LoginHandler.processLoginResponse(
@@ -228,7 +221,9 @@ public class BungeeListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onChat(ChatEvent event) {
-        if (event.getSender() == null) return;
+        // Guards both the chat branch and the command branch: getSender() is a ProxiedPlayer
+        // only for upstream player chat; server-originated ChatEvents are skipped (no CCE).
+        if (!(event.getSender() instanceof ProxiedPlayer)) return;
 
         if (event.isCommand()) {
             handleCommand(event);
@@ -249,6 +244,9 @@ public class BungeeListener implements Listener {
 
     private void handleCommand(ChatEvent event) {
         if (!(event.getSender() instanceof ProxiedPlayer)) return;
+        // An async-registered command already gated+dispatched by AsyncCommandInterceptor is
+        // cancelled; defer to it so the gate/log runs exactly once.
+        if (event.isCancelled()) return;
         ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
 
         CommandInterceptHandler.CommandResult result = CommandInterceptHandler.handleCommand(

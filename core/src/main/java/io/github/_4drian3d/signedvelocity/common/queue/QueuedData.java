@@ -51,16 +51,23 @@ public final class QueuedData implements AutoCloseable {
         if (closed) {
             return;
         }
-        PendingResult unSynchronized;
-        while ((unSynchronized = unSyncronizedQueue.poll()) != null) {
-            if (unSynchronized.complete(result)) {
-                if (!unSynchronized.advance()) {
-                    this.results.add(result);
-                }
-                return;
+        // Satisfy EVERY pending non-advancing (peek) waiter and EXACTLY ONE advancing (consume) waiter,
+        // since a single proxy result consumes exactly one message. Store the result only if no advancing
+        // waiter consumed it (peekers/nobody were waiting), preserving the single-message decorate->chat flow.
+        boolean consumedByAdvancing = false;
+        PendingResult pending;
+        while ((pending = unSyncronizedQueue.poll()) != null) {
+            if (!pending.complete(result)) {
+                continue;
+            }
+            if (pending.advance()) {
+                consumedByAdvancing = true;
+                break;
             }
         }
-        this.results.add(result);
+        if (!consumedByAdvancing) {
+            this.results.add(result);
+        }
     }
 
     public CompletableFuture<SignedResult> nextResult() {
@@ -109,6 +116,22 @@ public final class QueuedData implements AutoCloseable {
         if (closed) {
             if (unSyncronizedQueue.remove(pending)) {
                 pending.complete(SignedResult.allowed());
+            }
+            return future;
+        }
+        // Symmetric `results` recheck to close the complete()-vs-register TOCTOU lost-wakeup: a result may
+        // have raced into `results` between our results poll/peek and the enqueue above.
+        final SignedResult raced = results.poll();
+        if (raced != null) {
+            if (unSyncronizedQueue.remove(pending)) {
+                pending.complete(raced);
+                if (!advance) {
+                    // Peek: re-add so the following advancing read still observes the same result.
+                    results.add(raced);
+                }
+            } else {
+                // Producer already completed our pending; the polled result belongs elsewhere -> put it back.
+                results.add(raced);
             }
             return future;
         }

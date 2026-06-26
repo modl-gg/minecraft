@@ -10,7 +10,6 @@ import java.util.Map;
 
 public final class PunishmentTypeCacheManager {
     private volatile Map<Integer, String> namesByOrdinal = Collections.emptyMap();
-    private volatile Map<String, String> namesById = Collections.emptyMap();
 
     public void initialize(ModlHttpClient httpClient, PluginLogger logger) {
         httpClient.getPunishmentTypes().thenAccept(response -> {
@@ -22,15 +21,10 @@ public final class PunishmentTypeCacheManager {
     }
 
     public void update(List<PunishmentTypesResponse.PunishmentTypeData> allTypes) {
+        if (allTypes == null) return;
         Map<Integer, String> newNamesByOrdinal = new HashMap<>();
-        Map<String, String> newNamesById = new HashMap<>();
-        allTypes.forEach(pt -> {
-            newNamesByOrdinal.put(pt.getOrdinal(), pt.getName());
-            newNamesById.put(String.valueOf(pt.getId()), pt.getName());
-            newNamesById.put(String.valueOf(pt.getOrdinal()), pt.getName());
-        });
+        allTypes.forEach(pt -> newNamesByOrdinal.put(pt.getOrdinal(), pt.getName()));
         namesByOrdinal = newNamesByOrdinal;
-        namesById = newNamesById;
     }
 
     public String getNameByOrdinal(int ordinal) {
@@ -47,8 +41,4 @@ public final class PunishmentTypeCacheManager {
         }
     }
 
-    public String getNameById(String typeId) {
-        String name = namesById.get(typeId);
-        return name != null ? name : "Unknown";
-    }
 }

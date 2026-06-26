@@ -45,9 +45,6 @@ public class StandingCommand {
 
         if (!checkCooldown(actor, uuid)) return;
 
-        CachedProfile profile = cache.getPlayerProfile(uuid);
-        if (profile != null) profile.getCooldowns().set(COOLDOWN_KEY);
-
         replyOnMainThread(actor, "standing.loading");
 
         ModlHttpClient httpClient = httpClientHolder.getClient();
@@ -71,7 +68,10 @@ public class StandingCommand {
         }).thenAccept(data -> {
             if (data == null) return;
             platform.runOnMainThread(() -> {
-                if (!displayStandingMenu(httpClient, uuid, data)) {
+                if (displayStandingMenu(httpClient, uuid, data)) {
+                    CachedProfile profile = cache.getPlayerProfile(uuid);
+                    if (profile != null) profile.getCooldowns().set(COOLDOWN_KEY);
+                } else {
                     actor.reply(localeManager.getMessage("standing.error"));
                 }
             });

@@ -95,6 +95,20 @@ public final class MenuItems {
         ).actionHandler("filter");
     }
 
+    public static CirrusItem statusToggleButton(String currentStatusFilter, String itemLabel) {
+        boolean showingOpen = "open".equalsIgnoreCase(currentStatusFilter);
+        String opposite = showingOpen ? "closed" : "open";
+        List<String> loreLines = new ArrayList<>();
+        loreLines.add(COLOR_GRAY + "Showing: " + COLOR_GREEN + (showingOpen ? "open" : "closed") + " " + itemLabel);
+        loreLines.add("");
+        loreLines.add(COLOR_YELLOW + "Click to show only " + opposite + " " + itemLabel);
+        return CirrusItem.of(
+                CirrusItemType.ANVIL,
+                CirrusChatElement.ofLegacyText(COLOR_GOLD + "Filter"),
+                lore(loreLines)
+        ).actionHandler("filter");
+    }
+
     public static CirrusItem sortButton(String currentSort, List<String> options) {
         List<String> loreLines = new ArrayList<>();
         loreLines.add(COLOR_GRAY + "Sort by:");

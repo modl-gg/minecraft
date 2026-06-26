@@ -2,6 +2,7 @@ package gg.modl.minecraft.core.impl.menus.util;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.model.Click;
+import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.staff.OnlinePlayersMenu;
@@ -12,11 +13,26 @@ import gg.modl.minecraft.core.impl.menus.staff.TicketsMenu;
 import gg.modl.minecraft.core.util.ClickableJsonMessage;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public final class StaffNavigationHandlers {
     private StaffNavigationHandlers() {}
+
+    /**
+     * Schedules a menu's display action on the main thread once its data has loaded.
+     * On a load failure the player is notified rather than left with a silent no-op.
+     */
+    public static void displayWhenLoaded(Platform platform, CompletableFuture<Void> dataFuture,
+                                         CirrusPlayerWrapper player, Consumer<CirrusPlayerWrapper> displayAction) {
+        dataFuture.thenRun(() -> platform.runOnMainThread(() -> displayAction.accept(player)))
+                .exceptionally(throwable -> {
+                    platform.runOnMainThread(() -> platform.sendMessage(player.uuid(),
+                            platform.getLocaleManager().getMessage("api_errors.panel_restarting")));
+                    return null;
+                });
+    }
 
     public static void registerAll(
             BiConsumer<String, Consumer<Click>> registrar,
@@ -24,17 +40,25 @@ public final class StaffNavigationHandlers {
             UUID viewerUuid, String viewerName,
             boolean isAdmin, String panelUrl) {
 
-        registrar.accept("openOnlinePlayers", click ->
-                ActionHandlers.openMenu(new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)).handle(click));
+        registrar.accept("openOnlinePlayers", click -> {
+            OnlinePlayersMenu menu = new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null);
+            displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+        });
 
-        registrar.accept("openReports", click ->
-                ActionHandlers.openMenu(new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)).handle(click));
+        registrar.accept("openReports", click -> {
+            StaffReportsMenu menu = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null);
+            displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+        });
 
-        registrar.accept("openPunishments", click ->
-                ActionHandlers.openMenu(new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)).handle(click));
+        registrar.accept("openPunishments", click -> {
+            RecentPunishmentsMenu menu = new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null);
+            displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+        });
 
-        registrar.accept("openTickets", click ->
-                ActionHandlers.openMenu(new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null)).handle(click));
+        registrar.accept("openTickets", click -> {
+            TicketsMenu menu = new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null);
+            displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+        });
 
         registrar.accept("openPanel", click -> {
             click.clickedMenu().close();

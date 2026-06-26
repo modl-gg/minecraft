@@ -70,13 +70,17 @@ public class ReportGuiConfig {
                 for (Map.Entry<?, ?> entry : reportGui.entrySet()) {
                     Object key = entry.getKey();
 
-                    if ("info".equals(key)) {
-                        Map<String, Object> infoData = (Map<String, Object>) entry.getValue();
-                        config.infoConfig = parseInfoConfig(infoData);
-                        continue;
-                    }
-
                     try {
+                        if ("info".equals(key)) {
+                            if (!(entry.getValue() instanceof Map)) {
+                                logger.warning("Skipping report GUI 'info': expected a mapping but got "
+                                        + (entry.getValue() == null ? "null" : entry.getValue().getClass().getSimpleName()));
+                                continue;
+                            }
+                            config.infoConfig = parseInfoConfig((Map<String, Object>) entry.getValue());
+                            continue;
+                        }
+
                         int slotNumber;
                         if (key instanceof Integer) slotNumber = (Integer) key;
                         else if (key instanceof String) slotNumber = Integer.parseInt((String) key);
@@ -84,10 +88,16 @@ public class ReportGuiConfig {
 
                         if (slotNumber < 1 || slotNumber > 14) continue;
 
-                        Map<String, Object> slotData = (Map<String, Object>) entry.getValue();
-                        ReportSlotConfig slotConfig = parseSlotConfig(slotNumber, slotData);
-                        config.slots.put(slotNumber, slotConfig);
-                    } catch (NumberFormatException ignored) {}
+                        if (!(entry.getValue() instanceof Map)) {
+                            logger.warning("Skipping report GUI slot " + slotNumber + ": expected a mapping but got "
+                                    + (entry.getValue() == null ? "null" : entry.getValue().getClass().getSimpleName()));
+                            continue;
+                        }
+
+                        config.slots.put(slotNumber, parseSlotConfig(slotNumber, (Map<String, Object>) entry.getValue()));
+                    } catch (Exception e) {
+                        logger.warning("Skipping invalid report GUI entry '" + key + "': " + e.getMessage());
+                    }
                 }
 
                 if (config.infoConfig == null) config.infoConfig = new InfoConfig();
@@ -110,11 +120,11 @@ public class ReportGuiConfig {
         ReportSlotConfig config = new ReportSlotConfig();
         config.setSlotNumber(slotNumber);
 
-        if (data.containsKey("enabled")) config.setEnabled((Boolean) data.get("enabled"));
-        if (data.containsKey("item")) config.setItem((String) data.get("item"));
-        if (data.containsKey("title")) config.setTitle((String) data.get("title"));
-        if (data.containsKey("chat-report")) config.setChatReport((Boolean) data.get("chat-report"));
-        if (data.containsKey("replay-capture")) config.setReplayCapture((Boolean) data.get("replay-capture"));
+        if (data.containsKey("enabled")) config.setEnabled(coerceBoolean(data.get("enabled"), config.isEnabled()));
+        if (data.containsKey("item")) config.setItem(coerceString(data.get("item"), config.getItem()));
+        if (data.containsKey("title")) config.setTitle(coerceString(data.get("title"), config.getTitle()));
+        if (data.containsKey("chat-report")) config.setChatReport(coerceBoolean(data.get("chat-report"), config.isChatReport()));
+        if (data.containsKey("replay-capture")) config.setReplayCapture(coerceBoolean(data.get("replay-capture"), config.isReplayCapture()));
         if (data.containsKey("description")) {
             Object desc = data.get("description");
             if (desc instanceof List) config.setDescription(new ArrayList<>((List<String>) desc));
@@ -126,13 +136,26 @@ public class ReportGuiConfig {
     @SuppressWarnings("unchecked")
     private static InfoConfig parseInfoConfig(Map<String, Object> data) {
         InfoConfig config = new InfoConfig();
-        if (data.containsKey("item")) config.setItem((String) data.get("item"));
-        if (data.containsKey("title")) config.setTitle((String) data.get("title"));
+        if (data.containsKey("item")) config.setItem(coerceString(data.get("item"), config.getItem()));
+        if (data.containsKey("title")) config.setTitle(coerceString(data.get("title"), config.getTitle()));
         if (data.containsKey("description")) {
             Object desc = data.get("description");
             if (desc instanceof List) config.setDescription(new ArrayList<>((List<String>) desc));
         }
         return config;
+    }
+
+    private static String coerceString(Object value, String fallback) {
+        return value == null ? fallback : String.valueOf(value);
+    }
+
+    private static boolean coerceBoolean(Object value, boolean fallback) {
+        if (value instanceof Boolean) return (Boolean) value;
+        if (value == null) return fallback;
+        String s = String.valueOf(value).trim();
+        if (s.equalsIgnoreCase("true") || s.equals("1") || s.equalsIgnoreCase("yes") || s.equalsIgnoreCase("on")) return true;
+        if (s.equalsIgnoreCase("false") || s.equals("0") || s.equalsIgnoreCase("no") || s.equalsIgnoreCase("off")) return false;
+        return fallback;
     }
 
     public static ReportGuiConfig createDefault() {

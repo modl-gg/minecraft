@@ -1,6 +1,7 @@
 package gg.modl.minecraft.bridge.reporter;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.io.BufferedReader;
@@ -14,6 +15,9 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -102,7 +106,7 @@ public class ModlBackendReplayUploader implements AutoCloseable {
                 throwIfClosed();
                 InitResponse init = initUpload(replayFile, mcVersion, targetUuid, targetName);
                 throwIfClosed();
-                uploadToStorage(replayFile, init.uploadUrl);
+                uploadToStorage(replayFile, init);
                 throwIfClosed();
                 confirmUpload(init.replayId);
                 future.complete(init.replayId);
@@ -172,26 +176,62 @@ public class ModlBackendReplayUploader implements AutoCloseable {
                 throw new RuntimeException("Malformed init response: " + responseBody);
             }
 
+            String method = (json.has("method") && json.get("method").isJsonPrimitive())
+                    ? json.get("method").getAsString() : null;
+
+            Map<String, String> requiredHeaders = new LinkedHashMap<>();
+            if (json.has("requiredHeaders") && json.get("requiredHeaders").isJsonObject()) {
+                for (Map.Entry<String, JsonElement> entry : json.getAsJsonObject("requiredHeaders").entrySet()) {
+                    try {
+                        if (entry.getValue() != null && entry.getValue().isJsonPrimitive()) {
+                            requiredHeaders.put(entry.getKey(), entry.getValue().getAsString());
+                        }
+                    } catch (RuntimeException ignored) {
+                        // Skip malformed header entries rather than aborting upload-init.
+                    }
+                }
+            }
+
             return new InitResponse(
                     json.get("replayId").getAsString(),
-                    json.get("uploadUrl").getAsString()
+                    json.get("uploadUrl").getAsString(),
+                    method,
+                    requiredHeaders
             );
         } finally {
             connection.disconnect();
         }
     }
 
-    private void uploadToStorage(File file, String presignedUrl) throws Exception {
-        URL uploadUrl = parseTrustedHttpUri(presignedUrl, "presigned upload URL", true).toURL();
+    private void uploadToStorage(File file, InitResponse init) throws Exception {
+        URL uploadUrl = parseTrustedHttpUri(init.uploadUrl, "presigned upload URL", true).toURL();
         HttpURLConnection connection = (HttpURLConnection) uploadUrl.openConnection();
         try {
-            connection.setRequestMethod("PUT");
+            String method = (init.method != null && !init.method.isBlank())
+                    ? init.method.trim().toUpperCase(Locale.ROOT) : "PUT";
+            connection.setRequestMethod(method);
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
             connection.setReadTimeout(UPLOAD_READ_TIMEOUT_MS);
-            connection.setRequestProperty("Content-Type", "application/octet-stream");
-            connection.setRequestProperty("User-Agent", USER_AGENT);
             connection.setFixedLengthStreamingMode(file.length());
             connection.setDoOutput(true);
+
+            // Apply backend-signed headers verbatim so they match the presigned signature.
+            boolean contentTypeSupplied = false;
+            if (init.requiredHeaders != null) {
+                for (Map.Entry<String, String> header : init.requiredHeaders.entrySet()) {
+                    String name = header.getKey();
+                    String value = header.getValue();
+                    if (name == null || value == null || value.isBlank()) continue;
+                    // Content-Length is owned by setFixedLengthStreamingMode; never override it.
+                    if ("Content-Length".equalsIgnoreCase(name)) continue;
+                    if ("Content-Type".equalsIgnoreCase(name)) contentTypeSupplied = true;
+                    connection.setRequestProperty(name, value);
+                }
+            }
+            if (!contentTypeSupplied) {
+                connection.setRequestProperty("Content-Type", "application/octet-stream");
+            }
+            connection.setRequestProperty("User-Agent", USER_AGENT);
 
             try (OutputStream os = connection.getOutputStream()) {
                 Files.copy(file.toPath(), os);
@@ -312,10 +352,14 @@ public class ModlBackendReplayUploader implements AutoCloseable {
     private static class InitResponse {
         final String replayId;
         final String uploadUrl;
+        final String method;
+        final Map<String, String> requiredHeaders;
 
-        InitResponse(String replayId, String uploadUrl) {
+        InitResponse(String replayId, String uploadUrl, String method, Map<String, String> requiredHeaders) {
             this.replayId = replayId;
             this.uploadUrl = uploadUrl;
+            this.method = method;
+            this.requiredHeaders = requiredHeaders;
         }
     }
 }

@@ -2,19 +2,23 @@ package gg.modl.minecraft.core;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 /**
  * Manages async command execution for Spigot and BungeeCord platforms.
  * Commands registered as async will be dispatched off the main/network thread
  * to avoid blocking on I/O operations (HTTP calls for player lookups, etc.).
  * <p>
- * Uses a bounded cached thread pool: threads are created on demand, idle threads
- * are reclaimed after 60 seconds, and the pool is capped at 4 threads.
- * This is sufficient for Minecraft command throughput (rarely more than a few
- * concurrent commands) while keeping context switching and memory overhead minimal.
+ * Uses a bounded thread pool (4 threads) backed by a bounded queue (up to 64).
+ * Transient bursts beyond 4 concurrent commands queue on worker threads. If the
+ * queue also fills under sustained overload, new tasks are dropped (and logged)
+ * rather than executed on the calling thread, preserving the guarantee that
+ * blocking I/O never runs on the main/network thread. Idle threads are reclaimed
+ * after the 60s keep-alive, so idle footprint stays minimal.
  */
 public class AsyncCommandExecutor {
     /**
@@ -24,22 +28,25 @@ public class AsyncCommandExecutor {
      * stack memory (~1MB each) and context switching costs negligible.
      */
     private static final int MAX_THREADS = 4;
+    private static final int QUEUE_CAPACITY = 64;
+    private static final Logger LOGGER = Logger.getLogger(AsyncCommandExecutor.class.getName());
 
     private final ThreadPoolExecutor executor;
     private final Set<String> asyncCommandAliases;
 
     public AsyncCommandExecutor() {
         this.executor = new ThreadPoolExecutor(
-                0, MAX_THREADS,
+                MAX_THREADS, MAX_THREADS,
                 60L, TimeUnit.SECONDS,
-                new SynchronousQueue<>(),
+                new LinkedBlockingQueue<>(QUEUE_CAPACITY),
                 r -> {
                     Thread t = new Thread(r, "modl-AsyncCmd");
                     t.setDaemon(true);
                     return t;
                 },
-                new ThreadPoolExecutor.CallerRunsPolicy()
+                new ThreadPoolExecutor.AbortPolicy()
         );
+        this.executor.allowCoreThreadTimeOut(true);
         this.asyncCommandAliases = ConcurrentHashMap.newKeySet();
     }
 
@@ -62,7 +69,11 @@ public class AsyncCommandExecutor {
      * Submit a command for async execution.
      */
     public void execute(Runnable task) {
-        executor.execute(task);
+        try {
+            executor.execute(task);
+        } catch (RejectedExecutionException ex) {
+            LOGGER.warning("Async command executor saturated (queue+pool full); dropped a queued command task rather than blocking the calling thread.");
+        }
     }
 
     /**

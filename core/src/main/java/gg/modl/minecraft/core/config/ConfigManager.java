@@ -38,10 +38,14 @@ public class ConfigManager {
 
         public String formatMessage(String inGameName, String panelName, String message) {
             return format
-                .replace("{player}", inGameName)
-                .replace("{panel-name}", panelName != null ? panelName : inGameName)
-                .replace("{message}", message)
-                .replace("&", "\u00a7");
+                .replace("{player}", sanitize(inGameName))
+                .replace("{panel-name}", sanitize(panelName != null ? panelName : inGameName))
+                .replace("{message}", sanitize(message));
+        }
+
+        private static String sanitize(String input) {
+            if (input == null) return "";
+            return input.replace('\u00a7', '&').replaceAll("&([0-9a-fk-orA-FK-OR])", "&\u200b$1");
         }
     }
 

@@ -8,7 +8,6 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.AltsMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -39,7 +38,7 @@ public class AltsCommand {
 
     @Command("alts")
     @Description("Open the alts menu for a player, or use -p to print to chat")
-    @PlayerOnly @StaffOnly
+    @StaffOnly
     public void alts(CommandActor actor, @Named("player") String playerQuery, @Optional String flags) {
         if (flags == null) flags = "";
         int page = Pagination.parsePrintFlags(flags);

@@ -33,6 +33,11 @@ public class ChatReportCommand {
 
         AbstractPlayer reporter = platform.getAbstractPlayer(actor.uniqueId(), false);
 
+        if (reporter == null) {
+            actor.reply(localeManager.getMessage("general.player_not_found"));
+            return;
+        }
+
         if (ticketUtil.denySelfReport(actor, reporter, targetPlayer, localeManager)) return;
 
         String chatLog = chatMessageCache.getChatLogForReport(

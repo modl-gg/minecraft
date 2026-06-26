@@ -37,36 +37,46 @@ public final class PluginMessagingListener implements PluginMessageListener {
             return;
         }
         debugLogger.debug(() -> "[Plugin Message] Received on: " + System.currentTimeMillis());
-        final ByteArrayDataInput input = ByteStreams.newDataInput(message);
+        try {
+            final ByteArrayDataInput input = ByteStreams.newDataInput(message);
 
-        final UUID playerId = UUID.fromString(input.readUTF());
-        final String source = input.readUTF();
-        final String result = input.readUTF();
+            final UUID playerId = UUID.fromString(input.readUTF());
+            final String source = input.readUTF();
+            final String result = input.readUTF();
 
-        final QueueType queueType = QueueType.getOrThrow(source);
-        final SignedQueue queue;
-        if (queueType == QueueType.COMMAND) {
-            queue = commandQueue;
-        } else {
-            queue = chatQueue;
+            final QueueType queueType = QueueType.getOrThrow(source);
+            final SignedQueue queue;
+            if (queueType == QueueType.COMMAND) {
+                queue = commandQueue;
+            } else {
+                queue = chatQueue;
+            }
+
+            final ResultType resultType = ResultType.getOrThrow(result);
+            final SignedResult resulted;
+            if (resultType == ResultType.CANCEL) {
+                resulted = SignedResult.cancel();
+            } else if (resultType == ResultType.MODIFY) {
+                resulted = SignedResult.modify(input.readUTF());
+            } else {
+                resulted = SignedResult.allowed();
+            }
+
+            if (!playerId.equals(player.getUniqueId())) {
+                debugLogger.debug(() -> "[Plugin Message] Dropping payload: embedded UUID " + playerId
+                        + " != sender " + player.getUniqueId());
+                return;
+            }
+
+            queue.dataFrom(playerId).complete(resulted);
+            debugLogger.debugMultiple(() -> new String[]{
+                "[Plugin Message] Received Valid Message",
+                "| Queue: " + source,
+                "| Result: " + result,
+                "| Message: " + resulted.message()
+            });
+        } catch (final IllegalArgumentException | IllegalStateException | IndexOutOfBoundsException exception) {
+            debugLogger.debug(() -> "[Plugin Message] Dropping malformed payload: " + exception.getMessage());
         }
-
-        final ResultType resultType = ResultType.getOrThrow(result);
-        final SignedResult resulted;
-        if (resultType == ResultType.CANCEL) {
-            resulted = SignedResult.cancel();
-        } else if (resultType == ResultType.MODIFY) {
-            resulted = SignedResult.modify(input.readUTF());
-        } else {
-            resulted = SignedResult.allowed();
-        }
-
-        queue.dataFrom(playerId).complete(resulted);
-        debugLogger.debugMultiple(() -> new String[]{
-            "[Plugin Message] Received Valid Message",
-            "| Queue: " + source,
-            "| Result: " + result,
-            "| Message: " + resulted.message()
-        });
     }
 }

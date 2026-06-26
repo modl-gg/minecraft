@@ -151,20 +151,32 @@ public final class IpApiClient {
         info.put("as", as);
 
         boolean proxy = false;
+        boolean hosting = false;
         if (json.has("security") && json.get("security").isJsonObject()) {
             JsonObject security = json.getAsJsonObject("security");
-            if (security.has("is_proxy") && !security.get("is_proxy").isJsonNull()) {
-                proxy = security.get("is_proxy").getAsBoolean();
-            }
+            proxy = optBool(security, "proxy", "is_proxy");
+            hosting = optBool(security, "hosting", "is_hosting");
         }
         info.put("proxy", proxy);
-        info.put("hosting", false);
+        info.put("hosting", hosting);
         return info;
     }
 
     private static String optString(JsonObject json, String key) {
         if (!json.has(key) || json.get(key).isJsonNull()) return null;
         return json.get(key).getAsString();
+    }
+
+    private static boolean optBool(JsonObject json, String... keys) {
+        for (String key : keys) {
+            if (json.has(key) && !json.get(key).isJsonNull()) {
+                try {
+                    return json.get(key).getAsBoolean();
+                } catch (RuntimeException ignored) {
+                }
+            }
+        }
+        return false;
     }
 
     private static ThreadPoolExecutor lookupExecutor() {
@@ -181,8 +193,8 @@ public final class IpApiClient {
 
     private static ThreadPoolExecutor createLookupExecutor() {
         AtomicInteger threadCounter = new AtomicInteger();
-        return new ThreadPoolExecutor(
-                1,
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                2,
                 2,
                 60L,
                 TimeUnit.SECONDS,
@@ -192,8 +204,10 @@ public final class IpApiClient {
                     thread.setDaemon(true);
                     return thread;
                 },
-                new ThreadPoolExecutor.CallerRunsPolicy()
+                new ThreadPoolExecutor.AbortPolicy()
         );
+        executor.allowCoreThreadTimeOut(true);
+        return executor;
     }
 
     private static boolean isPrivateIp(String ipAddress) {

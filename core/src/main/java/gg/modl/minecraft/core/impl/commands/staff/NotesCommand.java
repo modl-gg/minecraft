@@ -6,7 +6,6 @@ import gg.modl.minecraft.api.Note;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.NotesMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -34,7 +33,7 @@ public class NotesCommand {
 
     @Command("notes")
     @Description("Open the notes menu for a player, or use -p to print to chat")
-    @PlayerOnly @StaffOnly
+    @StaffOnly
     public void notes(CommandActor actor, @Named("player") String playerQuery, @Optional String flags) {
         if (flags == null) flags = "";
         int page = Pagination.parsePrintFlags(flags);

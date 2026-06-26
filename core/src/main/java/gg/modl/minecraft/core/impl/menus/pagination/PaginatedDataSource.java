@@ -1,16 +1,18 @@
 package gg.modl.minecraft.core.impl.menus.pagination;
 
-import lombok.Value;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
+import java.util.logging.Logger;
 
 public class PaginatedDataSource<T> {
+    private static final Logger logger = Logger.getLogger(PaginatedDataSource.class.getName());
+
     private final List<T> loadedItems = new ArrayList<>();
     private int totalCount;
+    private int generation;
     private final int pageSize;
     private final AtomicBoolean isFetching = new AtomicBoolean();
     private final BiFunction<Integer, Integer, CompletableFuture<FetchResult<T>>> fetcher;
@@ -26,6 +28,7 @@ public class PaginatedDataSource<T> {
             loadedItems.clear();
             loadedItems.addAll(initialItems);
             this.totalCount = totalCount;
+            this.generation++;
         }
     }
 
@@ -82,6 +85,11 @@ public class PaginatedDataSource<T> {
         }
         if (!isFetching.compareAndSet(false, true)) return false;
 
+        final int fetchGeneration;
+        synchronized (loadedItems) {
+            fetchGeneration = generation;
+        }
+
         CompletableFuture<FetchResult<T>> fetchFuture;
         try {
             fetchFuture = fetcher.apply(apiPage, pageSize);
@@ -95,14 +103,21 @@ public class PaginatedDataSource<T> {
         }
 
         fetchFuture.whenComplete((result, throwable) -> {
-            if (throwable == null && result != null) {
+            if (throwable == null && result != null && result.success()) {
                 synchronized (loadedItems) {
-                    int insertOffset = (apiPage - 1) * pageSize;
-                    if (insertOffset == loadedItems.size()) {
-                        loadedItems.addAll(result.items());
+                    if (fetchGeneration == generation) {
+                        int insertOffset = (apiPage - 1) * pageSize;
+                        if (insertOffset == loadedItems.size()) {
+                            loadedItems.addAll(result.items());
+                        }
+                        totalCount = result.totalCount();
+                    } else {
+                        logger.warning("Dropping stale page fetch " + apiPage + " from generation "
+                                + fetchGeneration + " (current generation " + generation + ").");
                     }
-                    totalCount = result.totalCount();
                 }
+            } else if (throwable != null) {
+                logger.warning("Page fetch " + apiPage + " failed: " + throwable);
             }
 
             Runnable callback = clearFetchState();
@@ -127,12 +142,23 @@ public class PaginatedDataSource<T> {
         return isFetching.get();
     }
 
-    @Value
     public static class FetchResult<T> {
-        List<T> items;
-        int totalCount;
+        private final List<T> items;
+        private final int totalCount;
+        private final boolean success;
+
+        public FetchResult(List<T> items, int totalCount) {
+            this(items, totalCount, true);
+        }
+
+        public FetchResult(List<T> items, int totalCount, boolean success) {
+            this.items = items;
+            this.totalCount = totalCount;
+            this.success = success;
+        }
 
         public List<T> items() { return this.items; }
         public int totalCount() { return this.totalCount; }
+        public boolean success() { return this.success; }
     }
 }

@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
+import dev.simplix.cirrus.Cirrus;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -310,9 +311,9 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                     String severityStr = severityLevel == 0 ? "lenient" : severityLevel == 1 ? "regular" : "aggravated";
 
                     Map<String, Object> data = new HashMap<>();
-                    if (altBlocking) data.put("altBlocking", true);
-                    if (statWipe) data.put("statWipe", true);
-                    if (silentMode) data.put("silent", true);
+                    data.put("altBlocking", altBlocking);
+                    data.put("wipeAfterExpiry", statWipe);
+                    data.put("silent", silentMode);
                     data.put("issuedServer", platform.getPlayerServer(viewerUuid));
 
                     String issuerId = platform.getCache() != null ? platform.getCache().getStaffId(viewerUuid) : null;
@@ -322,7 +323,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
                             issuerId,
                             reason,
                             severityStr,
-                            silentMode ? "silent" : "active",
+                            null, // status: reserve data.status for canonical/offense-level values; silence is carried via data.silent
                             punishmentType.getOrdinal(),
                             null,
                             data,
@@ -369,19 +370,19 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     }
 
     private void handleToggleSilent(Click click) {
-        ActionHandlers.openMenu(
+        ActionHandlers.openAsync(c ->
                 new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, !silentMode, altBlocking, statWipe, linkedReportIds))
                 .handle(click);
     }
 
     private void handleToggleAltBlock(Click click) {
-        ActionHandlers.openMenu(
+        ActionHandlers.openAsync(c ->
                 new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, silentMode, !altBlocking, statWipe, linkedReportIds))
                 .handle(click);
     }
 
     private void handleToggleStatWipe(Click click) {
-        ActionHandlers.openMenu(
+        ActionHandlers.openAsync(c ->
                 new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, silentMode, altBlocking, !statWipe, linkedReportIds))
                 .handle(click);
     }
@@ -390,14 +391,18 @@ public class PunishSeverityMenu extends BaseInspectMenu {
         Set<String> preSelected = new HashSet<>(linkedReportIds);
         Consumer<Set<String>> onComplete = selectedIds -> {
             List<String> newLinkedIds = new ArrayList<>(selectedIds);
-            new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType,
-                rootBackAction, menuBackAction, silentMode, altBlocking, statWipe, newLinkedIds)
-                .display(click.player());
+            Cirrus.executor().execute(() -> {
+                PunishSeverityMenu m = new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType,
+                        rootBackAction, menuBackAction, silentMode, altBlocking, statWipe, newLinkedIds);
+                platform.runOnMainThread(() -> m.display(click.player()));
+            });
         };
 
-        Consumer<CirrusPlayerWrapper> backToSeverity = player -> new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType,
-                rootBackAction, menuBackAction, silentMode, altBlocking, statWipe, linkedReportIds)
-                .display(player);
+        Consumer<CirrusPlayerWrapper> backToSeverity = player -> Cirrus.executor().execute(() -> {
+            PunishSeverityMenu m = new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType,
+                    rootBackAction, menuBackAction, silentMode, altBlocking, statWipe, linkedReportIds);
+            platform.runOnMainThread(() -> m.display(player));
+        });
 
         ActionHandlers.openMenu(
                 new LinkReportsMenu(platform, httpClient, viewerUuid, viewerName,

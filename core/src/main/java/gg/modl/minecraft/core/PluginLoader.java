@@ -569,7 +569,7 @@ public class PluginLoader {
         MinecraftRealtimeClient client = new MinecraftRealtimeClient(
             httpManager.getApiKey(),
             startupResponse,
-            platform.getServerName(),
+            platform,
             syncService,
             logger,
             debugMode
@@ -691,24 +691,33 @@ public class PluginLoader {
             return;
         }
 
-        if (annotations.contains(StaffOnly.class)
-                && !PermissionUtil.isStaff(actor, cache)) {
-            throw deny(localeManager.getMessage("general.no_permission"));
-        }
-
-        if (annotations.contains(AdminOnly.class)
-                && !cache.hasPermission(actor.uniqueId(), Permissions.ADMIN)) {
-            throw deny(localeManager.getMessage("general.no_permission"));
-        }
-
+        boolean staffOnly = annotations.contains(StaffOnly.class);
+        boolean adminOnly = annotations.contains(AdminOnly.class);
         RequiresPermission requiresPermission = annotations.get(RequiresPermission.class);
+        boolean staffNo2fa = annotations.contains(StaffNo2fa.class);
+
+        if (staffOnly && !PermissionUtil.isStaff(actor, cache)) {
+            throw deny(localeManager.getMessage("general.no_permission"));
+        }
+
+        if (adminOnly && !cache.hasPermission(actor.uniqueId(), Permissions.ADMIN)) {
+            throw deny(localeManager.getMessage("general.no_permission"));
+        }
+
         if (requiresPermission != null && !PermissionUtil.hasPermission(actor, cache, requiresPermission.value())) {
             throw deny(localeManager.getMessage("general.no_permission"));
         }
 
-        if (annotations.contains(StaffNo2fa.class)
-                && !PermissionUtil.isStaff(actor, cache)) {
+        if (staffNo2fa && !PermissionUtil.isStaff(actor, cache)) {
             throw deny(localeManager.getMessage("general.no_permission"));
+        }
+
+        // Staff-scoped commands require an AUTHENTICATED 2FA state when 2FA is enabled. The @StaffNo2fa
+        // carve-out (applied to /verify) is exempt so staff can complete verification.
+        boolean staffScoped = staffOnly || adminOnly || requiresPermission != null;
+        if (staffScoped && !staffNo2fa && staff2faService != null
+                && staff2faService.isEnabled() && !staff2faService.isAuthenticated(actor.uniqueId())) {
+            throw deny(localeManager.getMessage("staff_2fa.not_verified"));
         }
     }
 

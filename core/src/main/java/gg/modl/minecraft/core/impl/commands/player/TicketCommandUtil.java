@@ -42,7 +42,7 @@ public class TicketCommandUtil {
         return true;
     }
 
-    private void setCooldown(UUID uuid, String cooldownType) {
+    public void setCooldown(UUID uuid, String cooldownType) {
         CachedProfile profile = cache.getPlayerProfile(uuid);
         if (profile != null) profile.getCooldowns().set("ticket:" + cooldownType);
     }
@@ -88,7 +88,8 @@ public class TicketCommandUtil {
 
     public boolean denySelfReport(CommandActor actor, AbstractPlayer reporter, AbstractPlayer targetPlayer,
                                   LocaleManager localeManager) {
-        if (!targetPlayer.getUsername().equalsIgnoreCase(reporter.getUsername())) return false;
+        if (reporter == null || targetPlayer == null) return false;
+        if (!reporter.getUuid().equals(targetPlayer.getUuid())) return false;
 
         actor.reply(localeManager.getMessage("messages.cannot_report_self"));
         return true;

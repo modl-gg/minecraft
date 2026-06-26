@@ -32,8 +32,15 @@ public class AutoReporter {
 
     private final ConcurrentHashMap<UUID, Long> reportCooldowns = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, Boolean> reportsInFlight = new ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicBoolean loggedMissingCreator = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     public void checkAndReport(UUID uuid, String playerName, DetectionSource source, String checkName) {
+        if (ticketCreator == null) {
+            if (loggedMissingCreator.compareAndSet(false, true)) {
+                logger.warning("[bridge] Auto-report skipped: no TicketCreator configured for this platform/mode");
+            }
+            return;
+        }
         int vl = violationTracker.getViolationCount(uuid, source, checkName);
         int threshold = config.getReportViolationThreshold(checkName);
 

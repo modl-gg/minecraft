@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
+import dev.simplix.cirrus.Cirrus;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -64,10 +65,10 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
                 if (response.getStatus() == 200) {
                     future.complete(new FetchResult<>(response.getPunishments(), response.getTotalCount()));
                 } else {
-                    future.complete(new FetchResult<>(listOf(), 0));
+                    future.complete(new FetchResult<>(listOf(), 0, false));
                 }
             }).exceptionally(e -> {
-                future.complete(new FetchResult<>(listOf(), totalCount));
+                future.complete(new FetchResult<>(listOf(), totalCount, false));
                 return null;
             });
             return future;
@@ -158,7 +159,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         }
 
         String statusLine;
-        Date pardonDate = isKick ? null : findPardonDate(punishment);
+        Date pardonDate = isKick ? null : punishment.getPardonDate();
         if (isKick) {
             statusLine = "";
         } else if (pardonDate != null) {
@@ -286,7 +287,10 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
         ActionHandlers.openMenu(
                 new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishment, backAction,
-                        p -> new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext).display(p)))
+                        p -> Cirrus.executor().execute(() -> {
+                            HistoryMenu m = new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
+                            platform.runOnMainThread(() -> m.display(p));
+                        })))
                 .handle(click);
     }
 
@@ -300,20 +304,6 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         registerActionHandler("openHistory", click -> {});
     }
 
-    private Date findPardonDate(Punishment punishment) {
-        List<Modification> modifications = punishment.getModifications();
-        if (modifications.isEmpty())
-            return null;
-
-        for (Modification mod : modifications) {
-            if (mod.getType() == Modification.Type.MANUAL_PARDON ||
-                mod.getType() == Modification.Type.APPEAL_ACCEPT) {
-                return mod.getIssued();
-            }
-        }
-        return null;
-    }
-
     private Long getEffectiveDuration(Punishment punishment) {
         List<Modification> modifications = punishment.getModifications();
         if (modifications.isEmpty())
@@ -321,8 +311,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
         Long effectiveDuration = punishment.getDuration();
         for (Modification mod : modifications) {
-            if (mod.getType() == Modification.Type.MANUAL_DURATION_CHANGE ||
-                mod.getType() == Modification.Type.APPEAL_DURATION_CHANGE) {
+            if (mod.getType() == Modification.Type.MANUAL_DURATION_CHANGE) {
                 Long modDuration = mod.getEffectiveDuration();
                 if (modDuration == null || modDuration <= 0)
                     effectiveDuration = null;
@@ -334,7 +323,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     }
 
     private boolean isPunishmentEffectivelyActive(Punishment punishment, Long effectiveDuration) {
-        if (findPardonDate(punishment) != null)
+        if (punishment.getPardonDate() != null)
             return false;
 
         if (!punishment.isActive())

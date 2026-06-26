@@ -72,6 +72,7 @@ public class BridgeQueryClient {
         bootstrap.group(group)
                 .channel(NioSocketChannel.class)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, CONNECT_TIMEOUT_MS)
+                .option(ChannelOption.TCP_NODELAY, true)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
@@ -224,6 +225,16 @@ public class BridgeQueryClient {
                                     new LengthFieldPrepender(4));
                             logger.info("[bridge] Connected to proxy at " + host + ":" + port);
                             sendBridgeHello();
+                            // addBefore() only governs SUBSEQUENT inbound data; it does not
+                            // re-process bytes already sitting in this ByteBuf. The proxy can
+                            // coalesce the AUTH_SUCCESS byte with the length-framed PANEL_URL /
+                            // pending broadcasts into one TCP segment, so re-feed any remainder
+                            // through the pipeline head (and thus the just-installed frameDecoder)
+                            // instead of letting finally{buf.release()} drop it.
+                            if (buf.isReadable()) {
+                                ByteBuf remaining = buf.readRetainedSlice(buf.readableBytes());
+                                ctx.pipeline().fireChannelRead(remaining);
+                            }
                         } else {
                             logger.warning("[bridge] Proxy rejected authentication");
                             ctx.close();

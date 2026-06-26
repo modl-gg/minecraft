@@ -36,6 +36,11 @@ public class ReportCommand {
 
         AbstractPlayer reporter = platform.getAbstractPlayer(actor.uniqueId(), false);
 
+        if (reporter == null) {
+            actor.reply(localeManager.getMessage("general.player_not_found"));
+            return;
+        }
+
         if (targetPlayer == null) {
             actor.reply(localeManager.getMessage("general.player_not_found"));
             return;

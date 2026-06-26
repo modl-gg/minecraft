@@ -18,7 +18,7 @@ public final class LoginExecutor implements AutoCloseable {
 
         AtomicInteger threadCounter = new AtomicInteger();
         this.executor = new ThreadPoolExecutor(
-                1,
+                maxThreads,
                 maxThreads,
                 60L,
                 TimeUnit.SECONDS,
@@ -29,6 +29,7 @@ public final class LoginExecutor implements AutoCloseable {
                     return thread;
                 },
                 new ThreadPoolExecutor.AbortPolicy());
+        this.executor.allowCoreThreadTimeOut(true);
     }
 
     public CompletableFuture<Void> runAsync(Runnable task) throws RejectedExecutionException {

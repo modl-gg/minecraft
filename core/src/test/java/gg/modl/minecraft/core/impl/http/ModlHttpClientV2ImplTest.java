@@ -77,7 +77,8 @@ class ModlHttpClientV2ImplTest {
                 "hub",
                 "hub-1",
                 List.of(new SyncRequest.ChatLogEntry("player-uuid", "modlplayer", "hello", "hub", 1779062400000L)),
-                List.of(new SyncRequest.CommandLogEntry("player-uuid", "modlplayer", "/spawn", "hub", 1779062401000L))
+                List.of(new SyncRequest.CommandLogEntry("player-uuid", "modlplayer", "/spawn", "hub", 1779062401000L)),
+                null
         );
 
         JsonObject json = gson.toJsonTree(request).getAsJsonObject();

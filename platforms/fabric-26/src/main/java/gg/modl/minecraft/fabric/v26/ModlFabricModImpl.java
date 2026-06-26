@@ -8,6 +8,7 @@ import dev.simplix.cirrus.fabric.CirrusFabric;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.api.http.request.StartupRequest;
 import gg.modl.minecraft.bridge.config.BridgeWizardConfigWriter;
+import gg.modl.minecraft.bridge.reporter.ProxyReportForwarder;
 import gg.modl.minecraft.bridge.reporter.TicketCreator;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.PluginLoader;
@@ -235,13 +236,18 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
                 standaloneFabricPlatform = fabricPlatform;
             }
 
-            if (bootConfig.getMode() == BootConfig.Mode.BRIDGE_ONLY) {
+            boolean bridgeOnly = bootConfig.getMode() == BootConfig.Mode.BRIDGE_ONLY;
+            if (bridgeOnly) {
                 writeBridgeConfigFromWizard(dataFolder);
             }
 
             bridgeComponent = new FabricBridgeComponent(
                     context, server, bootConfig.getApiKey(), backendUrl, panelUrl != null ? panelUrl : "", PLUGIN_LOGGER);
-            bridgeComponent.enable(standaloneTicketCreator, bootConfig.getMode() == BootConfig.Mode.BRIDGE_ONLY);
+            FabricBridgeComponent bridgeRef = bridgeComponent;
+            TicketCreator ticketCreatorToUse = bridgeOnly
+                    ? ProxyReportForwarder.create(bridgeRef::getBridgeClient)
+                    : standaloneTicketCreator;
+            bridgeComponent.enable(ticketCreatorToUse, bridgeOnly);
 
             if (pluginLoader != null && standaloneFabricPlatform != null) {
                 String serverName = bridgeComponent.getBridgeConfig() != null

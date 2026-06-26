@@ -56,10 +56,10 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
                 if (response.getStatus() == 200) {
                     future.complete(new FetchResult<>(response.getNotes(), response.getTotalCount()));
                 } else {
-                    future.complete(new FetchResult<>(listOf(), 0));
+                    future.complete(new FetchResult<>(listOf(), 0, false));
                 }
             }).exceptionally(e -> {
-                future.complete(new FetchResult<>(listOf(), totalCount));
+                future.complete(new FetchResult<>(listOf(), totalCount, false));
                 return null;
             });
             return future;

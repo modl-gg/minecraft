@@ -10,6 +10,7 @@ import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.boot.StartupClient;
+import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
 
@@ -280,6 +281,8 @@ public class SyncService {
         request.setOnlinePlayers(buildOnlinePlayersList(onlinePlayers));
         request.setServerName(platform.getServerName());
         request.setServerInstanceId(StartupClient.getServerInstanceId());
+        request.setServerStatus(new SyncRequest.ServerStatus(onlinePlayers.size(), platform.getMaxPlayers(),
+                platform.getServerVersion(), platform.getPlatformType(), PluginInfo.VERSION, System.currentTimeMillis()));
         return request;
     }
 
