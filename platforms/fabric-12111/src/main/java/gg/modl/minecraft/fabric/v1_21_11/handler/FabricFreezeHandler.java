@@ -102,7 +102,7 @@ public class FabricFreezeHandler {
                 player.teleport(anchor.world, anchor.x, anchor.y, anchor.z,
                         Set.of(), anchor.yaw, anchor.pitch, false);
                 player.setVelocity(Vec3d.ZERO);
-                player.velocityModified = true;
+                player.velocityDirty = true;
             }
         });
     }
