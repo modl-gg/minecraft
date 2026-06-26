@@ -18,6 +18,10 @@ dependencies {
 
     testImplementation("io.github.revxrsal:lamp.common:${property("lamp.version")}")
     testImplementation("gg.modl:proto:${property("proto.version")}")
+    // proto's gencode is stamped at protobuf.java.version; override the proto POM's transitive
+    // protobuf-java so the test runtime is not older than the linked gencode version.
+    testImplementation("com.google.protobuf:protobuf-java:${property("protobuf.java.version")}")
+    testImplementation("com.google.protobuf:protobuf-java-util:${property("protobuf.java.version")}")
     testImplementation("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
     testImplementation("gg.modl.minecraft.packetevents:packetevents-api:${property("packetevents.version")}")
     testImplementation("org.java-websocket:Java-WebSocket:${property("java.websocket.version")}")
