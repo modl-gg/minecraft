@@ -8,8 +8,7 @@ import java.time.Duration;
 import java.util.Collections;
 
 public class RegistrationClient {
-    private static final String PROD_API_BASE = "https://api.modl.gg/v1/public/registration";
-    private static final String TEST_API_BASE = "https://api.modl.top/v1/public/registration";
+    private static final String REGISTRATION_PATH = "/v1/public/registration";
     private static final Duration TIMEOUT = Duration.ofSeconds(30);
 
     private final Gson gson;
@@ -17,7 +16,7 @@ public class RegistrationClient {
 
     public RegistrationClient(boolean testingApi) {
         this.gson = new Gson();
-        this.apiBase = testingApi ? TEST_API_BASE : PROD_API_BASE;
+        this.apiBase = BackendHost.resolve(testingApi) + REGISTRATION_PATH;
     }
 
     public AvailabilityResponse checkAvailability(String email, String serverName, String subdomain)

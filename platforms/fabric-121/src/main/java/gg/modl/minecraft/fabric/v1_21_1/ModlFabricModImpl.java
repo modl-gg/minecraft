@@ -11,6 +11,7 @@ import gg.modl.minecraft.bridge.config.BridgeWizardConfigWriter;
 import gg.modl.minecraft.bridge.reporter.ProxyReportForwarder;
 import gg.modl.minecraft.bridge.reporter.TicketCreator;
 import gg.modl.minecraft.core.service.BridgeService;
+import gg.modl.minecraft.core.boot.BackendHost;
 import gg.modl.minecraft.core.boot.BootConfig;
 import gg.modl.minecraft.core.boot.BootConfigMigrator;
 import gg.modl.minecraft.core.boot.ConsoleInput;
@@ -134,8 +135,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         }
 
         try {
-            String backendUrl = bootConfig.isTestingApi()
-                    ? "https://api.modl.top/v2" : "https://api.modl.gg/v2";
+            String backendUrl = BackendHost.resolve(bootConfig.isTestingApi()) + "/v2";
             String panelUrl = null;
 
             if (bootConfig.getMode() == BootConfig.Mode.STANDALONE) {

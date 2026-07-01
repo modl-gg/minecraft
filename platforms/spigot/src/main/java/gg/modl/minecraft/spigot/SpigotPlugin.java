@@ -9,6 +9,7 @@ import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.api.http.request.StartupRequest;
+import gg.modl.minecraft.core.boot.BackendHost;
 import gg.modl.minecraft.core.boot.BootConfig;
 import gg.modl.minecraft.core.boot.BootConfigMigrator;
 import gg.modl.minecraft.core.boot.PlatformType;
@@ -146,7 +147,7 @@ public class SpigotPlugin extends JavaPlugin {
 
         BootConfig.Mode mode = bootConfig.getMode();
 
-        String backendUrl = bootConfig.isTestingApi() ? HttpManager.TESTING_API_URL : HttpManager.V2_API_URL;
+        String backendUrl = BackendHost.resolve(bootConfig.isTestingApi());
         bridgeComponent = new BridgeComponent(this, bootConfig.getApiKey(), backendUrl, panelUrl, pluginLogger);
 
         initSignedVelocity();

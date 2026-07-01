@@ -10,8 +10,7 @@ import java.time.Duration;
 import java.util.Collections;
 
 public class StartupClient {
-    private static final String PROD_API_BASE = "https://api.modl.gg/v2/minecraft/startup";
-    private static final String TEST_API_BASE = "https://api.modl.top/v2/minecraft/startup";
+    private static final String STARTUP_PATH = "/v2/minecraft/startup";
     private static final Duration TIMEOUT = Duration.ofSeconds(30);
     private static final int MAX_RETRIES = 3;
     private static final long[] RETRY_DELAYS_MS = {2000, 4000, 8000};
@@ -28,7 +27,7 @@ public class StartupClient {
     public static StartupResponse callStartupForResponseWithRetry(String apiKey, boolean testingApi,
                                                                   StartupRequest request, PluginLogger logger) {
         lastStartupResponse = null;
-        String url = testingApi ? TEST_API_BASE : PROD_API_BASE;
+        String url = BackendHost.resolve(testingApi) + STARTUP_PATH;
         Gson gson = new Gson();
         String jsonBody = gson.toJson(request);
 

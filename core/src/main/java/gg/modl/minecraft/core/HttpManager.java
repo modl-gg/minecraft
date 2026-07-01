@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core;
 
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.core.boot.BackendHost;
 import gg.modl.minecraft.core.impl.http.ModlHttpClientV2Impl;
 import gg.modl.minecraft.core.impl.http.ModlHttpClientV3Impl;
 import lombok.Getter;
@@ -12,9 +13,6 @@ import java.util.logging.Logger;
 @Getter
 public class HttpManager {
     private static final Logger logger = Logger.getLogger(HttpManager.class.getName());
-
-    public static final String V2_API_URL = "https://api.modl.gg";
-    public static final String TESTING_API_URL = "https://api.modl.top";
 
     private static final String V2_BASE_PATH = "/v1";
     private static final String V3_BASE_PATH = "/v3";
@@ -44,7 +42,7 @@ public class HttpManager {
 
         this.serverDomain = extractDomain(normalizedUrl);
 
-        String apiHost = useTestingApi ? TESTING_API_URL : V2_API_URL;
+        String apiHost = BackendHost.resolve(useTestingApi);
         boolean protoV3Enabled = isProtoV3Enabled();
         if (protoV3Enabled) {
             this.apiUrl = apiHost + V3_BASE_PATH;

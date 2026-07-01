@@ -556,27 +556,35 @@ public class PluginLoader {
     }
 
     private MinecraftRealtimeClient startRealtimeClientIfEnabled(Platform platform, HttpManager httpManager) {
-        StartupResponse startupResponse = StartupClient.getLastStartupResponse();
         boolean localEnabled = configManager.getRealtimeConfig() != null && configManager.getRealtimeConfig().isEnabled();
-        if (startupResponse != null && !httpManager.getPanelUrl().equals(startupResponse.getPanelUrl())) {
-            startupResponse = null;
-        }
-        if (!MinecraftRealtimeClient.canStart(localEnabled, startupResponse)) {
-            if (debugMode && localEnabled) logger.info("[Realtime] Startup response did not enable realtime; staying on HTTP polling only");
+        if (!localEnabled) {
             return null;
         }
+        try {
+            StartupResponse startupResponse = StartupClient.getLastStartupResponse();
+            if (startupResponse != null && !httpManager.getPanelUrl().equals(startupResponse.getPanelUrl())) {
+                startupResponse = null;
+            }
+            if (!MinecraftRealtimeClient.canStart(localEnabled, startupResponse)) {
+                if (debugMode) logger.info("[Realtime] Startup response did not enable realtime; staying on HTTP polling only");
+                return null;
+            }
 
-        MinecraftRealtimeClient client = new MinecraftRealtimeClient(
-            httpManager.getApiKey(),
-            startupResponse,
-            platform,
-            syncService,
-            logger,
-            debugMode
-        );
-        client.start();
-        if (debugMode) logger.info("[Realtime] Client started beside authoritative HTTP polling");
-        return client;
+            MinecraftRealtimeClient client = new MinecraftRealtimeClient(
+                httpManager.getApiKey(),
+                startupResponse,
+                platform,
+                syncService,
+                logger,
+                debugMode
+            );
+            client.start();
+            if (debugMode) logger.info("[Realtime] Client started beside authoritative HTTP polling");
+            return client;
+        } catch (Throwable t) {
+            logger.warning("[Realtime] Failed to initialize realtime client; falling back to HTTP polling: " + t);
+            return null;
+        }
     }
 
     private void reloadRuntimeConfiguration() {
