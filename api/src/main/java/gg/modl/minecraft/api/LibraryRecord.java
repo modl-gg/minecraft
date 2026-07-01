@@ -2,6 +2,7 @@ package gg.modl.minecraft.api;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.With;
 
 @Data @AllArgsConstructor
 public class LibraryRecord {
@@ -9,7 +10,7 @@ public class LibraryRecord {
     private final String artifactId;
     private final String version;
     private final String id;
-    private final String[][] relocations;
+    @With private final String[][] relocations;
     private final String url;
     private final String checksum;
 

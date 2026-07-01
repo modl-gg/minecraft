@@ -218,6 +218,8 @@ tasks.shadowJar {
     archiveBaseName.set("modl")
     archiveClassifier.set("")
 
+    relocate("com.google.protobuf", "gg.modl.libs.protobuf")
+
     exclude("**/module-info.class")
     exclude("com/google/gson/**")
 

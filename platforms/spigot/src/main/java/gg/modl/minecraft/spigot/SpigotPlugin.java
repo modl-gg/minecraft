@@ -365,7 +365,7 @@ public class SpigotPlugin extends JavaPlugin {
     }
 
     private void loadLibraries() {
-        for (LibraryRecord record : Libraries.PROTO_DEPS) loadLibrary(libraryManager, record);
+        for (LibraryRecord record : Libraries.PROTO_DEPS_RELOCATED) loadLibrary(libraryManager, record);
         for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
         loadLibrary(libraryManager, Libraries.LAMP_COMMON);
         loadLibrary(libraryManager, Libraries.LAMP_BRIGADIER);

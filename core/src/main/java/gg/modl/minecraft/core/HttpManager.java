@@ -4,6 +4,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.boot.BackendHost;
 import gg.modl.minecraft.core.impl.http.ModlHttpClientV2Impl;
 import gg.modl.minecraft.core.impl.http.ModlHttpClientV3Impl;
+import gg.modl.proto.modl.v1.ApiError;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
@@ -43,7 +44,7 @@ public class HttpManager {
         this.serverDomain = extractDomain(normalizedUrl);
 
         String apiHost = BackendHost.resolve(useTestingApi);
-        boolean protoV3Enabled = isProtoV3Enabled();
+        boolean protoV3Enabled = isProtoV3Enabled() && isProtoRuntimeCompatible();
         if (protoV3Enabled) {
             this.apiUrl = apiHost + V3_BASE_PATH;
             this.httpClient = new ModlHttpClientV3Impl(apiUrl, key, this.serverDomain, debugHttp);
@@ -71,6 +72,16 @@ public class HttpManager {
         String env = System.getenv(PROTO_V3_ENV);
         if (env != null) return Boolean.parseBoolean(env);
         return true;
+    }
+
+    private static boolean isProtoRuntimeCompatible() {
+        try {
+            ApiError.getDefaultInstance();
+            return true;
+        } catch (Throwable t) {
+            logger.warning("Proto V3 runtime is incompatible with this server's bundled protobuf; using the V2 JSON HTTP client instead: " + t);
+            return false;
+        }
     }
 
     /**

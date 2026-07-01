@@ -2,7 +2,9 @@ package gg.modl.minecraft.core;
 
 import gg.modl.minecraft.api.LibraryRecord;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public final class Libraries {
@@ -12,6 +14,10 @@ public final class Libraries {
     private static final String[][] CIRRUS_PACKETEVENTS_REVERSE_RELOCATIONS = {
             {"gg{}modl{}libs{}packetevents{}api", "com{}github{}retrooper{}packetevents"},
             {"gg{}modl{}libs{}packetevents{}impl", "io{}github{}retrooper{}packetevents"}
+    };
+
+    private static final String[][] PROTOBUF_RELOCATIONS = {
+            {"com{}google{}protobuf", "gg{}modl{}libs{}protobuf"}
     };
 
     // Version uses timestamp instead of "-SNAPSHOT" because libby 1.3.1 re-downloads SNAPSHOT versions every startup
@@ -381,4 +387,21 @@ public final class Libraries {
             JAKARTA_ACTIVATION_API,
             MODL_PROTO
     );
+
+    public static final List<LibraryRecord> PROTO_DEPS_RELOCATED = relocateProtobuf(PROTO_DEPS);
+
+    private static List<LibraryRecord> relocateProtobuf(List<LibraryRecord> deps) {
+        List<LibraryRecord> relocated = new ArrayList<>(deps.size());
+        for (LibraryRecord dep : deps) {
+            relocated.add(dep.withRelocations(mergeRelocations(dep.getRelocations(), PROTOBUF_RELOCATIONS)));
+        }
+        return Collections.unmodifiableList(relocated);
+    }
+
+    private static String[][] mergeRelocations(String[][] existing, String[][] added) {
+        if (existing == null || existing.length == 0) return added;
+        String[][] merged = Arrays.copyOf(existing, existing.length + added.length);
+        System.arraycopy(added, 0, merged, existing.length, added.length);
+        return merged;
+    }
 }

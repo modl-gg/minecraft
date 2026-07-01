@@ -232,7 +232,7 @@ public final class VelocityPlugin {
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
 
-        for (LibraryRecord record : Libraries.PROTO_DEPS) loadLibrary(libraryManager, record);
+        for (LibraryRecord record : Libraries.PROTO_DEPS_RELOCATED) loadLibrary(libraryManager, record);
         for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
         loadLibrary(libraryManager, Libraries.LAMP_COMMON);
         loadLibrary(libraryManager, Libraries.LAMP_BRIGADIER);
