@@ -127,7 +127,8 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     private @NotNull final ThreadPoolExecutor executor;
     private @NotNull final Gson gson;
     private @NotNull final Logger logger;
-    private @NotNull final CircuitBreaker circuitBreaker;
+    private @NotNull final CircuitBreaker backgroundCircuitBreaker;
+    private @NotNull final CircuitBreaker loginCircuitBreaker;
     private final boolean debugMode;
 
     public ModlHttpClientV2Impl(@NotNull String baseUrl, @NotNull String apiKey, @NotNull String serverDomain, boolean debugMode) {
@@ -135,7 +136,8 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         this.apiKey = apiKey;
         this.serverDomain = serverDomain;
         this.debugMode = debugMode;
-        this.circuitBreaker = new CircuitBreaker();
+        this.backgroundCircuitBreaker = new CircuitBreaker();
+        this.loginCircuitBreaker = new CircuitBreaker();
 
         AtomicInteger threadCounter = new AtomicInteger();
         this.executor = new ThreadPoolExecutor(0, 8, 60L, TimeUnit.SECONDS,
@@ -307,7 +309,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .timeout(LOGIN_TIMEOUT)
                 .POST(requestBody)
-                .build(), PlayerLoginResponse.class, "LOGIN");
+                .build(), PlayerLoginResponse.class, "LOGIN", loginCircuitBreaker);
     }
 
     @NotNull @Override
@@ -857,10 +859,15 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     }
 
     private <T> CompletableFuture<T> sendAsync(RequestConfig request, Class<T> responseType, String operation) {
+        return sendAsync(request, responseType, operation, backgroundCircuitBreaker);
+    }
+
+    private <T> CompletableFuture<T> sendAsync(RequestConfig request, Class<T> responseType, String operation,
+                                               CircuitBreaker breaker) {
         final Instant startTime = Instant.now();
         final String requestId = generateRequestId();
 
-        if (!circuitBreaker.allowRequest()) {
+        if (!breaker.allowRequest()) {
             return Java8Collections.failedFuture(
                     new PanelUnavailableException(request.url, HttpURLConnection.HTTP_UNAVAILABLE,
                             "V2 API is temporarily unavailable (circuit breaker open)"));
@@ -928,7 +935,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                 }
 
                 if (statusCode >= 200 && statusCode < 300) {
-                    circuitBreaker.recordSuccess();
+                    breaker.recordSuccess();
 
                     if (responseType == Void.class) return null;
 
@@ -1002,7 +1009,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
 
                     // Single funnel: 4xx client outcomes (ApiClientException) never count; everything else
                     // (PanelUnavailableException for 5xx/transport, plain RuntimeException) counts exactly once.
-                    if (!(cause instanceof ApiClientException)) circuitBreaker.recordFailure();
+                    if (!(cause instanceof ApiClientException)) breaker.recordFailure();
 
                     if (cause instanceof RuntimeException) throw (RuntimeException) cause;
                     throw new RuntimeException("V2 HTTP request failed", throwable);

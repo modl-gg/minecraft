@@ -116,7 +116,8 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
     private final @NotNull String baseUrl, apiKey, serverDomain;
     private final @NotNull ThreadPoolExecutor executor;
     private final @NotNull Logger logger;
-    private final @NotNull CircuitBreaker circuitBreaker;
+    private final @NotNull CircuitBreaker backgroundCircuitBreaker;
+    private final @NotNull CircuitBreaker loginCircuitBreaker;
     private final @NotNull ModlHttpClientV2Impl legacyClient;
     private final boolean debugMode;
 
@@ -131,7 +132,8 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
         this.apiKey = apiKey;
         this.serverDomain = serverDomain;
         this.debugMode = debugMode;
-        this.circuitBreaker = new CircuitBreaker();
+        this.backgroundCircuitBreaker = new CircuitBreaker();
+        this.loginCircuitBreaker = new CircuitBreaker();
 
         AtomicInteger threadCounter = new AtomicInteger();
         this.executor = new ThreadPoolExecutor(0, 8, 60L, TimeUnit.SECONDS,
@@ -171,7 +173,8 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
     @NotNull @Override
     public CompletableFuture<PlayerLoginResponse> playerLogin(@NotNull PlayerLoginRequest request) {
         return post("/minecraft/players/login", PlayerProtoMapper.toProto(request).toByteArray(), LOGIN_TIMEOUT,
-            gg.modl.proto.modl.v1.PlayerLoginResponse.parser(), PlayerProtoMapper::toLoginResponse, "LOGIN");
+            gg.modl.proto.modl.v1.PlayerLoginResponse.parser(), PlayerProtoMapper::toLoginResponse, "LOGIN",
+            loginCircuitBreaker);
     }
 
     @NotNull @Override
@@ -565,6 +568,12 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
         return send(new ProtoRequest(baseUrl + endpoint, "POST", body, timeout), parser, mapper, operation);
     }
 
+    private <P extends com.google.protobuf.Message, R> CompletableFuture<R> post(
+        String endpoint, byte[] body, Duration timeout, Parser<P> parser, Function<P, R> mapper, String operation,
+        CircuitBreaker breaker) {
+        return send(new ProtoRequest(baseUrl + endpoint, "POST", body, timeout), parser, mapper, operation, breaker);
+    }
+
     private CompletableFuture<Void> postVoid(String endpoint, byte[] body) {
         return sendVoid(new ProtoRequest(baseUrl + endpoint, "POST", body, null));
     }
@@ -583,10 +592,15 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
 
     private <P extends com.google.protobuf.Message, R> CompletableFuture<R> send(
         ProtoRequest request, Parser<P> parser, Function<P, R> mapper, String operation) {
+        return send(request, parser, mapper, operation, backgroundCircuitBreaker);
+    }
+
+    private <P extends com.google.protobuf.Message, R> CompletableFuture<R> send(
+        ProtoRequest request, Parser<P> parser, Function<P, R> mapper, String operation, CircuitBreaker breaker) {
         final Instant startTime = Instant.now();
         final String requestId = generateRequestId();
 
-        if (!circuitBreaker.allowRequest()) {
+        if (!breaker.allowRequest()) {
             return Java8Collections.failedFuture(new PanelUnavailableException(
                 request.url, HttpURLConnection.HTTP_UNAVAILABLE,
                 "V3 API is temporarily unavailable (circuit breaker open)"));
@@ -612,7 +626,7 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
                 }
 
                 if (statusCode >= 200 && statusCode < 300) {
-                    circuitBreaker.recordSuccess();
+                    breaker.recordSuccess();
                     if (parser == null) return null;
                     try {
                         return mapper.apply(parser.parseFrom(responseBody));
@@ -641,7 +655,7 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
                 // 4xx client outcomes (ApiClientException) are routine and must NOT count.
                 Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
                     ? throwable.getCause() : throwable;
-                if (!(cause instanceof ApiClientException)) circuitBreaker.recordFailure();
+                if (!(cause instanceof ApiClientException)) breaker.recordFailure();
                 if (cause instanceof RuntimeException) throw (RuntimeException) cause;
                 throw new RuntimeException("V3 HTTP request failed", throwable);
             });
