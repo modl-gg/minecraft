@@ -4,7 +4,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
 import java.time.Instant;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ChatMessageCache {
     private static final DateTimeFormatter REPORT_TIME_FORMAT =
-            DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault());
+            DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneOffset.UTC);
     private static final int DEFAULT_MAX_MESSAGES = 100, REPORT_LOOKBACK_MESSAGES = 10, REPORT_FALLBACK_SECONDS = 120;
     private static final int REPORT_WINDOW_SECONDS = 120;
     private static final long DEFAULT_MAX_AGE_MS = 600_000, CLEANUP_INTERVAL_MS = 30_000;

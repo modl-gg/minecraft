@@ -13,6 +13,7 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfileRegistry;
+import gg.modl.minecraft.core.cache.LoginCache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.ChatMessageCache;
@@ -46,6 +47,7 @@ public class JoinListener {
     private final Staff2faService staff2faService;
     private final BridgeService bridgeService;
     private final CachedProfileRegistry registry;
+    private final LoginCache loginCache;
     private final boolean debugMode;
 
     /** Buffers login responses between onLogin and onPostLogin so profile exists before caching. */
@@ -57,7 +59,7 @@ public class JoinListener {
                         ChatMessageCache chatMessageCache, Platform platform, SyncService syncService,
                         LocaleManager localeManager, MaintenanceService maintenanceService,
                         Staff2faService staff2faService, BridgeService bridgeService,
-                        CachedProfileRegistry registry, boolean debugMode) {
+                        CachedProfileRegistry registry, LoginCache loginCache, boolean debugMode) {
         this.httpClientHolder = httpClientHolder;
         this.cache = cache;
         this.logger = logger;
@@ -69,6 +71,7 @@ public class JoinListener {
         this.staff2faService = staff2faService;
         this.bridgeService = bridgeService;
         this.registry = registry;
+        this.loginCache = loginCache;
         this.debugMode = debugMode;
     }
 
@@ -142,7 +145,7 @@ public class JoinListener {
         pendingLoginData.remove(event.getPlayer().getUniqueId());
         ListenerHelper.handlePlayerDisconnect(
                 event.getPlayer().getUniqueId(), event.getPlayer().getUsername(),
-                getHttpClient(), cache, platform, localeManager,
+                getHttpClient(), cache, loginCache, platform, localeManager,
                 chatMessageCache, bridgeService, registry);
     }
 

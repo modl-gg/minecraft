@@ -206,7 +206,7 @@ public class SpigotListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         ListenerHelper.handlePlayerDisconnect(
                 event.getPlayer().getUniqueId(), event.getPlayer().getName(),
-                getHttpClient(), cache, platform, localeManager,
+                getHttpClient(), cache, loginCache, platform, localeManager,
                 chatMessageCache, bridgeService, registry);
     }
 

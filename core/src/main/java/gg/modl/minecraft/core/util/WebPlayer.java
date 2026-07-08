@@ -49,7 +49,12 @@ public class WebPlayer {
     }
 
     public static CompletableFuture<WebPlayer> get(UUID uuid) {
+        if (!isMojangAccountUuid(uuid)) return CompletableFuture.completedFuture(INVALID);
         return fromUrl(MOJANG_SESSION_URL + uuid.toString().replace("-", ""));
+    }
+
+    private static boolean isMojangAccountUuid(UUID uuid) {
+        return uuid.version() == 4;
     }
 
     private static CompletableFuture<WebPlayer> fromUrl(String rawUrl) {
@@ -64,6 +69,10 @@ public class WebPlayer {
                     connection.setReadTimeout((int) REQUEST_TIMEOUT.toMillis());
 
                     int statusCode = connection.getResponseCode();
+                    if (statusCode == 204 || statusCode == 404) {
+                        logger.fine("No Mojang profile found for URL: " + rawUrl);
+                        return INVALID;
+                    }
                     if (statusCode != 200) {
                         logger.warning("Mojang API returned status " + statusCode + " for URL: " + rawUrl);
                         return INVALID;

@@ -207,7 +207,7 @@ public class BungeeListener implements Listener {
     public void onPlayerDisconnect(PlayerDisconnectEvent event) {
         ListenerHelper.handlePlayerDisconnect(
                 event.getPlayer().getUniqueId(), event.getPlayer().getName(),
-                getHttpClient(), cache, platform, localeManager,
+                getHttpClient(), cache, loginCache, platform, localeManager,
                 chatMessageCache, bridgeService, registry);
     }
 

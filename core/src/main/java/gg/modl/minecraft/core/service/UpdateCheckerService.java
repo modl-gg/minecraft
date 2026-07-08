@@ -15,6 +15,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import gg.modl.minecraft.core.util.PluginLogger;
+import gg.modl.minecraft.core.util.SemanticVersion;
 
 public class UpdateCheckerService {
     private static final String RELEASES_API_URL = "https://api.github.com/repos/modl-gg/minecraft/releases/latest",
@@ -71,11 +72,11 @@ public class UpdateCheckerService {
             ReleaseInfo latest = fetchLatestRelease();
             if (latest == null || latest.tagName == null || latest.tagName.isEmpty()) return;
 
-            if (!currentVersion.equalsIgnoreCase(latest.tagName)) {
+            if (SemanticVersion.parse(latest.tagName).isNewerThan(SemanticVersion.parse(currentVersion))) {
                 logger.warning("Update available: current=" + currentVersion + ", latest=" + latest.tagName);
                 logger.warning("Download: " + latest.downloadUrl);
             } else if (isFirstRun) {
-                logger.info("You are up to date! (" + latest.tagName + ")");
+                logger.info("You are up to date! (" + currentVersion + ")");
             }
             isFirstRun = false;
         } catch (Exception e) {

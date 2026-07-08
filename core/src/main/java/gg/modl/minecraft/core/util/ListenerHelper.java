@@ -11,6 +11,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.cache.CachedProfileRegistry;
+import gg.modl.minecraft.core.cache.LoginCache;
 import gg.modl.minecraft.core.boot.StartupClient;
 
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -167,7 +168,7 @@ public final class ListenerHelper {
 
     public static void handlePlayerDisconnect(
             UUID uuid, String playerName,
-            ModlHttpClient httpClient, Cache cache, Platform platform,
+            ModlHttpClient httpClient, Cache cache, LoginCache loginCache, Platform platform,
             LocaleManager localeManager,
             ChatMessageCache chatMessageCache,
             BridgeService bridgeService,
@@ -208,6 +209,7 @@ public final class ListenerHelper {
 
         registry.destroyProfile(uuid);
         cache.setOffline(uuid);
+        loginCache.invalidateLoginResult(uuid);
         chatMessageCache.removePlayer(uuid.toString());
         platform.getChatInputManager().clearOnDisconnect(uuid);
     }

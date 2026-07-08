@@ -248,13 +248,13 @@ public class PluginLoader {
                 types.addParameterType(AbstractPlayer.class, (input, context) -> {
                     String name = input.readString();
                     AbstractPlayer player = fetchPlayer(name, platform, getHttpClient(), queryMojang);
-                    if (player == null) throw new RuntimeException(localeManager.getMessage("general.player_not_found"));
+                    if (player == null) throw deny(localeManager.getMessage("general.player_not_found"));
                     return player;
                 });
                 types.addParameterType(Account.class, (input, context) -> {
                     String name = input.readString();
                     Account account = fetchPlayer(name, getHttpClient());
-                    if (account == null) throw new RuntimeException(localeManager.getMessage("general.player_not_found"));
+                    if (account == null) throw deny(localeManager.getMessage("general.player_not_found"));
                     return account;
                 });
             });

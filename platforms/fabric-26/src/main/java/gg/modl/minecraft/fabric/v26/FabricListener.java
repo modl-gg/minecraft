@@ -231,7 +231,7 @@ public class FabricListener {
         pendingVerdicts.remove(player.getUUID());
         ListenerHelper.handlePlayerDisconnect(
                 player.getUUID(), player.getName().getString(),
-                getHttpClient(), cache, platform, localeManager,
+                getHttpClient(), cache, loginCache, platform, localeManager,
                 chatMessageCache, bridgeService, registry);
     }
 
