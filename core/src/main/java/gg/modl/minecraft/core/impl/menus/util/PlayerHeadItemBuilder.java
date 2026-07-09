@@ -173,7 +173,7 @@ public final class PlayerHeadItemBuilder {
     }
 
     private static String displayValue(String value, String fallback) {
-        return value != null && !value.isBlank() ? value : fallback;
+        return value != null && !value.trim().isEmpty() ? value : fallback;
     }
 
     static List<String> renderLoreLines(List<String> loreLinesRaw, Map<String, String> vars) {

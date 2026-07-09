@@ -207,7 +207,7 @@ public class ModlBackendReplayUploader implements AutoCloseable {
         URL uploadUrl = parseTrustedHttpUri(init.uploadUrl, "presigned upload URL", true).toURL();
         HttpURLConnection connection = (HttpURLConnection) uploadUrl.openConnection();
         try {
-            String method = (init.method != null && !init.method.isBlank())
+            String method = (init.method != null && !init.method.trim().isEmpty())
                     ? init.method.trim().toUpperCase(Locale.ROOT) : "PUT";
             connection.setRequestMethod(method);
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
@@ -221,7 +221,7 @@ public class ModlBackendReplayUploader implements AutoCloseable {
                 for (Map.Entry<String, String> header : init.requiredHeaders.entrySet()) {
                     String name = header.getKey();
                     String value = header.getValue();
-                    if (name == null || value == null || value.isBlank()) continue;
+                    if (name == null || value == null || value.trim().isEmpty()) continue;
                     // Content-Length is owned by setFixedLengthStreamingMode; never override it.
                     if ("Content-Length".equalsIgnoreCase(name)) continue;
                     if ("Content-Type".equalsIgnoreCase(name)) contentTypeSupplied = true;

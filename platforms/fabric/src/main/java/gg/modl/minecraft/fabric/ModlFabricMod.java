@@ -57,7 +57,7 @@ public class ModlFabricMod implements DedicatedServerModInitializer {
 
     private record MinecraftVersion(int major, int minor, int patch) {
         private static MinecraftVersion parse(String gameVersion) {
-            if (gameVersion == null || gameVersion.isBlank()) {
+            if (gameVersion == null || gameVersion.trim().isEmpty()) {
                 throw new IllegalArgumentException("Malformed Minecraft version: " + gameVersion);
             }
 

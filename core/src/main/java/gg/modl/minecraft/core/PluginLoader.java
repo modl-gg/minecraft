@@ -664,7 +664,7 @@ public class PluginLoader {
                     else if (enabledValue instanceof String) enabled = Boolean.parseBoolean((String) enabledValue);
 
                     Object urlValue = ipLookup.get("url");
-                    if (urlValue instanceof String && !((String) urlValue).isBlank()) {
+                    if (urlValue instanceof String && !((String) urlValue).trim().isEmpty()) {
                         url = (String) urlValue;
                     }
                 }
