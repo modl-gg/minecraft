@@ -372,6 +372,7 @@ public class SyncService {
         for (SyncResponse.Staff2faVerification verification : verifications) {
             try {
                 UUID uuid = UUID.fromString(verification.getMinecraftUuid());
+                if (!awaitingTwoFactorVerification(uuid)) continue;
                 staff2faService.handleVerification(uuid);
                 logger.info("[Sync] Staff 2FA verified for " + verification.getMinecraftUuid());
                 notifyStaff2faVerified(uuid);
@@ -514,9 +515,13 @@ public class SyncService {
         }
     }
 
+    private boolean awaitingTwoFactorVerification(UUID uuid) {
+        return staff2faService.getAuthState(uuid) == Staff2faService.AuthState.PENDING;
+    }
+
     private void handle2faForStaffMember(UUID uuid, AbstractPlayer player, SyncResponse.ActiveStaffMember staffMember) {
         if (staff2faService == null || !staff2faService.isEnabled()) return;
-        if (staff2faService.getAuthState(uuid) != Staff2faService.AuthState.PENDING) return;
+        if (!awaitingTwoFactorVerification(uuid)) return;
 
         if (Boolean.TRUE.equals(staffMember.getTwoFactorSessionValid())) {
             staff2faService.handleVerification(uuid);
