@@ -9,7 +9,9 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,7 +24,14 @@ public class Cache {
 
     @Getter private final CachedProfileRegistry registry;
     private final Map<UUID, StaffPermissions> staffPermissionsCache = new ConcurrentHashMap<>();
-    private final Map<UUID, CachedTexture> skinTextureCache = new ConcurrentHashMap<>();
+    private final Object skinTextureLock = new Object();
+    private final Map<UUID, CachedTexture> skinTextureCache =
+            new LinkedHashMap<UUID, CachedTexture>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<UUID, CachedTexture> eldest) {
+                    return size() > TEXTURE_CACHE_MAX_SIZE;
+                }
+            };
     @Getter private volatile PunishmentTypesResponse cachedPunishmentTypes;
     @Getter private volatile PunishGuiConfig cachedPunishGuiConfig;
     @Getter private volatile ReportGuiConfig cachedReportGuiConfig;
@@ -35,41 +44,38 @@ public class Cache {
     }
 
     public void setOffline(UUID playerUuid) {
-        skinTextureCache.remove(playerUuid);
+        synchronized (skinTextureLock) {
+            skinTextureCache.remove(playerUuid);
+        }
     }
 
     public void cacheSkinTexture(UUID playerUuid, String textureValue) {
         if (textureValue == null) return;
-        if (skinTextureCache.size() >= TEXTURE_CACHE_MAX_SIZE) evictExpiredTextures();
-        if (skinTextureCache.size() >= TEXTURE_CACHE_MAX_SIZE) {
-            Iterator<UUID> it = skinTextureCache.keySet().iterator();
-            if (it.hasNext()) {
-                it.next();
-                it.remove();
-            }
+        synchronized (skinTextureLock) {
+            skinTextureCache.put(playerUuid, new CachedTexture(textureValue, System.currentTimeMillis()));
         }
-        skinTextureCache.put(playerUuid, new CachedTexture(textureValue, System.currentTimeMillis()));
     }
 
     public String getSkinTexture(UUID playerUuid) {
-        CachedTexture entry = skinTextureCache.get(playerUuid);
-        if (entry == null) return null;
-        if (System.currentTimeMillis() - entry.cachedAt > TEXTURE_TTL_MS) {
-            skinTextureCache.remove(playerUuid);
-            return null;
+        synchronized (skinTextureLock) {
+            CachedTexture entry = skinTextureCache.get(playerUuid);
+            if (entry == null) return null;
+            if (entry.isExpired(System.currentTimeMillis())) {
+                skinTextureCache.remove(playerUuid);
+                return null;
+            }
+            return entry.value;
         }
-        return entry.value;
-    }
-
-    private void evictExpiredTextures() {
-        long now = System.currentTimeMillis();
-        skinTextureCache.entrySet().removeIf(e -> now - e.getValue().cachedAt > TEXTURE_TTL_MS);
     }
 
     @AllArgsConstructor
     private static class CachedTexture {
         final String value;
         final long cachedAt;
+
+        private boolean isExpired(long now) {
+            return now - cachedAt > TEXTURE_TTL_MS;
+        }
     }
 
     public String getStaffDisplayName(UUID playerUuid) {
@@ -126,7 +132,8 @@ public class Cache {
     }
 
     public void cacheStaffPermissions(UUID playerUuid, String staffUsername, String staffId, String staffRole, List<String> permissions) {
-        staffPermissionsCache.put(playerUuid, new StaffPermissions(staffUsername, staffId, staffRole, permissions));
+        List<String> cachedPermissions = Collections.unmodifiableList(new ArrayList<>(permissions));
+        staffPermissionsCache.put(playerUuid, new StaffPermissions(staffUsername, staffId, staffRole, cachedPermissions));
     }
 
     public void removeStaffPermissions(UUID playerUuid) {
@@ -149,9 +156,12 @@ public class Cache {
     public void clear() {
         registry.clear();
         staffPermissionsCache.clear();
-        skinTextureCache.clear();
+        synchronized (skinTextureLock) {
+            skinTextureCache.clear();
+        }
         cachedPunishmentTypes = null;
         cachedPunishGuiConfig = null;
+        cachedReportGuiConfig = null;
         punishmentTypeItems = null;
     }
 
@@ -179,6 +189,10 @@ public class Cache {
 
     public void cacheReportGuiConfig(ReportGuiConfig config) {
         this.cachedReportGuiConfig = config;
+    }
+
+    public void clearReportGuiConfig() {
+        this.cachedReportGuiConfig = null;
     }
 
 }

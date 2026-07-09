@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Date;
 
 public final class PunishmentMessages {
     private static final String FALLBACK_MUTE_MESSAGE = "\u00a7cYou are muted!";
@@ -112,7 +113,7 @@ public final class PunishmentMessages {
                 : localeManager.getMessage("punishment_words.temporarily"));
         variables.put("for_duration", computeForDuration(punishment));
 
-        java.util.Date issuedDate = punishment.getIssuedAsDate();
+        Date issuedDate = punishment.getIssuedAsDate();
         variables.put("issued", issuedDate != null ? DateFormatter.format(issuedDate) : Constants.UNKNOWN);
 
         String playerDesc = punishment.getPlayerDescription();

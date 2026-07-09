@@ -1,11 +1,14 @@
 #!/bin/bash
 set -e
 
-echo "=== Building internal modules ==="
-./gradlew :api:build :core:build :bridge-core:build
+echo "=== Publishing forked PacketEvents to Maven Local ==="
+../minecraft-packetevents/gradlew -p ../minecraft-packetevents publishToMavenLocal
 
 echo "=== Building forked PacketEvents Fabric jar ==="
 ../minecraft-packetevents/gradlew -p ../minecraft-packetevents :fabric:jar
+
+echo "=== Building internal modules ==="
+./gradlew :api:build :core:build :bridge-core:build
 
 echo "=== Building Fabric shell ==="
 ./gradlew :platforms:fabric:remapJar

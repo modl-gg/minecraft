@@ -4,6 +4,7 @@ import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
 import revxrsal.commands.command.CommandActor;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
+import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.PunishmentPreviewResponse;
@@ -21,7 +22,8 @@ import lombok.RequiredArgsConstructor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import java.util.concurrent.CompletableFuture;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class StandingCommand {
@@ -43,30 +45,38 @@ public class StandingCommand {
 
         if (!checkCooldown(actor, uuid)) return;
 
-        CachedProfile profile = cache.getPlayerProfile(uuid);
-        if (profile != null) profile.getCooldowns().set(COOLDOWN_KEY);
-
-        actor.reply(localeManager.getMessage("standing.loading"));
+        replyOnMainThread(actor, "standing.loading");
 
         ModlHttpClient httpClient = httpClientHolder.getClient();
-        httpClient.getPlayerProfile(uuid).thenAccept(profileResponse -> {
+        httpClient.getPlayerProfile(uuid).thenCompose(profileResponse -> {
             if (profileResponse == null) {
-                actor.reply(localeManager.getMessage("standing.error"));
-                return;
+                replyOnMainThread(actor, "standing.error");
+                return CompletableFuture.completedFuture(null);
             }
 
             Account account = profileResponse.getProfile();
-            PunishmentPreviewResponse previewData = loadPreviewData(httpClient, uuid);
-            Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = loadPunishmentTypes(httpClient);
+            if (account == null) {
+                replyOnMainThread(actor, "standing.error");
+                return CompletableFuture.completedFuture(null);
+            }
 
-            StandingMenu menu = new StandingMenu(
-                platform, httpClient, uuid,
-                platform.getAbstractPlayer(uuid, false).getUsername(),
-                account, previewData, configManager.getStandingGuiConfig(), localeManager, typesByOrdinal);
-            CirrusPlayerWrapper player = platform.getPlayerWrapper(uuid);
-            menu.display(player);
+            CompletableFuture<PunishmentPreviewResponse> previewFuture = loadPreviewData(httpClient, uuid);
+            CompletableFuture<Map<Integer, PunishmentTypesResponse.PunishmentTypeData>> typesFuture = loadPunishmentTypes(httpClient);
+
+            return previewFuture.thenCombine(typesFuture,
+                    (previewData, typesByOrdinal) -> new StandingData(account, previewData, typesByOrdinal));
+        }).thenAccept(data -> {
+            if (data == null) return;
+            platform.runOnMainThread(() -> {
+                if (displayStandingMenu(httpClient, uuid, data)) {
+                    CachedProfile profile = cache.getPlayerProfile(uuid);
+                    if (profile != null) profile.getCooldowns().set(COOLDOWN_KEY);
+                } else {
+                    actor.reply(localeManager.getMessage("standing.error"));
+                }
+            });
         }).exceptionally(throwable -> {
-            actor.reply(localeManager.getMessage("standing.error"));
+            replyOnMainThread(actor, "standing.error");
             return null;
         });
     }
@@ -78,29 +88,68 @@ public class StandingCommand {
 
         long remaining = profile.getCooldowns().getRemainingMs(COOLDOWN_KEY, COOLDOWN_MS);
         int seconds = (int) Math.ceil(remaining / 1000.0);
-        actor.reply(localeManager.getMessage("standing.cooldown",
-                mapOf("seconds", String.valueOf(seconds))));
+        platform.runOnMainThread(() -> actor.reply(localeManager.getMessage("standing.cooldown",
+                mapOf("seconds", String.valueOf(seconds)))));
         return false;
     }
 
-    private PunishmentPreviewResponse loadPreviewData(ModlHttpClient httpClient, UUID uuid) {
-        try {
-            PunishmentPreviewResponse preview = httpClient.getPunishmentPreview(uuid, PREVIEW_TYPE_ORDINAL).join();
-            return (preview != null && preview.isSuccess()) ? preview : null;
-        } catch (Exception ignored) {
-            return null;
+    private boolean displayStandingMenu(ModlHttpClient httpClient, UUID uuid, StandingData data) {
+        AbstractPlayer abstractPlayer = platform.getAbstractPlayer(uuid, false);
+        CirrusPlayerWrapper player = platform.getPlayerWrapper(uuid);
+        if (abstractPlayer == null || player == null) {
+            return false;
         }
+
+        StandingMenu menu = createMenu(httpClient, uuid, abstractPlayer.getUsername(),
+                data.account, data.previewData, data.typesByOrdinal);
+        displayMenu(menu, player);
+        return true;
     }
 
-    private Map<Integer, PunishmentTypesResponse.PunishmentTypeData> loadPunishmentTypes(ModlHttpClient httpClient) {
-        Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
-        try {
-            PunishmentTypesResponse typesResponse = httpClient.getPunishmentTypes().join();
+    protected StandingMenu createMenu(ModlHttpClient httpClient, UUID uuid, String username, Account account,
+                                      PunishmentPreviewResponse previewData,
+                                      Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal) {
+        return new StandingMenu(
+                platform, httpClient, uuid, username,
+                account, previewData, configManager.getStandingGuiConfig(), localeManager, typesByOrdinal);
+    }
+
+    protected void displayMenu(StandingMenu menu, CirrusPlayerWrapper player) {
+        menu.display(player);
+    }
+
+    private void replyOnMainThread(CommandActor actor, String messagePath) {
+        platform.runOnMainThread(() -> actor.reply(localeManager.getMessage(messagePath)));
+    }
+
+    private CompletableFuture<PunishmentPreviewResponse> loadPreviewData(ModlHttpClient httpClient, UUID uuid) {
+        return httpClient.getPunishmentPreview(uuid, PREVIEW_TYPE_ORDINAL).handle((preview, throwable) -> {
+            if (throwable != null) return null;
+            return (preview != null && preview.isSuccess()) ? preview : null;
+        });
+    }
+
+    private CompletableFuture<Map<Integer, PunishmentTypesResponse.PunishmentTypeData>> loadPunishmentTypes(ModlHttpClient httpClient) {
+        return httpClient.getPunishmentTypes().handle((typesResponse, throwable) -> {
+            Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
+            if (throwable != null) return typesByOrdinal;
             if (typesResponse != null && typesResponse.isSuccess() && typesResponse.getData() != null)
                 for (PunishmentTypesResponse.PunishmentTypeData type : typesResponse.getData())
                     typesByOrdinal.put(type.getOrdinal(), type);
-        } catch (Exception ignored) {
+            return typesByOrdinal;
+        });
+    }
+
+    private static class StandingData {
+        private final Account account;
+        private final PunishmentPreviewResponse previewData;
+        private final Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal;
+
+        private StandingData(Account account, PunishmentPreviewResponse previewData,
+                             Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal) {
+            this.account = account;
+            this.previewData = previewData;
+            this.typesByOrdinal = typesByOrdinal;
         }
-        return typesByOrdinal;
     }
 }

@@ -3,6 +3,7 @@ package gg.modl.minecraft.fabric.v26;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
+import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 import gg.modl.minecraft.core.cache.LoginCache;
@@ -21,6 +22,7 @@ import gg.modl.minecraft.core.service.sync.SyncService;
 import gg.modl.minecraft.core.util.ChatEventHandler;
 import gg.modl.minecraft.core.util.IpApiClient;
 import gg.modl.minecraft.core.util.ListenerHelper;
+import gg.modl.minecraft.core.util.LoginExecutor;
 import gg.modl.minecraft.core.util.LoginHandler;
 import gg.modl.minecraft.core.util.WebPlayer;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
@@ -32,12 +34,19 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
+import net.minecraft.network.chat.Component;
 
 public class FabricListener {
     private static final long LOGIN_TIMEOUT_SECONDS = 10;
+    private static final int LOGIN_EXECUTOR_THREADS = 4;
+    private static final int LOGIN_QUEUE_CAPACITY = 64;
 
     private final FabricPlatform platform;
     private final Cache cache;
@@ -59,6 +68,9 @@ public class FabricListener {
     private final CachedProfileRegistry registry;
     private final boolean debugMode;
     private final MinecraftServer server;
+    private final LoginExecutor loginExecutor = new LoginExecutor(
+            "modl-fabric-login", LOGIN_EXECUTOR_THREADS, LOGIN_QUEUE_CAPACITY);
+    private final Set<UUID> pendingVerdicts = ConcurrentHashMap.newKeySet();
 
     public FabricListener(FabricPlatform platform, Cache cache, HttpClientHolder httpClientHolder,
                           ChatMessageCache chatMessageCache, SyncService syncService,
@@ -106,15 +118,19 @@ public class FabricListener {
         String playerName = player.getName().getString();
         String ipAddress = player.getIpAddress();
 
-        CompletableFuture.runAsync(() -> {
-            try {
-                LoginCache.CachedLoginResult cached = loginCache.getCachedLoginResult(uuid);
-                if (cached != null) {
-                    platform.getLogger().debug("Using cached login result for " + playerName);
-                    handleLoginSuccess(uuid, playerName, ipAddress, cached.getResponse(), cached.getIpInfo());
-                    return;
-                }
+        pendingVerdicts.add(uuid);
 
+        // Synchronous cached fast-path (already on the main thread): deny banned players
+        // before they enter the world when the verdict is already known.
+        LoginCache.CachedLoginResult cached = loginCache.getCachedLoginResult(uuid);
+        if (cached != null) {
+            platform.getLogger().debug("Using cached login result for " + playerName);
+            handleLoginSuccess(uuid, playerName, ipAddress, cached.getResponse(), cached.getIpInfo());
+            return;
+        }
+
+        try {
+            loginExecutor.runAsync(() -> {
                 CompletableFuture<Map<String, Object>> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
                 CompletableFuture<WebPlayer> webPlayerFuture = WebPlayer.get(uuid);
 
@@ -122,20 +138,23 @@ public class FabricListener {
                     String skinHash = (webPlayer != null && webPlayer.isValid()) ? webPlayer.getSkin() : null;
                     PlayerLoginRequest request = new PlayerLoginRequest(
                             uuid.toString(), playerName, ipAddress, skinHash, platform.getServerName(), ipInfo);
+                    request.setServerInstanceId(StartupClient.getServerInstanceId());
                     return new Object[]{request, ipInfo, skinHash};
                 }).thenCompose(data -> {
                     PlayerLoginRequest request = (PlayerLoginRequest) data[0];
                     @SuppressWarnings("unchecked")
                     Map<String, Object> ipInfo = (Map<String, Object>) data[1];
                     String skinHash = (String) data[2];
-                    return getHttpClient().playerLogin(request).thenAccept(response -> {
-                        loginCache.cacheLoginResult(uuid, response, ipInfo, skinHash);
-                        ListenerHelper.handlePendingIpLookups(
-                                getHttpClient(), response, uuid.toString(),
-                                ipAddress, CompletableFuture.completedFuture(ipInfo),
-                                platform.getLogger());
-                        handleLoginSuccess(uuid, playerName, ipAddress, response, ipInfo);
-                    });
+                    return getHttpClient().playerLogin(request)
+                            .orTimeout(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                            .thenAccept(response -> {
+                                loginCache.cacheLoginResult(uuid, response, ipInfo, skinHash);
+                                ListenerHelper.handlePendingIpLookups(
+                                        getHttpClient(), response, uuid.toString(),
+                                        ipAddress, CompletableFuture.completedFuture(ipInfo),
+                                        platform.getLogger());
+                                handleLoginSuccess(uuid, playerName, ipAddress, response, ipInfo);
+                            });
                 }).exceptionally(throwable -> {
                     platform.getLogger().warning("Failed to check punishments for " + playerName + ": " + throwable.getMessage());
                     Exception error = throwable instanceof Exception
@@ -143,29 +162,37 @@ public class FabricListener {
                             : new RuntimeException(throwable);
                     LoginHandler.LoginResult errorResult = LoginHandler.handleLoginError(error);
                     if (errorResult instanceof LoginHandler.LoginResult.Denied denied) {
-                        server.execute(() -> platform.kickPlayer(
-                                platform.getAbstractPlayer(uuid, false), denied.getMessage()));
+                        kickForLoginFailure(uuid, denied.getMessage());
                     } else {
-                        completeJoin(uuid, playerName, null);
+                        kickForLoginFailure(uuid, "Unable to verify ban status. Login temporarily restricted for safety.");
                     }
                     return null;
-                }).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            } catch (Exception e) {
-                platform.getLogger().warning("Async login timed out for " + playerName + ": " + e.getMessage());
-                completeJoin(uuid, playerName, null);
-            }
-        });
+                });
+            });
+        } catch (RejectedExecutionException e) {
+            platform.getLogger().warning("Login executor rejected " + playerName + " - blocking login for safety");
+            kickForLoginFailure(uuid, "Login verification is temporarily unavailable. Please try again.");
+        }
+    }
+
+    private void kickForLoginFailure(UUID uuid, String reason) {
+        pendingVerdicts.remove(uuid);
+        server.execute(() -> platform.kickPlayer(platform.getAbstractPlayer(uuid, false), reason));
+    }
+
+    public void shutdown() {
+        loginExecutor.shutdown();
     }
 
     private void handleLoginSuccess(UUID uuid, String playerName, String ipAddress,
-                                    gg.modl.minecraft.api.http.response.PlayerLoginResponse response,
+                                    PlayerLoginResponse response,
                                     Map<String, Object> ipInfo) {
         LoginHandler.LoginResult result = LoginHandler.processLoginResponse(
                 response, uuid, getHttpClient(), localeManager, syncService,
                 maintenanceService, cache, debugMode, platform.getLogger());
 
         if (result instanceof LoginHandler.LoginResult.Denied denied) {
-            server.execute(() -> platform.kickPlayer(platform.getAbstractPlayer(uuid, false), denied.getMessage()));
+            kickForLoginFailure(uuid, denied.getMessage());
             return;
         }
 
@@ -173,8 +200,10 @@ public class FabricListener {
     }
 
     private void completeJoin(UUID uuid, String playerName,
-                              gg.modl.minecraft.api.http.response.PlayerLoginResponse response) {
+                              PlayerLoginResponse response) {
+        pendingVerdicts.remove(uuid);
         server.execute(() -> {
+            if (!platform.isOnline(uuid)) return;
             ListenerHelper.handlePlayerJoin(
                     uuid, playerName, platform, cache, localeManager, staff2faService, syncService);
             cacheSkinTexture(uuid);
@@ -199,17 +228,21 @@ public class FabricListener {
     }
 
     private void onPlayerDisconnect(ServerPlayer player) {
+        pendingVerdicts.remove(player.getUUID());
         ListenerHelper.handlePlayerDisconnect(
                 player.getUUID(), player.getName().getString(),
-                getHttpClient(), cache, platform, localeManager,
+                getHttpClient(), cache, loginCache, platform, localeManager,
                 chatMessageCache, bridgeService, registry);
     }
 
     private boolean onChatMessage(PlayerChatMessage message, ServerPlayer player, ChatType.Bound params) {
+        if (pendingVerdicts.contains(player.getUUID())) {
+            return false;
+        }
         ChatEventHandler.Result result = ChatEventHandler.handleChat(
                 player.getUUID(), player.getName().getString(), message.signedContent(),
                 platform.getServerName(),
-                msg -> player.sendSystemMessage(net.minecraft.network.chat.Component.literal(msg), false),
+                msg -> player.sendSystemMessage(Component.literal(msg), false),
                 platform, cache, localeManager, chatMessageCache,
                 staffChatService, staffChatConfig, chatManagementService,
                 freezeService, chatCommandLogService, networkChatInterceptService);

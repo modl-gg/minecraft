@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
+import dev.simplix.cirrus.Cirrus;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -258,9 +259,12 @@ public class PunishMenu extends BaseInspectMenu {
     }
 
     private void handlePunishmentType(Click click, PunishmentTypesResponse.PunishmentTypeData type) {
-        ActionHandlers.openMenu(
+        ActionHandlers.openAsync(c ->
                 new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, type, parentBackAction,
-                        player -> new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction).display(player)))
+                        player -> Cirrus.executor().execute(() -> {
+                            PunishMenu m = new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction);
+                            platform.runOnMainThread(() -> m.display(player));
+                        })))
                 .handle(click);
     }
 }

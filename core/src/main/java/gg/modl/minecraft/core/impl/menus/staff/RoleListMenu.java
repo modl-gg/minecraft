@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
@@ -42,6 +43,7 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
     private final List<Role> roles = new ArrayList<>();
     private final String panelUrl;
     private final boolean hasPermission;
+    @Getter private CompletableFuture<Void> dataFuture;
 
     public RoleListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                         boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
@@ -53,16 +55,17 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
         this.hasPermission = cache != null && cache.hasPermission(viewerUuid, Permissions.SETTINGS_MODIFY);
 
         if (hasPermission)
-            fetchRoles();
+            this.dataFuture = fetchRoles();
+        else
+            this.dataFuture = CompletableFuture.completedFuture(null);
     }
 
-    private void fetchRoles() {
-        try {
-            RolesListResponse response = httpClient.getRoles().join();
+    private CompletableFuture<Void> fetchRoles() {
+        return httpClient.getRoles().thenAccept(response -> {
             if (response != null && response.getRoles() != null) {
                 roles.clear();
                 for (RolesListResponse.RoleEntry entry : response.getRoles()) {
-                    if ("Super Admin".equals(entry.getName())) {
+                    if (entry.getId() != null && entry.getId().contains("super-admin")) {
                         continue;
                     }
                     roles.add(new Role(
@@ -73,7 +76,7 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
                     ));
                 }
             }
-        } catch (Exception ignored) {}
+        }).exceptionally(e -> null);
     }
 
     @Override
@@ -139,7 +142,10 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
 
         ActionHandlers.openMenu(
                 new RolePermissionEditMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, role,
-                        player -> new RoleListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction).display(player)))
+                        player -> {
+                            RoleListMenu m = new RoleListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
+                            StaffNavigationHandlers.displayWhenLoaded(platform, m.getDataFuture(), player, m::display);
+                        }))
                 .handle(click);
     }
 

@@ -15,7 +15,8 @@ import java.util.List;
 import java.util.UUID;
 import gg.modl.minecraft.core.util.PluginLogger;
 import lombok.Setter;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public class BridgeMessageDispatcher {
     private final Platform platform;

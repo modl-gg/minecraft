@@ -2,12 +2,10 @@ package gg.modl.minecraft.core.impl.commands.staff;
 
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.Modification;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.HistoryMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -18,6 +16,7 @@ import gg.modl.minecraft.core.util.PunishmentTypeCacheManager;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.annotation.Named;
 import revxrsal.commands.command.CommandActor;
 
@@ -26,7 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class HistoryCommand {
@@ -38,8 +37,8 @@ public class HistoryCommand {
 
     @Command("history")
     @Description("Open the punishment history menu for a player, or use -p to print to chat")
-    @PlayerOnly @StaffOnly
-    public void history(CommandActor actor, @Named("player") String playerQuery, @revxrsal.commands.annotation.Optional String flags) {
+    @StaffOnly
+    public void history(CommandActor actor, @Named("player") String playerQuery, @Optional String flags) {
         if (flags == null) flags = "";
         int page = Pagination.parsePrintFlags(flags);
         boolean printMode = page > 0;
@@ -123,7 +122,7 @@ public class HistoryCommand {
                 if (isKick)
                     actor.reply(localeManager.getMessage("print.history.entry_kick", vars));
                 else {
-                    Date pardonDate = findPardonDate(punishment);
+                    Date pardonDate = punishment.getPardonDate();
 
                     if (pardonDate != null) {
                         long pardonedAgo = System.currentTimeMillis() - pardonDate.getTime();
@@ -158,14 +157,6 @@ public class HistoryCommand {
         }
 
         actor.reply(localeManager.getMessage("print.history.footer"));
-    }
-
-    private Date findPardonDate(Punishment punishment) {
-        for (Modification mod : punishment.getModifications())
-            if (mod.getType() == Modification.Type.MANUAL_PARDON ||
-                mod.getType() == Modification.Type.APPEAL_ACCEPT)
-                return mod.getIssued();
-        return null;
     }
 
 }

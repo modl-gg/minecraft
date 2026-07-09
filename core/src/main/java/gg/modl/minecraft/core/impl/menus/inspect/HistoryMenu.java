@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
+import dev.simplix.cirrus.Cirrus;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -16,6 +17,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource;
+import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource.FetchResult;
 import gg.modl.minecraft.core.impl.menus.util.InspectContext;
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
@@ -23,17 +25,26 @@ import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     private static final int PAGE_SIZE = 7;
 
     private final Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
     private final PaginatedDataSource<Punishment> dataSource;
-    private int pendingPage = -1;
+    private int pageRefreshRequest;
 
     public HistoryMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                        Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
@@ -49,15 +60,15 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
         int totalCount = inspectContext != null ? inspectContext.punishmentCount() : targetAccount.getPunishments().size();
         dataSource = new PaginatedDataSource<>(PAGE_SIZE, (page, limit) -> {
-            CompletableFuture<PaginatedDataSource.FetchResult<Punishment>> future = new CompletableFuture<>();
+            CompletableFuture<FetchResult<Punishment>> future = new CompletableFuture<>();
             httpClient.getPlayerPunishments(targetUuid, page, limit).thenAccept(response -> {
                 if (response.getStatus() == 200) {
-                    future.complete(new PaginatedDataSource.FetchResult<>(response.getPunishments(), response.getTotalCount()));
+                    future.complete(new FetchResult<>(response.getPunishments(), response.getTotalCount()));
                 } else {
-                    future.complete(new PaginatedDataSource.FetchResult<>(listOf(), 0));
+                    future.complete(new FetchResult<>(listOf(), 0, false));
                 }
             }).exceptionally(e -> {
-                future.complete(new PaginatedDataSource.FetchResult<>(listOf(), totalCount));
+                future.complete(new FetchResult<>(listOf(), totalCount, false));
                 return null;
             });
             return future;
@@ -84,17 +95,14 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     protected boolean interceptNextPage(Click click) {
         int nextPage = currentPageIndex().get() + 1;
         if (!dataSource.isPageLoaded(nextPage)) {
-            pendingPage = nextPage;
-            dataSource.setOnDataLoaded(() -> {
-                pendingPage = -1;
+            int refreshRequest = ++pageRefreshRequest;
+            dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1, () -> {
+                if (refreshRequest != pageRefreshRequest) return;
                 HistoryMenu newMenu = new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
                 newMenu.dataSource.initialize(dataSource.getAllLoadedItems(), dataSource.getTotalCount());
-                newMenu.display(click.player());
                 newMenu.setInitialPage(nextPage);
-                click.player().sendMessage(""); // force display refresh
                 newMenu.display(click.player());
             });
-            dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1);
             return true;
         }
         dataSource.prefetchIfNeeded(nextPage);
@@ -151,7 +159,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         }
 
         String statusLine;
-        Date pardonDate = isKick ? null : findPardonDate(punishment);
+        Date pardonDate = isKick ? null : punishment.getPardonDate();
         if (isKick) {
             statusLine = "";
         } else if (pardonDate != null) {
@@ -279,7 +287,10 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
         ActionHandlers.openMenu(
                 new ModifyPunishmentMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishment, backAction,
-                        p -> new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext).display(p)))
+                        p -> Cirrus.executor().execute(() -> {
+                            HistoryMenu m = new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
+                            platform.runOnMainThread(() -> m.display(p));
+                        })))
                 .handle(click);
     }
 
@@ -293,20 +304,6 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
         registerActionHandler("openHistory", click -> {});
     }
 
-    private Date findPardonDate(Punishment punishment) {
-        List<Modification> modifications = punishment.getModifications();
-        if (modifications.isEmpty())
-            return null;
-
-        for (Modification mod : modifications) {
-            if (mod.getType() == Modification.Type.MANUAL_PARDON ||
-                mod.getType() == Modification.Type.APPEAL_ACCEPT) {
-                return mod.getIssued();
-            }
-        }
-        return null;
-    }
-
     private Long getEffectiveDuration(Punishment punishment) {
         List<Modification> modifications = punishment.getModifications();
         if (modifications.isEmpty())
@@ -314,8 +311,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
         Long effectiveDuration = punishment.getDuration();
         for (Modification mod : modifications) {
-            if (mod.getType() == Modification.Type.MANUAL_DURATION_CHANGE ||
-                mod.getType() == Modification.Type.APPEAL_DURATION_CHANGE) {
+            if (mod.getType() == Modification.Type.MANUAL_DURATION_CHANGE) {
                 Long modDuration = mod.getEffectiveDuration();
                 if (modDuration == null || modDuration <= 0)
                     effectiveDuration = null;
@@ -327,7 +323,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     }
 
     private boolean isPunishmentEffectivelyActive(Punishment punishment, Long effectiveDuration) {
-        if (findPardonDate(punishment) != null)
+        if (punishment.getPardonDate() != null)
             return false;
 
         if (!punishment.isActive())

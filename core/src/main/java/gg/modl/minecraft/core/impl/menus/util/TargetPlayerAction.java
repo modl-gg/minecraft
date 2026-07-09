@@ -1,15 +1,15 @@
 package gg.modl.minecraft.core.impl.menus.util;
 
 import dev.simplix.cirrus.model.Click;
-import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.util.Permissions;
+import gg.modl.minecraft.core.util.StaffCommandUtil;
+import gg.modl.minecraft.core.util.StaffCommandUtil.StaffDisplay;
 
-import java.util.Map;
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public final class TargetPlayerAction {
     private TargetPlayerAction() {}
@@ -45,15 +45,9 @@ public final class TargetPlayerAction {
     }
 
     private static void enterStaffMode(Platform platform, StaffModeService staffModeService, UUID viewerUuid) {
-        staffModeService.enable(viewerUuid);
-        AbstractPlayer staffPlayer = platform.getPlayer(viewerUuid);
-        String inGameName = staffPlayer != null ? staffPlayer.getName() : "Staff";
-        String panelName = platform.getCache() != null ? platform.getCache().getStaffDisplayName(viewerUuid) : null;
-        if (panelName == null) panelName = inGameName;
-        platform.sendMessage(viewerUuid, platform.getLocaleManager().getMessage("staff_mode.enabled"));
-        platform.staffBroadcast(platform.getLocaleManager().getMessage("staff_mode.enabled_broadcast", mapOf(
-                "staff", panelName, "in-game-name", inGameName)));
         BridgeService bridgeService = platform.getBridgeService();
-        if (bridgeService != null) bridgeService.sendStaffModeEnter(viewerUuid.toString(), inGameName, panelName);
+        StaffDisplay display = StaffCommandUtil.resolvePlayerDisplay(viewerUuid, platform, platform.getCache(), "Staff");
+        StaffCommandUtil.enableStaffModeForPlayer(platform, viewerUuid, staffModeService, bridgeService,
+                platform.getLocaleManager(), display);
     }
 }

@@ -38,6 +38,10 @@ public class LoginCache {
         loginResultCache.put(playerUuid, new CachedLoginResult(response, ipInfo, skinHash, Instant.now()));
     }
 
+    public void invalidateLoginResult(UUID playerUuid) {
+        loginResultCache.remove(playerUuid);
+    }
+
     public void storePreLoginResult(UUID playerUuid, PreLoginResult result) {
         preLoginResults.put(playerUuid, result);
     }

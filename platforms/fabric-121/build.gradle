@@ -23,6 +23,7 @@ repositories {
     maven { url "https://jitpack.io" }
     maven { url "https://repo.aikar.co/content/groups/aikar/" }
     maven { url "https://repo.alessiodp.com/snapshots/" }
+    mavenLocal()
 }
 
 dependencies {

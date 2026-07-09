@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class IAmMutedCommand {

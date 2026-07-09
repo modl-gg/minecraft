@@ -18,13 +18,14 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.command.CommandActor;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class StaffListCommand {
@@ -38,7 +39,7 @@ public class StaffListCommand {
     @Command("stafflist")
     @Description("List all online staff members")
     @StaffOnly
-    public void staffList(CommandActor actor, @revxrsal.commands.annotation.Optional String flag) {
+    public void staffList(CommandActor actor, @Optional String flag) {
         int page = flag != null ? Pagination.parsePrintFlags(flag) : 0;
         boolean printMode = page > 0;
 
@@ -55,9 +56,15 @@ public class StaffListCommand {
 
         StaffMembersMenu menu = new StaffMembersMenu(
                 platform, httpClientHolder.getClient(), viewerUuid, viewerName, isAdmin, panelUrl, null);
-        menu.getDataFuture().thenRun(() -> {
-            CirrusPlayerWrapper player = platform.getPlayerWrapper(viewerUuid);
-            if (player != null) menu.display(player);
+        menu.getDataFuture().whenComplete((unused, throwable) -> {
+            if (throwable != null) {
+                gg.modl.minecraft.core.util.CommandUtil.handleException(actor, throwable, localeManager);
+                return;
+            }
+            platform.runOnMainThread(() -> {
+                CirrusPlayerWrapper player = platform.getPlayerWrapper(viewerUuid);
+                if (player != null) menu.display(player);
+            });
         });
     }
 

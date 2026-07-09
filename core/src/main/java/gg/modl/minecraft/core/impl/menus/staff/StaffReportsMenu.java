@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
-import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.CirrusClickType;
@@ -29,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report> {
@@ -56,6 +56,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
     private String currentFilter = "all", currentStatusFilter = "open";
     private final List<String> filterOptions = Arrays.asList("all", "gameplay", "chat");
     private final String panelUrl;
+    @Getter private CompletableFuture<Void> dataFuture;
 
     public StaffReportsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                             boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
@@ -63,38 +64,27 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         this.panelUrl = panelUrl;
         activeTab = StaffTab.REPORTS;
 
-        fetchReports();
+        this.dataFuture = fetchReports();
     }
 
-    private void fetchReports() {
-        try {
-            httpClient.getReports("all").thenAccept(response -> {
-                if (response.isSuccess() && response.getReports() != null) {
-                    reports.clear();
-                    for (ReportsResponse.Report report : response.getReports()) {
-                        UUID reportedUuid = null;
-                        try {
-                            if (report.getReportedPlayerUuid() != null) {
-                                reportedUuid = UUID.fromString(report.getReportedPlayerUuid());
-                            }
-                        } catch (Exception ignored) {}
-
-                        String type = report.getType() != null ? report.getType() : report.getCategory();
-                        if ("player".equalsIgnoreCase(type)) type = "gameplay";
-                        reports.add(new Report(
-                                report.getId(),
-                                type,
-                                report.getReporterName(),
-                                report.getReportedPlayerName(),
-                                report.getContent() != null ? report.getContent() : report.getSubject(),
-                                report.getStatus(),
-                                reportedUuid,
-                                report.getCreatedAt()
-                        ));
-                    }
+    private CompletableFuture<Void> fetchReports() {
+        return httpClient.getReports("all").thenAccept(response -> {
+            if (response.isSuccess() && response.getReports() != null) {
+                reports.clear();
+                for (ReportsResponse.Report report : response.getReports()) {
+                    reports.add(new Report(
+                            report.getId(),
+                            ReportRenderUtil.normalizeReportType(report),
+                            report.getReporterName(),
+                            report.getReportedPlayerName(),
+                            ReportRenderUtil.getReportContent(report),
+                            report.getStatus(),
+                            ReportRenderUtil.parseReportedPlayerUuid(report),
+                            report.getCreatedAt()
+                    ));
                 }
-            }).join();
-        } catch (Exception ignored) {}
+            }
+        }).exceptionally(e -> null);
     }
 
     public StaffReportsMenu withFilter(String filter) {
@@ -187,7 +177,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
 
             StaffReportsMenu refreshed = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
                     .withFilter(currentFilter).withStatusFilter(currentStatusFilter);
-            ActionHandlers.openMenu(refreshed).handle(click);
+            StaffNavigationHandlers.displayWhenLoaded(platform, refreshed.getDataFuture(), click.player(), refreshed::display);
         }).exceptionally(e -> {
             sendMessage(MenuItems.COLOR_RED + "Failed to dismiss report: " + e.getMessage());
             return null;
@@ -205,7 +195,10 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
         httpClient.getPlayerProfile(report.getReportedPlayerUuid()).thenAccept(response -> {
             if (response.getStatus() == 200) {
                 new InspectMenu(platform, httpClient, viewerUuid, viewerName, response.getProfile(),
-                    p -> new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p))
+                    p -> {
+                        StaffReportsMenu m = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null);
+                        StaffNavigationHandlers.displayWhenLoaded(platform, m.getDataFuture(), p, m::display);
+                    })
                     .display(click.player());
             } else {
                 sendMessage(MenuItems.COLOR_RED + "Failed to load player profile");
@@ -232,21 +225,19 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
     private void handleFilter(Click click) {
         if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
             String newStatus = "open".equalsIgnoreCase(currentStatusFilter) ? "closed" : "open";
-            ActionHandlers.openMenu(
-                    new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
-                            .withFilter(currentFilter)
-                            .withStatusFilter(newStatus))
-                    .handle(click);
+            StaffReportsMenu menu = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
+                    .withFilter(currentFilter)
+                    .withStatusFilter(newStatus);
+            StaffNavigationHandlers.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
         } else {
             int currentIndex = filterOptions.indexOf(currentFilter);
             int nextIndex = (currentIndex + 1) % filterOptions.size();
             String newFilter = filterOptions.get(nextIndex);
 
-            ActionHandlers.openMenu(
-                    new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
-                            .withFilter(newFilter)
-                            .withStatusFilter(currentStatusFilter))
-                    .handle(click);
+            StaffReportsMenu menu = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
+                    .withFilter(newFilter)
+                    .withStatusFilter(currentStatusFilter);
+            StaffNavigationHandlers.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
         }
     }
 }

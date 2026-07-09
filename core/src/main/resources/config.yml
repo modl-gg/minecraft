@@ -36,9 +36,17 @@ chat_management:
 
 # Sync Configuration
 sync:
-  # How often to sync with the panel (in seconds)
-  # Default: 2 seconds. Minimum: 1 second
-  polling_rate: 2
+  # DEPRECATED: sync is now websocket-push driven; this value no longer controls a periodic poll.
+  # It is only used as the interval (in seconds, minimum 30) for the slow fallback fetch that runs
+  # while the websocket is unavailable, so a kill-switched or older backend still stays in sync.
+  polling_rate: 60
+
+# Realtime Configuration
+# The WebSocket is the live channel: the backend pushes punishments, notifications, and other
+# deltas, and each (re)connect performs one full baseline fetch. Disable only to fall back to the
+# slow HTTP fetch above (kill-switch).
+realtime:
+  enabled: true
 
 # Update Checker Configuration
 update_checker:
@@ -47,6 +55,13 @@ update_checker:
   # How often to check for updates (in minutes)
   # Default: 60 minutes. Minimum: 1 minute
   interval_minutes: 60
+
+# Public IP Enrichment
+# Resolves geolocation/ISP/proxy metadata for player IPs via an HTTPS provider.
+# Used by the panel to populate pendingIpLookups. Only https:// URLs are accepted.
+ip-lookup:
+  enabled: true
+  url: "https://ipwho.is/{ip}"
 
 # Commands that muted players cannot use
 # List command names without the leading slash
@@ -111,11 +126,11 @@ migration:
       # Database connection details for LiteBans migration
       # The plugin will try to auto-detect from LiteBans config first
       # If LiteBans is not found, these settings will be used as fallback
-      host: "localhost"
+      host: "litebans-database-host"
       port: 3306
-      database: "minecraft"
-      username: "root"
-      password: ""
+      database: "litebans_database"
+      username: "litebans_user"
+      password: "change-me"
       # Supported types: mysql, mariadb, postgresql, h2
       type: "mysql"
       # Table prefix for LiteBans tables (default: "litebans_")

@@ -14,9 +14,8 @@ public final class TimeUtil {
             MILLIS_PER_MONTH = 30 * MILLIS_PER_DAY;
 
     public static String formatTimeMillis(long millis) {
-        long seconds = (millis / 1000L) + 1;
-
-        if (seconds < 1) return "0 seconds";
+        if (millis <= 0) return "0 seconds";
+        long seconds = (millis + 999) / 1000L;
 
         long minutes = seconds / 60;
         seconds = seconds % 60;

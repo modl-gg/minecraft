@@ -36,15 +36,17 @@ public class ReportCommand {
 
         AbstractPlayer reporter = platform.getAbstractPlayer(actor.uniqueId(), false);
 
+        if (reporter == null) {
+            actor.reply(localeManager.getMessage("general.player_not_found"));
+            return;
+        }
+
         if (targetPlayer == null) {
             actor.reply(localeManager.getMessage("general.player_not_found"));
             return;
         }
 
-        if (targetPlayer.getUsername().equalsIgnoreCase(reporter.getUsername())) {
-            actor.reply(localeManager.getMessage("messages.cannot_report_self"));
-            return;
-        }
+        if (ticketUtil.denySelfReport(actor, reporter, targetPlayer, localeManager)) return;
 
         if (!targetPlayer.isOnline()) {
             actor.reply(localeManager.getMessage("messages.player_not_online"));

@@ -4,6 +4,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
+import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.LoginCache;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 public class SpigotListener implements Listener {
@@ -90,6 +92,7 @@ public class SpigotListener implements Listener {
                 PlayerLoginRequest request = new PlayerLoginRequest(
                         event.getUniqueId().toString(), event.getName(),
                         ipAddress, skinHash, platform.getServerName(), ipInfo);
+                request.setServerInstanceId(StartupClient.getServerInstanceId());
                 return new Object[] { request, ipInfo, skinHash };
             })
             .thenCompose(data -> {
@@ -125,7 +128,9 @@ public class SpigotListener implements Listener {
         LoginCache.PreLoginResult preLoginResult = loginCache.getAndRemovePreLoginResult(event.getPlayer().getUniqueId());
 
         if (preLoginResult == null) {
-            platform.getLogger().warning("No pre-login result found for " + event.getPlayer().getName() + " - allowing login as fallback");
+            platform.getLogger().warning("No pre-login result found for " + event.getPlayer().getName() + " - blocking login for safety");
+            event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
+            event.setKickMessage(localeManager.getMessage("api_errors.ban_check_failed"));
             return;
         }
 
@@ -139,13 +144,20 @@ public class SpigotListener implements Listener {
                 event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
                 event.setKickMessage(denied.getMessage());
             } else {
-                platform.getLogger().severe("Failed to check punishments for " + event.getPlayer().getName() + ": " + preLoginResult.getError().getMessage());
+                // Fail closed: any unclassified login-check error (e.g. a 502 wrapped in a
+                // CompletionException, a 500, or a parse failure) must not let an unverified
+                // player join.
+                platform.getLogger().severe("Failed to verify ban status for " + event.getPlayer().getName() + ": " + preLoginResult.getError().getMessage() + " - blocking login for safety");
+                event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
+                event.setKickMessage(localeManager.getMessage("api_errors.ban_check_failed"));
             }
             return;
         }
 
         if (!preLoginResult.isSuccess()) {
-            platform.getLogger().warning("Invalid pre-login result for " + event.getPlayer().getName() + " - allowing login as fallback");
+            platform.getLogger().warning("Invalid pre-login result for " + event.getPlayer().getName() + " - blocking login for safety");
+            event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
+            event.setKickMessage(localeManager.getMessage("api_errors.ban_check_failed"));
             return;
         }
 
@@ -163,7 +175,7 @@ public class SpigotListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        java.util.UUID uuid = event.getPlayer().getUniqueId();
+        UUID uuid = event.getPlayer().getUniqueId();
 
         ListenerHelper.handlePlayerJoin(uuid, event.getPlayer().getName(),
                 platform, cache, localeManager, staff2faService, syncService);
@@ -176,7 +188,7 @@ public class SpigotListener implements Listener {
                 cache, platform.getLogger());
     }
 
-    private void cacheSkinTexture(java.util.UUID uuid) {
+    private void cacheSkinTexture(UUID uuid) {
         String nativeTexture = platform.getPlayerSkinTexture(uuid);
         if (nativeTexture != null) {
             cache.cacheSkinTexture(uuid, nativeTexture);
@@ -194,7 +206,7 @@ public class SpigotListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         ListenerHelper.handlePlayerDisconnect(
                 event.getPlayer().getUniqueId(), event.getPlayer().getName(),
-                getHttpClient(), cache, platform, localeManager,
+                getHttpClient(), cache, loginCache, platform, localeManager,
                 chatMessageCache, bridgeService, registry);
     }
 

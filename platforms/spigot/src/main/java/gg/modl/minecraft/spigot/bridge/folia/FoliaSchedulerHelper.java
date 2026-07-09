@@ -8,6 +8,7 @@ import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Level;
+import org.bukkit.plugin.Plugin;
 
 /**
  * Reflection-based helper for Folia's region-based scheduling APIs.
@@ -52,12 +53,12 @@ public final class FoliaSchedulerHelper {
             try {
                 getGlobalRegionSchedulerMethod = Bukkit.class.getMethod("getGlobalRegionScheduler");
                 Object globalScheduler = getGlobalRegionSchedulerMethod.invoke(null);
-                globalRunMethod = globalScheduler.getClass().getMethod("run", org.bukkit.plugin.Plugin.class, Consumer.class);
+                globalRunMethod = globalScheduler.getClass().getMethod("run", Plugin.class, Consumer.class);
 
                 getAsyncSchedulerMethod = Bukkit.class.getMethod("getAsyncScheduler");
                 Object asyncScheduler = getAsyncSchedulerMethod.invoke(null);
                 asyncRunAtFixedRateMethod = asyncScheduler.getClass().getMethod("runAtFixedRate",
-                        org.bukkit.plugin.Plugin.class, Consumer.class, long.class, long.class, TimeUnit.class);
+                        Plugin.class, Consumer.class, long.class, long.class, TimeUnit.class);
 
                 entityGetSchedulerMethod = Entity.class.getMethod("getScheduler");
             } catch (Exception e) {
@@ -85,7 +86,7 @@ public final class FoliaSchedulerHelper {
             Object entityScheduler = entityGetSchedulerMethod.invoke(entity);
             if (entityRunMethod == null) {
                 entityRunMethod = entityScheduler.getClass().getMethod("run",
-                        org.bukkit.plugin.Plugin.class, Consumer.class, Runnable.class);
+                        Plugin.class, Consumer.class, Runnable.class);
             }
             Consumer<Object> consumer = (scheduledTask) -> task.run();
             entityRunMethod.invoke(entityScheduler, plugin, consumer, (Runnable) null);
@@ -101,7 +102,7 @@ public final class FoliaSchedulerHelper {
             Object entityScheduler = entityGetSchedulerMethod.invoke(entity);
             if (entityRunDelayedMethod == null) {
                 entityRunDelayedMethod = entityScheduler.getClass().getMethod("execute",
-                        org.bukkit.plugin.Plugin.class, Runnable.class, Runnable.class, long.class);
+                        Plugin.class, Runnable.class, Runnable.class, long.class);
             }
             entityRunDelayedMethod.invoke(entityScheduler, plugin, task, (Runnable) null, delayTicks);
         } catch (Exception e) {

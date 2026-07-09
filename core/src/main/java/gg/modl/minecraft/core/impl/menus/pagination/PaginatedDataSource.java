@@ -3,13 +3,18 @@ package gg.modl.minecraft.core.impl.menus.pagination;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
+import java.util.logging.Logger;
 
 public class PaginatedDataSource<T> {
+    private static final Logger logger = Logger.getLogger(PaginatedDataSource.class.getName());
+
     private final List<T> loadedItems = new ArrayList<>();
     private int totalCount;
+    private int generation;
     private final int pageSize;
-    private volatile boolean isFetching;
+    private final AtomicBoolean isFetching = new AtomicBoolean();
     private final BiFunction<Integer, Integer, CompletableFuture<FetchResult<T>>> fetcher;
     private Runnable onDataLoaded;
 
@@ -19,71 +24,141 @@ public class PaginatedDataSource<T> {
     }
 
     public void initialize(List<T> initialItems, int totalCount) {
-        loadedItems.clear();
-        loadedItems.addAll(initialItems);
-        this.totalCount = totalCount;
-    }
-
-    public void setOnDataLoaded(Runnable onDataLoaded) {
-        this.onDataLoaded = onDataLoaded;
-    }
-
-    public List<T> getAllLoadedItems() {
-        return new ArrayList<>(loadedItems);
-    }
-
-    public int getTotalCount() {
-        return totalCount;
-    }
-
-    public int getTotalMenuPages() {
-        return Math.max(1, (int) Math.ceil((double) totalCount / pageSize));
-    }
-
-    public boolean isPageLoaded(int menuPage) {
-        int requiredItems = (menuPage + 1) * pageSize;
-        return requiredItems <= loadedItems.size() || loadedItems.size() >= totalCount;
-    }
-
-    public void prefetchIfNeeded(int currentMenuPage) {
-        int nextPageStart = (currentMenuPage + 1) * pageSize;
-        if (nextPageStart < totalCount && nextPageStart >= loadedItems.size() && !isFetching) {
-            fetchPage(loadedItems.size() / pageSize + 1);
+        synchronized (loadedItems) {
+            loadedItems.clear();
+            loadedItems.addAll(initialItems);
+            this.totalCount = totalCount;
+            this.generation++;
         }
     }
 
-    public void fetchPage(int apiPage) {
-        if (isFetching) return;
-        isFetching = true;
+    public void setOnDataLoaded(Runnable onDataLoaded) {
+        synchronized (this) {
+            this.onDataLoaded = onDataLoaded;
+        }
+    }
 
-        fetcher.apply(apiPage, pageSize).thenAccept(result -> {
-            synchronized (loadedItems) {
-                int insertOffset = (apiPage - 1) * pageSize;
-                if (insertOffset == loadedItems.size()) {
-                    loadedItems.addAll(result.items());
+    public List<T> getAllLoadedItems() {
+        synchronized (loadedItems) {
+            return new ArrayList<>(loadedItems);
+        }
+    }
+
+    public int getTotalCount() {
+        synchronized (loadedItems) {
+            return totalCount;
+        }
+    }
+
+    public int getTotalMenuPages() {
+        synchronized (loadedItems) {
+            return Math.max(1, (int) Math.ceil((double) totalCount / pageSize));
+        }
+    }
+
+    public boolean isPageLoaded(int menuPage) {
+        synchronized (loadedItems) {
+            int requiredItems = (menuPage + 1) * pageSize;
+            return requiredItems <= loadedItems.size() || loadedItems.size() >= totalCount;
+        }
+    }
+
+    public void prefetchIfNeeded(int currentMenuPage) {
+        int apiPage;
+        synchronized (loadedItems) {
+            int nextPageStart = (currentMenuPage + 1) * pageSize;
+            if (nextPageStart >= totalCount || nextPageStart < loadedItems.size()) {
+                return;
+            }
+            apiPage = loadedItems.size() / pageSize + 1;
+        }
+        fetchPage(apiPage);
+    }
+
+    public boolean fetchPage(int apiPage) {
+        return fetchPage(apiPage, null);
+    }
+
+    public boolean fetchPage(int apiPage, Runnable onDataLoaded) {
+        if (onDataLoaded != null) {
+            setOnDataLoaded(onDataLoaded);
+        }
+        if (!isFetching.compareAndSet(false, true)) return false;
+
+        final int fetchGeneration;
+        synchronized (loadedItems) {
+            fetchGeneration = generation;
+        }
+
+        CompletableFuture<FetchResult<T>> fetchFuture;
+        try {
+            fetchFuture = fetcher.apply(apiPage, pageSize);
+        } catch (Exception e) {
+            clearFetchState();
+            return true;
+        }
+        if (fetchFuture == null) {
+            clearFetchState();
+            return true;
+        }
+
+        fetchFuture.whenComplete((result, throwable) -> {
+            if (throwable == null && result != null && result.success()) {
+                synchronized (loadedItems) {
+                    if (fetchGeneration == generation) {
+                        int insertOffset = (apiPage - 1) * pageSize;
+                        if (insertOffset == loadedItems.size()) {
+                            loadedItems.addAll(result.items());
+                        }
+                        totalCount = result.totalCount();
+                    } else {
+                        logger.warning("Dropping stale page fetch " + apiPage + " from generation "
+                                + fetchGeneration + " (current generation " + generation + ").");
+                    }
                 }
-                totalCount = result.totalCount();
+            } else if (throwable != null) {
+                logger.warning("Page fetch " + apiPage + " failed: " + throwable);
             }
-            isFetching = false;
-            if (onDataLoaded != null) {
-                onDataLoaded.run();
+
+            Runnable callback = clearFetchState();
+            if (throwable == null && callback != null) {
+                callback.run();
             }
-        }).exceptionally(e -> {
-            isFetching = false;
-            return null;
         });
+        return true;
+    }
+
+    private Runnable clearFetchState() {
+        Runnable callback;
+        synchronized (this) {
+            callback = onDataLoaded;
+            onDataLoaded = null;
+        }
+        isFetching.set(false);
+        return callback;
     }
 
     public boolean isFetching() {
-        return isFetching;
+        return isFetching.get();
     }
 
-    @lombok.Value
     public static class FetchResult<T> {
-        List<T> items;
-        int totalCount;
+        private final List<T> items;
+        private final int totalCount;
+        private final boolean success;
+
+        public FetchResult(List<T> items, int totalCount) {
+            this(items, totalCount, true);
+        }
+
+        public FetchResult(List<T> items, int totalCount, boolean success) {
+            this.items = items;
+            this.totalCount = totalCount;
+            this.success = success;
+        }
 
         public List<T> items() { return this.items; }
         public int totalCount() { return this.totalCount; }
+        public boolean success() { return this.success; }
     }
 }

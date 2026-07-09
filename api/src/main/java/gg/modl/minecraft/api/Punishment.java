@@ -30,7 +30,6 @@ public class Punishment {
     private @SerializedName("evidence") List<Evidence> evidence;
     private @SerializedName("attachedTicketIds") List<String> attachedTicketIds;
     private @SerializedName("data") Map<String, Object> dataMap;
-    private transient PunishmentData data;
 
     public Map<String, Object> getDataMap() {
         return dataMap != null ? dataMap : Collections.emptyMap();
@@ -53,16 +52,27 @@ public class Punishment {
         return type != null ? type.getValue() : 0;
     }
 
+    private boolean typeNameContains(String needle) {
+        Object tn = getDataMap().get(DATA_KEY_TYPE_NAME);
+        return tn instanceof String && ((String) tn).toLowerCase().contains(needle);
+    }
+
     public boolean isBanType() {
-        return PunishmentTypeRegistry.isBan(getTypeOrdinal());
+        if (PunishmentTypeRegistry.isInitialized()) return PunishmentTypeRegistry.isBan(getTypeOrdinal());
+        int o = getTypeOrdinal();
+        if (o >= PunishmentTypeRegistry.ORDINAL_BAN && o <= PunishmentTypeRegistry.ORDINAL_BLACKLIST) return true;
+        return typeNameContains("ban") || type == Type.BAN || type == Type.SECURITY_BAN
+                || type == Type.LINKED_BAN || type == Type.BLACKLIST;
     }
 
     public boolean isMuteType() {
-        return PunishmentTypeRegistry.isMute(getTypeOrdinal());
+        if (PunishmentTypeRegistry.isInitialized()) return PunishmentTypeRegistry.isMute(getTypeOrdinal());
+        if (getTypeOrdinal() == PunishmentTypeRegistry.ORDINAL_MUTE) return true;
+        return typeNameContains("mute") || type == Type.MUTE;
     }
 
     public boolean isKickType() {
-        return PunishmentTypeRegistry.isKick(getTypeOrdinal());
+        return PunishmentTypeRegistry.isKick(getTypeOrdinal()) || type == Type.KICK;
     }
 
     public String getTypeCategory() {
@@ -101,7 +111,7 @@ public class Punishment {
     public Date getExpires() {
         Object expires = getDataMap().get(DATA_KEY_EXPIRES);
         if (expires instanceof Date) return (Date) expires;
-        if (expires instanceof Long) return new Date((Long) expires);
+        if (expires instanceof Number) return new Date(((Number) expires).longValue());
         return null;
     }
 
@@ -115,6 +125,8 @@ public class Punishment {
 
         if (STATUS_UNSTARTED.equals(map.get(DATA_KEY_STATUS))) return false;
 
+        if ((isBanType() || isMuteType()) && started == null) return false;
+
         if (hasPardonModification()) return false;
 
         long now = System.currentTimeMillis();
@@ -126,21 +138,28 @@ public class Punishment {
             if (effectiveExpiry != null && effectiveExpiry.getTime() < now) return false;
         }
 
-        if (isBanType() || isMuteType()) return started != null;
-
         return true;
+    }
+
+    private static boolean isPardonType(Modification.Type type) {
+        return type == Modification.Type.MANUAL_PARDON
+                || type == Modification.Type.APPEAL_ACCEPT
+                || type == Modification.Type.SYSTEM_PARDON;
     }
 
     private boolean hasPardonModification() {
         for (Modification mod : getModifications()) {
-            Modification.Type modType = mod.getType();
-            if (modType == Modification.Type.MANUAL_PARDON ||
-                    modType == Modification.Type.APPEAL_ACCEPT ||
-                    modType == Modification.Type.SYSTEM_PARDON) {
-                return true;
-            }
+            if (isPardonType(mod.getType())) return true;
         }
         return false;
+    }
+
+    public @Nullable Date getPardonDate() {
+        Date pardonDate = null;
+        for (Modification mod : getModifications()) {
+            if (isPardonType(mod.getType())) pardonDate = mod.getIssued();
+        }
+        return pardonDate;
     }
 
     public @Nullable Date getEffectiveExpiry() {
@@ -155,8 +174,8 @@ public class Punishment {
 
         if (duration == null) duration = getDuration();
         if (duration == null || duration <= 0) return null;
-        if (durationBase != null) return new Date(durationBase.getTime() + duration);
         if (started == null) return null;
+        if (durationBase != null) return new Date(durationBase.getTime() + duration);
         return new Date(started.getTime() + duration);
     }
 

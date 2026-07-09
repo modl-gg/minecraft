@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Getter
 public class CachedProfile {
@@ -31,17 +32,24 @@ public class CachedProfile {
     @Setter private volatile UUID frozenByStaff;
     @Setter private volatile UUID targetPlayerUuid;
     @Setter private volatile boolean interceptingNetworkChat;
-    @Setter private volatile boolean staffNotificationsEnabled = true;
 
     @Setter private volatile Staff2faService.AuthState authState;
     @Setter private volatile boolean twoFaNotified;
 
     private final List<PendingNotification> pendingNotifications = Collections.synchronizedList(new ArrayList<>());
-    @Setter private volatile long lastChatMessageTime;
+    private final AtomicLong lastChatMessageTime = new AtomicLong(0L);
     private final CooldownTracker cooldowns = new CooldownTracker();
 
     public CachedProfile(UUID uuid) {
         this.uuid = uuid;
+    }
+
+    public long getLastChatMessageTime() {
+        return lastChatMessageTime.get();
+    }
+
+    public boolean compareAndSetLastChatMessageTime(long expect, long update) {
+        return lastChatMessageTime.compareAndSet(expect, update);
     }
 
     public long getSessionDuration() {

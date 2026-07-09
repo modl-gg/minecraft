@@ -7,10 +7,10 @@ import gg.modl.minecraft.api.http.response.ReportsResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.ReportsMenu;
 import gg.modl.minecraft.core.impl.menus.staff.StaffReportsMenu;
+import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.Constants;
@@ -20,13 +20,15 @@ import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.annotation.Named;
 import revxrsal.commands.command.CommandActor;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class ReportsCommand {
@@ -41,8 +43,8 @@ public class ReportsCommand {
 
     @Command("reports")
     @Description("Open the reports menu (for a player or all reports), or use -p to print to chat")
-    @PlayerOnly @StaffOnly
-    public void reports(CommandActor actor, @revxrsal.commands.annotation.Optional @Named("player") String playerQuery, @revxrsal.commands.annotation.Optional String flags) {
+    @StaffOnly
+    public void reports(CommandActor actor, @Optional @Named("player") String playerQuery, @Optional String flags) {
         if (flags == null) flags = "";
         boolean printMode;
         String actualPlayerQuery;
@@ -193,8 +195,9 @@ public class ReportsCommand {
             platform, httpClientHolder.getClient(), senderUuid, senderName,
             isAdmin, panelUrl, null
         );
-        CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-        menu.display(player);
+        StaffNavigationHandlers.displayWhenLoaded(platform, menu.getDataFuture(),
+                platform.getPlayerWrapper(senderUuid),
+                p -> { if (p != null) menu.display(p); });
     }
 
 }

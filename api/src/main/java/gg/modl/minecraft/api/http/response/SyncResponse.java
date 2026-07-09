@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.Map;
 
 @Data @NoArgsConstructor @AllArgsConstructor
 public class SyncResponse {
@@ -55,7 +56,7 @@ public class SyncResponse {
     public static class PlayerNotification {
         private @NotNull String id, message, type;
         private String targetPlayerUuid;
-        private java.util.Map<String, Object> data;
+        private Map<String, Object> data;
         private Long timestamp;
     }
     
@@ -69,7 +70,7 @@ public class SyncResponse {
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class StaffNotification {
         private String id, type, message;
-        private java.util.Map<String, Object> data;
+        private Map<String, Object> data;
         private Long timestamp;
     }
 

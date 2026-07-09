@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core.impl.commands;
 
 import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Default;
 import revxrsal.commands.annotation.Description;
 import revxrsal.commands.annotation.Subcommand;
 import revxrsal.commands.command.CommandActor;
@@ -17,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor @Command("modl")
 public class ModlHelpCommand {
@@ -36,7 +37,7 @@ public class ModlHelpCommand {
 
     @Subcommand("help")
     @Description("Show available modl.gg commands")
-    public void help(CommandActor actor, @revxrsal.commands.annotation.Default("1") String pageArg) {
+    public void help(CommandActor actor, @Default("1") String pageArg) {
         displayHelp(actor, Pagination.parsePage(pageArg));
     }
 
@@ -125,8 +126,10 @@ public class ModlHelpCommand {
     }
 
     private void addEntry(List<HelpEntry> entries, String localeKey) {
-        String usage = localeManager.getMessage("help." + localeKey + ".usage");
-        if (usage == null || usage.isEmpty() || usage.startsWith("§cMissing")) return;
+        String usageKey = "help." + localeKey + ".usage";
+        if (!localeManager.hasMessage(usageKey)) return;
+        String usage = localeManager.getMessage(usageKey);
+        if (usage.isEmpty()) return;
         String description = localeManager.getMessage("help." + localeKey + ".description");
         entries.add(new HelpEntry(usage, description));
     }

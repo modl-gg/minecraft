@@ -12,7 +12,10 @@ import revxrsal.commands.parameter.StringParameterType;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
+import gg.modl.minecraft.api.http.response.StartupResponse;
+import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.config.ConfigManager;
+import gg.modl.minecraft.core.config.RuntimeConfigSource;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.LoginCache;
 import gg.modl.minecraft.core.cache.CachedProfileRegistry;
@@ -64,11 +67,24 @@ import gg.modl.minecraft.core.impl.commands.staff.punishments.PardonCommand;
 import gg.modl.minecraft.core.impl.commands.staff.punishments.PunishCommand;
 import gg.modl.minecraft.core.impl.commands.staff.punishments.WarnCommand;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
-import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.locale.MessageRenderer;
 import gg.modl.minecraft.core.plugin.PluginInfo;
-import gg.modl.minecraft.core.service.*;
+import gg.modl.minecraft.core.realtime.MinecraftRealtimeClient;
+import gg.modl.minecraft.core.service.BridgeService;
+import gg.modl.minecraft.core.service.ChatCommandLogService;
+import gg.modl.minecraft.core.service.ChatManagementService;
+import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.service.FreezeService;
+import gg.modl.minecraft.core.service.MaintenanceService;
+import gg.modl.minecraft.core.service.NetworkChatInterceptService;
+import gg.modl.minecraft.core.service.Staff2faService;
+import gg.modl.minecraft.core.service.StaffChatService;
+import gg.modl.minecraft.core.service.StaffModeService;
+import gg.modl.minecraft.core.service.UpdateCheckerService;
+import gg.modl.minecraft.core.service.VanishService;
+import static gg.modl.minecraft.core.util.Java8Collections.entry;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOfEntries;
 import gg.modl.minecraft.core.service.database.DatabaseConfig;
 import gg.modl.minecraft.core.service.sync.SyncService;
 import gg.modl.minecraft.core.util.DateFormatter;
@@ -79,6 +95,8 @@ import gg.modl.minecraft.core.util.PunishmentMessages;
 import gg.modl.minecraft.core.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.util.PunishmentTypeCacheManager;
 import gg.modl.minecraft.core.util.StaffPermissionLoader;
+import gg.modl.minecraft.core.util.IpApiClient;
+import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.Getter;
 import org.yaml.snakeyaml.Yaml;
 
@@ -93,7 +111,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import gg.modl.minecraft.core.util.PluginLogger;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @Getter
 public class PluginLoader {
@@ -107,6 +124,7 @@ public class PluginLoader {
     private final LocaleManager localeManager;
     private final LoginCache loginCache;
     private final AsyncCommandExecutor asyncCommandExecutor;
+    private final HttpManager httpManager;
     private final Path dataDirectory;
     private final PluginLogger logger;
     private final ConfigManager configManager;
@@ -120,6 +138,7 @@ public class PluginLoader {
     private final StaffModeService staffModeService;
     private final VanishService vanishService;
     private final BridgeService bridgeService;
+    private final MinecraftRealtimeClient realtimeClient;
     private final boolean queryMojang, debugMode;
 
     public ModlHttpClient getHttpClient() {
@@ -128,6 +147,7 @@ public class PluginLoader {
 
     public PluginLoader(Platform platform, Path dataDirectory, ChatMessageCache chatMessageCache, HttpManager httpManager, int syncPollingRateSeconds) {
         this.dataDirectory = dataDirectory;
+        this.httpManager = httpManager;
         this.debugMode = httpManager.isDebugHttp();
         this.chatMessageCache = chatMessageCache;
         this.queryMojang = httpManager.isQueryMojang();
@@ -143,7 +163,8 @@ public class PluginLoader {
         this.httpClientHolder = httpManager.getHttpClientHolder();
         this.logger = platform.getLogger();
 
-        Map<String, Object> configYml = readConfigYml(dataDirectory, this.logger);
+        RuntimeConfigSource runtimeConfigSource = configManager.getRuntimeConfigSource();
+        Map<String, Object> configYml = runtimeConfigSource.root();
         String configuredLocale = readLocaleFromConfig(configYml, this.logger);
 
         this.localeManager = new LocaleManager(configuredLocale);
@@ -176,10 +197,14 @@ public class PluginLoader {
         }
 
         syncService.start();
+        this.realtimeClient = startRealtimeClientIfEnabled(platform, httpManager);
 
         UpdateCheckerConfig updateCheckerConfig = loadUpdateCheckerConfig(configYml, logger);
         this.updateCheckerService = new UpdateCheckerService(logger, this.debugMode, PluginInfo.VERSION);
         this.updateCheckerService.start(updateCheckerConfig.enabled, updateCheckerConfig.intervalMinutes);
+
+        IpLookupConfig ipLookupConfig = loadIpLookupConfig(configYml, logger);
+        IpApiClient.initialize(ipLookupConfig.enabled, ipLookupConfig.url);
 
         Map<String, String> commandAliases = loadCommandAliases(configYml, logger);
         ConfiguredCommandAliases configuredCommandAliases = new ConfiguredCommandAliases(commandAliases);
@@ -212,7 +237,7 @@ public class PluginLoader {
             builder.parameterTypes(types -> {
                 types.addParameterTypeFactory(new ParameterType.Factory<CommandActor>() {
                     @Override
-                    public <T> ParameterType<CommandActor, T> create(Type type, revxrsal.commands.annotation.list.AnnotationList annotations, Lamp<CommandActor> lamp) {
+                    public <T> ParameterType<CommandActor, T> create(Type type, AnnotationList annotations, Lamp<CommandActor> lamp) {
                         if (!(type instanceof Class) || type != String.class) return null;
                         if (!annotations.contains(ConsumeRemaining.class)) return null;
                         @SuppressWarnings("unchecked")
@@ -223,13 +248,13 @@ public class PluginLoader {
                 types.addParameterType(AbstractPlayer.class, (input, context) -> {
                     String name = input.readString();
                     AbstractPlayer player = fetchPlayer(name, platform, getHttpClient(), queryMojang);
-                    if (player == null) throw new RuntimeException(localeManager.getMessage("general.player_not_found"));
+                    if (player == null) throw deny(localeManager.getMessage("general.player_not_found"));
                     return player;
                 });
                 types.addParameterType(Account.class, (input, context) -> {
                     String name = input.readString();
                     Account account = fetchPlayer(name, getHttpClient());
-                    if (account == null) throw new RuntimeException(localeManager.getMessage("general.player_not_found"));
+                    if (account == null) throw deny(localeManager.getMessage("general.player_not_found"));
                     return account;
                 });
             });
@@ -324,21 +349,6 @@ public class PluginLoader {
 
     public static Account fetchPlayer(String target, ModlHttpClient httpClient) {
         return PlayerLookupUtil.fetchAccount(target, httpClient);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> readConfigYml(Path dataDirectory, PluginLogger logger) {
-        try {
-            Path configFile = dataDirectory.resolve("config.yml");
-            if (!Files.exists(configFile)) return Collections.emptyMap();
-            try (InputStream inputStream = Files.newInputStream(configFile)) {
-                Map<String, Object> config = new Yaml().load(inputStream);
-                return config != null ? config : Collections.emptyMap();
-            }
-        } catch (Exception e) {
-            logger.warning("Failed to read config.yml: " + e.getMessage());
-            return Collections.emptyMap();
-        }
     }
 
     private static String readLocaleFromConfig(Map<String, Object> config, PluginLogger logger) {
@@ -442,57 +452,69 @@ public class PluginLoader {
                 this.localeManager.setConfigValues(localeConfig);
 
                 String dateFormat = this.localeManager.getDateFormatPattern();
-                MenuItems.setDateFormat(dateFormat);
                 DateFormatter.setDateFormat(dateFormat);
 
                 String timezone = (String) localeConfig.getOrDefault("timezone", "");
-                if (timezone != null && !timezone.isEmpty()) {
-                    MenuItems.setTimezone(timezone);
-                    DateFormatter.setTimezone(timezone);
-                }
+                DateFormatter.setTimezone(timezone);
             }
         } catch (Exception e) {
             logger.warning("Failed to load locale config: " + e.getMessage());
         }
     }
 
+    static final String LITEBANS_HOST_PLACEHOLDER = "litebans-database-host";
+    static final String LITEBANS_DATABASE_PLACEHOLDER = "litebans_database";
+    static final String LITEBANS_USERNAME_PLACEHOLDER = "litebans_user";
+    static final String LITEBANS_PASSWORD_PLACEHOLDER = "change-me";
+
     @SuppressWarnings("unchecked")
-    private DatabaseConfig loadDatabaseConfig(Map<String, Object> config, Path dataDirectory, PluginLogger logger) {
+    static DatabaseConfig loadDatabaseConfig(Map<String, Object> config, Path dataDirectory, PluginLogger logger) {
         try {
-            if (config.containsKey("migration")) {
-                Map<String, Object> migration = (Map<String, Object>) config.get("migration");
-                Map<String, Object> litebans = (Map<String, Object>) migration.get("litebans");
-                Map<String, Object> database = (Map<String, Object>) litebans.get("database");
+            if (!config.containsKey("migration")) return null;
+            Map<String, Object> migration = (Map<String, Object>) config.get("migration");
+            if (migration == null) return null;
+            Map<String, Object> litebans = (Map<String, Object>) migration.get("litebans");
+            if (litebans == null) return null;
+            Map<String, Object> database = (Map<String, Object>) litebans.get("database");
+            if (database == null) return null;
 
-                String host = (String) database.getOrDefault("host", "localhost");
-                int port = parseIntegerValue(database.getOrDefault("port", 3306), 3306);
-                String dbName = (String) database.getOrDefault("database", "minecraft");
-                String username = (String) database.getOrDefault("username", "root");
-                String password = (String) database.getOrDefault("password", "");
-                String type = (String) database.getOrDefault("type", "mysql");
-                String tablePrefix = (String) database.getOrDefault("table_prefix", "litebans_");
-
-                DatabaseConfig.DatabaseType dbType = DatabaseConfig.DatabaseType.fromString(type);
-
-                String detectedPrefix = detectLiteBansTablePrefix(dataDirectory, logger);
-                if (detectedPrefix != null) {
-                    tablePrefix = detectedPrefix;
-                }
-
-                return new DatabaseConfig(host, dbName, username, password, dbType, tablePrefix, port);
+            String host = (String) database.get("host");
+            String username = (String) database.get("username");
+            String password = (String) database.get("password");
+            if (host == null || username == null || password == null) return null;
+            if (LITEBANS_HOST_PLACEHOLDER.equals(host)
+                    || LITEBANS_USERNAME_PLACEHOLDER.equals(username)
+                    || LITEBANS_PASSWORD_PLACEHOLDER.equals(password)) {
+                return null;
             }
+
+            int port = parseIntegerValue(database.getOrDefault("port", 3306), 3306);
+            String dbName = (String) database.getOrDefault("database", LITEBANS_DATABASE_PLACEHOLDER);
+            String type = (String) database.getOrDefault("type", "mysql");
+            String tablePrefix = (String) database.getOrDefault("table_prefix", "litebans_");
+
+            DatabaseConfig.DatabaseType dbType = DatabaseConfig.DatabaseType.fromString(type);
+
+            String detectedPrefix = detectLiteBansTablePrefix(dataDirectory, logger);
+            if (detectedPrefix != null) {
+                tablePrefix = detectedPrefix;
+            }
+
+            return new DatabaseConfig(host, dbName, username, password, dbType, tablePrefix, port);
         } catch (Exception e) {
             logger.warning("Failed to load database config: " + e.getMessage());
         }
 
-        return createDefaultDatabaseConfig();
+        return null;
     }
 
     private DatabaseConfig createDefaultDatabaseConfig() {
-        return new DatabaseConfig("localhost", "minecraft", "root", "", DatabaseConfig.DatabaseType.MYSQL, "litebans_", 3306);
+        return new DatabaseConfig(LITEBANS_HOST_PLACEHOLDER, LITEBANS_DATABASE_PLACEHOLDER,
+                LITEBANS_USERNAME_PLACEHOLDER, LITEBANS_PASSWORD_PLACEHOLDER,
+                DatabaseConfig.DatabaseType.MYSQL, "litebans_", 3306);
     }
 
-    private String detectLiteBansTablePrefix(Path dataDirectory, PluginLogger logger) {
+    private static String detectLiteBansTablePrefix(Path dataDirectory, PluginLogger logger) {
         try {
             Path litebansConfig = dataDirectory.getParent().resolve("LiteBans").resolve("config.yml");
 
@@ -521,16 +543,54 @@ public class PluginLoader {
     }
 
     public void shutdown() {
+        if (realtimeClient != null) realtimeClient.stop();
         if (updateCheckerService != null) updateCheckerService.stop();
         if (syncService != null) syncService.stop();
         if (loginCache != null) loginCache.shutdown();
         if (asyncCommandExecutor != null) asyncCommandExecutor.shutdown();
+        IpApiClient.shutdown();
+        WebPlayer.shutdown();
+        gg.modl.minecraft.core.impl.menus.util.PlayerHeadItemBuilder.shutdown();
+        gg.modl.minecraft.core.util.Java8Collections.shutdown();
+        if (httpManager != null) httpManager.shutdown();
+    }
+
+    private MinecraftRealtimeClient startRealtimeClientIfEnabled(Platform platform, HttpManager httpManager) {
+        boolean localEnabled = configManager.getRealtimeConfig() != null && configManager.getRealtimeConfig().isEnabled();
+        if (!localEnabled) {
+            return null;
+        }
+        try {
+            StartupResponse startupResponse = StartupClient.getLastStartupResponse();
+            if (startupResponse != null && !httpManager.getPanelUrl().equals(startupResponse.getPanelUrl())) {
+                startupResponse = null;
+            }
+            if (!MinecraftRealtimeClient.canStart(localEnabled, startupResponse)) {
+                if (debugMode) logger.info("[Realtime] Startup response did not enable realtime; staying on HTTP polling only");
+                return null;
+            }
+
+            MinecraftRealtimeClient client = new MinecraftRealtimeClient(
+                httpManager.getApiKey(),
+                startupResponse,
+                platform,
+                syncService,
+                logger,
+                debugMode
+            );
+            client.start();
+            if (debugMode) logger.info("[Realtime] Client started beside authoritative HTTP polling");
+            return client;
+        } catch (Throwable t) {
+            logger.warning("[Realtime] Failed to initialize realtime client; falling back to HTTP polling: " + t);
+            return null;
+        }
     }
 
     private void reloadRuntimeConfiguration() {
         configManager.reloadAll();
         cache.setPunishmentTypeItems(configManager.getPunishmentTypeItems());
-        Map<String, Object> freshConfig = readConfigYml(this.dataDirectory, this.logger);
+        Map<String, Object> freshConfig = configManager.getRuntimeConfigSource().root();
         UpdateCheckerConfig updateCheckerConfig = loadUpdateCheckerConfig(freshConfig, this.logger);
         updateCheckerService.reload(updateCheckerConfig.enabled, updateCheckerConfig.intervalMinutes);
     }
@@ -588,6 +648,44 @@ public class PluginLoader {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private static IpLookupConfig loadIpLookupConfig(Map<String, Object> config, PluginLogger logger) {
+        boolean enabled = true;
+        String url = "https://ipwho.is/{ip}";
+
+        try {
+            if (config.containsKey("ip-lookup")) {
+                Object node = config.get("ip-lookup");
+                if (node instanceof Map) {
+                    Map<String, Object> ipLookup = (Map<String, Object>) node;
+
+                    Object enabledValue = ipLookup.get("enabled");
+                    if (enabledValue instanceof Boolean) enabled = (Boolean) enabledValue;
+                    else if (enabledValue instanceof String) enabled = Boolean.parseBoolean((String) enabledValue);
+
+                    Object urlValue = ipLookup.get("url");
+                    if (urlValue instanceof String && !((String) urlValue).trim().isEmpty()) {
+                        url = (String) urlValue;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("Failed to load ip-lookup config: " + e.getMessage());
+        }
+
+        return new IpLookupConfig(enabled, url);
+    }
+
+    private static final class IpLookupConfig {
+        private final boolean enabled;
+        private final String url;
+
+        private IpLookupConfig(boolean enabled, String url) {
+            this.enabled = enabled;
+            this.url = url;
+        }
+    }
+
     private static void initializeStaffPermissions(ModlHttpClient httpClient, Cache cache, PluginLogger logger, boolean debugMode) {
         StaffPermissionLoader.load(httpClient, cache, logger, debugMode, false);
     }
@@ -601,24 +699,33 @@ public class PluginLoader {
             return;
         }
 
-        if (annotations.contains(StaffOnly.class)
-                && !PermissionUtil.isStaff(actor, cache)) {
-            throw deny(localeManager.getMessage("general.no_permission"));
-        }
-
-        if (annotations.contains(AdminOnly.class)
-                && !cache.hasPermission(actor.uniqueId(), Permissions.ADMIN)) {
-            throw deny(localeManager.getMessage("general.no_permission"));
-        }
-
+        boolean staffOnly = annotations.contains(StaffOnly.class);
+        boolean adminOnly = annotations.contains(AdminOnly.class);
         RequiresPermission requiresPermission = annotations.get(RequiresPermission.class);
+        boolean staffNo2fa = annotations.contains(StaffNo2fa.class);
+
+        if (staffOnly && !PermissionUtil.isStaff(actor, cache)) {
+            throw deny(localeManager.getMessage("general.no_permission"));
+        }
+
+        if (adminOnly && !cache.hasPermission(actor.uniqueId(), Permissions.ADMIN)) {
+            throw deny(localeManager.getMessage("general.no_permission"));
+        }
+
         if (requiresPermission != null && !PermissionUtil.hasPermission(actor, cache, requiresPermission.value())) {
             throw deny(localeManager.getMessage("general.no_permission"));
         }
 
-        if (annotations.contains(StaffNo2fa.class)
-                && !PermissionUtil.isStaff(actor, cache)) {
+        if (staffNo2fa && !PermissionUtil.isStaff(actor, cache)) {
             throw deny(localeManager.getMessage("general.no_permission"));
+        }
+
+        // Staff-scoped commands require an AUTHENTICATED 2FA state when 2FA is enabled. The @StaffNo2fa
+        // carve-out (applied to /verify) is exempt so staff can complete verification.
+        boolean staffScoped = staffOnly || adminOnly || requiresPermission != null;
+        if (staffScoped && !staffNo2fa && staff2faService != null
+                && staff2faService.isEnabled() && !staff2faService.isAuthenticated(actor.uniqueId())) {
+            throw deny(localeManager.getMessage("staff_2fa.not_verified"));
         }
     }
 

@@ -56,7 +56,10 @@ public class VulcanHook implements AntiCheatHook, Listener {
 
             UUID uuid = event.getPlayer().getUniqueId();
             String playerName = event.getPlayer().getName();
-            String checkName = event.getCheck().getName() + " (" + event.getCheck().getType() + ")";
+            // Use the bare check name as the threshold/count key so per-check config overrides
+            // (e.g. `speed: 5`) match, consistent with GrimHook/PolarHook. Folding the check type
+            // into the key broke getReportViolationThreshold(checkName.toLowerCase()) lookups.
+            String checkName = event.getCheck().getName();
             String verbose = event.getInfo();
 
             logDebugFlag(playerName, uuid, checkName, verbose);

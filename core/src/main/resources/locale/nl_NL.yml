@@ -396,7 +396,6 @@ api_errors:
   panel_unavailable: "&cHet paneel is tijdelijk niet beschikbaar. Probeer het later opnieuw."
   connection_failed: "&cVerbinding met het paneel mislukt. Probeer het zo opnieuw."
   ban_check_failed: "&cKan banstatus niet verifiëren. Inloggen is tijdelijk beperkt voor de veiligheid."
-  menus_require_v2: "&cIn-game menu's vereisen de V2 API. De nieuwe API wordt beschikbaar op 11-02-2026."
 
 # Pardon Commando Berichten
 pardon:
@@ -412,7 +411,6 @@ pardon:
   error_wrong_type_mute: "&cStraf &e#{id}&c is geen mute. Gebruik &e/pardon {id}&c om elk straftype kwijt te schelden."
   staff_notification_id: "&7&o[{issuer}: straf #{id} kwijtgescholden&7&o]"
   staff_notification_player: "&7&o[{issuer}: {player}'s {type} kwijtgescholden&7&o]"
-  disabled_v1: "&cDeze functie is tijdelijk uitgeschakeld in-game tot 11-02-2026 als onderdeel van de V2-migratie. Gebruik het paneel in plaats daarvan."
 
 # Waarschuwing Commando Berichten
 warn:

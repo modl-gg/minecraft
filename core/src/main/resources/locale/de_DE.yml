@@ -325,7 +325,6 @@ api_errors:
   panel_unavailable: "&cDas Panel ist vorübergehend nicht verfügbar. Bitte versuche es in Kürze erneut."
   connection_failed: "&cVerbindung zum Panel fehlgeschlagen. Bitte versuche es in einem Moment erneut."
   ban_check_failed: "&cBannstatus konnte nicht überprüft werden. Anmeldung aus Sicherheitsgründen vorübergehend eingeschränkt."
-  menus_require_v2: "&cIn-Game-Menüs erfordern die V2-API. Die neue API wird am 11.02.2026 verfügbar."
 
 pardon:
   processing_id: "&7Begnadigung für Strafen-ID: &e{id}&7 wird bearbeitet..."
@@ -340,7 +339,6 @@ pardon:
   error_wrong_type_mute: "&cStrafe &e#{id}&c ist keine Stummschaltung. Verwende &e/pardon {id}&c um jeden Strafentyp zu begnadigen."
   staff_notification_id: "&7&o[{issuer}: Strafe #{id} begnadigt&7&o]"
   staff_notification_player: "&7&o[{issuer}: {player}s {type} begnadigt&7&o]"
-  disabled_v1: "&cDiese Funktion ist vorübergehend im Spiel bis zum 11.02.2026 im Rahmen der V2-Migration deaktiviert. Bitte verwende stattdessen das Panel."
 
 warn:
   player_message: "&c&lDu hast eine Verwarnung von {issuer} erhalten.\n&fGrund: &7{reason}\n&7Bitte überprüfe die Serverregeln und passe dein Verhalten entsprechend an."

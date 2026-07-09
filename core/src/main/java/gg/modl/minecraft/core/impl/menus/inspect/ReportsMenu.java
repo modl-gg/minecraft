@@ -66,13 +66,11 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
                 if (response.isSuccess() && response.getReports() != null) {
                     reports.clear();
                     for (ReportsResponse.Report report : response.getReports()) {
-                        String type = report.getType() != null ? report.getType() : report.getCategory();
-                        if ("player".equalsIgnoreCase(type)) type = "gameplay";
                         reports.add(new Report(
                                 report.getId(),
-                                type,
+                                ReportRenderUtil.normalizeReportType(report),
                                 report.getReporterName(),
-                                report.getContent() != null ? report.getContent() : report.getSubject(),
+                                ReportRenderUtil.getReportContent(report),
                                 report.getStatus(),
                                 report.getCreatedAt()
                         ));

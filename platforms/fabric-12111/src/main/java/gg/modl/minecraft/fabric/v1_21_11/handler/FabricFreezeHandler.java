@@ -6,12 +6,14 @@ import lombok.Setter;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
+import net.minecraft.util.math.Vec3d;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import java.util.Set;
+import net.minecraft.server.world.ServerWorld;
 
 /**
  * Fabric freeze handler using tick-based position reset.
@@ -22,10 +24,25 @@ public class FabricFreezeHandler {
     private final MinecraftServer server;
     private final BridgeLocaleManager localeManager;
     private final Map<UUID, UUID> frozenPlayers = new ConcurrentHashMap<>(); // frozen -> staff
-    private final Map<UUID, double[]> frozenPositions = new ConcurrentHashMap<>(); // frozen -> [x,y,z]
+    private final Map<UUID, FreezeAnchor> frozenAnchors = new ConcurrentHashMap<>(); // frozen -> anchor
     private final Map<UUID, String> frozenPlayerNames = new ConcurrentHashMap<>();
     @Setter private FabricStaffModeHandler staffModeHandler;
     @Setter private BridgeQueryClient bridgeClient;
+
+    private static final class FreezeAnchor {
+        final ServerWorld world;
+        final double x, y, z;
+        final float yaw, pitch;
+
+        FreezeAnchor(ServerWorld world, double x, double y, double z, float yaw, float pitch) {
+            this.world = world;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.yaw = yaw;
+            this.pitch = pitch;
+        }
+    }
 
     public FabricFreezeHandler(MinecraftServer server, BridgeLocaleManager localeManager) {
         this.server = server;
@@ -39,7 +56,8 @@ public class FabricFreezeHandler {
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(target);
         frozenPlayerNames.put(target, player != null ? player.getName().getString() : "Unknown");
         if (player != null) {
-            frozenPositions.put(target, new double[]{player.getX(), player.getY(), player.getZ()});
+            frozenAnchors.put(target, new FreezeAnchor((ServerWorld) player.getEntityWorld(),
+                    player.getX(), player.getY(), player.getZ(), player.getYaw(), player.getPitch()));
             player.sendMessage(Text.literal(localeManager.getMessage("freeze.frozen")));
         }
     }
@@ -47,7 +65,7 @@ public class FabricFreezeHandler {
     public void unfreeze(String targetUuid) {
         UUID target = UUID.fromString(targetUuid);
         frozenPlayers.remove(target);
-        frozenPositions.remove(target);
+        frozenAnchors.remove(target);
         frozenPlayerNames.remove(target);
 
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(target);
@@ -61,30 +79,41 @@ public class FabricFreezeHandler {
     }
 
     public void onTick() {
-        if (frozenPositions.isEmpty()) return;
-        frozenPositions.forEach((uuid, pos) -> {
+        if (frozenPlayers.isEmpty()) return;
+        frozenPlayers.forEach((uuid, staff) -> {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
             if (player == null) return;
 
-            double dx = player.getX() - pos[0];
-            double dy = player.getY() - pos[1];
-            double dz = player.getZ() - pos[2];
+            FreezeAnchor anchor = frozenAnchors.get(uuid);
+            if (anchor == null) {
+                frozenAnchors.put(uuid, new FreezeAnchor((ServerWorld) player.getEntityWorld(),
+                        player.getX(), player.getY(), player.getZ(), player.getYaw(), player.getPitch()));
+                frozenPlayerNames.put(uuid, player.getName().getString());
+                player.sendMessage(Text.literal(localeManager.getMessage("freeze.frozen")));
+                return;
+            }
 
-            if (dx * dx + dy * dy + dz * dz > 0.01) {
-                player.teleport((net.minecraft.server.world.ServerWorld) player.getEntityWorld(), pos[0], pos[1], pos[2],
-                        java.util.Set.of(), player.getYaw(), player.getPitch(), false);
+            double dx = player.getX() - anchor.x;
+            double dy = player.getY() - anchor.y;
+            double dz = player.getZ() - anchor.z;
+            boolean wrongWorld = (ServerWorld) player.getEntityWorld() != anchor.world;
+
+            if (wrongWorld || dx * dx + dy * dy + dz * dz > 0.01) {
+                player.teleport(anchor.world, anchor.x, anchor.y, anchor.z,
+                        Set.of(), anchor.yaw, anchor.pitch, false);
+                player.setVelocity(Vec3d.ZERO);
+                player.velocityDirty = true;
             }
         });
     }
 
     public void onPlayerQuit(UUID uuid) {
         if (frozenPlayers.remove(uuid) == null) return;
-        frozenPositions.remove(uuid);
+        frozenAnchors.remove(uuid);
 
+        String playerName = frozenPlayerNames.remove(uuid);
         if (bridgeClient != null) {
-            String playerName = frozenPlayerNames.getOrDefault(uuid, "Unknown");
-            frozenPlayerNames.remove(uuid);
-            bridgeClient.sendMessage("FREEZE_LOGOUT", uuid.toString(), playerName);
+            bridgeClient.sendMessage("FREEZE_LOGOUT", uuid.toString(), playerName != null ? playerName : "Unknown");
         }
     }
 }

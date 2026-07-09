@@ -12,9 +12,11 @@ import gg.modl.minecraft.fabric.v26.handler.FabricStaffModeHandler;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FabricStaffModePacketListener extends PacketListenerAbstract {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FabricStaffModePacketListener.class);
+    private static final Logger log = LoggerFactory.getLogger(FabricStaffModePacketListener.class);
 
     private final FabricStaffModeHandler staffModeHandler;
     private final FabricFreezeHandler freezeHandler;

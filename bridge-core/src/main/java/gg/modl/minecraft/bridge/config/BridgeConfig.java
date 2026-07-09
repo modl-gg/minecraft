@@ -1,19 +1,23 @@
 package gg.modl.minecraft.bridge.config;
 
+import gg.modl.minecraft.bridge.resource.BridgeYamlResource;
 import lombok.Getter;
 import lombok.Setter;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Getter
 public class BridgeConfig {
@@ -25,7 +29,7 @@ public class BridgeConfig {
     private static final int DEFAULT_REPLAY_RADIUS = 64;
     private static final int DEFAULT_REPLAY_MOVE_THROTTLE = 50;
     private static final int DEFAULT_REPLAY_MAX_DURATION = 300;
-    private static final int DEFAULT_REPLAY_LOCAL_TTL = 1440;
+    private static final int DEFAULT_REPLAY_LOCAL_TTL = 10080;
 
     @Setter private String apiKey = "";
     @Setter private boolean debug = false;
@@ -37,17 +41,17 @@ public class BridgeConfig {
     private int reportCooldown = DEFAULT_REPORT_COOLDOWN;
     private Map<String, Integer> reportViolationThresholds = new LinkedHashMap<>(mapOf("default", DEFAULT_VIOLATION_THRESHOLD));
 
-    private boolean replayEnabled = true;
-    private boolean replayAutoRecord = true;
+    private boolean replayEnabled = false;
+    private boolean replayAutoRecord = false;
     private int replayBufferDuration = DEFAULT_REPLAY_BUFFER_DURATION;
     private int replayMaxDuration = DEFAULT_REPLAY_MAX_DURATION;
     private int replayRadius = DEFAULT_REPLAY_RADIUS;
     private int replayMoveThrottle = DEFAULT_REPLAY_MOVE_THROTTLE;
-    private boolean replaySaveLocal = false;
+    private boolean replaySaveLocal = true;
     private int replayLocalTtl = DEFAULT_REPLAY_LOCAL_TTL;
 
     public int getReportViolationThreshold(String checkName) {
-        Integer checkSpecific = reportViolationThresholds.get(checkName.toLowerCase());
+        Integer checkSpecific = reportViolationThresholds.get(checkName.toLowerCase(Locale.ROOT));
         if (checkSpecific != null) return checkSpecific;
         Integer defaultVal = reportViolationThresholds.get("default");
         return defaultVal != null ? defaultVal : DEFAULT_VIOLATION_THRESHOLD;
@@ -62,17 +66,13 @@ public class BridgeConfig {
         return Files.exists(dataDir.resolve(FILE_NAME));
     }
 
-    @SuppressWarnings("unchecked")
     public static BridgeConfig load(Path dataDir) throws IOException {
         Path file = dataDir.resolve(FILE_NAME);
         if (!Files.exists(file)) return new BridgeConfig();
 
-        Yaml yaml = new Yaml();
-        try (InputStream is = Files.newInputStream(file)) {
-            Map<String, Object> data = yaml.load(is);
-            if (data == null) return new BridgeConfig();
-            return fromMap(data);
-        }
+        Map<String, Object> data = BridgeYamlResource.loadMap(file);
+        if (data.isEmpty()) return new BridgeConfig();
+        return fromMap(data);
     }
 
     public void save(Path dataDir) throws IOException {
@@ -99,6 +99,7 @@ public class BridgeConfig {
         config.anticheatName = getStr(data, "anticheat-name", "Anti-cheat");
         config.serverName = getStr(data, "server-name", "Server 1");
         config.reportCooldown = getInt(data, "report-cooldown", DEFAULT_REPORT_COOLDOWN);
+        config.debug = getBool(data, "debug", false);
 
         Object cmds = data.get("stat-wipe-commands");
         if (cmds instanceof List<?>) {
@@ -113,20 +114,21 @@ public class BridgeConfig {
             Map<?, ?> threshMap = (Map<?, ?>) threshObj;
             Map<String, Integer> thresholds = new LinkedHashMap<>();
             for (Map.Entry<?, ?> entry : threshMap.entrySet()) {
-                String key = String.valueOf(entry.getKey());
-                int val = entry.getValue() instanceof Number ? ((Number) entry.getValue()).intValue() : DEFAULT_VIOLATION_THRESHOLD;
-                thresholds.put(key, val);
+                String key = String.valueOf(entry.getKey()).toLowerCase(Locale.ROOT);
+                if (entry.getValue() instanceof Number) {
+                    thresholds.put(key, ((Number) entry.getValue()).intValue());
+                }
             }
             config.reportViolationThresholds = thresholds;
         }
 
-        config.replayEnabled = getBool(data, "replay-enabled", true);
-        config.replayAutoRecord = getBool(data, "replay-auto-record", true);
+        config.replayEnabled = getBool(data, "replay-enabled", false);
+        config.replayAutoRecord = getBool(data, "replay-auto-record", false);
         config.replayBufferDuration = getInt(data, "replay-buffer-duration", DEFAULT_REPLAY_BUFFER_DURATION);
         config.replayMaxDuration = getInt(data, "replay-max-duration", DEFAULT_REPLAY_MAX_DURATION);
         config.replayRadius = getInt(data, "replay-radius", DEFAULT_REPLAY_RADIUS);
         config.replayMoveThrottle = getInt(data, "replay-move-throttle", DEFAULT_REPLAY_MOVE_THROTTLE);
-        config.replaySaveLocal = getBool(data, "replay-save-local", false);
+        config.replaySaveLocal = getBool(data, "replay-save-local", true);
         config.replayLocalTtl = getInt(data, "replay-local-ttl", DEFAULT_REPLAY_LOCAL_TTL);
 
         return config;
@@ -139,6 +141,7 @@ public class BridgeConfig {
         map.put("stat-wipe-commands", statWipeCommands);
         map.put("anticheat-name", anticheatName);
         map.put("server-name", serverName);
+        map.put("debug", debug);
         map.put("report-cooldown", reportCooldown);
         map.put("report-violation-threshold", reportViolationThresholds);
         map.put("replay-enabled", replayEnabled);

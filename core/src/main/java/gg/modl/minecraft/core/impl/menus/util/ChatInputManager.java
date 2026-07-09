@@ -4,6 +4,9 @@ import gg.modl.minecraft.core.Platform;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,6 +15,7 @@ import java.util.function.Consumer;
 public class ChatInputManager {
     private static final long INPUT_EXPIRY_MS = 60_000;
     private static final String PROMPT_PREFIX = "§6§l» §e";
+    private static final String TIMEOUT_MESSAGE = "§cInput prompt timed out. Please try again.";
 
     private final Platform platform;
     private final Map<UUID, PendingInput> pendingInputs = new ConcurrentHashMap<>();
@@ -44,7 +48,12 @@ public class ChatInputManager {
     public boolean handleChat(UUID playerUuid, String message) {
         PendingInput pending = pendingInputs.remove(playerUuid);
         if (pending == null) return false;
-        if (pending.isExpired()) return false;
+        if (pending.isExpired()) {
+            // Consume the line so an expired prompt's follow-up text (evidence URL/note/reason/duration) is
+            // never broadcast to public chat, and notify + reopen via the cancel callback.
+            cancelPending(playerUuid, pending);
+            return true;
+        }
 
         if (message.equalsIgnoreCase("cancel")) {
             if (pending.getCancelCallback() != null) pending.getCancelCallback().run();
@@ -53,6 +62,13 @@ public class ChatInputManager {
 
         pending.getCallback().accept(message);
         return true;
+    }
+
+    private void cancelPending(UUID playerUuid, PendingInput pending) {
+        platform.sendMessage(playerUuid, TIMEOUT_MESSAGE);
+        if (pending.getCancelCallback() != null) {
+            pending.getCancelCallback().run();
+        }
     }
 
     public void cancelInput(UUID playerUuid) {
@@ -67,6 +83,18 @@ public class ChatInputManager {
     }
 
     public void cleanupExpired() {
-        pendingInputs.entrySet().removeIf(entry -> entry.getValue().isExpired());
+        // Collect evicted entries, then marshal each cancel callback onto the main thread (the sweeper runs
+        // off-thread and the callbacks open Cirrus GUIs). Java-8 safe: no Map.entry.
+        List<Map.Entry<UUID, PendingInput>> expired = new ArrayList<>();
+        pendingInputs.entrySet().removeIf(entry -> {
+            if (entry.getValue().isExpired()) {
+                expired.add(new AbstractMap.SimpleImmutableEntry<>(entry.getKey(), entry.getValue()));
+                return true;
+            }
+            return false;
+        });
+        for (Map.Entry<UUID, PendingInput> e : expired) {
+            platform.runOnMainThread(() -> cancelPending(e.getKey(), e.getValue()));
+        }
     }
 }

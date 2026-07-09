@@ -1,14 +1,15 @@
 package gg.modl.minecraft.bridge.config;
 
+import gg.modl.minecraft.bridge.resource.BridgeYamlResource;
 import lombok.Data;
 import lombok.Getter;
-import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -26,15 +27,15 @@ public class StaffModeConfig {
 
     @SuppressWarnings("unchecked")
     public StaffModeConfig(Path dataFolder, Logger logger) {
-        File configFile = dataFolder.resolve("staff_mode.yml").toFile();
-        if (!configFile.exists()) {
+        Path configFile = dataFolder.resolve("staff_mode.yml");
+        if (!configFile.toFile().exists()) {
             setDefaults();
             return;
         }
 
-        try (InputStream is = new FileInputStream(configFile)) {
-            Map<String, Object> data = new Yaml().load(is);
-            if (data == null) {
+        try {
+            Map<String, Object> data = BridgeYamlResource.loadMap(configFile);
+            if (data.isEmpty()) {
                 setDefaults();
                 return;
             }
@@ -46,9 +47,8 @@ public class StaffModeConfig {
             Optional.ofNullable((Map<?, ?>) data.get("staff_scoreboard")).map(this::parseScoreboard).ifPresent(s -> staffScoreboard = s);
             Optional.ofNullable((Map<?, ?>) data.get("target_scoreboard")).map(this::parseScoreboard).ifPresent(s -> targetScoreboard = s);
 
-            if (staffHotbar.isEmpty() && targetHotbar.isEmpty()) {
-                setDefaults();
-            }
+            if (staffHotbar.isEmpty()) setStaffDefaults();
+            if (targetHotbar.isEmpty()) setTargetDefaults();
         } catch (Exception e) {
             logger.warning("[StaffMode] Failed to load staff_mode.yml: " + e.getMessage());
             setDefaults();
@@ -101,10 +101,17 @@ public class StaffModeConfig {
     }
 
     private void setDefaults() {
+        setStaffDefaults();
+        setTargetDefaults();
+    }
+
+    private void setStaffDefaults() {
         staffHotbar.put(0, createHotbarItem("minecraft:lead", "&eTarget Player", ACTION_TARGET_SELECTOR));
         staffHotbar.put(3, createVanishToggleItem());
         staffHotbar.put(8, createHotbarItem("minecraft:compass", "&6Staff Menu", ACTION_STAFF_MENU));
+    }
 
+    private void setTargetDefaults() {
         targetHotbar.put(0, createHotbarItem("minecraft:ice", "&bFreeze Target", "freeze_target"));
         targetHotbar.put(3, createHotbarItem("minecraft:nether_star", "&cStop Targeting", "stop_target"));
         targetHotbar.put(4, createHotbarItem("minecraft:book", "&eInspect Target", "inspect_target"));

@@ -35,6 +35,7 @@ import java.util.Collection;
 import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import gg.modl.minecraft.core.util.PluginLogger;
 
 public class SpigotPlatform implements Platform {
     private final Logger logger;
@@ -42,7 +43,7 @@ public class SpigotPlatform implements Platform {
     private final String configServerName;
     private final JavaPlugin plugin;
     private final boolean lateBootstrap;
-    private final gg.modl.minecraft.core.util.PluginLogger pluginLogger;
+    private final PluginLogger pluginLogger;
     private @Setter Cache cache;
     private @Setter LocaleManager localeManager;
     private @Setter StaffModeService staffModeService;
@@ -67,29 +68,29 @@ public class SpigotPlatform implements Platform {
         this.dataFolder = dataFolder;
         this.configServerName = configServerName;
         this.lateBootstrap = lateBootstrap;
-        this.pluginLogger = gg.modl.minecraft.core.util.PluginLogger.fromJul(logger);
+        this.pluginLogger = PluginLogger.fromJul(logger);
     }
 
     @Override
     public void broadcast(String string) {
-        Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', string));
+        runOnMainThread(() -> Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', string)));
     }
 
     @Override
     public void staffBroadcast(String string) {
         String message = ChatColor.translateAlternateColorCodes('&', string);
-        Bukkit.getOnlinePlayers().stream()
+        runOnMainThread(() -> Bukkit.getOnlinePlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
             .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
-            .forEach(player -> player.sendMessage(message));
+            .forEach(player -> player.sendMessage(message)));
     }
 
     @Override
     public void staffJsonBroadcast(String jsonMessage) {
-        Bukkit.getOnlinePlayers().stream()
+        runOnMainThread(() -> Bukkit.getOnlinePlayers().stream()
             .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
             .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
-            .forEach(player -> player.spigot().sendMessage(ComponentSerializer.parse(jsonMessage)));
+            .forEach(player -> player.spigot().sendMessage(ComponentSerializer.parse(jsonMessage))));
     }
 
     @Override
@@ -202,6 +203,7 @@ public class SpigotPlatform implements Platform {
 
     @Override
     public void kickPlayer(AbstractPlayer player, String reason) {
+        if (player == null) return;
         Player bukkitPlayer = Bukkit.getPlayer(player.getUuid());
         if (bukkitPlayer != null && bukkitPlayer.isOnline()) bukkitPlayer.kickPlayer(StringUtil.unescapeNewlines(reason));
     }
@@ -230,7 +232,7 @@ public class SpigotPlatform implements Platform {
     }
 
     @Override
-    public gg.modl.minecraft.core.util.PluginLogger getLogger() {
+    public PluginLogger getLogger() {
         return pluginLogger;
     }
 
@@ -261,7 +263,7 @@ public class SpigotPlatform implements Platform {
             if (getPlayerProfileMethod == null) return null;
 
             Object profile = getPlayerProfileMethod.invoke(player);
-            java.util.Collection<?> properties = (java.util.Collection<?>) getPropertiesMethod.invoke(profile);
+            Collection<?> properties = (Collection<?>) getPropertiesMethod.invoke(profile);
             for (Object prop : properties) {
                 String name = (String) getNameMethod.invoke(prop);
                 if ("textures".equals(name)) return (String) getValueMethod.invoke(prop);
@@ -276,7 +278,7 @@ public class SpigotPlatform implements Platform {
             getPlayerProfileMethod = player.getClass().getMethod("getPlayerProfile");
             Object profile = getPlayerProfileMethod.invoke(player);
             getPropertiesMethod = profile.getClass().getMethod("getProperties");
-            java.util.Collection<?> properties = (java.util.Collection<?>) getPropertiesMethod.invoke(profile);
+            Collection<?> properties = (Collection<?>) getPropertiesMethod.invoke(profile);
             for (Object prop : properties) {
                 getNameMethod = prop.getClass().getMethod("getName");
                 getValueMethod = prop.getClass().getMethod("getValue");

@@ -14,13 +14,16 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 import java.util.Map;
 import java.util.UUID;
@@ -75,16 +78,19 @@ public class FreezeHandler implements Listener {
 
         event.setCancelled(true);
 
+        UUID playerUuid = player.getUniqueId();
         String message = localeManager.getMessage("freeze.chat",
                 mapOf("player", player.getName(), "message", event.getMessage()));
 
-        if (staffModeHandler != null) {
-            Bukkit.getOnlinePlayers().stream()
-                    .filter(online -> staffModeHandler.isInStaffMode(online.getUniqueId()))
-                    .forEach(online -> online.sendMessage(message));
-        }
+        scheduler.runSync(() -> {
+            if (staffModeHandler != null) {
+                Bukkit.getOnlinePlayers().stream()
+                        .filter(online -> staffModeHandler.isInStaffMode(online.getUniqueId()))
+                        .forEach(online -> sendScheduledMessage(online.getUniqueId(), message));
+            }
 
-        player.sendMessage(message);
+            sendScheduledMessage(playerUuid, message);
+        });
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -94,6 +100,23 @@ public class FreezeHandler implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onBlockPlace(BlockPlaceEvent event) {
+        cancelIfFrozen(event, event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onDropItem(PlayerDropItemEvent event) {
+        cancelIfFrozen(event, event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (event.getWhoClicked() instanceof Player) {
+            cancelIfFrozen(event, (Player) event.getWhoClicked());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onInteract(PlayerInteractEvent event) {
         cancelIfFrozen(event, event.getPlayer());
     }
 
@@ -128,6 +151,15 @@ public class FreezeHandler implements Listener {
             Player player = Bukkit.getPlayer(target);
             if (player != null) {
                 player.sendMessage(localeManager.getMessage(messageKey));
+            }
+        });
+    }
+
+    private void sendScheduledMessage(UUID target, String message) {
+        scheduler.runForPlayer(target, () -> {
+            Player player = Bukkit.getPlayer(target);
+            if (player != null) {
+                player.sendMessage(message);
             }
         });
     }

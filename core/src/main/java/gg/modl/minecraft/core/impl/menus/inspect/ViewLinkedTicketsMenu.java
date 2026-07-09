@@ -12,15 +12,13 @@ import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.LinkedTicketItems;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
 public class ViewLinkedTicketsMenu extends BaseInspectListMenu<TicketsResponse.Ticket> {
-    private final List<TicketsResponse.Ticket> tickets = new ArrayList<>();
+    private final List<TicketsResponse.Ticket> tickets;
     private final Consumer<CirrusPlayerWrapper> rootBackAction;
 
     public ViewLinkedTicketsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -31,24 +29,12 @@ public class ViewLinkedTicketsMenu extends BaseInspectListMenu<TicketsResponse.T
 
         activeTab = InspectTab.HISTORY;
 
-        if (ticketIds != null && !ticketIds.isEmpty()) {
-            try {
-                httpClient.getTicketsByIds(ticketIds).thenAccept(response -> {
-                    if (response != null && response.isSuccess() && response.getTickets() != null) {
-                        tickets.addAll(response.getTickets());
-                    }
-                }).join();
-            } catch (Exception e) {
-                // fail to fetch, list remains empty
-            }
-        }
+        tickets = LinkedTicketItems.loadTickets(httpClient, ticketIds);
     }
 
     @Override
     protected Collection<TicketsResponse.Ticket> elements() {
-        if (tickets.isEmpty())
-            return Collections.singletonList(new TicketsResponse.Ticket());
-        return tickets;
+        return LinkedTicketItems.elementsOrEmpty(tickets);
     }
 
     @Override

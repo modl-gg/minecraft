@@ -15,8 +15,3 @@ pluginManagement {
 }
 
 rootProject.name = "modl-fabric-1214"
-
-def localPacketEventsBuild = file("../../../minecraft-packetevents")
-if (localPacketEventsBuild.isDirectory()) {
-    includeBuild(localPacketEventsBuild)
-}

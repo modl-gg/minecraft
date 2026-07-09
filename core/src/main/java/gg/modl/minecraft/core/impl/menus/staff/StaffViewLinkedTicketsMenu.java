@@ -11,15 +11,13 @@ import gg.modl.minecraft.core.impl.menus.util.LinkedTicketItems;
 import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
 public class StaffViewLinkedTicketsMenu extends BaseStaffListMenu<TicketsResponse.Ticket> {
-    private final List<TicketsResponse.Ticket> tickets = new ArrayList<>();
+    private final List<TicketsResponse.Ticket> tickets;
     private final String panelUrl;
 
     public StaffViewLinkedTicketsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -30,23 +28,12 @@ public class StaffViewLinkedTicketsMenu extends BaseStaffListMenu<TicketsRespons
 
         activeTab = StaffTab.PUNISHMENTS;
 
-        if (ticketIds != null && !ticketIds.isEmpty()) {
-            try {
-                httpClient.getTicketsByIds(ticketIds).thenAccept(response -> {
-                    if (response != null && response.isSuccess() && response.getTickets() != null) {
-                        tickets.addAll(response.getTickets());
-                    }
-                }).join();
-            } catch (Exception ignored) {
-            }
-        }
+        tickets = LinkedTicketItems.loadTickets(httpClient, ticketIds);
     }
 
     @Override
     protected Collection<TicketsResponse.Ticket> elements() {
-        if (tickets.isEmpty())
-            return Collections.singletonList(new TicketsResponse.Ticket());
-        return tickets;
+        return LinkedTicketItems.elementsOrEmpty(tickets);
     }
 
     @Override

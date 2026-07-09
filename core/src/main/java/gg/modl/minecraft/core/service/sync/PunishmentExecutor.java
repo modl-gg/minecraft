@@ -13,7 +13,7 @@ import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.PunishmentMessages;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.orTimeout;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -144,7 +144,7 @@ class PunishmentExecutor {
 
             if (modType == Modification.Type.MANUAL_PARDON || modType == Modification.Type.SYSTEM_PARDON || modType == Modification.Type.APPEAL_ACCEPT) {
                 handlePardon(uuid, username, punishmentId);
-            } else if (modType == Modification.Type.MANUAL_DURATION_CHANGE || modType == Modification.Type.APPEAL_DURATION_CHANGE) {
+            } else if (modType == Modification.Type.MANUAL_DURATION_CHANGE) {
                 handleDurationChange(uuid, username, punishmentId, modification.getEffectiveDuration(), modification.getTimestamp());
             }
         } catch (Exception e) {

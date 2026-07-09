@@ -56,6 +56,7 @@ import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.api.http.response.TicketsResponse;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -244,6 +245,14 @@ public interface ModlHttpClient {
     @NotNull CompletableFuture<Void> updateMigrationStatus(@NotNull MigrationStatusUpdateRequest request);
 
     /**
+     * Uploads the exported LiteBans migration file (multipart) to the backend.
+     *
+     * @param file the migration export file to upload
+     * @return a future containing {@code true} when the backend responds with a 2xx status
+     */
+    @NotNull CompletableFuture<Boolean> uploadMigrationFile(@NotNull File file);
+
+    /**
      * Submits IP geolocation information for a player, as resolved by the plugin via ip-api.com.
      *
      * @param minecraftUUID the player's Minecraft UUID
@@ -398,9 +407,11 @@ public interface ModlHttpClient {
      *
      * @param staffId the ID of the staff member to update
      * @param roleName the name of the new role to assign
+     * @param actingStaffId the Mongo id of the staff member performing the change (for server-side
+     *                      hierarchy/grantability enforcement), or null if unavailable
      * @return a future that completes when the role has been updated
      */
-    @NotNull CompletableFuture<Void> updateStaffRole(@NotNull String staffId, @NotNull String roleName);
+    @NotNull CompletableFuture<Void> updateStaffRole(@NotNull String staffId, @NotNull String roleName, String actingStaffId);
 
     /**
      * Retrieves all staff roles configured for this server.
@@ -414,9 +425,11 @@ public interface ModlHttpClient {
      *
      * @param roleId the ID of the role to update
      * @param permissions the new list of permission strings to assign to the role
+     * @param actingStaffId the Mongo id of the staff member performing the change (for server-side
+     *                      grantability/hierarchy enforcement), or null if unavailable
      * @return a future that completes when the permissions have been updated
      */
-    @NotNull CompletableFuture<Void> updateRolePermissions(@NotNull String roleId, @NotNull List<String> permissions);
+    @NotNull CompletableFuture<Void> updateRolePermissions(@NotNull String roleId, @NotNull List<String> permissions, String actingStaffId);
 
     /**
      * Retrieves detailed information about a specific punishment, including modifications and evidence.
@@ -540,4 +553,10 @@ public interface ModlHttpClient {
      * @return a future containing the paginated linked accounts
      */
     @NotNull CompletableFuture<LinkedAccountsResponse> getLinkedAccounts(@NotNull UUID uuid, int page, int limit);
+
+    /**
+     * Releases any resources held by this client (e.g. the request thread pool). Implementations
+     * that hold no resources may no-op.
+     */
+    void shutdown();
 }

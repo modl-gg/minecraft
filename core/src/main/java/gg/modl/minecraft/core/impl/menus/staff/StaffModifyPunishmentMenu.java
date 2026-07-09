@@ -262,8 +262,8 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
 
                     freshData.add(new RecentPunishmentsMenu.PunishmentWithPlayer(freshPunishment, playerUuid, p.getPlayerName(), null));
                 }
-                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null, freshData)
-                    .display(click.player());
+                RecentPunishmentsMenu menu = new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null, freshData);
+                StaffNavigationHandlers.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
             } else {
                 menuBackAction.accept(click.player());
             }

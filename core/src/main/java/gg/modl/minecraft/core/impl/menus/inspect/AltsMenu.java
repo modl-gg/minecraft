@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
+import dev.simplix.cirrus.Cirrus;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -13,6 +14,7 @@ import gg.modl.minecraft.api.http.response.LinkedAccountsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource;
+import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource.FetchResult;
 import gg.modl.minecraft.core.impl.menus.util.InspectContext;
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
@@ -21,14 +23,23 @@ import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.WebPlayer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class AltsMenu extends BaseInspectListMenu<Account> {
     private static final Logger logger = Logger.getLogger(AltsMenu.class.getName());
@@ -36,6 +47,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
     private static final int INITIAL_LOAD_PAGES = 2;
 
     private final PaginatedDataSource<Account> dataSource;
+    private int pageRefreshRequest;
 
     public AltsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                     Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
@@ -48,16 +60,16 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         activeTab = InspectTab.ALTS;
 
         dataSource = new PaginatedDataSource<>(PAGE_SIZE, (page, limit) -> {
-            CompletableFuture<PaginatedDataSource.FetchResult<Account>> future = new CompletableFuture<>();
+            CompletableFuture<FetchResult<Account>> future = new CompletableFuture<>();
             httpClient.getLinkedAccounts(targetUuid, page, limit).thenAccept(response -> {
                 if (response.getStatus() == 200) {
                     cacheSkinTextures(response.getLinkedAccounts());
-                    future.complete(new PaginatedDataSource.FetchResult<>(response.getLinkedAccounts(), response.getTotalCount()));
+                    future.complete(new FetchResult<>(response.getLinkedAccounts(), response.getTotalCount()));
                 } else {
-                    future.complete(new PaginatedDataSource.FetchResult<>(listOf(), 0));
+                    future.complete(new FetchResult<>(listOf(), 0, false));
                 }
             }).exceptionally(e -> {
-                future.complete(new PaginatedDataSource.FetchResult<>(listOf(), 0));
+                future.complete(new FetchResult<>(listOf(), 0, false));
                 return null;
             });
             return future;
@@ -105,14 +117,14 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
     protected boolean interceptNextPage(Click click) {
         int nextPage = currentPageIndex().get() + 1;
         if (!dataSource.isPageLoaded(nextPage)) {
-            dataSource.setOnDataLoaded(() -> {
+            int refreshRequest = ++pageRefreshRequest;
+            dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1, () -> {
+                if (refreshRequest != pageRefreshRequest) return;
                 AltsMenu newMenu = new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
                 newMenu.dataSource.initialize(dataSource.getAllLoadedItems(), dataSource.getTotalCount());
-                newMenu.display(click.player());
                 newMenu.setInitialPage(nextPage);
                 newMenu.display(click.player());
             });
-            dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1);
             return true;
         }
         dataSource.prefetchIfNeeded(nextPage);
@@ -194,10 +206,9 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
                 String pDate = MenuItems.formatDate(p.getIssued());
                 String pType = p.getTypeCategory();
                 String pRemaining = "Permanent";
-                Long duration = p.getDuration();
-                if (duration != null && duration > 0 && p.getStarted() != null) {
-                    long expiryTime = p.getStarted().getTime() + duration;
-                    long remaining = expiryTime - System.currentTimeMillis();
+                Date effectiveExpiry = p.getEffectiveExpiry();
+                if (effectiveExpiry != null) {
+                    long remaining = effectiveExpiry.getTime() - System.currentTimeMillis();
                     pRemaining = MenuItems.formatDuration(remaining > 0 ? remaining : 0);
                 }
                 String formattedPunishment = activeFormat
@@ -277,9 +288,10 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
     protected void handleClick(Click click, Account alt) {
         if (alt.getMinecraftUuid() == null) return;
 
-        Consumer<CirrusPlayerWrapper> backToAlts = player ->
-                new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext)
-                        .display(player);
+        Consumer<CirrusPlayerWrapper> backToAlts = player -> Cirrus.executor().execute(() -> {
+            AltsMenu m = new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
+            platform.runOnMainThread(() -> m.display(player));
+        });
 
         ActionHandlers.openMenu(
                 new InspectMenu(platform, httpClient, viewerUuid, viewerName, alt, backToAlts))

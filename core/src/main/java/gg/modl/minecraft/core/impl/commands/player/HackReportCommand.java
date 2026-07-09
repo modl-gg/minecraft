@@ -16,7 +16,7 @@ import gg.modl.minecraft.core.service.ReplayService;
 import lombok.RequiredArgsConstructor;
 
 import java.util.concurrent.CompletableFuture;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 
 @RequiredArgsConstructor
 public class HackReportCommand {
@@ -35,22 +35,24 @@ public class HackReportCommand {
         AbstractPlayer reporter = platform.getAbstractPlayer(actor.uniqueId(), false);
         AbstractPlayer targetPlayer = platform.getAbstractPlayer(targetName, false);
 
+        if (reporter == null) {
+            actor.reply(localeManager.getMessage("general.player_not_found"));
+            return;
+        }
+
         if (targetPlayer == null) {
             actor.reply(localeManager.getMessage("general.player_not_found"));
             return;
         }
 
-        if (targetPlayer.getUsername().equalsIgnoreCase(reporter.getUsername())) {
-            actor.reply(localeManager.getMessage("messages.cannot_report_self"));
-            return;
-        }
+        if (ticketUtil.denySelfReport(actor, reporter, targetPlayer, localeManager)) return;
 
         String description = details != null && !details.isEmpty() ? details : null;
         String createdServer = platform.getPlayerServer(actor.uniqueId());
 
         ReplayService replayService = platform.getReplayService();
         CompletableFuture<String> replayFuture;
-        if (replayService != null && replayService.isReplayAvailable(targetPlayer.getUuid())) {
+        if (replayService != null && replayService.shouldAttemptCapture(targetPlayer.getUuid())) {
             replayFuture = replayService.captureReplay(targetPlayer.getUuid(), targetPlayer.getUsername());
         } else {
             replayFuture = CompletableFuture.completedFuture(null);

@@ -13,8 +13,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.logging.Logger;
+import com.google.gson.JsonArray;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Data @AllArgsConstructor
 public class WebPlayer {
@@ -34,13 +39,22 @@ public class WebPlayer {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
     private static final long SYNC_TIMEOUT_MS = 10_000;
+    private static final int LOOKUP_QUEUE_CAPACITY = 64;
+    private static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5L;
+    private static final Object EXECUTOR_LOCK = new Object();
+    private static volatile ThreadPoolExecutor LOOKUP_EXECUTOR = createLookupExecutor();
 
     public static CompletableFuture<WebPlayer> get(String username) {
         return fromUrl(MOJANG_PROFILE_URL + username);
     }
 
     public static CompletableFuture<WebPlayer> get(UUID uuid) {
+        if (!isMojangAccountUuid(uuid)) return CompletableFuture.completedFuture(INVALID);
         return fromUrl(MOJANG_SESSION_URL + uuid.toString().replace("-", ""));
+    }
+
+    private static boolean isMojangAccountUuid(UUID uuid) {
+        return uuid.version() == 4;
     }
 
     private static CompletableFuture<WebPlayer> fromUrl(String rawUrl) {
@@ -55,6 +69,10 @@ public class WebPlayer {
                     connection.setReadTimeout((int) REQUEST_TIMEOUT.toMillis());
 
                     int statusCode = connection.getResponseCode();
+                    if (statusCode == 204 || statusCode == 404) {
+                        logger.fine("No Mojang profile found for URL: " + rawUrl);
+                        return INVALID;
+                    }
                     if (statusCode != 200) {
                         logger.warning("Mojang API returned status " + statusCode + " for URL: " + rawUrl);
                         return INVALID;
@@ -92,7 +110,7 @@ public class WebPlayer {
                     UUID playerUuid = UUID.fromString(idString.replaceFirst(UUID_REGEX, "$1-$2-$3-$4-$5"));
 
                     String textureValue = null;
-                    com.google.gson.JsonArray propsArray = json.has("properties") ? json.getAsJsonArray("properties") : null;
+                    JsonArray propsArray = json.has("properties") ? json.getAsJsonArray("properties") : null;
                     if (propsArray != null && propsArray.size() > 0) {
                         JsonObject properties = propsArray.get(0).getAsJsonObject();
                         if (properties.has("value")) textureValue = properties.get("value").getAsString();
@@ -107,16 +125,60 @@ public class WebPlayer {
                 } finally {
                     if (connection != null) connection.disconnect();
                 }
-            });
+            }, lookupExecutor());
         } catch (Exception e) {
             logger.warning("Error creating request for Mojang API URL " + rawUrl + ": " + e.getMessage());
             return CompletableFuture.completedFuture(INVALID);
         }
     }
 
+    public static void shutdown() {
+        ThreadPoolExecutor executor;
+        synchronized (EXECUTOR_LOCK) {
+            executor = LOOKUP_EXECUTOR;
+            LOOKUP_EXECUTOR = createLookupExecutor();
+        }
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) executor.shutdownNow();
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static ThreadPoolExecutor lookupExecutor() {
+        ThreadPoolExecutor executor = LOOKUP_EXECUTOR;
+        if (!executor.isShutdown() && !executor.isTerminated()) return executor;
+        synchronized (EXECUTOR_LOCK) {
+            executor = LOOKUP_EXECUTOR;
+            if (executor.isShutdown() || executor.isTerminated()) {
+                LOOKUP_EXECUTOR = createLookupExecutor();
+            }
+            return LOOKUP_EXECUTOR;
+        }
+    }
+
+    private static ThreadPoolExecutor createLookupExecutor() {
+        AtomicInteger threadCounter = new AtomicInteger();
+        return new ThreadPoolExecutor(
+                1,
+                4,
+                60L,
+                TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(LOOKUP_QUEUE_CAPACITY),
+                r -> {
+                    Thread thread = new Thread(r, "modl-web-player-" + threadCounter.incrementAndGet());
+                    thread.setDaemon(true);
+                    return thread;
+                },
+                new ThreadPoolExecutor.AbortPolicy()
+        );
+    }
+
     public static String getSkinId(JsonObject json) {
         try {
-            com.google.gson.JsonArray propsArr = json.has("properties") ? json.getAsJsonArray("properties") : null;
+            JsonArray propsArr = json.has("properties") ? json.getAsJsonArray("properties") : null;
             if (propsArr == null || propsArr.size() == 0) return null;
 
             JsonObject properties = propsArr.get(0).getAsJsonObject();
@@ -155,7 +217,7 @@ public class WebPlayer {
     @Deprecated
     public static WebPlayer getSync(String username) {
         try {
-            return get(username).get(SYNC_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+            return get(username).get(SYNC_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             logger.warning("Synchronous WebPlayer.get() failed for username " + username + ": " + e.getMessage());
             return INVALID;
@@ -165,7 +227,7 @@ public class WebPlayer {
     @Deprecated
     public static WebPlayer getSync(UUID uuid) {
         try {
-            return get(uuid).get(SYNC_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+            return get(uuid).get(SYNC_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             logger.warning("Synchronous WebPlayer.get() failed for UUID " + uuid + ": " + e.getMessage());
             return INVALID;

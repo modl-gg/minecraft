@@ -33,8 +33,8 @@ import gg.modl.minecraft.core.util.PluginLogger;
 
 @RequiredArgsConstructor
 public class MigrationService {
-    private static final String HEADER_API_KEY = "X-API-Key", IMPORT_SOURCE = "litebans";
-    private static final int HTTP_PAYLOAD_TOO_LARGE = 413, PROGRESS_LOG_INTERVAL = 100,
+    private static final String IMPORT_SOURCE = "litebans";
+    private static final int PROGRESS_LOG_INTERVAL = 100,
             BAN_TYPE_ORDINAL = 2, MUTE_TYPE_ORDINAL = 1;
 
     private final PluginLogger logger;
@@ -92,6 +92,7 @@ public class MigrationService {
                         logger.warning("Failed to close JSON writer: " + e.getMessage());
                     }
                 }
+                closeDatabaseProvider();
             }
         }, migrationExecutor);
     }
@@ -222,7 +223,7 @@ public class MigrationService {
         punishment.typeOrdinal = typeOrdinal;
 
         String reason = rs.getString("REASON");
-        punishment.reason = (reason != null && !reason.isEmpty()) ? reason : defaultReason;
+        punishment.reason = resolvePunishmentReason(reason);
 
         long timeIssued = rs.getLong("TIME");
         if (timeIssued <= 0) timeIssued = System.currentTimeMillis();
@@ -261,6 +262,10 @@ public class MigrationService {
         }
 
         return punishment;
+    }
+
+    private String resolvePunishmentReason(String reason) {
+        return (reason != null && !reason.isEmpty()) ? reason : defaultReason;
     }
 
     private void writePlayerToJson(StreamingJsonWriter writer, PlayerMigrationData playerData) throws IOException {
@@ -369,7 +374,7 @@ public class MigrationService {
 
                 updateMigrationProgress(taskId, "uploading_json", "Uploading migration file to panel...", 0, null);
 
-                boolean success = uploadFileMultipart(jsonFile);
+                boolean success = httpClient.uploadMigrationFile(jsonFile).join();
                 if (!success) logger.severe("File upload failed");
                 return success;
             } catch (Exception e) {
@@ -389,33 +394,6 @@ public class MigrationService {
         }, migrationExecutor);
     }
 
-    private boolean uploadFileMultipart(File file) throws Exception {
-        try (org.apache.hc.client5.http.impl.classic.CloseableHttpClient httpClient =
-                org.apache.hc.client5.http.impl.classic.HttpClients.createDefault()) {
-
-            org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder builder =
-                org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder.create();
-            builder.addBinaryBody("migrationFile", file,
-                org.apache.hc.core5.http.ContentType.APPLICATION_JSON, file.getName());
-
-            String uploadUrl = apiUrl + "/minecraft/migration/upload";
-            org.apache.hc.client5.http.classic.methods.HttpPost httpPost =
-                new org.apache.hc.client5.http.classic.methods.HttpPost(uploadUrl);
-            httpPost.setHeader(HEADER_API_KEY, apiKey);
-            httpPost.setEntity(builder.build());
-
-            return httpClient.execute(httpPost, response -> {
-                int statusCode = response.getCode();
-                String responseBody = org.apache.hc.core5.http.io.entity.EntityUtils.toString(response.getEntity());
-
-                if (statusCode >= 200 && statusCode < 300) return true;
-                if (statusCode == HTTP_PAYLOAD_TOO_LARGE) logger.severe("File too large: " + responseBody);
-                else logger.severe("Upload failed with status " + statusCode + ": " + responseBody);
-                return false;
-            });
-        }
-    }
-
     private void updateMigrationProgress(String taskId, String status, String message,
                                          Integer recordsProcessed, Integer totalRecords) {
         try {
@@ -425,7 +403,17 @@ public class MigrationService {
         }
     }
 
+    private void closeDatabaseProvider() {
+        if (databaseProvider == null) return;
+        try {
+            databaseProvider.close();
+        } catch (Exception e) {
+            logger.warning("Failed to close migration database provider: " + e.getMessage());
+        }
+    }
+
     public void shutdown() {
         migrationExecutor.shutdown();
+        closeDatabaseProvider();
     }
 }

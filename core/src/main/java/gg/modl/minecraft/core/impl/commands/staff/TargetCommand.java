@@ -10,13 +10,16 @@ import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
+import gg.modl.minecraft.core.util.StaffCommandUtil;
+import gg.modl.minecraft.core.util.StaffCommandUtil.StaffDisplay;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.command.CommandActor;
 
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @Command("target") @PlayerOnly @StaffOnly @RequiredArgsConstructor
 public class TargetCommand {
@@ -27,7 +30,7 @@ public class TargetCommand {
     private final BridgeService bridgeService;
 
     @Description("Target a player for moderation")
-    public void onTarget(CommandActor actor, @revxrsal.commands.annotation.Optional AbstractPlayer target) {
+    public void onTarget(CommandActor actor, @Optional AbstractPlayer target) {
         if (!PermissionUtil.hasPermission(actor, cache, Permissions.MOD_ACTIONS)) {
             actor.reply(localeManager.getMessage("general.no_permission"));
             return;
@@ -79,17 +82,8 @@ public class TargetCommand {
     private void ensureStaffModeEnabled(CommandActor actor, UUID staffUuid) {
         if (staffModeService.isInStaffMode(staffUuid)) return;
 
-        staffModeService.enable(staffUuid);
-
-        AbstractPlayer staffPlayer = platform.getPlayer(staffUuid);
-        String inGameName = staffPlayer != null ? staffPlayer.getName() : "Staff";
-        String panelName = cache.getStaffDisplayName(staffUuid);
-        if (panelName == null) panelName = inGameName;
-
-        actor.reply(localeManager.getMessage("staff_mode.enabled"));
-        platform.staffBroadcast(localeManager.getMessage("staff_mode.enabled_broadcast", mapOf(
-                "staff", panelName, "in-game-name", inGameName
-        )));
-        bridgeService.sendStaffModeEnter(staffUuid.toString(), inGameName, panelName);
+        StaffDisplay display = StaffCommandUtil.resolvePlayerDisplay(staffUuid, platform, cache, "Staff");
+        StaffCommandUtil.enableStaffModeForActor(actor, staffUuid, staffModeService, platform, bridgeService,
+                localeManager, display);
     }
 }

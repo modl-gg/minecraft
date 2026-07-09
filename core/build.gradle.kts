@@ -9,6 +9,7 @@ dependencies {
     compileOnly("io.github.revxrsal:lamp.common:${property("lamp.version")}")
     compileOnly("org.yaml:snakeyaml:${property("snakeyaml.version")}")
     compileOnly("org.apache.httpcomponents.client5:httpclient5:${property("httpclient5.version")}")
+    compileOnly("org.java-websocket:Java-WebSocket:${property("java.websocket.version")}")
     compileOnly("net.kyori:adventure-api:${property("adventure.version")}")
     compileOnly("net.kyori:adventure-text-minimessage:${property("adventure.version")}")
     compileOnly("net.kyori:adventure-text-serializer-legacy:${property("adventure.version")}")
@@ -16,6 +17,17 @@ dependencies {
     compileOnly("io.netty:netty-all:${property("netty.version")}")
 
     testImplementation("io.github.revxrsal:lamp.common:${property("lamp.version")}")
+    testImplementation("gg.modl:proto:${property("proto.version")}")
+    // proto's gencode is stamped at protobuf.java.version; override the proto POM's transitive
+    // protobuf-java so the test runtime is not older than the linked gencode version.
+    testImplementation("com.google.protobuf:protobuf-java:${property("protobuf.java.version")}")
+    testImplementation("com.google.protobuf:protobuf-java-util:${property("protobuf.java.version")}")
+    testImplementation("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
+    testImplementation("gg.modl.minecraft.packetevents:packetevents-api:${property("packetevents.version")}")
+    testImplementation("org.java-websocket:Java-WebSocket:${property("java.websocket.version")}")
+    testImplementation("org.apache.httpcomponents.client5:httpclient5:${property("httpclient5.version")}")
+    testImplementation("net.kyori:adventure-api:${property("adventure.version")}")
+    testImplementation("net.kyori:adventure-text-serializer-legacy:${property("adventure.version")}")
     testImplementation(platform("org.junit:junit-bom:${property("junit.bom.version")}"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("com.google.code.gson:gson:${property("gson.version")}")
@@ -63,6 +75,7 @@ val runtimeLibraries = listOf(
     RuntimeLibrary("HTTPCLIENT5", "org.apache.httpcomponents.client5", "httpclient5", "httpclient5.version"),
     RuntimeLibrary("HTTPCORE5", "org.apache.httpcomponents.core5", "httpcore5", "httpcore5.version"),
     RuntimeLibrary("HTTPCORE5_H2", "org.apache.httpcomponents.core5", "httpcore5-h2", "httpcore5.version"),
+    RuntimeLibrary("JAVA_WEBSOCKET", "org.java-websocket", "Java-WebSocket", "java.websocket.version"),
     RuntimeLibrary("PACKETEVENTS_API", "gg.modl.minecraft.packetevents", "packetevents-api", "packetevents.version"),
     RuntimeLibrary("PACKETEVENTS_NETTY", "gg.modl.minecraft.packetevents", "packetevents-netty-common", "packetevents.version"),
     RuntimeLibrary("PACKETEVENTS_SPIGOT", "gg.modl.minecraft.packetevents", "packetevents-spigot", "packetevents.version"),

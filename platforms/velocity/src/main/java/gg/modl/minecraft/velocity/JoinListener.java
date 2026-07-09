@@ -13,6 +13,7 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfileRegistry;
+import gg.modl.minecraft.core.cache.LoginCache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.ChatMessageCache;
@@ -46,6 +47,7 @@ public class JoinListener {
     private final Staff2faService staff2faService;
     private final BridgeService bridgeService;
     private final CachedProfileRegistry registry;
+    private final LoginCache loginCache;
     private final boolean debugMode;
 
     /** Buffers login responses between onLogin and onPostLogin so profile exists before caching. */
@@ -57,7 +59,7 @@ public class JoinListener {
                         ChatMessageCache chatMessageCache, Platform platform, SyncService syncService,
                         LocaleManager localeManager, MaintenanceService maintenanceService,
                         Staff2faService staff2faService, BridgeService bridgeService,
-                        CachedProfileRegistry registry, boolean debugMode) {
+                        CachedProfileRegistry registry, LoginCache loginCache, boolean debugMode) {
         this.httpClientHolder = httpClientHolder;
         this.cache = cache;
         this.logger = logger;
@@ -69,6 +71,7 @@ public class JoinListener {
         this.staff2faService = staff2faService;
         this.bridgeService = bridgeService;
         this.registry = registry;
+        this.loginCache = loginCache;
         this.debugMode = debugMode;
     }
 
@@ -85,18 +88,13 @@ public class JoinListener {
                 .thenApply(wp -> wp != null && wp.isValid() ? wp.getSkin() : null)
                 .exceptionally(t -> null);
 
-        Map<String, Object> ipInfo = null;
-        String skinHash = null;
-        try {
-            ipInfo = ipInfoFuture.getNow(null);
-            skinHash = skinHashFuture.getNow(null);
-        } catch (Exception ignored) {}
-
-        PlayerLoginRequest request = new PlayerLoginRequest(
+        // Await both async lookups (bounded) before building the request so skinHash/ipInfo
+        // are actually populated instead of always null (getNow returned the fallback).
+        PlayerLoginRequest request = ListenerHelper.buildLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getUsername(),
-                ipAddress, skinHash, platform.getServerName(), ipInfo
-        );
+                ipAddress, platform.getServerName(),
+                ipInfoFuture, skinHashFuture, LOGIN_TIMEOUT_SECONDS, platform.getLogger());
 
         try {
             PlayerLoginResponse response = getHttpClient().playerLogin(request).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -131,7 +129,7 @@ public class JoinListener {
 
     @Subscribe
     public void onPostLogin(PostLoginEvent event) {
-        java.util.UUID uuid = event.getPlayer().getUniqueId();
+        UUID uuid = event.getPlayer().getUniqueId();
         ListenerHelper.handlePlayerJoin(uuid, event.getPlayer().getUsername(),
                 platform, cache, localeManager, staff2faService, syncService);
 
@@ -147,7 +145,7 @@ public class JoinListener {
         pendingLoginData.remove(event.getPlayer().getUniqueId());
         ListenerHelper.handlePlayerDisconnect(
                 event.getPlayer().getUniqueId(), event.getPlayer().getUsername(),
-                getHttpClient(), cache, platform, localeManager,
+                getHttpClient(), cache, loginCache, platform, localeManager,
                 chatMessageCache, bridgeService, registry);
     }
 

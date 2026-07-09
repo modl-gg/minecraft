@@ -7,11 +7,15 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 import java.util.stream.Collectors;
 
 import gg.modl.minecraft.core.util.PluginLogger;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 @Data
 public class PunishGuiConfig {
@@ -79,10 +83,18 @@ public class PunishGuiConfig {
 
                     if (slotNumber < 1 || slotNumber > MAX_PUNISHMENT_SLOTS) continue;
 
+                    if (!(entry.getValue() instanceof Map)) {
+                        logger.warning("Skipping punish GUI slot " + slotNumber + ": expected a mapping but got "
+                                + (entry.getValue() == null ? "null" : entry.getValue().getClass().getSimpleName()));
+                        continue;
+                    }
+
                     Map<String, Object> slotData = (Map<String, Object>) entry.getValue();
                     PunishSlotConfig slotConfig = parseSlotConfig(slotNumber, slotData);
                     config.slots.put(slotNumber, slotConfig);
-                } catch (NumberFormatException ignored) {}
+                } catch (Exception e) {
+                    logger.warning("Skipping invalid punish GUI slot '" + entry.getKey() + "': " + e.getMessage());
+                }
             }
 
             logger.info("Loaded " + config.slots.size() + " punishment slots from config");
@@ -99,9 +111,9 @@ public class PunishGuiConfig {
         PunishSlotConfig config = new PunishSlotConfig();
         config.setSlotNumber(slotNumber);
 
-        if (data.containsKey("enabled")) config.setEnabled((Boolean) data.get("enabled"));
-        if (data.containsKey("item")) config.setItem((String) data.get("item"));
-        if (data.containsKey("title")) config.setTitle((String) data.get("title"));
+        if (data.containsKey("enabled")) config.setEnabled(coerceBoolean(data.get("enabled"), config.isEnabled()));
+        if (data.containsKey("item")) config.setItem(coerceString(data.get("item"), config.getItem()));
+        if (data.containsKey("title")) config.setTitle(coerceString(data.get("title"), config.getTitle()));
         if (data.containsKey("ordinal")) {
             Object val = data.get("ordinal");
             if (val instanceof Number) config.setOrdinal(((Number) val).intValue());
@@ -115,6 +127,19 @@ public class PunishGuiConfig {
         }
 
         return config;
+    }
+
+    private static String coerceString(Object value, String fallback) {
+        return value == null ? fallback : String.valueOf(value);
+    }
+
+    private static boolean coerceBoolean(Object value, boolean fallback) {
+        if (value instanceof Boolean) return (Boolean) value;
+        if (value == null) return fallback;
+        String s = String.valueOf(value).trim();
+        if (s.equalsIgnoreCase("true") || s.equals("1") || s.equalsIgnoreCase("yes") || s.equalsIgnoreCase("on")) return true;
+        if (s.equalsIgnoreCase("false") || s.equals("0") || s.equalsIgnoreCase("no") || s.equalsIgnoreCase("off")) return false;
+        return fallback;
     }
 
     public static PunishGuiConfig createDefault() {

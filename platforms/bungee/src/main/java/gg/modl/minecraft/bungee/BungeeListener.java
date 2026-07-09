@@ -41,13 +41,26 @@ import net.md_5.bungee.event.EventHandler;
 import net.md_5.bungee.event.EventPriority;
 
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RequiredArgsConstructor
 public class BungeeListener implements Listener {
+    private static final long LOGIN_TIMEOUT_SECONDS = 5;
+    private static final int LOGIN_EXECUTOR_MAX_THREADS = 4;
+    private static final int LOGIN_EXECUTOR_QUEUE_CAPACITY = 64;
+    private static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5;
+    private static final AtomicInteger LOGIN_THREAD_COUNTER = new AtomicInteger();
+
     private final BungeePlatform platform;
     private final Cache cache;
     private final HttpClientHolder httpClientHolder;
@@ -68,8 +81,7 @@ public class BungeeListener implements Listener {
     private final BridgeService bridgeService;
     private final CachedProfileRegistry registry;
     private final boolean debugMode;
-
-    private static final long LOGIN_TIMEOUT_SECONDS = 5;
+    private final ThreadPoolExecutor loginExecutor = createLoginExecutor();
 
     private ModlHttpClient getHttpClient() {
         return httpClientHolder.getClient();
@@ -78,19 +90,56 @@ public class BungeeListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(LoginEvent event) {
         event.registerIntent(plugin);
+        scheduleLoginCheck(event);
+    }
 
-        CompletableFuture.runAsync(() -> {
-            try {
-                performLoginCheck(event);
-            } catch (java.util.concurrent.TimeoutException e) {
-                platform.getLogger().warning("Login check timed out for " + event.getConnection().getName() + " - blocking login for safety");
-                denyLogin(event, "Login verification timed out. Please try again.");
-            } catch (Exception e) {
-                handleLoginException(event, e);
-            } finally {
-                event.completeIntent(plugin);
-            }
-        });
+    public void shutdown() {
+        loginExecutor.shutdown();
+        try {
+            if (!loginExecutor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) loginExecutor.shutdownNow();
+        } catch (InterruptedException e) {
+            loginExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private ThreadPoolExecutor createLoginExecutor() {
+        return new ThreadPoolExecutor(
+                1,
+                LOGIN_EXECUTOR_MAX_THREADS,
+                60L,
+                TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(LOGIN_EXECUTOR_QUEUE_CAPACITY),
+                runnable -> {
+                    Thread thread = new Thread(runnable, "modl-bungee-login-" + LOGIN_THREAD_COUNTER.incrementAndGet());
+                    thread.setDaemon(true);
+                    return thread;
+                },
+                new ThreadPoolExecutor.AbortPolicy()
+        );
+    }
+
+    private void runLoginCheck(LoginEvent event) {
+        try {
+            performLoginCheck(event);
+        } catch (TimeoutException e) {
+            platform.getLogger().warning("Login check timed out for " + event.getConnection().getName() + " - blocking login for safety");
+            denyLogin(event, "Login verification timed out. Please try again.");
+        } catch (Exception e) {
+            handleLoginException(event, e);
+        } finally {
+            event.completeIntent(plugin);
+        }
+    }
+
+    private void scheduleLoginCheck(LoginEvent event) {
+        try {
+            CompletableFuture.runAsync(() -> runLoginCheck(event), loginExecutor);
+        } catch (RejectedExecutionException e) {
+            platform.getLogger().warning("Login check executor rejected " + event.getConnection().getName() + " - blocking login for safety");
+            denyLogin(event, "Login verification is temporarily unavailable. Please try again.");
+            event.completeIntent(plugin);
+        }
     }
 
     private void performLoginCheck(LoginEvent event) throws Exception {
@@ -101,21 +150,16 @@ public class BungeeListener implements Listener {
                 .thenApply(wp -> wp != null && wp.isValid() ? wp.getSkin() : null)
                 .exceptionally(t -> null);
 
-        Map<String, Object> ipInfo = null;
-        String skinHash = null;
-        try {
-            ipInfo = ipInfoFuture.getNow(null);
-            skinHash = skinHashFuture.getNow(null);
-        } catch (Exception ignored) {}
-
-        PlayerLoginRequest request = new PlayerLoginRequest(
+        // Await both async lookups (bounded) before building the request so skinHash/ipInfo
+        // are actually populated instead of always null (getNow returned the fallback).
+        PlayerLoginRequest request = ListenerHelper.buildLoginRequest(
                 event.getConnection().getUniqueId().toString(),
                 event.getConnection().getName(),
-                ipAddress, skinHash, platform.getServerName(), ipInfo
-        );
+                ipAddress, platform.getServerName(),
+                ipInfoFuture, skinHashFuture, LOGIN_TIMEOUT_SECONDS, platform.getLogger());
 
         PlayerLoginResponse response = getHttpClient().playerLogin(request).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        loginCache.cacheLoginResult(event.getConnection().getUniqueId(), response, ipInfo, skinHash);
+        loginCache.cacheLoginResult(event.getConnection().getUniqueId(), response, request.getIpInfo(), request.getSkinHash());
         ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getConnection().getUniqueId().toString(), ipAddress, ipInfoFuture, platform.getLogger());
 
         LoginHandler.LoginResult result = LoginHandler.processLoginResponse(
@@ -145,7 +189,7 @@ public class BungeeListener implements Listener {
 
     @EventHandler
     public void onPostLogin(PostLoginEvent event) {
-        java.util.UUID uuid = event.getPlayer().getUniqueId();
+        UUID uuid = event.getPlayer().getUniqueId();
 
         ListenerHelper.handlePlayerJoin(uuid, event.getPlayer().getName(),
                 platform, cache, localeManager, staff2faService, syncService);
@@ -163,7 +207,7 @@ public class BungeeListener implements Listener {
     public void onPlayerDisconnect(PlayerDisconnectEvent event) {
         ListenerHelper.handlePlayerDisconnect(
                 event.getPlayer().getUniqueId(), event.getPlayer().getName(),
-                getHttpClient(), cache, platform, localeManager,
+                getHttpClient(), cache, loginCache, platform, localeManager,
                 chatMessageCache, bridgeService, registry);
     }
 
@@ -177,7 +221,9 @@ public class BungeeListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onChat(ChatEvent event) {
-        if (event.getSender() == null) return;
+        // Guards both the chat branch and the command branch: getSender() is a ProxiedPlayer
+        // only for upstream player chat; server-originated ChatEvents are skipped (no CCE).
+        if (!(event.getSender() instanceof ProxiedPlayer)) return;
 
         if (event.isCommand()) {
             handleCommand(event);
@@ -198,6 +244,9 @@ public class BungeeListener implements Listener {
 
     private void handleCommand(ChatEvent event) {
         if (!(event.getSender() instanceof ProxiedPlayer)) return;
+        // An async-registered command already gated+dispatched by AsyncCommandInterceptor is
+        // cancelled; defer to it so the gate/log runs exactly once.
+        if (event.isCancelled()) return;
         ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
 
         CommandInterceptHandler.CommandResult result = CommandInterceptHandler.handleCommand(
@@ -217,7 +266,7 @@ public class BungeeListener implements Listener {
         return player.getServer() != null ? player.getServer().getInfo().getName() : "unknown";
     }
 
-    private String extractIpAddress(java.net.SocketAddress socketAddress) {
+    private String extractIpAddress(SocketAddress socketAddress) {
         if (socketAddress instanceof InetSocketAddress) return ((InetSocketAddress) socketAddress).getAddress().getHostAddress();
         String addr = socketAddress.toString();
         if (addr.startsWith("/")) addr = addr.substring(1);

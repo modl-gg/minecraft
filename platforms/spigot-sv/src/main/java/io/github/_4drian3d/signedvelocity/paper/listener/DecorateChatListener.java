@@ -8,7 +8,7 @@ import org.bukkit.event.EventPriority;
 import org.jetbrains.annotations.NotNull;
 
 @SuppressWarnings("UnstableApiUsage")
-public final class DecorateChatListener implements EventListener<AsyncChatDecorateEvent> {
+public final class DecorateChatListener implements EventListener<AsyncChatDecorateEvent>, LocalExecutionDetector {
     private final SignedQueue chatQueue;
 
     public DecorateChatListener(final SignedQueue chatQueue) {
@@ -31,18 +31,29 @@ public final class DecorateChatListener implements EventListener<AsyncChatDecora
         if (player == null) {
             return;
         }
+        // Skip the queue peek (and its blocking timeout wait) for non-proxied/local/synchronous
+        // decoration, matching the sibling PlayerChatListener fast-path.
+        if (CHECK_FOR_LOCAL_CHAT && (!event.isAsynchronous() || isLocal())) {
+            return;
+        }
         this.chatQueue.dataFrom(player.getUniqueId())
-                .nextResultWithoutAdvance()
-                .thenAccept(result -> {
+                .acceptNextResultWithoutAdvance(result -> {
                     final String modifiedChat = result.toModify();
                     if (modifiedChat != null) {
                         event.result(Component.text(modifiedChat));
                     }
-                }).join();
+                });
     }
 
     @Override
     public @NotNull Class<AsyncChatDecorateEvent> eventClass() {
         return AsyncChatDecorateEvent.class;
+    }
+
+    @Override
+    public boolean isLocal() {
+        return WALKER.walk(stream -> stream.limit(20)
+                .map(StackWalker.StackFrame::getMethodName)
+                .noneMatch(method -> method.contains("handleChat")));
     }
 }

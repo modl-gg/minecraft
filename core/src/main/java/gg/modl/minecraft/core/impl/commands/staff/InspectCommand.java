@@ -13,10 +13,10 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.InspectContext;
+import gg.modl.minecraft.core.util.ClickableJsonMessage;
 import gg.modl.minecraft.core.util.PunishmentActionMessages;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
@@ -26,28 +26,25 @@ import gg.modl.minecraft.core.util.PunishmentTypeCacheManager;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.annotation.Named;
 import revxrsal.commands.command.CommandActor;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 @RequiredArgsConstructor
 public class InspectCommand {
     private static final String STATUS_ACTIVE = "Active", STATUS_PARDONED = "Pardoned", STATUS_INACTIVE = "Inactive",
             DURATION_PERMANENT = "Permanent", COLOR_YES = "&cYes", COLOR_NO = "&aNo",
-            COLOR_ACTIVE = "&a", COLOR_INACTIVE = "&7",
-            PROFILE_LINK_JSON =
-            "{\"text\":\"\",\"extra\":[" +
-            "{\"text\":\"  \",\"color\":\"gold\"}," +
-            "{\"text\":\"View Web Profile\",\"color\":\"aqua\",\"underlined\":true," +
-            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view %s's profile\"}}]}";
+            COLOR_ACTIVE = "&a", COLOR_INACTIVE = "&7";
     private static final int MAX_NOTES_DISPLAYED = 3, MAX_LINKED_ACCOUNTS_DISPLAYED = 5;
 
     private final HttpClientHolder httpClientHolder;
@@ -59,8 +56,8 @@ public class InspectCommand {
 
     @Command("inspect")
     @Description("Open the inspect menu for a player, or use -p to print info to chat")
-    @PlayerOnly @StaffOnly
-    public void inspect(CommandActor actor, @Named("player") String playerQuery, @revxrsal.commands.annotation.Optional String flags) {
+    @StaffOnly
+    public void inspect(CommandActor actor, @Named("player") String playerQuery, @Optional String flags) {
         if (flags == null) flags = "";
 
         if (playerQuery.startsWith("#")) {
@@ -111,7 +108,7 @@ public class InspectCommand {
             }
 
             PunishmentDetailResponse.PunishmentDetail p = response.getPunishment();
-            String typeName = getPunishmentTypeName(String.valueOf(p.getTypeOrdinal()));
+            String typeName = getPunishmentTypeName(p.getTypeOrdinal());
             String playerName = p.getPlayerName() != null ? p.getPlayerName() : Constants.UNKNOWN;
             String issuerName = p.getIssuerName() != null ? p.getIssuerName() : Constants.UNKNOWN;
             String issued = p.getIssued() != null ? p.getIssued() : Constants.UNKNOWN;
@@ -200,9 +197,15 @@ public class InspectCommand {
         httpClientHolder.getClient().lookupPlayer(request).thenAccept(response -> {
             if (response.isSuccess() && response.getData() != null) {
                 UUID playerUuid = UUID.fromString(response.getData().getMinecraftUuid());
-                httpClientHolder.getClient().getLinkedAccounts(playerUuid).thenAccept(linkedResponse -> displayPlayerInfo(actor, response.getData(), linkedResponse)).exceptionally(linkedThrowable -> {
-                    if (linkedThrowable.getCause() instanceof PanelUnavailableException) actor.reply(localeManager.getMessage("api_errors.panel_restarting"));
-                    else displayPlayerInfo(actor, response.getData(), null);
+
+                // Resolve the target's OWN notes (best-effort): the linked-accounts endpoint excludes self.
+                StaffProfileLookup.lookupPlayerProfile(httpClientHolder.getClient(), platform, playerQuery).thenAccept(profileResponse -> {
+                    List<Note> targetNotes = (profileResponse != null && profileResponse.getStatus() == 200)
+                            ? profileResponse.getProfile().getNotes() : Collections.emptyList();
+                    fetchLinkedAndDisplay(actor, response.getData(), playerUuid, targetNotes);
+                }).exceptionally(profileThrowable -> {
+                    // Profile lookup failed: degrade to no notes rather than erroring the whole command.
+                    fetchLinkedAndDisplay(actor, response.getData(), playerUuid, Collections.emptyList());
                     return null;
                 });
             } else actor.reply(localeManager.getMessage("general.player_not_found"));
@@ -212,7 +215,17 @@ public class InspectCommand {
         });
     }
 
-    private void displayPlayerInfo(CommandActor actor, PlayerLookupResponse.PlayerData data, LinkedAccountsResponse linkedResponse) {
+    private void fetchLinkedAndDisplay(CommandActor actor, PlayerLookupResponse.PlayerData data, UUID playerUuid, List<Note> targetNotes) {
+        httpClientHolder.getClient().getLinkedAccounts(playerUuid)
+                .thenAccept(linkedResponse -> displayPlayerInfo(actor, data, linkedResponse, targetNotes))
+                .exceptionally(linkedThrowable -> {
+                    if (linkedThrowable.getCause() instanceof PanelUnavailableException) actor.reply(localeManager.getMessage("api_errors.panel_restarting"));
+                    else displayPlayerInfo(actor, data, null, targetNotes);
+                    return null;
+                });
+    }
+
+    private void displayPlayerInfo(CommandActor actor, PlayerLookupResponse.PlayerData data, LinkedAccountsResponse linkedResponse, List<Note> targetNotes) {
         String playerName = data.getCurrentUsername() != null ? data.getCurrentUsername() : Constants.UNKNOWN;
 
         actor.reply(localeManager.getMessage("print.inspect.header", mapOf("player", playerName)));
@@ -229,7 +242,7 @@ public class InspectCommand {
                     if (punishment.isActive()) {
                         String type = punishment.getType();
                         if (type != null) {
-                            String typeName = getPunishmentTypeName(type).toLowerCase();
+                            String typeName = type.toLowerCase();
                             if (!isBanned && (typeName.contains("ban") || typeName.equals("blacklist"))) isBanned = true;
                             if (!isMuted && (typeName.contains("mute") || typeName.equals("silence"))) isMuted = true;
                         }
@@ -243,25 +256,20 @@ public class InspectCommand {
         actor.reply(localeManager.getMessage("print.inspect.currently_muted", mapOf("status", mutedStatus)));
 
         actor.reply(localeManager.getMessage("print.inspect.notes_label"));
-        boolean hasNotes = false;
-        if (linkedResponse != null)
-            for (Account account : linkedResponse.getLinkedAccounts()) {
-                if (!account.getNotes().isEmpty()) {
-                    hasNotes = true;
-                    int noteOrdinal = 1;
-                    for (Note note : account.getNotes()) {
-                        if (noteOrdinal > MAX_NOTES_DISPLAYED) break;
-                        actor.reply(localeManager.getMessage("print.inspect.note_entry", mapOf(
-                            "ordinal", String.valueOf(noteOrdinal),
-                            "text", note.getText(),
-                            "issuer", note.getIssuerName()
-                        )));
-                        noteOrdinal++;
-                    }
-                    break;
-                }
+        if (targetNotes != null && !targetNotes.isEmpty()) {
+            int noteOrdinal = 1;
+            for (Note note : targetNotes) {
+                if (noteOrdinal > MAX_NOTES_DISPLAYED) break;
+                actor.reply(localeManager.getMessage("print.inspect.note_entry", mapOf(
+                    "ordinal", String.valueOf(noteOrdinal),
+                    "text", note.getText(),
+                    "issuer", note.getIssuerName()
+                )));
+                noteOrdinal++;
             }
-        if (!hasNotes) actor.reply(localeManager.getMessage("print.inspect.no_notes"));
+        } else {
+            actor.reply(localeManager.getMessage("print.inspect.no_notes"));
+        }
 
         int totalPunishments = 0;
         if (data.getPunishmentStats() != null) totalPunishments = data.getPunishmentStats().getTotalPunishments();
@@ -309,7 +317,14 @@ public class InspectCommand {
             String profileUrl = panelUrl + "/panel?player=" + data.getMinecraftUuid();
 
             if (actor.uniqueId() != null) {
-                String profileMessage = String.format(PROFILE_LINK_JSON, profileUrl, playerName);
+                String profileMessage = ClickableJsonMessage.empty()
+                        .extra(ClickableJsonMessage.text("  ").color("gold"))
+                        .extra(ClickableJsonMessage.text("View Web Profile")
+                                .color("aqua")
+                                .underlined(true)
+                                .openUrl(profileUrl)
+                                .hoverText("Click to view " + playerName + "'s profile"))
+                        .toJson();
                 UUID senderUuid = actor.uniqueId();
                 platform.runOnMainThread(() -> platform.sendJsonMessage(senderUuid, profileMessage));
             } else {
@@ -318,9 +333,8 @@ public class InspectCommand {
         }
     }
 
-    private String getPunishmentTypeName(String typeId) {
-        if (typeId == null) return Constants.UNKNOWN;
-        return punishmentTypeCache.getNameById(typeId);
+    private String getPunishmentTypeName(int typeOrdinal) {
+        return punishmentTypeCache.getNameByOrdinal(typeOrdinal);
     }
 
 }

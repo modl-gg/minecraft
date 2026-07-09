@@ -3,35 +3,23 @@ package gg.modl.minecraft.core.impl.menus.util;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.text.CirrusChatElement;
+import gg.modl.minecraft.core.util.DateFormatter;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 public final class MenuItems {
     private MenuItems() {}
 
-    private static volatile String dateFormatPattern = "MM/dd/yyyy HH:mm";
-    private static volatile TimeZone timeZone = null;
-    private static final ThreadLocal<SimpleDateFormat> FORMAT_CACHE = new ThreadLocal<>();
-
     public static void setDateFormat(String pattern) {
-        try {
-            new SimpleDateFormat(pattern);
-            dateFormatPattern = pattern;
-            FORMAT_CACHE.remove();
-        } catch (IllegalArgumentException ignored) {}
+        DateFormatter.setDateFormat(pattern);
     }
 
     public static void setTimezone(String timezoneId) {
-        if (timezoneId != null && !timezoneId.isEmpty()) {
-            timeZone = TimeZone.getTimeZone(timezoneId);
-        }
-        FORMAT_CACHE.remove();
+        DateFormatter.setTimezone(timezoneId);
     }
 
     public static final String COLOR_GOLD = "§6", COLOR_YELLOW = "§e", COLOR_GREEN = "§a", COLOR_RED = "§c",
@@ -107,6 +95,20 @@ public final class MenuItems {
         ).actionHandler("filter");
     }
 
+    public static CirrusItem statusToggleButton(String currentStatusFilter, String itemLabel) {
+        boolean showingOpen = "open".equalsIgnoreCase(currentStatusFilter);
+        String opposite = showingOpen ? "closed" : "open";
+        List<String> loreLines = new ArrayList<>();
+        loreLines.add(COLOR_GRAY + "Showing: " + COLOR_GREEN + (showingOpen ? "open" : "closed") + " " + itemLabel);
+        loreLines.add("");
+        loreLines.add(COLOR_YELLOW + "Click to show only " + opposite + " " + itemLabel);
+        return CirrusItem.of(
+                CirrusItemType.ANVIL,
+                CirrusChatElement.ofLegacyText(COLOR_GOLD + "Filter"),
+                lore(loreLines)
+        ).actionHandler("filter");
+    }
+
     public static CirrusItem sortButton(String currentSort, List<String> options) {
         List<String> loreLines = new ArrayList<>();
         loreLines.add(COLOR_GRAY + "Sort by:");
@@ -128,13 +130,7 @@ public final class MenuItems {
 
     public static String formatDate(Date date) {
         if (date == null) return "Unknown";
-        SimpleDateFormat sdf = FORMAT_CACHE.get();
-        if (sdf == null) {
-            sdf = new SimpleDateFormat(dateFormatPattern);
-            if (timeZone != null) sdf.setTimeZone(timeZone);
-            FORMAT_CACHE.set(sdf);
-        }
-        return sdf.format(date);
+        return DateFormatter.format(date);
     }
 
     public static String formatDuration(Long durationMs) {

@@ -5,6 +5,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 
 import java.util.UUID;
+import net.minecraft.server.world.ServerWorld;
 
 public class FabricBridgePlayer implements BridgePlayer {
     private final ServerPlayerEntity player;
@@ -69,6 +70,6 @@ public class FabricBridgePlayer implements BridgePlayer {
 
     @Override
     public String getWorldName() {
-        return ((net.minecraft.server.world.ServerWorld) player.getEntityWorld()).getRegistryKey().getValue().toString();
+        return ((ServerWorld) player.getEntityWorld()).getRegistryKey().getValue().toString();
     }
 }

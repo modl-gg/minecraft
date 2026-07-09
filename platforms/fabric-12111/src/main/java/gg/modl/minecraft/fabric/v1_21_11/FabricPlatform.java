@@ -37,6 +37,11 @@ import java.util.Collection;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import com.mojang.serialization.JsonOps;
+import net.minecraft.registry.RegistryOps;
+import net.minecraft.text.TextCodecs;
 
 public class FabricPlatform implements Platform {
     private final MinecraftServer server;
@@ -64,43 +69,53 @@ public class FabricPlatform implements Platform {
 
     @Override
     public void broadcast(String string) {
-        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            sendLegacyMessage(player, string);
-        }
+        server.execute(() -> {
+            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                sendLegacyMessage(player, string);
+            }
+        });
     }
 
     @Override
     public void staffBroadcast(String string) {
-        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            if (isAuthenticatedStaff(player.getUuid())) {
-                sendLegacyMessage(player, string);
+        server.execute(() -> {
+            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                if (isAuthenticatedStaff(player.getUuid())) {
+                    sendLegacyMessage(player, string);
+                }
             }
-        }
+        });
     }
 
     @Override
     public void staffJsonBroadcast(String jsonMessage) {
-        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            if (isAuthenticatedStaff(player.getUuid())) {
-                sendJsonToPlayer(player, jsonMessage);
+        server.execute(() -> {
+            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                if (isAuthenticatedStaff(player.getUuid())) {
+                    sendJsonToPlayer(player, jsonMessage);
+                }
             }
-        }
+        });
     }
 
     @Override
     public void sendMessage(UUID uuid, String message) {
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-        if (player != null) {
-            sendLegacyMessage(player, StringUtil.unescapeNewlines(message));
-        }
+        server.execute(() -> {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+            if (player != null) {
+                sendLegacyMessage(player, StringUtil.unescapeNewlines(message));
+            }
+        });
     }
 
     @Override
     public void sendJsonMessage(UUID uuid, String jsonMessage) {
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-        if (player != null) {
-            sendJsonToPlayer(player, jsonMessage);
-        }
+        server.execute(() -> {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+            if (player != null) {
+                sendJsonToPlayer(player, jsonMessage);
+            }
+        });
     }
 
     @Override
@@ -217,6 +232,7 @@ public class FabricPlatform implements Platform {
 
     @Override
     public void kickPlayer(AbstractPlayer player, String reason) {
+        if (player == null) return;
         ServerPlayerEntity serverPlayer = server.getPlayerManager().getPlayer(player.getUuid());
         if (serverPlayer != null) {
             serverPlayer.networkHandler.disconnect(parseLegacyText(serverPlayer, StringUtil.unescapeNewlines(reason)));
@@ -252,8 +268,8 @@ public class FabricPlatform implements Platform {
     public String getPlayerSkinTexture(UUID uuid) {
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
         if (player == null) return null;
-        com.mojang.authlib.GameProfile profile = player.getGameProfile();
-        com.mojang.authlib.properties.Property property = profile.properties().get("textures")
+        GameProfile profile = player.getGameProfile();
+        Property property = profile.properties().get("textures")
                 .stream().findFirst().orElse(null);
         return property != null ? property.value() : null;
     }
@@ -301,8 +317,8 @@ public class FabricPlatform implements Platform {
             Component component = AdventureSerializer.serializer().fromJson(fixedJson);
             String normalizedJson = AdventureSerializer.toJson(component);
             JsonElement jsonElement = JsonParser.parseString(normalizedJson);
-            Text text = net.minecraft.text.TextCodecs.CODEC.parse(
-                    net.minecraft.registry.RegistryOps.of(com.mojang.serialization.JsonOps.INSTANCE, player.getRegistryManager()),
+            Text text = TextCodecs.CODEC.parse(
+                    RegistryOps.of(JsonOps.INSTANCE, player.getRegistryManager()),
                     jsonElement).result().orElse(null);
             if (text != null) {
                 player.sendMessage(text, false);
@@ -322,8 +338,8 @@ public class FabricPlatform implements Platform {
         String normalizedMessage = message == null ? "" : message;
         try {
             String json = AdventureSerializer.toJson(CirrusChatElement.ofLegacyText(normalizedMessage).asComponent());
-            Text text = net.minecraft.text.TextCodecs.CODEC.parse(
-                    net.minecraft.registry.RegistryOps.of(com.mojang.serialization.JsonOps.INSTANCE, player.getRegistryManager()),
+            Text text = TextCodecs.CODEC.parse(
+                    RegistryOps.of(JsonOps.INSTANCE, player.getRegistryManager()),
                     JsonParser.parseString(json)).result().orElse(null);
             if (text != null) {
                 return text;

@@ -3,7 +3,7 @@ package gg.modl.minecraft.bridge.reporter.detection;
 import gg.modl.minecraft.bridge.BridgeScheduler;
 import gg.modl.minecraft.bridge.BridgeTask;
 
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -34,13 +34,20 @@ public class ViolationTracker {
     }
 
     public void addViolation(UUID uuid, DetectionSource source, String checkName, String verbose) {
-        Deque<ViolationRecord> playerRecords = records.computeIfAbsent(uuid, k -> new ArrayDeque<>());
-        synchronized (playerRecords) {
-            playerRecords.addLast(new ViolationRecord(source, checkName, verbose));
-            if (playerRecords.size() > MAX_RECORDS_PER_PLAYER) {
-                playerRecords.removeFirst();
+        records.compute(uuid, (ignored, playerRecords) -> {
+            Deque<ViolationRecord> updatedRecords = playerRecords;
+            if (updatedRecords == null) {
+                updatedRecords = new ArrayDeque<>();
             }
-        }
+            beforeViolationRecordAddedForTest(uuid, updatedRecords);
+            synchronized (updatedRecords) {
+                updatedRecords.addLast(new ViolationRecord(source, checkName, verbose));
+                if (updatedRecords.size() > MAX_RECORDS_PER_PLAYER) {
+                    updatedRecords.removeFirst();
+                }
+            }
+            return updatedRecords;
+        });
     }
 
     public List<ViolationRecord> getRecords(UUID uuid) {
@@ -71,10 +78,18 @@ public class ViolationTracker {
 
     private void cleanup() {
         long cutoff = System.currentTimeMillis() - RECORD_TTL_MS;
-        records.forEach((uuid, list) -> {
-            synchronized (list) {
-                list.removeIf(r -> r.getTimestamp() < cutoff);
-            }
-        });
+        for (UUID uuid : records.keySet()) {
+            records.computeIfPresent(uuid, (ignored, list) -> {
+                boolean empty;
+                synchronized (list) {
+                    list.removeIf(r -> r.getTimestamp() < cutoff);
+                    empty = list.isEmpty();
+                }
+                return empty ? null : list;
+            });
+        }
+    }
+
+    void beforeViolationRecordAddedForTest(UUID uuid, Deque<ViolationRecord> playerRecords) {
     }
 }

@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> {
@@ -54,6 +55,7 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
     private String viewerRole;
     private final Map<String, String> selectedRoles = new HashMap<>();
     private final boolean hasPermission;
+    @Getter private CompletableFuture<Void> dataFuture;
 
     public StaffListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                          boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
@@ -65,7 +67,9 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         this.hasPermission = cache != null && cache.hasPermission(viewerUuid, Permissions.STAFF_MANAGE);
 
         if (hasPermission)
-            fetchStaffAndRoles();
+            this.dataFuture = fetchStaffAndRoles();
+        else
+            this.dataFuture = CompletableFuture.completedFuture(null);
     }
 
     private StaffListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -85,53 +89,60 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         if (existingRoleOrders != null) this.roleOrders = new HashMap<>(existingRoleOrders);
         this.viewerRole = viewerRole;
         if (existingSelections != null) this.selectedRoles.putAll(existingSelections);
+        this.dataFuture = CompletableFuture.completedFuture(null);
     }
 
-    private void fetchStaffAndRoles() {
-        httpClient.getRoles().thenAccept(response -> {
-            if (response != null && response.getRoles() != null) {
-                availableRoles.clear();
-                roleOrders.clear();
-                for (RolesListResponse.RoleEntry role : response.getRoles()) {
-                    roleOrders.put(role.getName(), role.getOrder());
-                    if (!SUPER_ADMIN_ROLE.equals(role.getName()))
-                        availableRoles.add(role.getName());
+    private CompletableFuture<Void> fetchStaffAndRoles() {
+        CompletableFuture<Void> rolesFuture = httpClient.getRoles().thenAccept(response -> {
+            if (response == null || !response.isSuccess() || response.getRoles() == null) {
+                throw new IllegalStateException("Failed to load staff roles");
+            }
+
+            availableRoles.clear();
+            roleOrders.clear();
+            for (RolesListResponse.RoleEntry role : response.getRoles()) {
+                roleOrders.put(role.getName(), role.getOrder());
+                if (!SUPER_ADMIN_ROLE.equals(role.getName()))
+                    availableRoles.add(role.getName());
+            }
+        });
+
+        CompletableFuture<Void> staffFuture = httpClient.getStaffList().thenAccept(response -> {
+            if (response == null || !response.isSuccess() || response.getStaff() == null) {
+                throw new IllegalStateException("Failed to load staff members");
+            }
+
+            staffMembers.clear();
+            for (StaffListResponse.StaffEntry entry : response.getStaff()) {
+                UUID uuid = null;
+                if (entry.getMinecraftUuid() != null) {
+                    try {
+                        uuid = UUID.fromString(entry.getMinecraftUuid());
+                    } catch (Exception ignored) {}
+                }
+                String displayName = entry.getMinecraftUsername() != null ? entry.getMinecraftUsername() : entry.getUsername();
+                staffMembers.add(new StaffMember(entry.getId(), uuid, displayName, entry.getRole()));
+
+                if (uuid != null && uuid.equals(viewerUuid)) {
+                    viewerRole = entry.getRole();
                 }
             }
-        }).exceptionally(e -> null);
 
-        httpClient.getStaffList().thenAccept(response -> {
-            if (response != null && response.getStaff() != null) {
-                staffMembers.clear();
-                for (StaffListResponse.StaffEntry entry : response.getStaff()) {
-                    UUID uuid = null;
-                    if (entry.getMinecraftUuid() != null) {
-                        try {
-                            uuid = UUID.fromString(entry.getMinecraftUuid());
-                        } catch (Exception ignored) {}
-                    }
-                    String displayName = entry.getMinecraftUsername() != null ? entry.getMinecraftUsername() : entry.getUsername();
-                    staffMembers.add(new StaffMember(entry.getId(), uuid, displayName, entry.getRole()));
-
-                    if (uuid != null && uuid.equals(viewerUuid)) {
-                        viewerRole = entry.getRole();
-                    }
-                }
-
-                if (platform.getCache() != null) {
-                    for (StaffMember staff : staffMembers) {
-                        if (staff.getUuid() != null && platform.getCache().getSkinTexture(staff.getUuid()) == null) {
-                            final UUID staffUuid = staff.getUuid();
-                            WebPlayer.get(staffUuid).thenAccept(wp -> {
-                                if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
-                                    platform.getCache().cacheSkinTexture(staffUuid, wp.getTextureValue());
-                                }
-                            });
-                        }
+            if (platform.getCache() != null) {
+                for (StaffMember staff : staffMembers) {
+                    if (staff.getUuid() != null && platform.getCache().getSkinTexture(staff.getUuid()) == null) {
+                        final UUID staffUuid = staff.getUuid();
+                        WebPlayer.get(staffUuid).thenAccept(wp -> {
+                            if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
+                                platform.getCache().cacheSkinTexture(staffUuid, wp.getTextureValue());
+                            }
+                        });
                     }
                 }
             }
-        }).exceptionally(e -> null);
+        });
+
+        return CompletableFuture.allOf(rolesFuture, staffFuture);
     }
 
     private int getRoleOrder(String roleName) {
@@ -149,8 +160,15 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
     private boolean canModify(StaffMember staff) {
         if (isSuperAdmin(staff)) return false;
         if (isViewerSelf(staff)) return false;
-        if (viewerRole == null) return false;
-        int viewerOrder = getRoleOrder(viewerRole);
+
+        // A super-admin viewer (admin flag, or their cached MC role) is top authority even if their uuid
+        // is not linked in the staff list (viewerRole stays null). Backend still enforces, so a wrong
+        // client-side flag cannot escalate.
+        boolean viewerIsSuperAdmin = isAdmin
+                || (platform.getCache() != null && SUPER_ADMIN_ROLE.equalsIgnoreCase(platform.getCache().getStaffRole(viewerUuid)));
+        if (!viewerIsSuperAdmin && viewerRole == null) return false;
+
+        int viewerOrder = viewerIsSuperAdmin ? Integer.MIN_VALUE : getRoleOrder(viewerRole);
         int targetOrder = getRoleOrder(staff.getCurrentRole());
         return viewerOrder < targetOrder;
     }
@@ -179,37 +197,8 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         if (staff.getId() == null)
             return createEmptyPlaceholder("No staff members");
 
-        List<String> lore = new ArrayList<>();
         boolean canMod = canModify(staff);
-
-        if (!canMod) {
-            lore.add(MenuItems.COLOR_GRAY + "Role: " + MenuItems.COLOR_WHITE + staff.getCurrentRole());
-            lore.add("");
-            if (isSuperAdmin(staff)) {
-                lore.add(MenuItems.COLOR_RED + "Super Admins cannot be modified");
-            } else if (isViewerSelf(staff)) {
-                lore.add(MenuItems.COLOR_RED + "You cannot modify your own role");
-            } else {
-                lore.add(MenuItems.COLOR_RED + "You cannot modify staff with");
-                lore.add(MenuItems.COLOR_RED + "the same or higher rank");
-            }
-        } else {
-            String selectedRole = selectedRoles.getOrDefault(staff.getId(), staff.getCurrentRole());
-
-            lore.add(MenuItems.COLOR_GRAY + "Roles:");
-            for (String role : availableRoles) {
-                if (role.equals(staff.getCurrentRole())) {
-                    lore.add(MenuItems.COLOR_GREEN + "  §l" + role + " §r§7(current)");
-                } else if (role.equals(selectedRole) && !role.equals(staff.getCurrentRole())) {
-                    lore.add(MenuItems.COLOR_GREEN + "  " + role + " §7(selected)");
-                } else {
-                    lore.add(MenuItems.COLOR_GRAY + "  " + role);
-                }
-            }
-            lore.add("");
-            lore.add(MenuItems.COLOR_YELLOW + "Right-click to cycle roles");
-            lore.add(MenuItems.COLOR_YELLOW + "Left-click to apply selected role");
-        }
+        List<String> lore = canMod ? buildSelectableStaffLore(staff) : buildLockedStaffLore(staff);
 
         CirrusItem headItem = CirrusItem.of(
                 CirrusItemType.PLAYER_HEAD,
@@ -233,6 +222,41 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         }
 
         return headItem;
+    }
+
+    private List<String> buildLockedStaffLore(StaffMember staff) {
+        List<String> lore = new ArrayList<>();
+        lore.add(MenuItems.COLOR_GRAY + "Role: " + MenuItems.COLOR_WHITE + staff.getCurrentRole());
+        lore.add("");
+        if (isSuperAdmin(staff)) {
+            lore.add(MenuItems.COLOR_RED + "Super Admins cannot be modified");
+        } else if (isViewerSelf(staff)) {
+            lore.add(MenuItems.COLOR_RED + "You cannot modify your own role");
+        } else {
+            lore.add(MenuItems.COLOR_RED + "You cannot modify staff with");
+            lore.add(MenuItems.COLOR_RED + "the same or higher rank");
+        }
+        return lore;
+    }
+
+    private List<String> buildSelectableStaffLore(StaffMember staff) {
+        List<String> lore = new ArrayList<>();
+        String selectedRole = selectedRoles.getOrDefault(staff.getId(), staff.getCurrentRole());
+
+        lore.add(MenuItems.COLOR_GRAY + "Roles:");
+        for (String role : availableRoles) {
+            if (role.equals(staff.getCurrentRole())) {
+                lore.add(MenuItems.COLOR_GREEN + "  §l" + role + " §r§7(current)");
+            } else if (role.equals(selectedRole) && !role.equals(staff.getCurrentRole())) {
+                lore.add(MenuItems.COLOR_GREEN + "  " + role + " §7(selected)");
+            } else {
+                lore.add(MenuItems.COLOR_GRAY + "  " + role);
+            }
+        }
+        lore.add("");
+        lore.add(MenuItems.COLOR_YELLOW + "Right-click to cycle roles");
+        lore.add(MenuItems.COLOR_YELLOW + "Left-click to apply selected role");
+        return lore;
     }
 
     @Override
@@ -282,7 +306,8 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         sendMessage(MenuItems.COLOR_YELLOW + "Applying role " + MenuItems.COLOR_GREEN + selectedRole +
                 MenuItems.COLOR_YELLOW + " to " + staff.getUsername() + "...");
 
-        httpClient.updateStaffRole(staff.getId(), selectedRole).thenAccept(v -> {
+        String actingStaffId = platform.getCache() != null ? platform.getCache().getStaffId(viewerUuid) : null;
+        httpClient.updateStaffRole(staff.getId(), selectedRole, actingStaffId).thenAccept(v -> {
             sendMessage(MenuItems.COLOR_GREEN + "Role updated successfully!");
             selectedRoles.remove(staff.getId());
 

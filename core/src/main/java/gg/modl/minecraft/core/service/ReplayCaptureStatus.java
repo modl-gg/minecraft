@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.service;
 
+import java.util.Locale;
 public enum ReplayCaptureStatus {
     OK,
     FABRIC_DISABLED,
@@ -14,7 +15,7 @@ public enum ReplayCaptureStatus {
         }
 
         try {
-            return ReplayCaptureStatus.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
+            return ReplayCaptureStatus.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ignored) {
             return ERROR;
         }

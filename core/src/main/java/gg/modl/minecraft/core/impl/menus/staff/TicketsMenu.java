@@ -1,9 +1,7 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
-import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
-import dev.simplix.cirrus.model.CirrusClickType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
@@ -16,10 +14,10 @@ import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.ClickableJsonMessage;
 import lombok.Getter;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -27,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
@@ -49,10 +48,9 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
     }
 
     private final List<Ticket> tickets = new ArrayList<>();
-    private String currentFilter = "all";
     private String currentStatusFilter = "open";
-    private final List<String> filterOptions = Arrays.asList("all", "open", "unfinished", "closed");
     private final String panelUrl;
+    @Getter private CompletableFuture<Void> dataFuture;
 
     public TicketsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                        boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
@@ -60,35 +58,28 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         this.panelUrl = panelUrl;
         activeTab = StaffTab.TICKETS;
 
-        fetchTickets();
+        this.dataFuture = fetchTickets();
     }
 
-    private void fetchTickets() {
-        try {
-            httpClient.getTickets(null, null).thenAccept(response -> {
-                if (response.isSuccess() && response.getTickets() != null) {
-                    tickets.clear();
-                    for (TicketsResponse.Ticket ticket : response.getTickets()) {
-                        if ("Unfinished".equalsIgnoreCase(ticket.getStatus())) {
-                            continue;
-                        }
-                        tickets.add(new Ticket(
-                                ticket.getId(),
-                                ticket.getPlayerName(),
-                                ticket.getSubject(),
-                                ticket.getCreatedAt(),
-                                ticket.getStatus(),
-                                ticket.isHasStaffResponse()
-                        ));
+    private CompletableFuture<Void> fetchTickets() {
+        return httpClient.getTickets(null, null).thenAccept(response -> {
+            if (response.isSuccess() && response.getTickets() != null) {
+                tickets.clear();
+                for (TicketsResponse.Ticket ticket : response.getTickets()) {
+                    if ("Unfinished".equalsIgnoreCase(ticket.getStatus())) {
+                        continue;
                     }
+                    tickets.add(new Ticket(
+                            ticket.getId(),
+                            ticket.getPlayerName(),
+                            ticket.getSubject(),
+                            ticket.getCreatedAt(),
+                            ticket.getStatus(),
+                            ticket.isHasStaffResponse()
+                    ));
                 }
-            }).join();
-        } catch (Exception ignored) {}
-    }
-
-    public TicketsMenu withFilter(String filter) {
-        this.currentFilter = filter;
-        return this;
+            }
+        }).exceptionally(e -> null);
     }
 
     public TicketsMenu withStatusFilter(String statusFilter) {
@@ -100,7 +91,7 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
-        items.put(MenuSlots.FILTER_BUTTON, MenuItems.filterButton(currentFilter, filterOptions, currentStatusFilter, "tickets"));
+        items.put(MenuSlots.FILTER_BUTTON, MenuItems.statusToggleButton(currentStatusFilter, "tickets"));
 
         return items;
     }
@@ -113,16 +104,21 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         List<Ticket> filtered = new ArrayList<>();
 
         for (Ticket ticket : tickets) {
-            boolean typeMatch = currentFilter.equals("all") || (ticket.getStatus() != null && ticket.getStatus().equalsIgnoreCase(currentFilter));
-            boolean statusMatch = "open".equalsIgnoreCase(currentStatusFilter) != "closed".equalsIgnoreCase(ticket.getStatus());
-            if (typeMatch && statusMatch)
+            boolean statusMatch = "open".equalsIgnoreCase(currentStatusFilter)
+                    != "closed".equalsIgnoreCase(ticket.getStatus());
+            if (statusMatch)
                 filtered.add(ticket);
         }
 
         if (filtered.isEmpty())
             return Collections.singletonList(new Ticket(null, null, null, null, null, false));
 
-        filtered.sort((t1, t2) -> t2.getCreated().compareTo(t1.getCreated()));
+        filtered.sort((t1, t2) -> {
+            if (t1.getCreated() == null && t2.getCreated() == null) return 0;
+            if (t1.getCreated() == null) return 1;
+            if (t2.getCreated() == null) return -1;
+            return t2.getCreated().compareTo(t1.getCreated());
+        });
         return filtered;
     }
 
@@ -175,15 +171,14 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         click.clickedMenu().close();
 
         String ticketUrl = panelUrl + "/ticket/" + ticket.getId();
-        String escapedUrl = ticketUrl.replace("\"", "\\\"");
-        String json = String.format(
-            "{\"text\":\"\",\"extra\":[" +
-            "{\"text\":\"Ticket #%s: \",\"color\":\"gold\"}," +
-            "{\"text\":\"%s\",\"color\":\"aqua\",\"underlined\":true," +
-            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to open in browser\"}}]}",
-            ticket.getId(), escapedUrl, ticketUrl
-        );
+        String json = ClickableJsonMessage.empty()
+                .extra(ClickableJsonMessage.text("Ticket #" + ticket.getId() + ": ").color("gold"))
+                .extra(ClickableJsonMessage.text(ticketUrl)
+                        .color("aqua")
+                        .underlined(true)
+                        .openUrl(ticketUrl)
+                        .hoverText("Click to open in browser"))
+                .toJson();
         platform.sendJsonMessage(viewerUuid, json);
     }
 
@@ -201,23 +196,9 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
     }
 
     private void handleFilter(Click click) {
-        if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
-            String newStatus = "open".equalsIgnoreCase(currentStatusFilter) ? "closed" : "open";
-            ActionHandlers.openMenu(
-                    new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
-                            .withFilter(currentFilter)
-                            .withStatusFilter(newStatus))
-                    .handle(click);
-        } else {
-            int currentIndex = filterOptions.indexOf(currentFilter);
-            int nextIndex = (currentIndex + 1) % filterOptions.size();
-            String newFilter = filterOptions.get(nextIndex);
-
-            ActionHandlers.openMenu(
-                    new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
-                            .withFilter(newFilter)
-                            .withStatusFilter(currentStatusFilter))
-                    .handle(click);
-        }
+        String newStatus = "open".equalsIgnoreCase(currentStatusFilter) ? "closed" : "open";
+        TicketsMenu menu = new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
+                .withStatusFilter(newStatus);
+        StaffNavigationHandlers.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
     }
 }

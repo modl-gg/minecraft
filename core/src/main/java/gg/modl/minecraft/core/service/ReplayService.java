@@ -18,4 +18,12 @@ public interface ReplayService {
     default boolean isReplayAvailable(UUID playerUuid) {
         return getReplayStatus(playerUuid) == ReplayCaptureStatus.OK;
     }
+
+    default boolean shouldAttemptCapture(UUID playerUuid) {
+        ReplayCaptureStatus status = getReplayStatus(playerUuid);
+        return status != ReplayCaptureStatus.NO_BRIDGE_CONNECTED
+                && status != ReplayCaptureStatus.FABRIC_DISABLED;
+    }
+
+    default void onPlayerDisconnect(UUID playerUuid) {}
 }

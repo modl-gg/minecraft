@@ -35,8 +35,10 @@ public final class PluginMessageListener implements Listener<PluginMessageEvent>
         return EventTask.async(() -> {
             if (Objects.equals(event.getIdentifier(), SIGNEDVELOCITY_CHANNEL)
                     && event.getSource() instanceof Player player) {
-                player.disconnect(Component.translatable("velocity.error.internal-server-connection-error", NamedTextColor.RED));
                 event.setResult(PluginMessageEvent.ForwardResult.handled());
+                if (SignedVelocityPayloadValidator.shouldDisconnectPlayerOriginatedPayload(event.getData())) {
+                    player.disconnect(Component.translatable("velocity.error.internal-server-connection-error", NamedTextColor.RED));
+                }
             }
         });
     }

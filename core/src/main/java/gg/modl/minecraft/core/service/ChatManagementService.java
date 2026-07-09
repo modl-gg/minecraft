@@ -43,8 +43,26 @@ public class ChatManagementService {
             long elapsed = System.currentTimeMillis() - lastTime;
             if (elapsed < slowModeSeconds * MILLIS_PER_SECOND) return false;
         }
-        profile.setLastChatMessageTime(System.currentTimeMillis());
         return true;
+    }
+
+    /**
+     * Atomically admits a non-staff message into the slow-mode window. Returns true if the message is
+     * admitted (and the timer advanced), false if it is still within the cooldown window. Must be called
+     * only after all other gates pass (on the delivery path), so a cancelled message never advances the timer.
+     */
+    public boolean recordMessageSent(UUID playerUuid) {
+        if (slowModeSeconds <= 0) return true;
+        CachedProfile profile = registry.getProfile(playerUuid);
+        if (profile == null) return true;
+
+        long window = (long) slowModeSeconds * MILLIS_PER_SECOND;
+        long now = System.currentTimeMillis();
+        while (true) {
+            long last = profile.getLastChatMessageTime();
+            if (last != 0 && now - last < window) return false;
+            if (profile.compareAndSetLastChatMessageTime(last, now)) return true;
+        }
     }
 
     public int getSlowModeRemaining(UUID playerUuid) {

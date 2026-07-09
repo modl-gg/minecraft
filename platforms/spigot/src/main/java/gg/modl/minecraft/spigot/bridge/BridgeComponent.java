@@ -21,6 +21,7 @@ import gg.modl.minecraft.spigot.bridge.handler.StaffModeHandler;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.GrimHook;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.PolarHook;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.VulcanHook;
+import gg.modl.minecraft.replay.api.ReplayMetadata;
 import gg.modl.minecraft.replay.format.events.BlockChangeEvent;
 import gg.modl.minecraft.replay.recording.PacketRecorder;
 import gg.modl.minecraft.replay.recording.RecordingConfig;
@@ -53,8 +54,14 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
+import gg.modl.minecraft.bridge.BridgeTask;
+import java.util.concurrent.TimeUnit;
+import top.polar.api.loader.LoaderApi;
 
 public class BridgeComponent extends AbstractBridgeComponent implements Listener {
     private final JavaPlugin plugin;
@@ -65,7 +72,8 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
     private RecordingManager recordingManager;
     private PacketRecorder packetRecorder;
-    private gg.modl.minecraft.bridge.BridgeTask replayCleanupTask;
+    private ModlBackendReplayUploader replayUploader;
+    private BridgeTask replayCleanupTask;
     private final Map<UUID, Integer> worldChangeGeneration = new ConcurrentHashMap<>();
 
     public BridgeComponent(JavaPlugin plugin, String apiKey, String backendUrl, String panelUrl, PluginLogger logger) {
@@ -77,7 +85,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         try {
             Class.forName("top.polar.api.loader.LoaderApi");
             polarAvailable = true;
-            top.polar.api.loader.LoaderApi.registerEnableCallback(() -> {
+            LoaderApi.registerEnableCallback(() -> {
                 if (plugin.isEnabled()) {
                     hookPolar();
                 }
@@ -167,7 +175,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
             return;
         }
 
-        if (com.github.retrooper.packetevents.PacketEvents.getAPI() == null) {
+        if (PacketEvents.getAPI() == null) {
             pluginLogger.warning("[bridge] PacketEvents not initialized, replay recording disabled");
             return;
         }
@@ -194,7 +202,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         packetRecorder.register();
 
         String serverDomain = extractDomain(panelUrl);
-        ModlBackendReplayUploader uploader = new ModlBackendReplayUploader(backendUrl, apiKey, serverDomain, plugin.getLogger());
+        replayUploader = new ModlBackendReplayUploader(backendUrl, apiKey, serverDomain, plugin.getLogger());
 
         this.replayService = new ReplayService() {
             @Override
@@ -205,10 +213,12 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
                 packetRecorder.cleanupPlayer(targetUuid);
 
+                Player localPlayer = Bukkit.getPlayer(targetUuid);
+                String resolvedName = localPlayer != null ? localPlayer.getName() : targetName;
+
+                ModlBackendReplayUploader uploaderSnapshot = replayUploader;
                 return recordingManager.stopRecordingAsync(targetUuid)
                         .thenCompose(metadata -> {
-                            File replayFile = metadata != null ? metadata.getOutputFile() : null;
-
                             if (config.isReplayAutoRecord()) {
                                 context.getScheduler().runForPlayerLater(targetUuid, () -> {
                                     Player player = Bukkit.getPlayer(targetUuid);
@@ -217,23 +227,8 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
                                     }
                                 }, 40L);
                             }
-
-                            if (replayFile == null || !replayFile.exists()) {
-                                pluginLogger.warning("[bridge] No replay file found for " + targetName + " after stopping recording");
-                                return CompletableFuture.completedFuture(ReplayCaptureResult.error());
-                            }
-
-                            return uploader.uploadAsync(replayFile, recordingConfig.mcVersion())
-                                    .thenApply(ReplayCaptureResult::ok)
-                                    .whenComplete((replayId, ex) -> {
-                                        if (ex != null) {
-                                            pluginLogger.warning("[bridge] Replay upload failed for " + targetName + ": " + ex.getMessage());
-                                        }
-                                        if (!config.isReplaySaveLocal()) {
-                                            replayFile.delete();
-                                        }
-                                    });
-                    });
+                            return uploadAndCleanupReplay(uploaderSnapshot, targetUuid, resolvedName, metadata);
+                        });
             }
 
             @Override
@@ -261,7 +256,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
                         f.delete();
                     }
                 }
-            }, 5, 5, java.util.concurrent.TimeUnit.MINUTES);
+            }, 5, 5, TimeUnit.MINUTES);
         }
     }
 
@@ -286,7 +281,14 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         if (packetRecorder != null) {
             packetRecorder.unregister();
         }
+        if (replayUploader != null) {
+            replayUploader.close();
+            replayUploader = null;
+        }
         if (staffModeHandler != null) staffModeHandler.shutdown();
+        if (context.getScheduler() instanceof SpigotBridgeScheduler) {
+            ((SpigotBridgeScheduler) context.getScheduler()).shutdown();
+        }
     }
 
     private void startRecordingForPlayer(Player player) {
@@ -379,7 +381,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
         if (recordingManager.isRecording(playerId)) {
             packetRecorder.cleanupPlayer(playerId);
-            recordingManager.stopRecordingAsync(playerId);
+            recordingManager.discardRecording(playerId);
         }
 
         packetRecorder.getEntityTracker().clearPlayer(playerId);
@@ -416,11 +418,69 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         return resolveBlockStateId(block, BridgeComponent::resolveModernBlockStateId, BridgeComponent::resolveLegacyBlockStateId);
     }
 
+    private CompletableFuture<ReplayCaptureResult> uploadAndCleanupReplay(
+            ModlBackendReplayUploader uploader, UUID playerId, String playerName, ReplayMetadata metadata) {
+        File replayFile = metadata != null ? metadata.getOutputFile() : null;
+        if (replayFile == null || !replayFile.exists()) {
+            pluginLogger.warning("[bridge] No replay file found for " + playerName + " after stopping recording");
+            return CompletableFuture.completedFuture(ReplayCaptureResult.error());
+        }
+        if (uploader == null) {
+            pluginLogger.warning("[bridge] Replay uploader unavailable; keeping local replay file for " + playerName);
+            return CompletableFuture.completedFuture(ReplayCaptureResult.error());
+        }
+
+        try {
+            return uploader.uploadAsync(replayFile, context.getMinecraftVersion(), playerId, playerName)
+                    .thenApply(ReplayCaptureResult::ok)
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) {
+                            pluginLogger.warning("[bridge] Replay upload failed for " + playerName + ": " + ex.getMessage());
+                        }
+                        cleanupReplayFileAfterUpload(replayFile, bridgeConfig.isReplaySaveLocal(), result, ex);
+                    });
+        } catch (RejectedExecutionException e) {
+            pluginLogger.warning("[bridge] Replay uploader closed; keeping local replay file for " + playerName);
+            return CompletableFuture.completedFuture(ReplayCaptureResult.error());
+        }
+    }
+
+    static void cleanupReplayFileAfterUpload(File replayFile, boolean saveLocal,
+                                             ReplayCaptureResult uploadResult, Throwable uploadFailure) {
+        if (saveLocal || uploadFailure != null || uploadResult == null
+                || uploadResult.getStatus() != ReplayCaptureStatus.OK) {
+            return;
+        }
+        if (!replayFile.delete()) {
+            java.util.logging.Logger.getLogger("modl-bridge")
+                    .warning("[bridge] Failed to delete replay file " + replayFile.getAbsolutePath());
+        }
+    }
+
+    static int recordingDeltaMs(long nowMs, long recordingStartMs) {
+        long elapsedMs = nowMs - recordingStartMs;
+        if (elapsedMs <= 0L) {
+            return 0;
+        }
+        if (elapsedMs >= Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        return (int) elapsedMs;
+    }
+
+    private int recordingDeltaMs(UUID playerId) {
+        if (packetRecorder == null) {
+            return 0;
+        }
+
+        return recordingDeltaMs(System.currentTimeMillis(), packetRecorder.getRecordingStartTime(playerId));
+    }
+
     private static int resolveModernBlockStateId(Object blockData) {
         try {
             Class<?> blockDataClass = Class.forName("org.bukkit.block.data.BlockData");
             Method converter = SpigotConversionUtil.class.getMethod("fromBukkitBlockData", blockDataClass);
-            return ((com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState) converter.invoke(null, blockData)).getGlobalId();
+            return ((WrappedBlockState) converter.invoke(null, blockData)).getGlobalId();
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("Failed to convert Bukkit BlockData to PacketEvents state", e);
         }
@@ -436,10 +496,11 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
     public void onBlockPlace(BlockPlaceEvent event) {
         if (recordingManager == null) return;
         Player player = event.getPlayer();
+        if (!recordingManager.isRecording(player.getUniqueId())) return;
         Block block = event.getBlockPlaced();
         int stateId = resolveBlockStateId(block);
         recordingManager.enqueueEvent(player.getUniqueId(),
-                new BlockChangeEvent(0, block.getX(), (short) block.getY(), block.getZ(), stateId));
+                new BlockChangeEvent(recordingDeltaMs(player.getUniqueId()), block.getX(), (short) block.getY(), block.getZ(), stateId));
     }
 
     @SuppressWarnings("deprecation")
@@ -447,10 +508,11 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
     public void onBlockBreak(BlockBreakEvent event) {
         if (recordingManager == null) return;
         Player player = event.getPlayer();
+        if (!recordingManager.isRecording(player.getUniqueId())) return;
         Block block = event.getBlock();
         int previousStateId = resolveBlockStateId(block);
         recordingManager.enqueueEvent(player.getUniqueId(),
-                new BlockChangeEvent(0, block.getX(), (short) block.getY(), block.getZ(), previousStateId));
+                new BlockChangeEvent(recordingDeltaMs(player.getUniqueId()), block.getX(), (short) block.getY(), block.getZ(), previousStateId));
     }
 
     @EventHandler
@@ -460,8 +522,8 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         if (autoReporter != null) autoReporter.clearCooldown(playerId);
         worldChangeGeneration.remove(playerId);
 
-        if (recordingManager != null && recordingManager.isRecording(playerId)) {
-            recordingManager.stopRecordingAsync(playerId);
+        if (recordingManager != null) {
+            recordingManager.discardRecording(playerId);
         }
         if (packetRecorder != null) {
             packetRecorder.disconnectPlayer(playerId);

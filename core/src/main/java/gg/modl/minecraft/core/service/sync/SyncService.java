@@ -9,6 +9,8 @@ import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.boot.StartupClient;
+import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
 
@@ -24,12 +26,15 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -37,20 +42,28 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import gg.modl.minecraft.core.util.PluginLogger;
 import java.util.stream.Collectors;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
+import static gg.modl.minecraft.core.util.Java8Collections.orTimeout;
 
 public class SyncService {
-    private static final int MIN_POLLING_RATE_SECONDS = 1,
-            INITIAL_SYNC_DELAY_SECONDS = 5, MAINTENANCE_CYCLE_INTERVAL = 60;
+    private static final int INITIAL_SYNC_DELAY_SECONDS = 5;
+    // Fallback baseline fetch when the websocket is unavailable (kill-switch / old backend). Slow on
+    // purpose: the websocket is the live channel, this only keeps a non-realtime deployment from going dark.
+    private static final long FALLBACK_FETCH_INTERVAL_SECONDS = 60, MIN_FALLBACK_FETCH_INTERVAL_SECONDS = 30,
+            MAINTENANCE_INTERVAL_SECONDS = 60;
     private static final long SYNC_HTTP_TIMEOUT_SECONDS = 5, SYNC_TASK_TIMEOUT_SECONDS = 10, EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5;
+    // Mirrors backend MinecraftSyncController @Pattern validation; any mismatch causes the whole sync batch to 400.
+    private static final Pattern MINECRAFT_USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.]{2,16}$");
 
     private final Platform platform;
     private final HttpClientHolder httpClientHolder;
@@ -72,10 +85,13 @@ public class SyncService {
     private volatile MigrationService migrationService;
     private volatile Long lastKnownStaffPermissionsTimestamp = null, lastKnownPunishmentTypesTimestamp = null;
     @Setter private StatWipeExecutor statWipeExecutor;
-    private final int pollingRateSeconds;
+    // Repurposed from the old 2s poll cadence: now the slow websocket-down fallback fetch interval.
+    private final int fallbackFetchRateSeconds;
     private final boolean debugMode;
     private volatile boolean isRunning = false;
-    private final AtomicInteger syncCycleCount = new AtomicInteger(0);
+    private volatile boolean realtimeConnected = false;
+    private final AtomicBoolean forcedSyncPending = new AtomicBoolean(false);
+    private final LogUploadService logUploadService;
 
     public SyncService(@NotNull Platform platform, @NotNull HttpClientHolder httpClientHolder, @NotNull Cache cache,
                        @NotNull PluginLogger logger, @NotNull LocaleManager localeManager, @NotNull String apiUrl,
@@ -89,7 +105,7 @@ public class SyncService {
         this.localeManager = localeManager;
         this.apiUrl = apiUrl;
         this.apiKey = apiKey;
-        this.pollingRateSeconds = pollingRateSeconds;
+        this.fallbackFetchRateSeconds = pollingRateSeconds;
         this.dataFolder = dataFolder;
         this.databaseConfig = databaseConfig;
         this.debugMode = debugMode;
@@ -97,6 +113,7 @@ public class SyncService {
         this.chatCommandLogService = chatCommandLogService;
         this.punishmentExecutor = new PunishmentExecutor(platform, httpClientHolder, cache, logger, localeManager, debugMode);
         this.notificationService = new NotificationService(platform, httpClientHolder, cache, logger, localeManager, panelUrl, debugMode);
+        this.logUploadService = new LogUploadService(httpClientHolder, chatCommandLogService, logger, debugMode);
     }
 
     public interface PunishmentTypesRefreshListener {
@@ -113,10 +130,8 @@ public class SyncService {
             return;
         }
 
-        int actualPollingRate = Math.max(MIN_POLLING_RATE_SECONDS, pollingRateSeconds);
-        if (actualPollingRate != pollingRateSeconds) {
-            logger.warning("Polling rate adjusted from " + pollingRateSeconds + " to " + actualPollingRate + " seconds (minimum is " + MIN_POLLING_RATE_SECONDS + ")");
-        }
+        long fallbackInterval = Math.max(MIN_FALLBACK_FETCH_INTERVAL_SECONDS,
+                fallbackFetchRateSeconds > 0 ? fallbackFetchRateSeconds : FALLBACK_FETCH_INTERVAL_SECONDS);
 
         this.lastSyncTimestamp = Instant.now().toString();
         this.syncExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -131,14 +146,22 @@ public class SyncService {
             return t;
         });
         notificationService.setExecutor(syncExecutor);
-        syncExecutor.scheduleWithFixedDelay(this::performSync, INITIAL_SYNC_DELAY_SECONDS, actualPollingRate, TimeUnit.SECONDS);
+        // No periodic authoritative poll: the websocket is the live channel and pushes deltas. The only
+        // scheduled fetch is the slow fallback that auto-skips while the websocket is connected (F7), and
+        // a low-frequency cache-maintenance pass that used to ride on the poll.
+        syncExecutor.scheduleWithFixedDelay(this::runFallbackFetchIfDisconnected,
+                INITIAL_SYNC_DELAY_SECONDS, fallbackInterval, TimeUnit.SECONDS);
+        syncExecutor.scheduleWithFixedDelay(this::runMaintenance,
+                MAINTENANCE_INTERVAL_SECONDS, MAINTENANCE_INTERVAL_SECONDS, TimeUnit.SECONDS);
+        logUploadService.start();
         isRunning = true;
-        if (debugMode) logger.info("modl.gg Sync service started - syncing every " + actualPollingRate + " seconds");
+        if (debugMode) logger.info("modl.gg Sync service started - websocket-push driven (fallback fetch every " + fallbackInterval + "s while disconnected)");
     }
 
     public void stop() {
         if (!isRunning) return;
 
+        logUploadService.stop();
         if (syncExecutor != null) {
             syncExecutor.shutdown();
             try {
@@ -153,6 +176,70 @@ public class SyncService {
 
         isRunning = false;
         if (debugMode) logger.info("modl.gg Sync service stopped");
+    }
+
+    /**
+     * Reports websocket connectivity so the fallback fetch can stand down while live deltas flow.
+     * Called by {@code MinecraftRealtimeClient} on accept (ServerHello) and on disconnect.
+     */
+    public void setRealtimeConnected(boolean connected) {
+        this.realtimeConnected = connected;
+    }
+
+    private void runFallbackFetchIfDisconnected() {
+        if (realtimeConnected) {
+            if (debugMode) logger.info("Skipping fallback fetch; websocket connected");
+            return;
+        }
+        performSync();
+    }
+
+    private void runMaintenance() {
+        try {
+            for (CachedProfile profile : cache.getRegistry().getAllProfiles()) {
+                profile.cleanupExpiredNotifications();
+            }
+            platform.getChatInputManager().cleanupExpired();
+        } catch (Exception e) {
+            logger.warning("Sync maintenance pass failed: " + e.getMessage());
+        }
+    }
+
+    public void forceSync(String reason) {
+        runBaselineFetch(reason);
+    }
+
+    /**
+     * Runs one authoritative baseline fetch on demand (build request from the current online set,
+     * POST sync, apply the full response). This is the only remaining caller of the sync download
+     * endpoint now that the periodic poll is gone; it is triggered on every websocket (re)connect and
+     * resync advice so anything missed while disconnected is reconciled against {@code lastSyncTimestamp}.
+     * Concurrent calls coalesce.
+     */
+    public void runBaselineFetch(String reason) {
+        ScheduledExecutorService executor = syncExecutor;
+        if (!isRunning || executor == null || executor.isShutdown()) {
+            if (debugMode) logger.info("Skipping baseline fetch while sync service is stopped: " + reason);
+            return;
+        }
+
+        try {
+            if (!forcedSyncPending.compareAndSet(false, true)) {
+                if (debugMode) logger.info("Coalescing baseline fetch while another is pending: " + reason);
+                return;
+            }
+            executor.execute(() -> {
+                try {
+                    if (debugMode) logger.info("Running baseline fetch: " + reason);
+                    performSync();
+                } finally {
+                    forcedSyncPending.set(false);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            forcedSyncPending.set(false);
+            if (debugMode) logger.warning("Baseline fetch rejected: " + e.getMessage());
+        }
     }
 
     private void performSync() {
@@ -187,15 +274,27 @@ public class SyncService {
     }
 
     private SyncRequest buildSyncRequest(Collection<AbstractPlayer> onlinePlayers) {
+        // Baseline fetch carries the current online set + last-sync timestamp only. Chat/command logs
+        // now flow through the dedicated batch upload endpoints (see LogUploadService).
         SyncRequest request = new SyncRequest();
         request.setLastSyncTimestamp(lastSyncTimestamp);
         request.setOnlinePlayers(buildOnlinePlayersList(onlinePlayers));
         request.setServerName(platform.getServerName());
-        if (chatCommandLogService != null) {
-            request.setChatLogs(chatCommandLogService.drainChatBuffer());
-            request.setCommandLogs(chatCommandLogService.drainCommandBuffer());
-        }
+        request.setServerInstanceId(StartupClient.getServerInstanceId());
+        request.setServerStatus(new SyncRequest.ServerStatus(onlinePlayers.size(), platform.getMaxPlayers(),
+                platform.getServerVersion(), platform.getPlatformType(), PluginInfo.VERSION, System.currentTimeMillis()));
         return request;
+    }
+
+    static <T> List<T> filterByUsername(List<T> entries, Function<T, String> usernameAccessor) {
+        if (entries == null || entries.isEmpty()) return new ArrayList<>();
+        List<T> retained = new ArrayList<>(entries.size());
+        for (T entry : entries) {
+            if (entry == null) continue;
+            String username = usernameAccessor.apply(entry);
+            if (username != null && MINECRAFT_USERNAME_PATTERN.matcher(username).matches()) retained.add(entry);
+        }
+        return retained;
     }
 
     private void handleSyncException(CompletionException e) {
@@ -257,13 +356,6 @@ public class SyncService {
         refreshIfTimestampChanged(data.getPunishmentTypesUpdatedAt(), lastKnownPunishmentTypesTimestamp,
                 "Punishment types", this::refreshPunishmentTypes, ts -> lastKnownPunishmentTypesTimestamp = ts);
 
-        if (syncCycleCount.incrementAndGet() % MAINTENANCE_CYCLE_INTERVAL == 0) {
-            for (CachedProfile profile : cache.getRegistry().getAllProfiles()) {
-                profile.cleanupExpiredNotifications();
-            }
-            platform.getChatInputManager().cleanupExpired();
-        }
-
         processStaff2faVerifications(data.getStaff2faVerifications());
     }
 
@@ -280,6 +372,7 @@ public class SyncService {
         for (SyncResponse.Staff2faVerification verification : verifications) {
             try {
                 UUID uuid = UUID.fromString(verification.getMinecraftUuid());
+                if (!awaitingTwoFactorVerification(uuid)) continue;
                 staff2faService.handleVerification(uuid);
                 logger.info("[Sync] Staff 2FA verified for " + verification.getMinecraftUuid());
                 notifyStaff2faVerified(uuid);
@@ -336,21 +429,29 @@ public class SyncService {
                 return;
             }
 
-            migrationService.exportLiteBansData(taskId).thenAccept(jsonFile -> {
-                if (jsonFile == null || !jsonFile.exists()) {
-                    logger.warning("Task " + taskId + " export failed - no file generated");
-                    return;
-                }
-                migrationService.uploadMigrationFile(jsonFile, taskId).thenAccept(success -> {
-                    if (!success) logger.warning("Task " + taskId + " upload failed");
-                });
-            }).exceptionally(throwable -> {
-                logger.severe("Task " + taskId + " failed: " + throwable.getMessage());
-                return null;
-            });
+            startLiteBansMigration(taskId);
         } catch (Exception e) {
             logger.severe("Error processing migration task: " + e.getMessage());
         }
+    }
+
+    private void startLiteBansMigration(String taskId) {
+        migrationService.exportLiteBansData(taskId).thenAccept(jsonFile ->
+                handleMigrationExportResult(taskId, jsonFile)
+        ).exceptionally(throwable -> {
+            logger.severe("Task " + taskId + " failed: " + throwable.getMessage());
+            return null;
+        });
+    }
+
+    private void handleMigrationExportResult(String taskId, File jsonFile) {
+        if (jsonFile == null || !jsonFile.exists()) {
+            logger.warning("Task " + taskId + " export failed - no file generated");
+            return;
+        }
+        migrationService.uploadMigrationFile(jsonFile, taskId).thenAccept(success -> {
+            if (!success) logger.warning("Task " + taskId + " upload failed");
+        });
     }
 
     private boolean ensureMigrationServiceInitialized() {
@@ -358,6 +459,10 @@ public class SyncService {
         try {
             DatabaseProvider databaseProvider = platform.createLiteBansDatabaseProvider();
             if (databaseProvider == null) {
+                if (databaseConfig == null) {
+                    logger.warning("LiteBans migration is not configured (database block missing or contains sentinel placeholders); skipping migration");
+                    return false;
+                }
                 databaseProvider = new JdbcDatabaseProvider(databaseConfig, logger);
             }
             migrationService = new MigrationService(logger, httpClientHolder.getClient(), apiUrl, apiKey, dataFolder, databaseProvider, localeManager.getMessage("config.default_reason"));
@@ -410,9 +515,13 @@ public class SyncService {
         }
     }
 
+    private boolean awaitingTwoFactorVerification(UUID uuid) {
+        return staff2faService.getAuthState(uuid) == Staff2faService.AuthState.PENDING;
+    }
+
     private void handle2faForStaffMember(UUID uuid, AbstractPlayer player, SyncResponse.ActiveStaffMember staffMember) {
         if (staff2faService == null || !staff2faService.isEnabled()) return;
-        if (staff2faService.getAuthState(uuid) != Staff2faService.AuthState.PENDING) return;
+        if (!awaitingTwoFactorVerification(uuid)) return;
 
         if (Boolean.TRUE.equals(staffMember.getTwoFactorSessionValid())) {
             staff2faService.handleVerification(uuid);
@@ -453,5 +562,71 @@ public class SyncService {
 
     public void deliverPendingNotifications(UUID playerUuid) {
         notificationService.deliverPendingNotifications(playerUuid);
+    }
+
+    /**
+     * Runs a websocket push apply on the same single-thread {@code syncExecutor} that the baseline
+     * fetch uses, so live applies and an in-flight full-set baseline reconciliation (which evicts
+     * stale staff) never interleave or reorder. A push arriving mid-baseline queues behind it (FIFO).
+     *
+     * @return {@code true} if the work was accepted onto the executor, {@code false} if the service
+     *         is stopped/shutting down (caller should not treat the event as applied).
+     */
+    public boolean submitRealtimeApply(Runnable apply) {
+        ScheduledExecutorService executor = syncExecutor;
+        if (!isRunning || executor == null || executor.isShutdown()) return false;
+        try {
+            executor.execute(apply);
+            return true;
+        } catch (RejectedExecutionException e) {
+            if (debugMode) logger.warning("Realtime apply rejected: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // ---- Public apply delegators for the websocket push path ----
+    // Each reuses the exact apply logic the HTTP baseline sync runs (no duplicated execution),
+    // so a pushed delta and a baseline-fetched item are handled identically. Apply methods hop to
+    // the platform main thread internally where required; callers should invoke these off the
+    // websocket read thread (the realtime client routes them through SyncService's sync executor).
+
+    public void applyPendingPunishment(SyncResponse.PendingPunishment pending) {
+        punishmentExecutor.processPendingPunishment(pending);
+    }
+
+    public void applyModifiedPunishment(SyncResponse.ModifiedPunishment modified) {
+        punishmentExecutor.processModifiedPunishment(modified);
+    }
+
+    public void applyPlayerNotification(SyncResponse.PlayerNotification notification) {
+        notificationService.processPlayerNotification(notification);
+    }
+
+    public void applyStaffNotification(SyncResponse.StaffNotification notification) {
+        notificationService.processStaffNotification(notification);
+    }
+
+    public void applyStaff2faVerification(SyncResponse.Staff2faVerification verification) {
+        processStaff2faVerifications(listOf(verification));
+    }
+
+    public void applyMigrationTask(SyncResponse.MigrationTask task) {
+        if (task != null) processMigrationTask(task);
+    }
+
+    public void applyActiveStaffMember(SyncResponse.ActiveStaffMember staffMember) {
+        processActiveStaffMember(staffMember);
+    }
+
+    public void applyStatWipe(SyncResponse.PendingStatWipe statWipe) {
+        executeStatWipeFromLogin(statWipe);
+    }
+
+    public void refreshStaffPermissionsNow() {
+        refreshStaffPermissions();
+    }
+
+    public void refreshPunishmentTypesNow() {
+        refreshPunishmentTypes();
     }
 }

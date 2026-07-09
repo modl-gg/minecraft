@@ -2,9 +2,6 @@ package gg.modl.minecraft.core.boot;
 
 import gg.modl.minecraft.core.util.PluginLogger;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 public class SetupWizard {
@@ -19,18 +16,6 @@ public class SetupWizard {
             + "|^[a-zA-Z0-9]([a-zA-Z0-9\\-]*[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]*[a-zA-Z0-9])?)*$");
     private static final int API_KEY_MIN_LENGTH = 40;
     private static final int API_KEY_MAX_LENGTH = 60;
-
-    private static final Set<String> RESERVED_SUBDOMAINS = new HashSet<>(Arrays.asList(
-            "payments", "payment", "api", "app",
-            "status", "mail", "www", "discord",
-            "admin", "twitter", "demo", "panel",
-            "ftp", "sftp", "www2", "www3",
-            "billing", "stripe", "test", "staging",
-            "root", "internal", "administrator", "mod",
-            "beta", "dev", "portal", "dashboard",
-            "modl", "support", "help", "email",
-            "docs", "secure", "alpha", "cdn"
-    ));
 
     private final PluginLogger logger;
     private final ConsoleInput input;
@@ -175,10 +160,6 @@ public class SetupWizard {
             }
             if (!SUBDOMAIN_PATTERN.matcher(response).matches()) {
                 logger.info("Subdomain can only contain lowercase letters, numbers, and hyphens.");
-                continue;
-            }
-            if (RESERVED_SUBDOMAINS.contains(response)) {
-                logger.info("'" + response + "' is a reserved subdomain. Please choose a different one.");
                 continue;
             }
             return response;
@@ -454,10 +435,8 @@ public class SetupWizard {
             }
 
             Boolean emailVerified = status.emailVerified();
-            String provisioningStatus = status.provisioningStatus();
             if (emailVerified != null && emailVerified) {
-                logger.info("  Email verified. Provisioning status: " +
-                        (provisioningStatus != null ? provisioningStatus : "pending") +
+                logger.info("  Email verified. Provisioning status: " + status.humanReadableStatus() +
                         " (attempt " + (attempt + 1) + ")");
             } else {
                 logger.info("  Waiting for email verification... (attempt " + (attempt + 1) + ")");

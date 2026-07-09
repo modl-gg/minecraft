@@ -10,8 +10,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventPriority;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.CompletableFuture;
-
 import static net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText;
 
 public final class PlayerChatListener implements EventListener<AsyncChatEvent>, LocalExecutionDetector {
@@ -43,16 +41,16 @@ public final class PlayerChatListener implements EventListener<AsyncChatEvent>, 
         final Player player = event.getPlayer();
         debugLogger.debug(() -> "[CHAT] Queueing Next Result");
         final QueuedData data = this.chatQueue.dataFrom(player.getUniqueId());
-        final CompletableFuture<SignedResult> nextResult = data.nextResult();
-        debugLogger.debug(() -> "[CHAT] Future Done: " + nextResult.isDone());
-        if (event.isCancelled()) {
-            debugLogger.debug(() -> "[CHAT] Deprecated Event Cancelled");
-            return;
-        }
 
         debugLogger.debug(() -> "[CHAT] Waiting for next result");
 
-        nextResult.thenAccept(result -> {
+        data.acceptNextResult(result -> {
+            // Always advance the queue once per event; if the event was already cancelled by
+            // another plugin, consume and discard this verdict instead of leaking it.
+            if (event.isCancelled()) {
+                debugLogger.debug(() -> "[CHAT] Event already cancelled; discarding consumed result");
+                return;
+            }
             debugLogger.debug(() -> "[CHAT] Next Result");
             if (result.cancelled()) {
                 debugLogger.debugMultiple(() -> new String[]{
@@ -72,7 +70,7 @@ public final class PlayerChatListener implements EventListener<AsyncChatEvent>, 
                 }
             }
             debugLogger.debug(() -> "[CHAT] Result applied");
-        }).join();
+        });
     }
 
     @Override

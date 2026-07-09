@@ -13,8 +13,20 @@ public class SyncRequest {
     private @NotNull String lastSyncTimestamp;
     private @NotNull List<OnlinePlayer> onlinePlayers;
     private @Nullable String serverName;
-    private transient @Nullable List<ChatLogEntry> chatLogs;
-    private transient @Nullable List<CommandLogEntry> commandLogs;
+    private @Nullable String serverInstanceId;
+    private @Nullable List<ChatLogEntry> chatLogs;
+    private @Nullable List<CommandLogEntry> commandLogs;
+    private @Nullable ServerStatus serverStatus;
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class ServerStatus {
+        private int onlinePlayerCount;
+        private int maxPlayers;
+        private @Nullable String serverVersion;
+        private @Nullable String platformType;
+        private @Nullable String pluginVersion;
+        private long timestamp;
+    }
 
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class OnlinePlayer {

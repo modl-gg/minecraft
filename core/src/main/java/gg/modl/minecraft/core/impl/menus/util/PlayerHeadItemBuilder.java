@@ -6,16 +6,36 @@ import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.IPAddress;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.WebPlayer;
 
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Function;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public final class PlayerHeadItemBuilder {
     private static final String UNKNOWN = "Unknown";
+    private static final Set<UUID> PENDING_TEXTURE_LOOKUPS = ConcurrentHashMap.newKeySet();
+    private static final ExecutorService TEXTURE_LOOKUP_SCHEDULER = Executors.newSingleThreadExecutor(r -> {
+        Thread thread = new Thread(r, "modl-head-texture-lookup");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private static final Function<UUID, CompletableFuture<WebPlayer>> DEFAULT_TEXTURE_LOOKUP = WebPlayer::get;
+    private static volatile Function<UUID, CompletableFuture<WebPlayer>> textureLookup = DEFAULT_TEXTURE_LOOKUP;
 
     private PlayerHeadItemBuilder() {}
 
@@ -110,16 +130,10 @@ public final class PlayerHeadItemBuilder {
         );
 
         if (platform.getCache() != null) {
-            String cachedTexture = platform.getCache().getSkinTexture(targetUuid);
+            Cache cache = platform.getCache();
+            String cachedTexture = cache.getSkinTexture(targetUuid);
             if (cachedTexture == null) {
-                try {
-                    WebPlayer wp = WebPlayer.get(targetUuid)
-                            .get(3, TimeUnit.SECONDS);
-                    if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
-                        platform.getCache().cacheSkinTexture(targetUuid, wp.getTextureValue());
-                        cachedTexture = wp.getTextureValue();
-                    }
-                } catch (Exception ignored) {}
+                requestTextureLookup(cache, targetUuid);
             }
             if (cachedTexture != null) headItem = headItem.texture(cachedTexture);
         }
@@ -127,8 +141,39 @@ public final class PlayerHeadItemBuilder {
         return headItem;
     }
 
+    private static void requestTextureLookup(Cache cache, UUID targetUuid) {
+        if (!PENDING_TEXTURE_LOOKUPS.add(targetUuid)) return;
+        try {
+            CompletableFuture.supplyAsync(() -> textureLookup.apply(targetUuid), TEXTURE_LOOKUP_SCHEDULER)
+                    .thenCompose(textureFuture -> textureFuture != null
+                            ? textureFuture
+                            : CompletableFuture.completedFuture(null))
+                    .whenComplete((webPlayer, throwable) -> {
+                        try {
+                            if (throwable == null && webPlayer != null && webPlayer.isValid() && webPlayer.getTextureValue() != null) {
+                                cache.cacheSkinTexture(targetUuid, webPlayer.getTextureValue());
+                            }
+                        } finally {
+                            PENDING_TEXTURE_LOOKUPS.remove(targetUuid);
+                        }
+                    }
+            );
+        } catch (Exception e) {
+            PENDING_TEXTURE_LOOKUPS.remove(targetUuid);
+        }
+    }
+
+    public static void shutdown() {
+        if (!TEXTURE_LOOKUP_SCHEDULER.isShutdown()) TEXTURE_LOOKUP_SCHEDULER.shutdownNow();
+    }
+
+    static void setTextureLookupForTesting(Function<UUID, CompletableFuture<WebPlayer>> lookup) {
+        textureLookup = lookup != null ? lookup : DEFAULT_TEXTURE_LOOKUP;
+        PENDING_TEXTURE_LOOKUPS.clear();
+    }
+
     private static String displayValue(String value, String fallback) {
-        return value != null && !value.isBlank() ? value : fallback;
+        return value != null && !value.trim().isEmpty() ? value : fallback;
     }
 
     static List<String> renderLoreLines(List<String> loreLinesRaw, Map<String, String> vars) {

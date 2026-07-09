@@ -9,49 +9,28 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.http.ModlHttpClient;
-import gg.modl.minecraft.api.http.response.ReportsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
+import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil.LinkableReport;
 import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import lombok.Getter;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
-public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu.Report> {
-    @Getter
-    public static class Report {
-        private final String id, type, reporterName, content;
-        private final Date date;
-
-        public Report(String id, String type, String reporterName, String content, Date date) {
-            this.id = id;
-            this.type = type;
-            this.reporterName = reporterName;
-            this.content = content;
-            this.date = date;
-        }
-
-    }
-
+public class StaffLinkReportsMenu extends BaseStaffListMenu<LinkableReport> {
     private final Account targetAccount;
     private final UUID targetUuid;
-    private final List<Report> reports = new ArrayList<>();
+    private final List<LinkableReport> reports;
     private final Set<String> selectedReportIds;
     private String currentFilter = "all";
     private final List<String> filterOptions = Arrays.asList("all", "gameplay", "chat");
@@ -70,29 +49,7 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
 
         activeTab = StaffTab.PUNISHMENTS;
 
-        fetchReports();
-    }
-
-    private void fetchReports() {
-        try {
-            httpClient.getPlayerReports(targetUuid, "Open").thenAccept(response -> {
-                if (response.isSuccess() && response.getReports() != null) {
-                    reports.clear();
-                    for (ReportsResponse.Report report : response.getReports()) {
-                        String type = report.getType() != null ? report.getType() : report.getCategory();
-                        if ("player".equalsIgnoreCase(type)) type = "gameplay";
-                        reports.add(new Report(
-                                report.getId(),
-                                type,
-                                report.getReporterName(),
-                                report.getContent() != null ? report.getContent() : report.getSubject(),
-                                report.getCreatedAt()
-                        ));
-                    }
-                }
-            }).join();
-        } catch (Exception ignored) {
-        }
+        reports = ReportRenderUtil.loadLinkableReports(httpClient, targetUuid);
     }
 
     public StaffLinkReportsMenu withFilter(String filter) {
@@ -128,60 +85,24 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
     }
 
     @Override
-    protected Collection<Report> elements() {
-        if (reports.isEmpty())
-            return Collections.singletonList(new Report(null, null, null, null, null));
-
-        List<Report> filtered;
-        if (currentFilter.equals("all")) {
-            filtered = reports;
-        } else {
-            filtered = reports.stream()
-                    .filter(r -> r.getType() != null && r.getType().equalsIgnoreCase(currentFilter))
-                    .collect(Collectors.toList());
-        }
-
-        if (filtered.isEmpty())
-            return Collections.singletonList(new Report(null, null, null, null, null));
-
-        return filtered;
+    protected Collection<LinkableReport> elements() {
+        return ReportRenderUtil.elementsOrEmptyReports(reports, currentFilter);
     }
 
     @Override
-    protected CirrusItem map(Report report) {
+    protected CirrusItem map(LinkableReport report) {
         LocaleManager locale = platform.getLocaleManager();
 
         if (report.getId() == null) return createEmptyPlaceholder(locale.getMessage("menus.empty.reports"));
 
-        boolean selected = selectedReportIds.contains(report.getId());
-
-        Map<String, String> vars = new HashMap<>();
-        vars.put("id", report.getId());
-        vars.put("type", report.getType() != null ? report.getType() : "Unknown");
-        vars.put("date", report.getDate() != null ? MenuItems.formatDate(report.getDate()) : "Unknown");
-        vars.put("reporter", report.getReporterName() != null ? report.getReporterName() : "Unknown");
-        vars.put("content", String.join("\n", ReportRenderUtil.processContent(report.getContent())));
-
-        String localeKey = selected ? "menus.link_report_item_selected" : "menus.link_report_item_unselected";
-        List<String> lore = ReportRenderUtil.buildLore(locale, localeKey + ".lore", vars);
-        String title = locale.getMessage(localeKey + ".title", vars);
-        CirrusItemType itemType = selected ? CirrusItemType.LIME_DYE : ReportRenderUtil.getReportItemType(report.getType());
-
-        return CirrusItem.of(
-                itemType,
-                CirrusChatElement.ofLegacyText(title),
-                MenuItems.lore(lore)
-        ).actionHandler("toggleReport_" + report.getId());
+        return ReportRenderUtil.mapLinkableReport(report, selectedReportIds, locale);
     }
 
     @Override
-    protected void handleClick(Click click, Report report) {
+    protected void handleClick(Click click, LinkableReport report) {
         if (report.getId() == null) return;
 
-        if (selectedReportIds.contains(report.getId()))
-            selectedReportIds.remove(report.getId());
-        else
-            selectedReportIds.add(report.getId());
+        ReportRenderUtil.toggleReportSelection(selectedReportIds, report.getId());
 
         StaffLinkReportsMenu refreshed = new StaffLinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
                 isAdmin, panelUrl, targetAccount, selectedReportIds, backAction, onComplete);
@@ -209,7 +130,7 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
             return CallResult.DENY_GRABBING;
         });
 
-        for (Report report : reports) {
+        for (LinkableReport report : reports) {
             if (report.getId() != null) {
                 registerActionHandler("toggleReport_" + report.getId(), click -> {
                     handleClick(click, report);
@@ -236,28 +157,8 @@ public class StaffLinkReportsMenu extends BaseStaffListMenu<StaffLinkReportsMenu
     }
 
     private void handleSelectAll(Click click) {
-        List<Report> filtered;
-        if (currentFilter.equals("all")) {
-            filtered = reports;
-        } else {
-            filtered = reports.stream()
-                    .filter(r -> r.getType() != null && r.getType().equalsIgnoreCase(currentFilter))
-                    .collect(Collectors.toList());
-        }
-
-        boolean allSelected = filtered.stream()
-                .filter(r -> r.getId() != null)
-                .allMatch(r -> selectedReportIds.contains(r.getId()));
-
-        if (allSelected) {
-            for (Report report : filtered)
-                if (report.getId() != null)
-                    selectedReportIds.remove(report.getId());
-        } else {
-            for (Report report : filtered)
-                if (report.getId() != null)
-                    selectedReportIds.add(report.getId());
-        }
+        List<LinkableReport> filtered = ReportRenderUtil.filterLinkableReports(reports, currentFilter);
+        ReportRenderUtil.toggleFilteredReportSelection(selectedReportIds, filtered);
 
         StaffLinkReportsMenu refreshed = new StaffLinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
                 isAdmin, panelUrl, targetAccount, selectedReportIds, backAction, onComplete);

@@ -8,11 +8,12 @@ import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
 import gg.modl.minecraft.api.http.request.StartupRequest;
-import gg.modl.minecraft.core.boot.*;
+import gg.modl.minecraft.core.boot.BootConfig;
+import gg.modl.minecraft.core.boot.BootConfigMigrator;
+import gg.modl.minecraft.core.boot.PlatformType;
+import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.plugin.PluginInfo;
-import gg.modl.minecraft.core.query.BridgeMessageDispatcher;
-import gg.modl.minecraft.core.query.BridgeReplayService;
-import gg.modl.minecraft.core.query.BridgeServer;
+import gg.modl.minecraft.core.query.ProxyBridgeRuntime;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
@@ -31,15 +32,17 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Level;
+import com.alessiodp.libby.logging.LogLevel;
 
 public class BungeePlugin extends Plugin {
     private static final int MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
 
     private Configuration configuration;
     private PluginLoader loader;
-    private BridgeServer bridgeServer;
+    private ProxyBridgeRuntime bridgeRuntime;
     private PluginLogger pluginLogger;
     private BootConfig bootConfig;
+    private BungeeListener bungeeListener;
 
     @Override
     public synchronized void onEnable() {
@@ -93,9 +96,9 @@ public class BungeePlugin extends Plugin {
         List<String> mutedCommands = configuration.getStringList("muted_commands");
 
         this.loader = new PluginLoader(platform, getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
-        configureBridgeExecutor(platform, httpManager, bootConfig, panelUrl);
+        configureBridgeExecutor(platform, bootConfig, panelUrl);
 
-        getProxy().getPluginManager().registerListener(this, new BungeeListener(
+        bungeeListener = new BungeeListener(
                 platform, loader.getCache(), loader.getHttpClientHolder(), loader.getChatMessageCache(),
                 loader.getSyncService(), loader.getLocaleManager(),
                 mutedCommands, this, loader.getStaffChatService(),
@@ -104,17 +107,21 @@ public class BungeePlugin extends Plugin {
                 loader.getChatCommandLogService(), loader.getStaff2faService(),
                 loader.getConfigManager().getStaffChatConfig(), loader.getLoginCache(),
                 loader.getBridgeService(), loader.getCachedProfileRegistry(),
-                loader.isDebugMode()));
+                loader.isDebugMode());
+        getProxy().getPluginManager().registerListener(this, bungeeListener);
 
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
-        getProxy().getPluginManager().registerListener(this, new AsyncCommandInterceptor(asyncExecutor, getProxy()));
+        getProxy().getPluginManager().registerListener(this, new AsyncCommandInterceptor(
+                asyncExecutor, getProxy(), loader.getCache(), loader.getFreezeService(),
+                loader.getChatCommandLogService(), loader.getLocaleManager(), mutedCommands));
 
         getLogger().info("Successfully booted modl.gg platform plugin!");
     }
 
     @Override
     public synchronized void onDisable() {
-        if (bridgeServer != null) bridgeServer.shutdown();
+        if (bungeeListener != null) bungeeListener.shutdown();
+        if (bridgeRuntime != null) bridgeRuntime.shutdown();
         if (loader != null) loader.shutdown();
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
     }
@@ -150,26 +157,8 @@ public class BungeePlugin extends Plugin {
                 getDataFolder().toPath().resolve("locale/en_US.yml"), pluginLogger);
     }
 
-    private void configureBridgeExecutor(BungeePlatform platform, HttpManager httpManager, BootConfig bootConfig, String panelUrl) {
-        if (bootConfig.getMode() != BootConfig.Mode.PROXY) return;
-
-        int bridgePort = bootConfig.getBridgePort();
-        String apiKey = bootConfig.getApiKey();
-
-        BridgeMessageDispatcher dispatcher = new BridgeMessageDispatcher(
-                platform, loader.getLocaleManager(), loader.getFreezeService(),
-                loader.getStaffModeService(), loader.getVanishService(),
-                loader.getHttpClient(), pluginLogger);
-
-        bridgeServer = new BridgeServer(bridgePort, apiKey, dispatcher, pluginLogger, panelUrl);
-        bridgeServer.start();
-
-        loader.getSyncService().setStatWipeExecutor(bridgeServer);
-        loader.getBridgeService().setExecutor(bridgeServer);
-
-        BridgeReplayService bridgeReplayService = new BridgeReplayService(bridgeServer, pluginLogger);
-        dispatcher.setBridgeReplayService(bridgeReplayService);
-        platform.setReplayService(bridgeReplayService);
+    private void configureBridgeExecutor(BungeePlatform platform, BootConfig bootConfig, String panelUrl) {
+        bridgeRuntime = ProxyBridgeRuntime.startIfProxy(platform, loader, bootConfig, pluginLogger, panelUrl);
     }
 
     private void initializePacketEvents() {
@@ -180,17 +169,18 @@ public class BungeePlugin extends Plugin {
 
     private void loadLibraries() {
         BungeeLibraryManager libraryManager = new BungeeLibraryManager(this);
-        libraryManager.setLogLevel(com.alessiodp.libby.logging.LogLevel.WARN);
+        libraryManager.setLogLevel(LogLevel.WARN);
         libraryManager.addMavenCentral();
         libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
         libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
         libraryManager.addRepository("https://jitpack.io");
 
-        for (LibraryRecord record : Libraries.PROTO_DEPS) loadLibrary(libraryManager, record);
+        for (LibraryRecord record : Libraries.PROTO_DEPS_RELOCATED) loadLibrary(libraryManager, record);
         for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
         loadLibrary(libraryManager, Libraries.LAMP_COMMON);
         loadLibrary(libraryManager, Libraries.LAMP_BRIGADIER);
         loadLibrary(libraryManager, Libraries.LAMP_BUNGEE);
+        loadLibrary(libraryManager, Libraries.SLF4J_API);
         loadLibrary(libraryManager, Libraries.CIRRUS_BUNGEECORD);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
         loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);

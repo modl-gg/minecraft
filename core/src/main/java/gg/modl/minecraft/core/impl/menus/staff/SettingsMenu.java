@@ -8,7 +8,6 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -21,6 +20,7 @@ import gg.modl.minecraft.core.util.Permissions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class SettingsMenu extends BaseStaffMenu {
@@ -71,18 +71,6 @@ public class SettingsMenu extends BaseStaffMenu {
                 MenuItems.lore(infoLore)
         ).slot(MenuSlots.SETTINGS_INFO));
 
-        Cache cache = platform.getCache();
-        CachedProfile viewerProfile = cache != null ? cache.getPlayerProfile(viewerUuid) : null;
-        boolean staffNotificationsEnabled = viewerProfile != null && viewerProfile.isStaffNotificationsEnabled();
-        set(CirrusItem.of(
-                staffNotificationsEnabled ? CirrusItemType.LIME_DYE : CirrusItemType.GRAY_DYE,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Staff Notifications: " +
-                        (staffNotificationsEnabled ? MenuItems.COLOR_GREEN + "Enabled" : MenuItems.COLOR_RED + "Disabled")),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Toggle staff notifications"
-                )
-        ).slot(MenuSlots.SETTINGS_NOTIFICATIONS).actionHandler("toggleNotifications"));
-
         set(CirrusItem.of(
                 CirrusItemType.PLAYER_HEAD,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Staff List"),
@@ -127,24 +115,30 @@ public class SettingsMenu extends BaseStaffMenu {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        registerActionHandler("toggleNotifications", this::handleToggleNotifications);
-
         Consumer<CirrusPlayerWrapper> returnToSettings = p ->
                 new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null).display(p);
 
-        registerActionHandler("staffMembers", ActionHandlers.openMenu(
-                new StaffMembersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings)));
+        registerActionHandler("staffMembers", click -> {
+            StaffMembersMenu menu = new StaffMembersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin,
+                    panelUrl, returnToSettings);
+            displayWhenLoaded(menu.getDataFuture(), click.player(), menu::display);
+        });
 
         if (canModifySettings) {
-            registerActionHandler("editRoles", ActionHandlers.openMenu(
-                    new RoleListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings)));
+            registerActionHandler("editRoles", click -> {
+                RoleListMenu menu = new RoleListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings);
+                displayWhenLoaded(menu.getDataFuture(), click.player(), menu::display);
+            });
 
             registerActionHandler("reloadModl", this::handleReloadModl);
         }
 
         if (canManageStaff) {
-            registerActionHandler("manageStaff", ActionHandlers.openMenu(
-                    new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings)));
+            registerActionHandler("manageStaff", click -> {
+                StaffListMenu menu = new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin,
+                        panelUrl, returnToSettings);
+                displayWhenLoaded(menu.getDataFuture(), click.player(), menu::display);
+            });
         }
 
         StaffNavigationHandlers.registerAll(
@@ -154,20 +148,14 @@ public class SettingsMenu extends BaseStaffMenu {
         registerActionHandler("openSettings", click -> {});
     }
 
-    private void handleToggleNotifications(Click click) {
-        Cache cache = platform.getCache();
-        CachedProfile profile = cache != null ? cache.getPlayerProfile(viewerUuid) : null;
-        if (profile != null) {
-            boolean currentValue = profile.isStaffNotificationsEnabled();
-            profile.setStaffNotificationsEnabled(!currentValue);
-            sendMessage(MenuItems.COLOR_GREEN + "Staff notifications " + (!currentValue ? "enabled" : "disabled"));
-        } else {
-            sendMessage(MenuItems.COLOR_RED + "Unable to save preference - cache unavailable");
-        }
+    void displayWhenLoaded(CompletableFuture<Void> dataFuture, CirrusPlayerWrapper player,
+                           Consumer<CirrusPlayerWrapper> displayAction) {
+        displayWhenLoaded(platform, dataFuture, player, displayAction);
+    }
 
-        ActionHandlers.openMenu(
-                new SettingsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction))
-                .handle(click);
+    static void displayWhenLoaded(Platform platform, CompletableFuture<Void> dataFuture, CirrusPlayerWrapper player,
+                                  Consumer<CirrusPlayerWrapper> displayAction) {
+        StaffNavigationHandlers.displayWhenLoaded(platform, dataFuture, player, displayAction);
     }
 
     private void handleReloadModl(Click click) {

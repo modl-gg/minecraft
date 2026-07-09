@@ -32,7 +32,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMemberEntry> {
     @Getter
@@ -93,56 +93,63 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
     private CompletableFuture<Void> fetchStaffMembers() {
         Cache cache = platform.getCache();
         return httpClient.getStaffList().thenAccept(response -> {
-            if (response != null && response.isSuccess() && response.getStaff() != null) {
-                staffMembers.clear();
-                for (StaffListResponse.StaffEntry entry : response.getStaff()) {
-                    UUID uuid = null;
-                    if (entry.getMinecraftUuid() != null) {
-                        try {
-                            uuid = UUID.fromString(entry.getMinecraftUuid());
-                        } catch (Exception ignored) {}
-                    }
+            if (response == null || !response.isSuccess() || response.getStaff() == null) {
+                throw new IllegalStateException("Failed to load staff members");
+            }
 
-                    CachedProfile staffProfile = uuid != null && cache != null ? cache.getPlayerProfile(uuid) : null;
-                    boolean online = staffProfile != null;
-                    long sessionDuration = online ? staffProfile.getSessionDuration() : 0;
+            staffMembers.clear();
+            for (StaffListResponse.StaffEntry entry : response.getStaff()) {
+                UUID uuid = null;
+                if (entry.getMinecraftUuid() != null) {
+                    try {
+                        uuid = UUID.fromString(entry.getMinecraftUuid());
+                    } catch (Exception ignored) {}
+                }
 
-                    staffMembers.add(new StaffMemberEntry(
-                            entry.getId(),
-                            entry.getUsername(),
-                            entry.getRole(),
-                            uuid,
-                            entry.getMinecraftUsername(),
-                            entry.getLastServer(),
-                            entry.getLastSeen(),
-                            entry.getTotalPlaytimeMs(),
-                            entry.getPunishmentsIssuedCount(),
-                            online,
-                            sessionDuration
-                    ));
+                CachedProfile staffProfile = uuid != null && cache != null ? cache.getPlayerProfile(uuid) : null;
+                boolean online = staffProfile != null;
+                long sessionDuration = online ? staffProfile.getSessionDuration() : 0;
 
-                    if (uuid != null && cache != null && cache.getSkinTexture(uuid) == null) {
-                        final UUID staffUuid = uuid;
-                        WebPlayer.get(staffUuid).thenAccept(wp -> {
-                            if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
-                                cache.cacheSkinTexture(staffUuid, wp.getTextureValue());
-                            }
-                        });
-                    }
+                staffMembers.add(new StaffMemberEntry(
+                        entry.getId(),
+                        entry.getUsername(),
+                        entry.getRole(),
+                        uuid,
+                        entry.getMinecraftUsername(),
+                        entry.getLastServer(),
+                        entry.getLastSeen(),
+                        entry.getTotalPlaytimeMs(),
+                        entry.getPunishmentsIssuedCount(),
+                        online,
+                        sessionDuration
+                ));
+
+                if (uuid != null && cache != null && cache.getSkinTexture(uuid) == null) {
+                    final UUID staffUuid = uuid;
+                    WebPlayer.get(staffUuid).thenAccept(wp -> {
+                        if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
+                            cache.cacheSkinTexture(staffUuid, wp.getTextureValue());
+                        }
+                    });
                 }
             }
-        }).exceptionally(e -> null);
+        });
     }
 
     private List<String> buildLore(StaffMemberEntry entry) {
         LocaleManager localeManager = platform.getLocaleManager();
+        Map<String, String> placeholders = buildLorePlaceholders(entry);
 
-        String lastSeenOrSessionTime;
+        return localeManager.getMessageList("menus.staff_members.lore", placeholders);
+    }
+
+    private String resolveLastSeenOrSessionTime(StaffMemberEntry entry) {
         if (entry.isOnline())
-            lastSeenOrSessionTime = MenuItems.formatDuration(entry.getSessionDuration());
-        else
-            lastSeenOrSessionTime = entry.getLastSeen() != null ? MenuItems.formatDate(entry.getLastSeen()) : "Never";
+            return MenuItems.formatDuration(entry.getSessionDuration());
+        return entry.getLastSeen() != null ? MenuItems.formatDate(entry.getLastSeen()) : "Never";
+    }
 
+    private String resolveServer(StaffMemberEntry entry) {
         String server = "Unknown";
         if (entry.isOnline() && entry.getMinecraftUuid() != null) {
             String playerServer = platform.getPlayerServer(entry.getMinecraftUuid());
@@ -150,21 +157,24 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
         } else if (entry.getLastServer() != null) {
             server = entry.getLastServer();
         }
+        return server;
+    }
 
+    private Map<String, String> buildLorePlaceholders(StaffMemberEntry entry) {
         Map<String, String> placeholders = new HashMap<>();
         placeholders.put("panel_name", entry.getPanelName() != null ? entry.getPanelName() : "Unknown");
         placeholders.put("role", entry.getRole() != null ? entry.getRole() : "Unknown");
         placeholders.put("minecraft_username", entry.getMinecraftUsername() != null ? entry.getMinecraftUsername() : "Not linked");
         placeholders.put("is_online", entry.isOnline() ? "&aYes" : "&cNo");
-        placeholders.put("last_seen_or_session_time", lastSeenOrSessionTime);
-        placeholders.put("server", server);
+        placeholders.put("last_seen_or_session_time", resolveLastSeenOrSessionTime(entry));
+        placeholders.put("server", resolveServer(entry));
         placeholders.put("playtime", MenuItems.formatDuration(
                 entry.isOnline()
                         ? (entry.getTotalPlaytimeMs() != null ? entry.getTotalPlaytimeMs() : 0L) + entry.getSessionDuration()
                         : (entry.getTotalPlaytimeMs() != null ? entry.getTotalPlaytimeMs() : 0L)));
         placeholders.put("punishments_count", String.valueOf(entry.getPunishmentsIssuedCount()));
 
-        return localeManager.getMessageList("menus.staff_members.lore", placeholders);
+        return placeholders;
     }
 
     @Override

@@ -21,9 +21,19 @@ import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.Getter;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 import java.util.function.Consumer;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
 
 public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMenu.PunishmentWithPlayer> {
     @Getter
@@ -44,6 +54,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
     private final List<PunishmentWithPlayer> recentPunishments;
     private final String panelUrl;
+    @Getter private CompletableFuture<Void> dataFuture;
 
     public RecentPunishmentsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                   boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
@@ -59,45 +70,45 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         activeTab = StaffTab.PUNISHMENTS;
 
         if (preloadedData == null)
-            fetchRecentPunishments();
+            this.dataFuture = fetchRecentPunishments();
+        else
+            this.dataFuture = CompletableFuture.completedFuture(null);
     }
 
-    private void fetchRecentPunishments() {
-        try {
-            httpClient.getRecentPunishments(48).thenAccept(response -> {
-                if (response.isSuccess() && response.getPunishments() != null) {
-                    recentPunishments.clear();
-                    for (RecentPunishmentsResponse.RecentPunishment p : response.getPunishments()) {
-                        UUID playerUuid = null;
-                        try {
-                            if (p.getPlayerUuid() != null) {
-                                playerUuid = UUID.fromString(p.getPlayerUuid());
-                            }
-                        } catch (Exception ignored) {}
-
-                        Punishment punishment = new Punishment();
-                        punishment.setId(p.getId());
-                        punishment.setIssuerName(p.getIssuerName());
-                        punishment.setIssued(p.getIssued());
-                        punishment.setStarted(p.getStarted());
-                        punishment.setTypeOrdinal(p.getTypeOrdinal());
-                        punishment.setModifications(p.getModifications());
-                        punishment.setNotes(new ArrayList<>(p.getNotes()));
-                        punishment.setEvidence(new ArrayList<>(p.getEvidence()));
-                        punishment.setDataMap(new HashMap<>(p.getData()));
-                        punishment.setAttachedTicketIds(p.getAttachedTicketIds() != null ? new ArrayList<>(p.getAttachedTicketIds()) : null);
-
-                        if (p.getType() != null) {
-                            try {
-                                punishment.setType(Punishment.Type.valueOf(p.getType()));
-                            } catch (IllegalArgumentException ignored) {}
+    private CompletableFuture<Void> fetchRecentPunishments() {
+        return httpClient.getRecentPunishments(48).thenAccept(response -> {
+            if (response.isSuccess() && response.getPunishments() != null) {
+                recentPunishments.clear();
+                for (RecentPunishmentsResponse.RecentPunishment p : response.getPunishments()) {
+                    UUID playerUuid = null;
+                    try {
+                        if (p.getPlayerUuid() != null) {
+                            playerUuid = UUID.fromString(p.getPlayerUuid());
                         }
+                    } catch (Exception ignored) {}
 
-                        recentPunishments.add(new PunishmentWithPlayer(punishment, playerUuid, p.getPlayerName(), null));
+                    Punishment punishment = new Punishment();
+                    punishment.setId(p.getId());
+                    punishment.setIssuerName(p.getIssuerName());
+                    punishment.setIssued(p.getIssued());
+                    punishment.setStarted(p.getStarted());
+                    punishment.setTypeOrdinal(p.getTypeOrdinal());
+                    punishment.setModifications(p.getModifications());
+                    punishment.setNotes(new ArrayList<>(p.getNotes()));
+                    punishment.setEvidence(new ArrayList<>(p.getEvidence()));
+                    punishment.setDataMap(new HashMap<>(p.getData()));
+                    punishment.setAttachedTicketIds(p.getAttachedTicketIds() != null ? new ArrayList<>(p.getAttachedTicketIds()) : null);
+
+                    if (p.getType() != null) {
+                        try {
+                            punishment.setType(Punishment.Type.valueOf(p.getType()));
+                        } catch (IllegalArgumentException ignored) {}
                     }
+
+                    recentPunishments.add(new PunishmentWithPlayer(punishment, playerUuid, p.getPlayerName(), null));
                 }
-            }).join();
-        } catch (Exception ignored) {}
+            }
+        }).exceptionally(e -> null);
     }
 
     @Override
@@ -106,7 +117,8 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
             return Collections.singletonList(new PunishmentWithPlayer(null, null, null, null));
 
         List<PunishmentWithPlayer> sorted = new ArrayList<>(recentPunishments);
-        sorted.sort((p1, p2) -> p2.getPunishment().getIssued().compareTo(p1.getPunishment().getIssued()));
+        sorted.sort(Comparator.comparing((PunishmentWithPlayer p) -> p.getPunishment().getIssued(),
+                Comparator.nullsLast(Comparator.reverseOrder())));
         return sorted;
     }
 
@@ -149,7 +161,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         }
 
         String statusLine;
-        Date pardonDate = isKick ? null : findPardonDate(punishment);
+        Date pardonDate = isKick ? null : punishment.getPardonDate();
         if (isKick) {
             statusLine = "";
         } else if (pardonDate != null) {
@@ -262,8 +274,10 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         if (pwp.getPunishment() == null) return;
 
         List<PunishmentWithPlayer> currentData = new ArrayList<>(recentPunishments);
-        Consumer<CirrusPlayerWrapper> returnToPunishments = p ->
-                new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null, currentData).display(p);
+        Consumer<CirrusPlayerWrapper> returnToPunishments = p -> {
+            RecentPunishmentsMenu m = new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null, currentData);
+            StaffNavigationHandlers.displayWhenLoaded(platform, m.getDataFuture(), p, m::display);
+        };
 
         if (pwp.getAccount() != null) {
             ActionHandlers.openMenu(
@@ -298,20 +312,6 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         registerActionHandler("openPunishments", click -> {});
     }
 
-    private Date findPardonDate(Punishment punishment) {
-        List<Modification> modifications = punishment.getModifications();
-        if (modifications.isEmpty())
-            return null;
-
-        for (Modification mod : modifications) {
-            if (mod.getType() == Modification.Type.MANUAL_PARDON ||
-                mod.getType() == Modification.Type.APPEAL_ACCEPT) {
-                return mod.getIssued();
-            }
-        }
-        return null;
-    }
-
     private Long getEffectiveDuration(Punishment punishment) {
         List<Modification> modifications = punishment.getModifications();
         if (modifications.isEmpty())
@@ -319,8 +319,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
 
         Long effectiveDuration = punishment.getDuration();
         for (Modification mod : modifications) {
-            if (mod.getType() == Modification.Type.MANUAL_DURATION_CHANGE ||
-                mod.getType() == Modification.Type.APPEAL_DURATION_CHANGE) {
+            if (mod.getType() == Modification.Type.MANUAL_DURATION_CHANGE) {
                 Long modDuration = mod.getEffectiveDuration();
                 if (modDuration == null || modDuration <= 0)
                     effectiveDuration = null;
@@ -332,7 +331,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
     }
 
     private boolean isPunishmentEffectivelyActive(Punishment punishment, Long effectiveDuration) {
-        if (findPardonDate(punishment) != null)
+        if (punishment.getPardonDate() != null)
             return false;
 
         if (!punishment.isActive())

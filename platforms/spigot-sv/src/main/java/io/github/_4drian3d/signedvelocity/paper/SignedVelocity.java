@@ -15,7 +15,8 @@ public final class SignedVelocity {
 
     private SignedVelocity() {}
 
-    public static void init(JavaPlugin plugin, Logger logger) {
+    public static synchronized void init(JavaPlugin plugin, Logger logger) {
+        shutdown();
         chatQueue = new SignedQueue();
         commandQueue = new SignedQueue();
         debugLogger = new DebugLogger.Slf4j(logger);
@@ -29,6 +30,18 @@ public final class SignedVelocity {
             );
 
         EventListener.registerAll(plugin, chatQueue, commandQueue, debugLogger);
+    }
+
+    public static synchronized void shutdown() {
+        if (chatQueue != null) {
+            chatQueue.close();
+            chatQueue = null;
+        }
+        if (commandQueue != null) {
+            commandQueue.close();
+            commandQueue = null;
+        }
+        debugLogger = null;
     }
 
     public static SignedQueue getChatQueue() {

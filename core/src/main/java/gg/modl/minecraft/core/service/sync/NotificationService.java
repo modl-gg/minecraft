@@ -9,6 +9,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.ClickableJsonMessage;
 import gg.modl.minecraft.core.util.PluginLogger;
 import lombok.Setter;
 
@@ -19,13 +20,16 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
+import static gg.modl.minecraft.core.util.Java8Collections.orTimeout;
 
 class NotificationService {
     private static final String TICKET_CREATED_TYPE = "TICKET_CREATED", TICKET_TYPE_REPORT = "REPORT";
     private static final int MAX_HOVER_TEXT_LENGTH = 200;
     private static final long NOTIFICATION_INITIAL_DELAY_MS = 2000, NOTIFICATION_INTER_DELAY_MS = 1500,
             HTTP_TIMEOUT_SECONDS = 5;
+    private static final int MAX_ACK_BATCH_SIZE = 100;
 
     private final Platform platform;
     private final HttpClientHolder httpClientHolder;
@@ -83,20 +87,26 @@ class NotificationService {
         String clickValue;
         if (isGameplayReport) {
             clickAction = "run_command";
-            clickValue = "/target " + escapeJson(reportedPlayer);
+            clickValue = "/target " + reportedPlayer;
             hoverText += (hoverText.isEmpty() ? "" : "\n\n") + "Click to target " + reportedPlayer;
         } else {
             clickAction = "open_url";
             clickValue = ticketUrl;
         }
 
-        String json = String.format(
-            "{\"text\":\"\",\"extra\":[" +
-            "{\"text\":\"[%s]\",\"color\":\"gray\",\"italic\":true," +
-            "\"clickEvent\":{\"action\":\"%s\",\"value\":\"%s\"}," +
-            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"%s\"}}]}",
-            escapeJson(notification.getMessage()), clickAction, clickValue, escapeJson(hoverText)
-        );
+        ClickableJsonMessage link = ClickableJsonMessage.text("[" + notification.getMessage() + "]")
+                .color("gray")
+                .italic(true)
+                .hoverText(hoverText);
+        if ("run_command".equals(clickAction)) {
+            link.runCommand(clickValue);
+        } else {
+            link.openUrl(clickValue);
+        }
+
+        String json = ClickableJsonMessage.empty()
+                .extra(link)
+                .toJson();
         platform.staffJsonBroadcast(json);
     }
 
@@ -187,10 +197,6 @@ class NotificationService {
             List<String> deliveredIds = new ArrayList<>();
             List<String> expiredIds = new ArrayList<>();
             deliverNotificationsWithDelay(playerUuid, toProcess, deliveredIds, expiredIds);
-
-            for (String id : expiredIds) profile.removeNotification(id);
-            for (String id : deliveredIds) profile.removeNotification(id);
-            if (!deliveredIds.isEmpty()) acknowledgeNotifications(playerUuid, deliveredIds);
         } catch (Exception e) {
             logger.severe("Error delivering pending notifications: " + e.getMessage());
         }
@@ -239,6 +245,7 @@ class NotificationService {
                 AbstractPlayer player = platform.getPlayer(playerUuid);
                 if (player == null || !player.isOnline()) {
                     if (debugMode) logger.info("Player " + playerUuid + " disconnected during notification delivery");
+                    finalizePendingNotificationDelivery(playerUuid, deliveredIds, expiredIds);
                     return;
                 }
                 deliverPendingNotificationToPlayer(playerUuid, pending);
@@ -274,13 +281,26 @@ class NotificationService {
     }
 
     private void acknowledgeNotifications(UUID playerUuid, List<String> notificationIds) {
+        if (notificationIds == null || notificationIds.isEmpty()) return;
+        if (notificationIds.size() <= MAX_ACK_BATCH_SIZE) {
+            sendAcknowledgeBatch(playerUuid, notificationIds);
+            return;
+        }
+        for (int i = 0; i < notificationIds.size(); i += MAX_ACK_BATCH_SIZE) {
+            List<String> batch = new ArrayList<>(notificationIds.subList(i,
+                    Math.min(i + MAX_ACK_BATCH_SIZE, notificationIds.size())));
+            sendAcknowledgeBatch(playerUuid, batch);
+        }
+    }
+
+    private void sendAcknowledgeBatch(UUID playerUuid, List<String> batch) {
         try {
             NotificationAcknowledgeRequest request = new NotificationAcknowledgeRequest(
-                    playerUuid.toString(), Instant.now().toString(), notificationIds);
+                    playerUuid.toString(), Instant.now().toString(), batch);
 
             orTimeout(httpClientHolder.getClient().acknowledgeNotifications(request)
                     .thenAccept(response -> {
-                        if (debugMode) logger.info("Acknowledged " + notificationIds.size() + " notifications for " + playerUuid);
+                        if (debugMode) logger.info("Acknowledged " + batch.size() + " notifications for " + playerUuid);
                     })
                     .exceptionally(throwable -> {
                         Throwable cause = throwable.getCause();
@@ -297,15 +317,15 @@ class NotificationService {
     }
 
     private String buildClickableTicketJson(String message, String ticketUrl, String ticketId) {
-        return String.format(
-            "{\"text\":\"\",\"extra\":[" +
-            "{\"text\":\"[Ticket] \",\"color\":\"gold\"}," +
-            "{\"text\":\"%s \",\"color\":\"white\"}," +
-            "{\"text\":\"[Click to view]\",\"color\":\"aqua\",\"underlined\":true," +
-            "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
-            "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket %s\"}}]}",
-            message.replace("\"", "\\\""), ticketUrl, ticketId
-        );
+        return ClickableJsonMessage.empty()
+                .extra(ClickableJsonMessage.text("[Ticket] ").color("gold"))
+                .extra(ClickableJsonMessage.text(message + " ").color("white"))
+                .extra(ClickableJsonMessage.text("[Click to view]")
+                        .color("aqua")
+                        .underlined(true)
+                        .openUrl(ticketUrl)
+                        .hoverText("Click to view ticket " + ticketId))
+                .toJson();
     }
 
     private String buildTicketHoverText(String subject, String firstReply) {
@@ -325,11 +345,4 @@ class NotificationService {
         return val instanceof String ? (String) val : "";
     }
 
-    private String escapeJson(String text) {
-        return text.replace("\\", "\\\\")
-                   .replace("\"", "\\\"")
-                   .replace("\n", "\\n")
-                   .replace("\r", "")
-                   .replace("\t", "\\t");
-    }
 }

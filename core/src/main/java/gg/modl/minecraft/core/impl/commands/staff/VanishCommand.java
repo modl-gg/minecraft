@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.command.PlayerOnly;
@@ -11,6 +10,8 @@ import gg.modl.minecraft.core.service.VanishService;
 import gg.modl.minecraft.core.util.Constants;
 import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
+import gg.modl.minecraft.core.util.StaffCommandUtil;
+import gg.modl.minecraft.core.util.StaffCommandUtil.StaffDisplay;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
@@ -36,21 +37,14 @@ public class VanishCommand {
         UUID uuid = actor.uniqueId();
         boolean nowVanished = vanishService.toggle(uuid);
 
-        String inGameName = resolveInGameName(uuid);
-        String panelName = cache.getStaffDisplayName(uuid);
-        if (panelName == null) panelName = inGameName;
+        StaffDisplay display = StaffCommandUtil.resolvePlayerDisplay(uuid, platform, cache, Constants.DEFAULT_STAFF_NAME);
 
         if (nowVanished) {
             actor.reply(localeManager.getMessage("vanish.enabled"));
-            bridgeService.sendVanishEnter(uuid.toString(), inGameName, panelName);
+            bridgeService.sendVanishEnter(uuid.toString(), display.getInGameName(), display.getPanelName());
         } else {
             actor.reply(localeManager.getMessage("vanish.disabled"));
-            bridgeService.sendVanishExit(uuid.toString(), inGameName, panelName);
+            bridgeService.sendVanishExit(uuid.toString(), display.getInGameName(), display.getPanelName());
         }
-    }
-
-    private String resolveInGameName(UUID uuid) {
-        AbstractPlayer player = platform.getPlayer(uuid);
-        return player != null ? player.getName() : Constants.DEFAULT_STAFF_NAME;
     }
 }

@@ -97,7 +97,7 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         activeTab = StaffTab.SETTINGS;
 
         Cache cache = platform.getCache();
-        boolean isSuperAdmin = "Super Admin".equals(role.getName());
+        boolean isSuperAdmin = role.getId() != null && role.getId().contains("super-admin");
         this.hasPermission = !isSuperAdmin && cache != null && cache.hasPermission(viewerUuid, Permissions.SETTINGS_MODIFY);
 
         enabledPermissions = new HashSet<>(role.getPermissions());
@@ -208,16 +208,11 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         boolean newState = !permission.isEnabled();
         permission.setEnabled(newState);
 
-        if (newState) {
-            enabledPermissions.add(permission.getNode());
-            for (Permission p : allPermissions) {
-                String parent = getParentNode(p.getNode());
-                if (permission.getNode().equals(parent)) {
-                    p.setEnabled(true);
-                    enabledPermissions.add(p.getNode());
-                }
-            }
-        } else enabledPermissions.remove(permission.getNode());
+        // Store only the explicitly-toggled node. The backend permission model is prefix-hierarchical
+        // (holding X grants X.*), so materializing children is redundant and caused privilege retention
+        // when a parent was later disabled. "Auto-granted by parent" is computed for display only.
+        if (newState) enabledPermissions.add(permission.getNode());
+        else enabledPermissions.remove(permission.getNode());
 
         RoleListMenu.Role localRole = new RoleListMenu.Role(
                 role.getId(), role.getName(), role.getDescription(), new ArrayList<>(enabledPermissions));
@@ -255,7 +250,8 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
         sendMessage(MenuItems.COLOR_YELLOW + "Saving permissions for " + role.getName() + "...");
 
-        httpClient.updateRolePermissions(role.getId(), new ArrayList<>(enabledPermissions)).thenAccept(v -> {
+        String actingStaffId = platform.getCache() != null ? platform.getCache().getStaffId(viewerUuid) : null;
+        httpClient.updateRolePermissions(role.getId(), new ArrayList<>(enabledPermissions), actingStaffId).thenAccept(v -> {
             sendMessage(MenuItems.COLOR_GREEN + "Permissions saved successfully!");
             if (backAction != null) backAction.accept(click.player());
         }).exceptionally(e -> {

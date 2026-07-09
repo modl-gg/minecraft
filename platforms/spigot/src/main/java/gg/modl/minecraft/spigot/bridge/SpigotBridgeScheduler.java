@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.bukkit.scheduler.BukkitTask;
 
 public class SpigotBridgeScheduler implements BridgeScheduler {
     private final JavaPlugin plugin;
@@ -19,13 +20,21 @@ public class SpigotBridgeScheduler implements BridgeScheduler {
     private final ScheduledExecutorService delayExecutor;
 
     public SpigotBridgeScheduler(JavaPlugin plugin) {
+        this(plugin, FoliaSchedulerHelper.isFolia(), null);
+    }
+
+    SpigotBridgeScheduler(JavaPlugin plugin, boolean folia, ScheduledExecutorService delayExecutor) {
         this.plugin = plugin;
-        this.folia = FoliaSchedulerHelper.isFolia();
-        this.delayExecutor = folia ? Executors.newSingleThreadScheduledExecutor(r -> {
+        this.folia = folia;
+        this.delayExecutor = folia ? delayExecutor != null ? delayExecutor : createDelayExecutor() : null;
+    }
+
+    private static ScheduledExecutorService createDelayExecutor() {
+        return Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "modl-bridge-delay");
             t.setDaemon(true);
             return t;
-        }) : null;
+        });
     }
 
     @Override
@@ -86,7 +95,7 @@ public class SpigotBridgeScheduler implements BridgeScheduler {
             long periodTicks = unit.toSeconds(period) * 20L;
             if (delayTicks < 1) delayTicks = 1;
             if (periodTicks < 1) periodTicks = 1;
-            org.bukkit.scheduler.BukkitTask bukkitTask = Bukkit.getScheduler()
+            BukkitTask bukkitTask = Bukkit.getScheduler()
                     .runTaskTimerAsynchronously(plugin, task, delayTicks, periodTicks);
             return bukkitTask::cancel;
         }
@@ -95,6 +104,12 @@ public class SpigotBridgeScheduler implements BridgeScheduler {
     @Override
     public void cancelTask(BridgeTask task) {
         if (task != null) task.cancel();
+    }
+
+    public void shutdown() {
+        if (delayExecutor != null) {
+            delayExecutor.shutdownNow();
+        }
     }
 
     public JavaPlugin getPlugin() {

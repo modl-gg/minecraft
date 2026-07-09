@@ -16,7 +16,7 @@ import gg.modl.minecraft.core.service.StaffChatService;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
-import static gg.modl.minecraft.core.util.Java8Collections.*;
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public final class ChatEventHandler {
     private ChatEventHandler() {}
@@ -38,7 +38,9 @@ public final class ChatEventHandler {
 
         if (platform.getChatInputManager().handleChat(senderUuid, message)) return Result.CANCELLED;
 
-        chatMessageCache.addMessage(serverName, senderUuid.toString(), senderName, message);
+        // Keep the per-player server mapping current on all platforms (incl. proxies that don't call
+        // updatePlayerServer on join/switch) without caching messages that may be gated/cancelled below.
+        chatMessageCache.updatePlayerServer(serverName, senderUuid.toString());
 
         if (staffChatService.isInStaffChat(senderUuid)) {
             String panelName = cache.getStaffDisplayName(senderUuid);
@@ -82,6 +84,7 @@ public final class ChatEventHandler {
             return Result.CANCELLED;
         }
 
+        chatMessageCache.addMessage(serverName, senderUuid.toString(), senderName, message);
         chatCommandLogService.addChatMessage(senderUuid.toString(), senderName, message, serverName);
 
         for (UUID interceptor : networkChatInterceptService.getInterceptors()) {
@@ -89,6 +92,13 @@ public final class ChatEventHandler {
                 platform.sendMessage(interceptor, localeManager.getMessage("intercept.message",
                         mapOf("player", senderName, "message", message)));
             }
+        }
+
+        if (!isStaff && !chatManagementService.recordMessageSent(senderUuid)) {
+            int remaining = chatManagementService.getSlowModeRemaining(senderUuid);
+            sendMessage.accept(localeManager.getMessage("chat_management.slow_mode_wait",
+                    mapOf("seconds", String.valueOf(remaining))));
+            return Result.CANCELLED;
         }
 
         return Result.ALLOWED;

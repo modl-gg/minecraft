@@ -10,12 +10,26 @@ public class PunishmentTypeRegistry {
     public static final int ORDINAL_KICK = 0, ORDINAL_MUTE = 1, ORDINAL_BAN = 2,
             ORDINAL_SECURITY_BAN = 3, ORDINAL_LINKED_BAN = 4, ORDINAL_BLACKLIST = 5;
 
-    private static final Map<Integer, PunishmentTypeInfo> registry = new ConcurrentHashMap<>();
+    private static volatile Map<Integer, PunishmentTypeInfo> registry = new ConcurrentHashMap<>();
+    private static Map<Integer, PunishmentTypeInfo> staging;
     @Getter private static volatile boolean initialized = false;
 
-    public static void register(int ordinal, boolean isBan, boolean isMute) {
-        registry.put(ordinal, new PunishmentTypeInfo(isBan, isMute));
+    public static synchronized void beginRebuild() {
+        staging = new ConcurrentHashMap<>();
+    }
+
+    public static synchronized void commitRebuild() {
+        if (staging != null) {
+            registry = staging;
+            staging = null;
+        }
         initialized = true;
+    }
+
+    public static void register(int ordinal, boolean isBan, boolean isMute) {
+        Map<Integer, PunishmentTypeInfo> target = (staging != null) ? staging : registry;
+        target.put(ordinal, new PunishmentTypeInfo(isBan, isMute));
+        if (staging == null) initialized = true;
     }
 
     public static void registerAdministrativeTypes() {
