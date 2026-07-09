@@ -125,6 +125,8 @@ public class Punishment {
 
         if (STATUS_UNSTARTED.equals(map.get(DATA_KEY_STATUS))) return false;
 
+        if ((isBanType() || isMuteType()) && started == null) return false;
+
         if (hasPardonModification()) return false;
 
         long now = System.currentTimeMillis();
@@ -172,9 +174,9 @@ public class Punishment {
 
         if (duration == null) duration = getDuration();
         if (duration == null || duration <= 0) return null;
+        if (started == null) return null;
         if (durationBase != null) return new Date(durationBase.getTime() + duration);
-        long base = (started != null) ? started.getTime() : System.currentTimeMillis();
-        return new Date(base + duration);
+        return new Date(started.getTime() + duration);
     }
 
     @Getter
