@@ -12,7 +12,6 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.ReportsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
-import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
@@ -20,7 +19,6 @@ import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.Getter;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -182,9 +180,6 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         super.registerActionHandlers();
 
         registerActionHandler("filter", this::handleFilter);
-        InspectNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
         registerActionHandler("openReports", click -> {});
     }
 

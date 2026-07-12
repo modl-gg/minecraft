@@ -13,7 +13,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.Getter;
@@ -42,14 +42,12 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
     }
 
     private final List<Role> roles = new ArrayList<>();
-    private final String panelUrl;
     private final boolean hasPermission;
     @Getter private CompletableFuture<Void> dataFuture;
 
     public RoleListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                         boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
-        super("Edit Roles", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
-        this.panelUrl = panelUrl;
+        super("Edit Roles", platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         activeTab = StaffTab.SETTINGS;
 
         Cache cache = PluginServices.cache();
@@ -145,17 +143,8 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
                 new RolePermissionEditMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, role,
                         player -> {
                             RoleListMenu m = new RoleListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
-                            StaffNavigationHandlers.displayWhenLoaded(platform, m.getDataFuture(), player, m::display);
+                            MenuAsync.displayWhenLoaded(platform, m.getDataFuture(), player, m::display);
                         }))
                 .handle(click);
-    }
-
-    @Override
-    protected void registerActionHandlers() {
-        super.registerActionHandlers();
-
-        StaffNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 }

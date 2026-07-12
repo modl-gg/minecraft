@@ -18,7 +18,6 @@ import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.PunishmentModificationActions;
 import gg.modl.minecraft.core.impl.menus.util.PunishmentModifyItemFactory;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.punishment.RecentPunishmentMapper;
 
@@ -33,17 +32,15 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
     private final Account targetAccount;
     private final Punishment punishment;
     private final Consumer<CirrusPlayerWrapper> menuBackAction;
-    private final String panelUrl;
     private final PunishmentModificationActions modActions;
 
     public StaffModifyPunishmentMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                       Account targetAccount, Punishment punishment, boolean isAdmin, String panelUrl,
                                       Consumer<CirrusPlayerWrapper> menuBackAction) {
-        super(platform, httpClient, viewerUuid, viewerName, isAdmin, menuBackAction);
+        super(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, menuBackAction);
         this.targetAccount = targetAccount;
         this.punishment = punishment;
         this.menuBackAction = menuBackAction;
-        this.panelUrl = panelUrl;
         this.modActions = new PunishmentModificationActions(platform, httpClient, viewerUuid, viewerName,
                 targetAccount.getMinecraftUuid(), punishment, this::sendMessage, this::refreshMenu, this::display);
 
@@ -71,10 +68,6 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
     @Override
     protected void registerActionHandlers() {
         super.registerActionHandlers();
-
-        StaffNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
         registerActionHandler("addNote", modActions::handleAddNote);
         registerActionHandler("evidence", modActions::handleEvidence);
@@ -156,7 +149,7 @@ public class StaffModifyPunishmentMenu extends BaseStaffMenu {
                             RecentPunishmentMapper.toPunishment(p), playerUuid, p.getPlayerName(), null));
                 }
                 RecentPunishmentsMenu menu = new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null, freshData);
-                StaffNavigationHandlers.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+                MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
             } else {
                 menuBackAction.accept(click.player());
             }

@@ -50,7 +50,7 @@ import gg.modl.minecraft.core.impl.commands.player.ClaimTicketCommand;
 import gg.modl.minecraft.core.impl.commands.player.HackReportCommand;
 import gg.modl.minecraft.core.impl.commands.player.ReportCommand;
 import gg.modl.minecraft.core.impl.commands.player.SupportCommand;
-import gg.modl.minecraft.core.impl.commands.player.TicketCommandUtil;
+import gg.modl.minecraft.core.service.TicketService;
 import gg.modl.minecraft.core.impl.commands.staff.VanishCommand;
 import gg.modl.minecraft.core.impl.commands.staff.VerifyCommand;
 import gg.modl.minecraft.core.impl.commands.player.IAmMutedCommand;
@@ -333,16 +333,17 @@ public class PluginLoader {
         registerIfEnabled(configuredCommandAliases, new IAmMutedCommand(platform, cache, this.localeManager), "iammuted");
         registerIfEnabled(configuredCommandAliases, new StandingCommand(httpClientHolder, platform, this.localeManager, configManager, cache), "standing");
 
-        TicketCommandUtil ticketUtil = new TicketCommandUtil(cache);
         ModlHttpClient httpClient = httpManager.getHttpClient();
         String panelUrl = httpManager.getPanelUrl();
-        registerIfEnabled(configuredCommandAliases, new ReportCommand(asyncCommandExecutor, platform, httpClient, panelUrl, this.localeManager, chatMessageCache, ticketUtil), "report");
-        registerIfEnabled(configuredCommandAliases, new ChatReportCommand(platform, httpClient, panelUrl, this.localeManager, chatMessageCache, ticketUtil), "chatreport");
-        registerIfEnabled(configuredCommandAliases, new HackReportCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil), "hackreport");
-        registerIfEnabled(configuredCommandAliases, new ApplyCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil), "apply");
-        registerIfEnabled(configuredCommandAliases, new BugReportCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil), "bugreport");
-        registerIfEnabled(configuredCommandAliases, new SupportCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil), "support");
-        registerIfEnabled(configuredCommandAliases, new ClaimTicketCommand(platform, httpClient, panelUrl, this.localeManager, ticketUtil), "tclaim");
+        TicketService ticketService = new TicketService(cache, httpClient, platform, this.localeManager, panelUrl);
+        pluginServices.setTicketService(ticketService);
+        registerIfEnabled(configuredCommandAliases, new ReportCommand(asyncCommandExecutor, platform, httpClient, panelUrl, this.localeManager, chatMessageCache, ticketService), "report");
+        registerIfEnabled(configuredCommandAliases, new ChatReportCommand(platform, this.localeManager, chatMessageCache, ticketService), "chatreport");
+        registerIfEnabled(configuredCommandAliases, new HackReportCommand(platform, this.localeManager, ticketService), "hackreport");
+        registerIfEnabled(configuredCommandAliases, new ApplyCommand(ticketService), "apply");
+        registerIfEnabled(configuredCommandAliases, new BugReportCommand(ticketService), "bugreport");
+        registerIfEnabled(configuredCommandAliases, new SupportCommand(ticketService), "support");
+        registerIfEnabled(configuredCommandAliases, new ClaimTicketCommand(platform, httpClient, panelUrl, this.localeManager, ticketService), "tclaim");
 
         this.punishmentTypeCacheManager = new PunishmentTypeCacheManager();
         this.punishmentTypeCacheManager.initialize(httpManager.getHttpClient(), logger);

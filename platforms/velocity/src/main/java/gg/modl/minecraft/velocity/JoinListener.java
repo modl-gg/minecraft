@@ -9,9 +9,9 @@ import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.LoginCache;
+import gg.modl.minecraft.core.login.LoginPipeline;
 import gg.modl.minecraft.core.login.LoginService;
 import gg.modl.minecraft.core.login.ProxyLoginFlow;
-import gg.modl.minecraft.core.session.PlayerSessionService;
 import gg.modl.minecraft.core.session.ServerSwitchService;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
@@ -25,10 +25,8 @@ public class JoinListener {
     private final Cache cache;
     private final Logger logger;
     private final Platform platform;
-    private final LoginCache loginCache;
-    private final LoginService loginService;
+    private final LoginPipeline loginPipeline;
     private final ProxyLoginFlow proxyLoginFlow;
-    private final PlayerSessionService playerSessionService;
     private final ServerSwitchService serverSwitchService;
     private final boolean debugMode;
 
@@ -47,7 +45,7 @@ public class JoinListener {
                         if (debugMode) logger.info("Allowed login for {}", event.getPlayer().getUsername());
                     });
         } catch (Exception e) {
-            LoginService.LoginResult errorResult = loginService.handleLoginError(e);
+            LoginService.LoginResult errorResult = loginPipeline.getLoginService().handleLoginError(e);
             if (errorResult instanceof LoginService.LoginResult.Denied) {
                 LoginService.LoginResult.Denied denied = (LoginService.LoginResult.Denied) errorResult;
                 logger.warn("Login blocked for {}: {}", event.getPlayer().getUsername(), denied.getMessage());
@@ -63,18 +61,18 @@ public class JoinListener {
     @Subscribe
     public void onPostLogin(PostLoginEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        playerSessionService.handlePlayerJoin(uuid, event.getPlayer().getUsername());
+        loginPipeline.getPlayerSessionService().handlePlayerJoin(uuid, event.getPlayer().getUsername());
 
         String texture = platform.getPlayerSkinTexture(uuid);
         if (texture != null) cache.cacheSkinTexture(uuid, texture);
 
-        LoginCache.CachedLoginResult cachedResult = loginCache.getCachedLoginResult(uuid);
-        loginService.cacheLoginData(uuid, cachedResult != null ? cachedResult.getResponse() : null);
+        LoginCache.CachedLoginResult cachedResult = loginPipeline.getLoginCache().getCachedLoginResult(uuid);
+        loginPipeline.getLoginService().cacheLoginData(uuid, cachedResult != null ? cachedResult.getResponse() : null);
     }
 
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
-        playerSessionService.handlePlayerDisconnect(
+        loginPipeline.getPlayerSessionService().handlePlayerDisconnect(
                 event.getPlayer().getUniqueId(), event.getPlayer().getUsername());
     }
 

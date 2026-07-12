@@ -14,9 +14,9 @@ import gg.modl.minecraft.core.integration.iplookup.PendingIpLookupService;
 import gg.modl.minecraft.core.integration.mojang.MojangProfiles;
 import gg.modl.minecraft.core.integration.mojang.WebPlayer;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.login.LoginPipeline;
 import gg.modl.minecraft.core.login.LoginService;
 import gg.modl.minecraft.core.service.ChatMessageCache;
-import gg.modl.minecraft.core.session.PlayerSessionService;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -42,11 +42,9 @@ public class SpigotListener implements Listener {
     private final HttpClientHolder httpClientHolder;
     private final ChatMessageCache chatMessageCache;
     private final LocaleManager localeManager;
-    private final LoginCache loginCache;
+    private final LoginPipeline loginPipeline;
     private final ChatService chatService;
     private final CommandInterceptService commandInterceptService;
-    private final LoginService loginService;
-    private final PlayerSessionService playerSessionService;
     private final IpEnrichmentService ipEnrichmentService;
     private final PendingIpLookupService pendingIpLookupService;
 
@@ -58,10 +56,10 @@ public class SpigotListener implements Listener {
     public void onAsyncPlayerPreLogin(AsyncPlayerPreLoginEvent event) {
         String ipAddress = event.getAddress().getHostAddress();
 
-        LoginCache.CachedLoginResult cached = loginCache.getCachedLoginResult(event.getUniqueId());
+        LoginCache.CachedLoginResult cached = loginPipeline.getLoginCache().getCachedLoginResult(event.getUniqueId());
         if (cached != null) {
             platform.getLogger().debug("Using cached login result for " + event.getName());
-            loginCache.storePreLoginResult(event.getUniqueId(),
+            loginPipeline.getLoginCache().storePreLoginResult(event.getUniqueId(),
                 new LoginCache.PreLoginResult(cached.getResponse(), cached.getIpInfo(), cached.getSkinHash()));
             return;
         }
@@ -85,8 +83,8 @@ public class SpigotListener implements Listener {
                 String skinHash = (String) data[2];
                 return getHttpClient().playerLogin(request)
                     .thenAccept(response -> {
-                        loginCache.cacheLoginResult(event.getUniqueId(), response, ipInfo, skinHash);
-                        loginCache.storePreLoginResult(event.getUniqueId(),
+                        loginPipeline.getLoginCache().cacheLoginResult(event.getUniqueId(), response, ipInfo, skinHash);
+                        loginPipeline.getLoginCache().storePreLoginResult(event.getUniqueId(),
                             new LoginCache.PreLoginResult(response, ipInfo, skinHash));
                         pendingIpLookupService.handlePendingIpLookups(response, event.getUniqueId().toString(), ipAddress, CompletableFuture.completedFuture(ipInfo));
                     });
@@ -94,7 +92,7 @@ public class SpigotListener implements Listener {
             .exceptionally(throwable -> {
                 platform.getLogger().warning("Failed to check punishments for " + event.getName() + ": " + throwable.getMessage());
                 Exception error = throwable instanceof Exception ? (Exception) throwable : new RuntimeException(throwable);
-                loginCache.storePreLoginResult(event.getUniqueId(), new LoginCache.PreLoginResult(error));
+                loginPipeline.getLoginCache().storePreLoginResult(event.getUniqueId(), new LoginCache.PreLoginResult(error));
                 return null;
             });
 
@@ -102,13 +100,13 @@ public class SpigotListener implements Listener {
             combinedFuture.get(PRE_LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             platform.getLogger().warning("Async pre-login timed out for " + event.getName() + ": " + e.getMessage());
-            loginCache.storePreLoginResult(event.getUniqueId(), new LoginCache.PreLoginResult(e));
+            loginPipeline.getLoginCache().storePreLoginResult(event.getUniqueId(), new LoginCache.PreLoginResult(e));
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerLogin(PlayerLoginEvent event) {
-        LoginCache.PreLoginResult preLoginResult = loginCache.getAndRemovePreLoginResult(event.getPlayer().getUniqueId());
+        LoginCache.PreLoginResult preLoginResult = loginPipeline.getLoginCache().getAndRemovePreLoginResult(event.getPlayer().getUniqueId());
 
         if (preLoginResult == null) {
             platform.getLogger().warning("No pre-login result found for " + event.getPlayer().getName() + " - blocking login for safety");
@@ -117,7 +115,7 @@ public class SpigotListener implements Listener {
         }
 
         if (preLoginResult.hasError()) {
-            LoginService.LoginResult errorResult = loginService.handleLoginError(preLoginResult.getError());
+            LoginService.LoginResult errorResult = loginPipeline.getLoginService().handleLoginError(preLoginResult.getError());
             if (errorResult instanceof LoginService.LoginResult.Denied) {
                 LoginService.LoginResult.Denied denied = (LoginService.LoginResult.Denied) errorResult;
                 if (preLoginResult.getError() instanceof PanelUnavailableException) {
@@ -138,7 +136,7 @@ public class SpigotListener implements Listener {
             return;
         }
 
-        LoginService.LoginResult result = loginService.processLoginResponse(
+        LoginService.LoginResult result = loginPipeline.getLoginService().processLoginResponse(
                 preLoginResult.getResponse(), event.getPlayer().getUniqueId());
 
         if (result instanceof LoginService.LoginResult.Denied) {
@@ -157,12 +155,12 @@ public class SpigotListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
 
-        playerSessionService.handlePlayerJoin(uuid, event.getPlayer().getName());
+        loginPipeline.getPlayerSessionService().handlePlayerJoin(uuid, event.getPlayer().getName());
         cacheSkinTexture(uuid);
         chatMessageCache.updatePlayerServer(platform.getServerName(), uuid.toString());
 
-        LoginCache.CachedLoginResult cachedResult = loginCache.getCachedLoginResult(uuid);
-        loginService.cacheLoginData(uuid, cachedResult != null ? cachedResult.getResponse() : null);
+        LoginCache.CachedLoginResult cachedResult = loginPipeline.getLoginCache().getCachedLoginResult(uuid);
+        loginPipeline.getLoginService().cacheLoginData(uuid, cachedResult != null ? cachedResult.getResponse() : null);
     }
 
     private void cacheSkinTexture(UUID uuid) {
@@ -181,7 +179,7 @@ public class SpigotListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        playerSessionService.handlePlayerDisconnect(event.getPlayer().getUniqueId(), event.getPlayer().getName());
+        loginPipeline.getPlayerSessionService().handlePlayerDisconnect(event.getPlayer().getUniqueId(), event.getPlayer().getName());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)

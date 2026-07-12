@@ -63,7 +63,7 @@ public class AltsCommand {
     private void printAlts(CommandActor actor, String playerQuery, int page) {
         actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
-        PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
+        PlayerLookupRequest request = PlayerLookupRequest.builder().query(playerQuery).build();
 
         httpClientHolder.getClient().lookupPlayer(request).thenAccept(response -> {
             if (response.isSuccess() && response.getData() != null) {

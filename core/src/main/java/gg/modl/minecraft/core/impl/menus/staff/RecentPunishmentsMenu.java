@@ -13,7 +13,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.PunishmentItemRenderer;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.punishment.RecentPunishmentMapper;
@@ -41,7 +41,6 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
     }
 
     private final List<PunishmentWithPlayer> recentPunishments;
-    private final String panelUrl;
     @Getter private CompletableFuture<Void> dataFuture;
 
     public RecentPunishmentsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -52,8 +51,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
     public RecentPunishmentsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                   boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction,
                                   List<PunishmentWithPlayer> preloadedData) {
-        super("Recent Punishments", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
-        this.panelUrl = panelUrl;
+        super("Recent Punishments", platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         this.recentPunishments = preloadedData != null ? new ArrayList<>(preloadedData) : new ArrayList<>();
         activeTab = StaffTab.PUNISHMENTS;
 
@@ -121,7 +119,7 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
         List<PunishmentWithPlayer> currentData = new ArrayList<>(recentPunishments);
         Consumer<CirrusPlayerWrapper> returnToPunishments = p -> {
             RecentPunishmentsMenu m = new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null, currentData);
-            StaffNavigationHandlers.displayWhenLoaded(platform, m.getDataFuture(), p, m::display);
+            MenuAsync.displayWhenLoaded(platform, m.getDataFuture(), p, m::display);
         };
 
         if (pwp.getAccount() != null) {
@@ -149,10 +147,6 @@ public class RecentPunishmentsMenu extends BaseStaffListMenu<RecentPunishmentsMe
     @Override
     protected void registerActionHandlers() {
         super.registerActionHandlers();
-
-        StaffNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
 
         registerActionHandler("openPunishments", click -> {});
     }

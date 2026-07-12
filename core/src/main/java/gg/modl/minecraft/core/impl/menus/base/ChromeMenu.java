@@ -26,6 +26,12 @@ public abstract class ChromeMenu extends BaseMenu {
         this.chrome = chrome;
     }
 
+    @Override
+    protected void registerActionHandlers() {
+        super.registerActionHandlers();
+        chrome.registerNavigation(this::registerActionHandler);
+    }
+
     protected void buildHeader() {
         for (Map.Entry<Integer, CirrusItem> entry : chrome.headerItems(false).entrySet()) {
             set(entry.getValue().slot(entry.getKey()));

@@ -33,6 +33,7 @@ import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.GameMode;
@@ -180,6 +181,7 @@ class FabricStaffModeOps implements StaffModeOps {
                 player.getInventory().main.stream().map(ItemStack::copy).toArray(ItemStack[]::new),
                 player.getInventory().armor.stream().map(ItemStack::copy).toArray(ItemStack[]::new),
                 player.getInventory().offHand.stream().map(ItemStack::copy).toArray(ItemStack[]::new),
+                player.getServerWorld().getRegistryKey(),
                 player.getX(), player.getY(), player.getZ(),
                 player.getYaw(), player.getPitch(),
                 player.interactionManager.getGameMode(),
@@ -200,22 +202,26 @@ class FabricStaffModeOps implements StaffModeOps {
         PlayerSnapshot snapshot = snapshots.remove(uuid);
         if (snapshot != null) {
             player.getInventory().clear();
-            for (int i = 0; i < snapshot.inventoryContents.length && i < player.getInventory().main.size(); i++) {
-                player.getInventory().main.set(i, snapshot.inventoryContents[i].copy());
+            for (int i = 0; i < snapshot.getInventoryContents().length && i < player.getInventory().main.size(); i++) {
+                player.getInventory().main.set(i, snapshot.getInventoryContents()[i].copy());
             }
-            for (int i = 0; i < snapshot.armorContents.length && i < player.getInventory().armor.size(); i++) {
-                player.getInventory().armor.set(i, snapshot.armorContents[i].copy());
+            for (int i = 0; i < snapshot.getArmorContents().length && i < player.getInventory().armor.size(); i++) {
+                player.getInventory().armor.set(i, snapshot.getArmorContents()[i].copy());
             }
-            for (int i = 0; i < snapshot.offHandContents.length && i < player.getInventory().offHand.size(); i++) {
-                player.getInventory().offHand.set(i, snapshot.offHandContents[i].copy());
+            for (int i = 0; i < snapshot.getOffHandContents().length && i < player.getInventory().offHand.size(); i++) {
+                player.getInventory().offHand.set(i, snapshot.getOffHandContents()[i].copy());
             }
-            player.changeGameMode(snapshot.gameMode);
-            player.setHealth(Math.min(snapshot.health, player.getMaxHealth()));
-            player.getHungerManager().setFoodLevel(snapshot.foodLevel);
-            player.experienceProgress = snapshot.exp;
-            player.experienceLevel = snapshot.level;
-            player.teleport(player.getServerWorld(), snapshot.x, snapshot.y, snapshot.z,
-                    Set.of(), snapshot.yaw, snapshot.pitch);
+            player.changeGameMode(snapshot.getGameMode());
+            player.setHealth(Math.min(snapshot.getHealth(), player.getMaxHealth()));
+            player.getHungerManager().setFoodLevel(snapshot.getFoodLevel());
+            player.experienceProgress = snapshot.getExp();
+            player.experienceLevel = snapshot.getLevel();
+            ServerWorld world = server.getWorld(snapshot.getDimension());
+            if (world == null) {
+                world = player.getServerWorld();
+            }
+            player.teleport(world, snapshot.getX(), snapshot.getY(), snapshot.getZ(),
+                    Set.of(), snapshot.getYaw(), snapshot.getPitch());
         } else {
             player.getInventory().clear();
             player.changeGameMode(GameMode.SURVIVAL);

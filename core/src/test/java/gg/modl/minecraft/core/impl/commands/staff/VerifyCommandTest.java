@@ -5,19 +5,16 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.Staff2faTokenResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.service.Staff2faService;
+import gg.modl.minecraft.core.support.FakeCommandActor;
 import gg.modl.minecraft.core.support.FakeModlHttpClient;
 import gg.modl.minecraft.core.support.FakePlatform;
 import gg.modl.minecraft.core.support.MapLocaleManager;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
-import revxrsal.commands.command.CommandActor;
 
-import java.lang.reflect.Proxy;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -34,14 +31,14 @@ class VerifyCommandTest {
         TestStaff2faService staff2faService = new TestStaff2faService(true, false);
         HttpClientHolder httpClientHolder = new HttpClientHolder(httpClientReturning(tokenFuture));
         VerifyCommand command = new VerifyCommand(platform, localeManager, staff2faService, httpClientHolder);
-        TestActor actor = new TestActor(senderUuid);
+        FakeCommandActor actor = new FakeCommandActor(senderUuid, "ModlStaff");
 
-        command.verify(actor.commandActor());
+        command.verify(actor);
 
         Staff2faTokenResponse response = new Staff2faTokenResponse(null, "https://modl.gg/verify/token-123");
         tokenFuture.complete(response);
 
-        assertEquals(Collections.emptyList(), actor.replies());
+        assertEquals(Collections.emptyList(), actor.messages());
         assertNull(platform.lastJson());
 
         platform.runScheduledTasks();
@@ -50,7 +47,7 @@ class VerifyCommandTest {
                 "Verify your identity",
                 "Open this link to continue",
                 "Complete verification in your browser"
-        ), actor.replies());
+        ), actor.messages());
         assertEquals(senderUuid, platform.lastJsonUuid());
         assertEquals(
                 "{\"text\":\"Click here\",\"color\":\"green\",\"bold\":true,"
@@ -70,9 +67,9 @@ class VerifyCommandTest {
         TestStaff2faService staff2faService = new TestStaff2faService(true, false);
         HttpClientHolder httpClientHolder = new HttpClientHolder(httpClientReturning(tokenFuture, senderUuid, "203.0.113.11"));
         VerifyCommand command = new VerifyCommand(platform, localeManager, staff2faService, httpClientHolder);
-        TestActor actor = new TestActor(senderUuid);
+        FakeCommandActor actor = new FakeCommandActor(senderUuid, "ModlStaff");
 
-        command.verify(actor.commandActor());
+        command.verify(actor);
 
         Staff2faTokenResponse response = new Staff2faTokenResponse(null, "https://modl.gg/verify/token\"\\line\nnext");
         tokenFuture.complete(response);
@@ -114,41 +111,6 @@ class VerifyCommandTest {
                 return tokenFuture;
             }
         };
-    }
-
-    private static class TestActor {
-        private final UUID uuid;
-        private final List<String> replies = new ArrayList<>();
-
-        private TestActor(UUID uuid) {
-            this.uuid = uuid;
-        }
-
-        private CommandActor commandActor() {
-            return (CommandActor) Proxy.newProxyInstance(
-                    CommandActor.class.getClassLoader(),
-                    new Class<?>[] {CommandActor.class},
-                    (proxy, method, args) -> {
-                        if ("uniqueId".equals(method.getName())) return uuid;
-                        if ("reply".equals(method.getName())) {
-                            replies.add((String) args[0]);
-                            return null;
-                        }
-                        if ("name".equals(method.getName())) return "ModlStaff";
-                        if ("sendRawMessage".equals(method.getName())) {
-                            replies.add((String) args[0]);
-                            return null;
-                        }
-                        if ("sendRawError".equals(method.getName())) return null;
-                        if ("lamp".equals(method.getName())) return null;
-                        throw new UnsupportedOperationException(method.getName());
-                    }
-            );
-        }
-
-        private List<String> replies() {
-            return replies;
-        }
     }
 
     private static class TestStaff2faService extends Staff2faService {

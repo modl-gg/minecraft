@@ -16,7 +16,6 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.SkinTextureCache;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.Getter;
@@ -52,7 +51,6 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
     private List<StaffMember> staffMembers = new ArrayList<>();
     private List<String> availableRoles = new ArrayList<>();
     private Map<String, Integer> roleOrders = new HashMap<>();
-    private final String panelUrl;
     private String viewerRole;
     private final Map<String, String> selectedRoles = new HashMap<>();
     private final boolean hasPermission;
@@ -60,8 +58,7 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
 
     public StaffListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                          boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
-        super("Manage Staff", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
-        this.panelUrl = panelUrl;
+        super("Manage Staff", platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         activeTab = StaffTab.SETTINGS;
 
         Cache cache = PluginServices.cache();
@@ -78,8 +75,7 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
                           List<StaffMember> existingStaff, List<String> existingRoles,
                           Map<String, Integer> existingRoleOrders, String viewerRole,
                           Map<String, String> existingSelections) {
-        super("Manage Staff", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
-        this.panelUrl = panelUrl;
+        super("Manage Staff", platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         activeTab = StaffTab.SETTINGS;
 
         Cache cache = PluginServices.cache();
@@ -296,14 +292,5 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
             sendMessage(MenuItems.COLOR_RED + "Failed to update role: " + e.getMessage());
             return null;
         });
-    }
-
-    @Override
-    protected void registerActionHandlers() {
-        super.registerActionHandlers();
-
-        StaffNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 }

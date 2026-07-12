@@ -14,6 +14,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.ChromeListMenu;
 import gg.modl.minecraft.core.impl.menus.base.MenuChrome;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil.LinkableReport;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -71,9 +72,9 @@ public class LinkReportsMenu extends ChromeListMenu<LinkableReport> {
     protected Map<Integer, CirrusItem> intercept(int menuSize) {
         Map<Integer, CirrusItem> items = super.intercept(menuSize);
 
-        items.put(39, MenuItems.filterButton(currentFilter, filterOptions));
+        items.put(MenuSlots.LINK_REPORTS_FILTER, MenuItems.filterButton(currentFilter, filterOptions));
 
-        items.put(40, CirrusItem.of(
+        items.put(MenuSlots.LINK_REPORTS_APPLY, CirrusItem.of(
                 CirrusItemType.OAK_SIGN,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Apply Selection"),
                 MenuItems.lore(
@@ -83,7 +84,7 @@ public class LinkReportsMenu extends ChromeListMenu<LinkableReport> {
                 )
         ).actionHandler("applySelection"));
 
-        items.put(41, CirrusItem.of(
+        items.put(MenuSlots.LINK_REPORTS_SELECT_ALL, CirrusItem.of(
                 CirrusItemType.EMERALD,
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Select All"),
                 MenuItems.lore(
@@ -120,8 +121,6 @@ public class LinkReportsMenu extends ChromeListMenu<LinkableReport> {
     @Override
     protected void registerActionHandlers() {
         super.registerActionHandlers();
-
-        chrome.registerNavigation(this::registerActionHandler);
 
         registerActionHandler("filter", this::handleFilter);
 

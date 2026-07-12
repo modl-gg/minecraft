@@ -1,47 +1,44 @@
 package gg.modl.minecraft.spigot.bridge;
 
 import gg.modl.minecraft.core.service.BridgeService;
-import gg.modl.minecraft.spigot.bridge.handler.FreezeHandler;
-import gg.modl.minecraft.spigot.bridge.handler.StaffModeHandler;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class SpigotStandaloneLocalBridgeHandler implements BridgeService.LocalBridgeHandler {
-    private final StaffModeHandler staffModeHandler;
-    private final FreezeHandler freezeHandler;
+    private final SpigotBridgeActions actions;
 
     @Override
     public void onStaffModeEnter(String staffUuid) {
-        staffModeHandler.enterStaffMode(staffUuid);
+        actions.enterStaffMode(staffUuid);
     }
 
     @Override
     public void onStaffModeExit(String staffUuid) {
-        staffModeHandler.exitStaffMode(staffUuid);
+        actions.exitStaffMode(staffUuid);
     }
 
     @Override
     public void onVanishEnter(String staffUuid) {
-        staffModeHandler.vanishFromBridge(staffUuid);
+        actions.enterVanish(staffUuid);
     }
 
     @Override
     public void onVanishExit(String staffUuid) {
-        staffModeHandler.unvanishFromBridge(staffUuid);
+        actions.exitVanish(staffUuid);
     }
 
     @Override
     public void onFreezePlayer(String targetUuid, String staffUuid) {
-        freezeHandler.freeze(targetUuid, staffUuid);
+        actions.freeze(targetUuid, staffUuid);
     }
 
     @Override
     public void onUnfreezePlayer(String targetUuid) {
-        freezeHandler.unfreeze(targetUuid);
+        actions.unfreeze(targetUuid);
     }
 
     @Override
     public void onTargetRequest(String staffUuid, String targetUuid) {
-        staffModeHandler.setTarget(staffUuid, targetUuid);
+        actions.setTarget(staffUuid, targetUuid);
     }
 }

@@ -14,6 +14,8 @@ import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 import gg.modl.minecraft.core.config.ConfigManager;
 import gg.modl.minecraft.core.impl.menus.StandingMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.support.FakeCirrusPlayerWrapper;
+import gg.modl.minecraft.core.support.FakeCommandActor;
 import gg.modl.minecraft.core.support.FakeModlHttpClient;
 import gg.modl.minecraft.core.support.FakePlatform;
 import gg.modl.minecraft.core.support.MapLocaleManager;
@@ -21,19 +23,14 @@ import gg.modl.minecraft.core.support.RecordingPluginLogger;
 import gg.modl.minecraft.core.support.TestAccounts;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import revxrsal.commands.Lamp;
-import revxrsal.commands.command.CommandActor;
 
-import java.lang.reflect.Proxy;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -67,7 +64,7 @@ class StandingCommandTest {
             Future<?> invocation = executor.submit(() -> command.standing(actor));
 
             assertDoesNotThrow(() -> invocation.get(200, TimeUnit.MILLISECONDS));
-            assertEquals(Collections.singletonList(message("standing.loading")), actor.messages);
+            assertEquals(Collections.singletonList(message("standing.loading")), actor.messages());
             assertEquals(0, command.displayCount.get());
         } finally {
             executor.shutdownNow();
@@ -89,7 +86,7 @@ class StandingCommandTest {
 
         assertEquals(2, platform.mainThreadScheduleCount());
         assertEquals(0, command.displayCount.get());
-        assertEquals(Arrays.asList(message("standing.loading"), message("standing.error")), actor.messages);
+        assertEquals(Arrays.asList(message("standing.loading"), message("standing.error")), actor.messages());
     }
 
     @Test
@@ -108,11 +105,11 @@ class StandingCommandTest {
         profileFuture.complete(null);
 
         assertEquals(2, platform.mainThreadScheduleCount());
-        assertEquals(Collections.emptyList(), actor.messages);
+        assertEquals(Collections.emptyList(), actor.messages());
 
         platform.runScheduledTasks();
 
-        assertEquals(Arrays.asList(message("standing.loading"), message("standing.error")), actor.messages);
+        assertEquals(Arrays.asList(message("standing.loading"), message("standing.error")), actor.messages());
         assertEquals(0, command.displayCount.get());
     }
 
@@ -132,11 +129,11 @@ class StandingCommandTest {
         command.standing(actor);
 
         assertEquals(2, platform.mainThreadScheduleCount());
-        assertEquals(Collections.emptyList(), actor.messages);
+        assertEquals(Collections.emptyList(), actor.messages());
 
         platform.runScheduledTasks();
 
-        assertEquals(Arrays.asList(message("standing.loading"), message("standing.error")), actor.messages);
+        assertEquals(Arrays.asList(message("standing.loading"), message("standing.error")), actor.messages());
         assertEquals(0, command.displayCount.get());
     }
 
@@ -156,18 +153,18 @@ class StandingCommandTest {
         profileFuture.completeExceptionally(new IllegalStateException("boom"));
 
         assertEquals(2, platform.mainThreadScheduleCount());
-        assertEquals(Collections.emptyList(), actor.messages);
+        assertEquals(Collections.emptyList(), actor.messages());
 
         platform.runScheduledTasks();
 
-        assertEquals(Arrays.asList(message("standing.loading"), message("standing.error")), actor.messages);
+        assertEquals(Arrays.asList(message("standing.loading"), message("standing.error")), actor.messages());
         assertEquals(0, command.displayCount.get());
     }
 
     private static FakePlatform platform(UUID playerUuid, boolean autoRunMainThread) {
         return new FakePlatform()
                 .register(new AbstractPlayer(playerUuid, "modlplayer", true))
-                .registerWrapper(playerUuid, playerWrapper(playerUuid))
+                .registerWrapper(playerUuid, new FakeCirrusPlayerWrapper(playerUuid))
                 .autoRunMainThread(autoRunMainThread);
     }
 
@@ -199,19 +196,6 @@ class StandingCommandTest {
                 return typesFuture;
             }
         };
-    }
-
-    private static CirrusPlayerWrapper playerWrapper(UUID playerUuid) {
-        return (CirrusPlayerWrapper) Proxy.newProxyInstance(
-                CirrusPlayerWrapper.class.getClassLoader(),
-                new Class<?>[]{CirrusPlayerWrapper.class},
-                (proxy, method, args) -> {
-                    if ("uuid".equals(method.getName())) return playerUuid;
-                    if ("protocolVersion".equals(method.getName())) return 0;
-                    if ("handle".equals(method.getName())) return null;
-                    return null;
-                }
-        );
     }
 
     private static PlayerProfileResponse profileResponse(UUID playerUuid) {
@@ -261,42 +245,14 @@ class StandingCommandTest {
         }
     }
 
-    private static class TestActor implements CommandActor {
-        private final UUID uuid;
-        private final List<String> messages = new CopyOnWriteArrayList<>();
-
+    private static final class TestActor extends FakeCommandActor {
         TestActor(UUID uuid) {
-            this.uuid = uuid;
-        }
-
-        @Override
-        public String name() {
-            return "modlplayer";
-        }
-
-        @Override
-        public UUID uniqueId() {
-            return uuid;
-        }
-
-        @Override
-        public void reply(String message) {
-            messages.add(message);
-        }
-
-        @Override
-        public void sendRawMessage(String message) {
-            messages.add(message);
+            super(uuid, "modlplayer");
         }
 
         @Override
         public void sendRawError(String message) {
             fail(message);
-        }
-
-        @Override
-        public Lamp<?> lamp() {
-            return null;
         }
     }
 }

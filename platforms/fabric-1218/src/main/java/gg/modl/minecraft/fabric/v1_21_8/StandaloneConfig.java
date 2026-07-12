@@ -1,5 +1,6 @@
 package gg.modl.minecraft.fabric.v1_21_8;
 
+import gg.modl.minecraft.core.boot.SyncPollingRate;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.yaml.snakeyaml.Yaml;
@@ -12,8 +13,6 @@ import java.util.Map;
 
 @Getter
 public class StandaloneConfig {
-    private static final int DEFAULT_SYNC_POLLING_RATE = 2;
-
     private final boolean debugMode;
     private final boolean queryMojang;
     private final int syncPollingRate;
@@ -29,7 +28,7 @@ public class StandaloneConfig {
     public static StandaloneConfig read(Path configPath, Logger logger) {
         boolean debugMode = false;
         boolean queryMojang = false;
-        int syncPollingRate = DEFAULT_SYNC_POLLING_RATE;
+        int syncPollingRate = SyncPollingRate.DEFAULT_SECONDS;
         List<String> mutedCommands = List.of();
 
         if (configPath.toFile().exists()) {
@@ -44,7 +43,7 @@ public class StandaloneConfig {
                     Object syncObj = config.get("sync");
                     if (syncObj instanceof Map<?, ?> syncMap) {
                         Object rate = syncMap.get("polling_rate");
-                        if (rate instanceof Number n) syncPollingRate = Math.max(1, n.intValue());
+                        if (rate instanceof Number n) syncPollingRate = SyncPollingRate.clamp(n.intValue());
                     }
                     Object mutedObj = config.get("muted_commands");
                     if (mutedObj instanceof List<?> list) {

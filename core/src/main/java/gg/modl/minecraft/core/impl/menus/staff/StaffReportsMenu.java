@@ -15,7 +15,7 @@ import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.Getter;
@@ -56,13 +56,11 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
     private final List<Report> reports = new ArrayList<>();
     private String currentFilter = "all", currentStatusFilter = "open";
     private final List<String> filterOptions = Arrays.asList("all", "gameplay", "chat");
-    private final String panelUrl;
     @Getter private CompletableFuture<Void> dataFuture;
 
     public StaffReportsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                             boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
-        super("Reports", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
-        this.panelUrl = panelUrl;
+        super("Reports", platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         activeTab = StaffTab.REPORTS;
 
         this.dataFuture = fetchReports();
@@ -178,7 +176,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
 
             StaffReportsMenu refreshed = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
                     .withFilter(currentFilter).withStatusFilter(currentStatusFilter);
-            StaffNavigationHandlers.displayWhenLoaded(platform, refreshed.getDataFuture(), click.player(), refreshed::display);
+            MenuAsync.displayWhenLoaded(platform, refreshed.getDataFuture(), click.player(), refreshed::display);
         }).exceptionally(e -> {
             sendMessage(MenuItems.COLOR_RED + "Failed to dismiss report: " + e.getMessage());
             return null;
@@ -198,7 +196,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
                 new InspectMenu(platform, httpClient, viewerUuid, viewerName, response.getProfile(),
                     p -> {
                         StaffReportsMenu m = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null);
-                        StaffNavigationHandlers.displayWhenLoaded(platform, m.getDataFuture(), p, m::display);
+                        MenuAsync.displayWhenLoaded(platform, m.getDataFuture(), p, m::display);
                     })
                     .display(click.player());
             } else {
@@ -216,10 +214,6 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
 
         registerActionHandler("filter", this::handleFilter);
 
-        StaffNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
-
         registerActionHandler("openReports", click -> {});
     }
 
@@ -229,7 +223,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
             StaffReportsMenu menu = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
                     .withFilter(currentFilter)
                     .withStatusFilter(newStatus);
-            StaffNavigationHandlers.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+            MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
         } else {
             int currentIndex = filterOptions.indexOf(currentFilter);
             int nextIndex = (currentIndex + 1) % filterOptions.size();
@@ -238,7 +232,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
             StaffReportsMenu menu = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
                     .withFilter(newFilter)
                     .withStatusFilter(currentStatusFilter);
-            StaffNavigationHandlers.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+            MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
         }
     }
 }

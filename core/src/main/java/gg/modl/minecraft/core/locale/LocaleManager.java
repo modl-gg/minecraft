@@ -136,7 +136,7 @@ public class LocaleManager {
     }
 
     private String colorize(String message) {
-        if (renderer != null && MessageRenderer.isMiniMessage(message)) return renderer.renderToLegacy(message);
+        if (renderer != null && renderer.isMiniMessage(message)) return renderer.renderToLegacy(message);
         return LegacyTextRenderer.colorize(message);
     }
 

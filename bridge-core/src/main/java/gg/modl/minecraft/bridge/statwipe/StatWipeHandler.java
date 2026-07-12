@@ -2,17 +2,17 @@ package gg.modl.minecraft.bridge.statwipe;
 
 import gg.modl.minecraft.bridge.BridgePlayerProvider;
 import gg.modl.minecraft.bridge.config.BridgeConfig;
+import gg.modl.minecraft.core.util.PluginLogger;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
-import java.util.logging.Logger;
 
 @RequiredArgsConstructor
 public class StatWipeHandler {
     private static final String PLAYER_PLACEHOLDER = "{player}";
     private static final String UUID_PLACEHOLDER = "{uuid}";
 
-    private final Logger logger;
+    private final PluginLogger logger;
     private final BridgeConfig config;
     private final BridgePlayerProvider playerProvider;
 

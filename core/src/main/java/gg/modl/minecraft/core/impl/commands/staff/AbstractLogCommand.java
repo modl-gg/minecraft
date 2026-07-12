@@ -41,7 +41,7 @@ public abstract class AbstractLogCommand<T> {
 
         actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
-        httpClientHolder.getClient().lookupPlayer(new PlayerLookupRequest(playerQuery)).thenAccept(response -> {
+        httpClientHolder.getClient().lookupPlayer(PlayerLookupRequest.builder().query(playerQuery).build()).thenAccept(response -> {
             if (response.isSuccess() && response.getData() != null) {
                 String playerName = response.getData().getCurrentUsername();
                 String targetUuid = response.getData().getMinecraftUuid();

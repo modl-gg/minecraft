@@ -226,4 +226,29 @@ public final class ReportRenderUtil {
         }
         return "Unknown";
     }
+
+    public static String extractReportDetails(String content, String subject) {
+        String first = cleanReportLine(content != null ? content : subject);
+        if ("Automated anticheat report.".equals(first) && content != null) {
+            String third = nthReportLine(content, 3);
+            if (third != null) return third;
+        }
+        return first;
+    }
+
+    private static String nthReportLine(String text, int n) {
+        String[] lines = text.split("\n");
+        for (int i = 0, found = 0; i < lines.length; i++) {
+            String trimmed = lines[i].trim();
+            if (!trimmed.isEmpty() && ++found == n) return cleanReportLine(trimmed);
+        }
+        return null;
+    }
+
+    private static String cleanReportLine(String text) {
+        if (text == null || text.isEmpty()) return "";
+        int idx = text.indexOf('\n');
+        String line = idx >= 0 ? text.substring(0, idx).trim() : text.trim();
+        return line.replace("**", "").replace("__", "").replace("~~", "");
+    }
 }

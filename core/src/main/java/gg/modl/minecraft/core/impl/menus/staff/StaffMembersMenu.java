@@ -16,7 +16,6 @@ import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.impl.menus.util.SkinTextureCache;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.Getter;
@@ -55,7 +54,6 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
     private List<StaffMemberEntry> staffMembers = new ArrayList<>();
     private String currentFilter;
     private final List<String> filterOptions = Arrays.asList("Online", "Offline", "All");
-    private final String panelUrl;
     @Getter private CompletableFuture<Void> dataFuture;
 
     public StaffMembersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -66,8 +64,7 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
     public StaffMembersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                             boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction,
                             String filter, List<StaffMemberEntry> existingMembers) {
-        super("Staff Members", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
-        this.panelUrl = panelUrl;
+        super("Staff Members", platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         this.currentFilter = filter;
         activeTab = StaffTab.SETTINGS;
 
@@ -219,10 +216,6 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
         super.registerActionHandlers();
 
         registerActionHandler("filter", this::handleFilter);
-
-        StaffNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 
     private void handleFilter(Click click) {

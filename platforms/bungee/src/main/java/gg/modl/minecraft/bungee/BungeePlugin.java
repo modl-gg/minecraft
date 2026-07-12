@@ -14,6 +14,8 @@ import gg.modl.minecraft.core.boot.BootConfigMigrator;
 import gg.modl.minecraft.core.boot.LibraryLoader;
 import gg.modl.minecraft.core.boot.PlatformType;
 import gg.modl.minecraft.core.boot.StartupClient;
+import gg.modl.minecraft.core.boot.SyncPollingRate;
+import gg.modl.minecraft.core.login.LoginPipeline;
 import gg.modl.minecraft.core.login.ProxyLoginFlow;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.query.ProxyBridgeRuntime;
@@ -37,7 +39,6 @@ import java.util.logging.Level;
 import com.alessiodp.libby.logging.LogLevel;
 
 public class BungeePlugin extends Plugin {
-    private static final int MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
     private static final long LOGIN_TIMEOUT_SECONDS = 5;
 
     private Configuration configuration;
@@ -95,7 +96,7 @@ public class BungeePlugin extends Plugin {
 
         BungeePlatform platform = new BungeePlatform(this, getLogger(), getDataFolder(), configuration.getString("server.name", "Server 1"));
         ChatMessageCache chatMessageCache = new ChatMessageCache();
-        int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, configuration.getInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
+        int syncPollingRate = SyncPollingRate.clamp(configuration.getInt(SyncPollingRate.CONFIG_KEY, SyncPollingRate.DEFAULT_SECONDS));
         List<String> mutedCommands = configuration.getStringList("muted_commands");
 
         this.loader = new PluginLoader(platform, getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
@@ -110,10 +111,13 @@ public class BungeePlugin extends Plugin {
                 loader.getLoginRequestBuilder(), loader.getIpEnrichmentService(),
                 loader.getPendingIpLookupService(), LOGIN_TIMEOUT_SECONDS);
 
+        LoginPipeline loginPipeline = new LoginPipeline(
+                loader.getLoginService(), loader.getLoginCache(), loader.getPlayerSessionService());
+
         bungeeListener = new BungeeListener(
-                platform, loader.getCache(), this, loader.getLoginCache(),
-                loader.getChatService(), commandInterceptService, loader.getLoginService(),
-                proxyLoginFlow, loader.getPlayerSessionService(), loader.getServerSwitchService());
+                platform, loader.getCache(), this, loginPipeline,
+                loader.getChatService(), commandInterceptService,
+                proxyLoginFlow, loader.getServerSwitchService());
         getProxy().getPluginManager().registerListener(this, bungeeListener);
 
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();

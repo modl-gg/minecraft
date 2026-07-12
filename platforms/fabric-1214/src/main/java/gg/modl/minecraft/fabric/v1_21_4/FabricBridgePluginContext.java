@@ -41,11 +41,6 @@ public class FabricBridgePluginContext implements BridgePluginContext {
     }
 
     @Override
-    public Logger getLogger() {
-        return logger;
-    }
-
-    @Override
     public void saveDefaultResource(String resourcePath) {
         Path target = dataFolder.resolve(resourcePath);
         if (Files.exists(target)) return;

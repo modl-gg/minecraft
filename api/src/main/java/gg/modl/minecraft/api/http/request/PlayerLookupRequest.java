@@ -1,14 +1,10 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Value;
 
-@Value @AllArgsConstructor
+@Value @Builder
 public class PlayerLookupRequest {
     String query;
     boolean queryMojang;
-
-    public PlayerLookupRequest(String query) {
-        this(query, false);
-    }
 }

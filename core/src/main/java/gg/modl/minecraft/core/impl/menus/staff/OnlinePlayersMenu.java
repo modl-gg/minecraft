@@ -15,8 +15,9 @@ import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.impl.menus.util.SkinTextureCache;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
@@ -77,7 +78,6 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
     private List<OnlinePlayer> onlinePlayers = new ArrayList<>();
     private String currentSort;
     private final List<String> sortOptions = Arrays.asList("Least Playtime", "Recent Gameplay Reports", "Longest Session");
-    private final String panelUrl;
     @Getter private CompletableFuture<Void> dataFuture;
 
     public OnlinePlayersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -88,8 +88,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
     public OnlinePlayersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                              boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction,
                              String sortOption, List<OnlinePlayer> existingPlayers) {
-        super("Online Players", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
-        this.panelUrl = panelUrl;
+        super("Online Players", platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         this.currentSort = sortOption;
         activeTab = StaffTab.ONLINE_PLAYERS;
 
@@ -132,7 +131,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                 String uuid = report.getReportedPlayerUuid();
                 if (uuid == null) continue;
 
-                String details = extractDetails(report.getContent(), report.getSubject());
+                String details = ReportRenderUtil.extractReportDetails(report.getContent(), report.getSubject());
                 String reporter = report.getReporterName() != null ? report.getReporterName() : "Unknown";
                 reportsByPlayer.computeIfAbsent(uuid, k -> new ArrayList<>())
                         .add(new ReportSummary(details, reporter, report.getCreatedAt()));
@@ -290,7 +289,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                     p -> {
                         OnlinePlayersMenu m = new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null,
                                 sortState, playerState);
-                        StaffNavigationHandlers.displayWhenLoaded(platform, m.getDataFuture(), p, m::display);
+                        MenuAsync.displayWhenLoaded(platform, m.getDataFuture(), p, m::display);
                     })
                     .display(click.player());
             } else {
@@ -308,36 +307,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
         registerActionHandler("sort", this::handleSort);
 
-        StaffNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
-
         registerActionHandler("openOnlinePlayers", click -> {});
-    }
-
-    private static String extractDetails(String content, String subject) {
-        String first = cleanLine(content != null ? content : subject);
-        if ("Automated anticheat report.".equals(first) && content != null) {
-            String third = nthLine(content, 3);
-            if (third != null) return third;
-        }
-        return first;
-    }
-
-    private static String nthLine(String text, int n) {
-        String[] lines = text.split("\n");
-        for (int i = 0, found = 0; i < lines.length; i++) {
-            String trimmed = lines[i].trim();
-            if (!trimmed.isEmpty() && ++found == n) return cleanLine(trimmed);
-        }
-        return null;
-    }
-
-    private static String cleanLine(String text) {
-        if (text == null || text.isEmpty()) return "";
-        int idx = text.indexOf('\n');
-        String line = idx >= 0 ? text.substring(0, idx).trim() : text.trim();
-        return line.replace("**", "").replace("__", "").replace("~~", "");
     }
 
     private void handleSort(Click click) {
@@ -347,6 +317,6 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
         OnlinePlayersMenu menu = new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction,
                 nextSort, onlinePlayers);
-        StaffNavigationHandlers.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+        MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
     }
 }

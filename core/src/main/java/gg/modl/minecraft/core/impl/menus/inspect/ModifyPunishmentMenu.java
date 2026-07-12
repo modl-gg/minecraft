@@ -14,13 +14,11 @@ import gg.modl.minecraft.core.impl.menus.LinkReportsMenu;
 import gg.modl.minecraft.core.impl.menus.ViewLinkedTicketsMenu;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
 import gg.modl.minecraft.core.impl.menus.base.InspectChrome;
-import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.PunishmentModificationActions;
 import gg.modl.minecraft.core.impl.menus.util.PunishmentModifyItemFactory;
 import gg.modl.minecraft.core.util.Permissions;
-
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -36,7 +34,7 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
     public ModifyPunishmentMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                  Account targetAccount, Punishment punishment, Consumer<CirrusPlayerWrapper> rootBackAction,
                                  Consumer<CirrusPlayerWrapper> menuBackAction) {
-        super(platform, httpClient, viewerUuid, viewerName, targetAccount, menuBackAction);
+        super(platform, httpClient, viewerUuid, viewerName, targetAccount, menuBackAction, rootBackAction);
         this.punishment = punishment;
         this.menuBackAction = menuBackAction;
         this.rootBackAction = rootBackAction;
@@ -75,10 +73,6 @@ public class ModifyPunishmentMenu extends BaseInspectMenu {
     @Override
     protected void registerActionHandlers() {
         super.registerActionHandlers();
-
-        InspectNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction);
 
         registerActionHandler("addNote", modActions::handleAddNote);
         registerActionHandler("evidence", modActions::handleEvidence);

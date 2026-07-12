@@ -10,20 +10,17 @@ import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
+import gg.modl.minecraft.core.impl.menus.base.PaginatedInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource;
 import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource.FetchResult;
 import gg.modl.minecraft.core.impl.menus.util.InspectContext;
-import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.PunishmentItemRenderer;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.Getter;
-
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -34,12 +31,10 @@ import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
-public class HistoryMenu extends BaseInspectListMenu<Punishment> {
+public class HistoryMenu extends PaginatedInspectListMenu<Punishment> {
     private static final int PAGE_SIZE = 7;
 
     private final Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
-    private final PaginatedDataSource<Punishment> dataSource;
-    private int pageRefreshRequest;
     @Getter private final CompletableFuture<Void> dataFuture;
 
     public HistoryMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -49,7 +44,7 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
 
     public HistoryMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                        Account targetAccount, Consumer<CirrusPlayerWrapper> backAction, InspectContext inspectContext) {
-        super("History: " + ReportRenderUtil.getPlayerName(targetAccount), platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
+        super("History: " + ReportRenderUtil.getPlayerName(targetAccount), platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext, PAGE_SIZE);
         activeTab = InspectTab.HISTORY;
 
         this.dataFuture = loadPunishmentTypes();
@@ -86,34 +81,16 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     }
 
     @Override
-    protected boolean interceptNextPage(Click click) {
-        int nextPage = currentPageIndex().get() + 1;
-        if (!dataSource.isPageLoaded(nextPage)) {
-            int refreshRequest = ++pageRefreshRequest;
-            dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1, () -> {
-                if (refreshRequest != pageRefreshRequest) return;
-                HistoryMenu newMenu = new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
-                newMenu.dataSource.initialize(dataSource.getAllLoadedItems(), dataSource.getTotalCount());
-                newMenu.setInitialPage(nextPage);
-                MenuAsync.displayWhenLoaded(platform, newMenu.getDataFuture(), click.player(), newMenu::display);
-            });
-            return true;
-        }
-        dataSource.prefetchIfNeeded(nextPage);
-        return false;
+    protected void openLoadedPage(Click click, int nextPage) {
+        HistoryMenu newMenu = new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
+        newMenu.dataSource.initialize(dataSource.getAllLoadedItems(), dataSource.getTotalCount());
+        newMenu.setInitialPage(nextPage);
+        MenuAsync.displayWhenLoaded(platform, newMenu.getDataFuture(), click.player(), newMenu::display);
     }
 
     @Override
-    public boolean hasNextPage() {
-        return currentPageIndex().get() < dataSource.getTotalMenuPages() - 1;
-    }
-
-    @Override
-    protected Collection<Punishment> elements() {
-        List<Punishment> punishments = dataSource.getAllLoadedItems();
-        if (punishments.isEmpty())
-            return Collections.singletonList(new Punishment());
-        return punishments;
+    protected Punishment emptyElement() {
+        return new Punishment();
     }
 
     @Override
@@ -167,9 +144,6 @@ public class HistoryMenu extends BaseInspectListMenu<Punishment> {
     protected void registerActionHandlers() {
         super.registerActionHandlers();
 
-        InspectNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
         registerActionHandler("openHistory", click -> {});
     }
 }

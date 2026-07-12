@@ -15,13 +15,11 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.PunishGuiConfig;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
-import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.staff.PermissionUtil;
 import lombok.Getter;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,7 +34,6 @@ public class PunishMenu extends BaseInspectMenu {
     private final Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
     private final Map<Integer, PunishmentPreviewResponse> previewByOrdinal = new ConcurrentHashMap<>();
     private final PunishGuiConfig guiConfig;
-    private final Consumer<CirrusPlayerWrapper> parentBackAction;
     @Getter private final CompletableFuture<Void> dataFuture;
 
     private static final int[] GUI_SLOTS = {28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43};
@@ -45,7 +42,6 @@ public class PunishMenu extends BaseInspectMenu {
     public PunishMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                       Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
         super(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
-        this.parentBackAction = backAction;
 
         title("Punish: " + targetName);
         activeTab = InspectTab.PUNISH;
@@ -267,20 +263,17 @@ public class PunishMenu extends BaseInspectMenu {
             });
         }
 
-        InspectNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction);
         registerActionHandler("openPunish", click -> {});
     }
 
     private void handlePunishmentType(Click click, PunishmentTypesResponse.PunishmentTypeData type) {
         Consumer<CirrusPlayerWrapper> backToPunish = player -> {
-            PunishMenu m = new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction);
+            PunishMenu m = new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
             MenuAsync.displayWhenLoaded(platform, m.getDataFuture(), player, m::display);
         };
 
         PunishSeverityMenu severityMenu = new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName,
-                targetAccount, type, parentBackAction, backToPunish);
+                targetAccount, type, backAction, backToPunish);
         MenuAsync.displayWhenLoaded(platform, severityMenu.getDataFuture(), click.player(), severityMenu::display);
     }
 }

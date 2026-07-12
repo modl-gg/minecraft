@@ -1,5 +1,6 @@
 package gg.modl.minecraft.bridge.config;
 
+import gg.modl.minecraft.core.util.PluginLogger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -42,7 +43,7 @@ class StaffModeConfigTest {
                 "    - \"&fPlayers: &a{online}\""
         );
 
-        StaffModeConfig config = StaffModeConfig.load(tempDir, Logger.getLogger("test"));
+        StaffModeConfig config = StaffModeConfig.load(tempDir, PluginLogger.fromJul(Logger.getLogger("test")));
 
         assertFalse(config.isVanishOnEnable());
         assertEquals("minecraft:stick", config.getStaffHotbar().get(2).getItem());
@@ -56,7 +57,7 @@ class StaffModeConfigTest {
 
     @Test
     void usesDefaultsWhenFileIsMissing() {
-        StaffModeConfig config = StaffModeConfig.load(tempDir, Logger.getLogger("test"));
+        StaffModeConfig config = StaffModeConfig.load(tempDir, PluginLogger.fromJul(Logger.getLogger("test")));
 
         assertTrue(config.isVanishOnEnable());
         assertEquals("minecraft:lead", config.getStaffHotbar().get(0).getItem());
@@ -73,7 +74,7 @@ class StaffModeConfigTest {
                 "    item: ["
         );
 
-        StaffModeConfig config = StaffModeConfig.load(tempDir, Logger.getLogger("test"));
+        StaffModeConfig config = StaffModeConfig.load(tempDir, PluginLogger.fromJul(Logger.getLogger("test")));
 
         assertTrue(config.isVanishOnEnable());
         assertEquals("minecraft:lead", config.getStaffHotbar().get(0).getItem());

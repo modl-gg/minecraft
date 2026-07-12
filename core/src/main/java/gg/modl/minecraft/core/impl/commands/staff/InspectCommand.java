@@ -182,7 +182,7 @@ public class InspectCommand {
     private void printLookup(CommandActor actor, String playerQuery) {
         actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
-        PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
+        PlayerLookupRequest request = PlayerLookupRequest.builder().query(playerQuery).build();
 
         httpClientHolder.getClient().lookupPlayer(request).thenAccept(response -> {
             if (response.isSuccess() && response.getData() != null) {
@@ -219,9 +219,21 @@ public class InspectCommand {
     private void displayPlayerInfo(CommandActor actor, PlayerLookupResponse.PlayerData data, LinkedAccountsResponse linkedResponse, List<Note> targetNotes) {
         String playerName = data.getCurrentUsername() != null ? data.getCurrentUsername() : Constants.UNKNOWN;
 
+        replyIdentity(actor, data, playerName);
+        replyPunishmentStatus(actor, data);
+        replyNotesSection(actor, targetNotes);
+        replyPunishmentTotal(actor, data);
+        replyLinkedAccountsSection(actor, linkedResponse);
+        replyTicketTotal(actor, data);
+        replyProfileFooter(actor, data, playerName);
+    }
+
+    private void replyIdentity(CommandActor actor, PlayerLookupResponse.PlayerData data, String playerName) {
         actor.reply(localeManager.getMessage("print.inspect.header", mapOf("player", playerName)));
         actor.reply(localeManager.getMessage("print.inspect.uuid", mapOf("player", playerName, "uuid", data.getMinecraftUuid())));
+    }
 
+    private void replyPunishmentStatus(CommandActor actor, PlayerLookupResponse.PlayerData data) {
         UUID playerUuid = UUID.fromString(data.getMinecraftUuid());
         CachedProfile targetProfile = cache.getPlayerProfile(playerUuid);
         boolean isBanned = targetProfile != null && targetProfile.isBanned();
@@ -242,7 +254,9 @@ public class InspectCommand {
         String mutedStatus = isMuted ? COLOR_YES : COLOR_NO;
         actor.reply(localeManager.getMessage("print.inspect.currently_banned", mapOf("status", bannedStatus)));
         actor.reply(localeManager.getMessage("print.inspect.currently_muted", mapOf("status", mutedStatus)));
+    }
 
+    private void replyNotesSection(CommandActor actor, List<Note> targetNotes) {
         actor.reply(localeManager.getMessage("print.inspect.notes_label"));
         if (targetNotes != null && !targetNotes.isEmpty()) {
             int noteOrdinal = 1;
@@ -258,34 +272,24 @@ public class InspectCommand {
         } else {
             actor.reply(localeManager.getMessage("print.inspect.no_notes"));
         }
+    }
 
+    private void replyPunishmentTotal(CommandActor actor, PlayerLookupResponse.PlayerData data) {
         int totalPunishments = 0;
         if (data.getPunishmentStats() != null) totalPunishments = data.getPunishmentStats().getTotalPunishments();
         actor.reply(localeManager.getMessage("print.inspect.total_punishments", mapOf("count", String.valueOf(totalPunishments))));
+    }
 
+    private void replyLinkedAccountsSection(CommandActor actor, LinkedAccountsResponse linkedResponse) {
         actor.reply(localeManager.getMessage("print.inspect.linked_accounts_label"));
         if (linkedResponse != null && !linkedResponse.getLinkedAccounts().isEmpty()) {
             int accountOrdinal = 1;
             for (Account account : linkedResponse.getLinkedAccounts()) {
                 if (accountOrdinal > MAX_LINKED_ACCOUNTS_DISPLAYED) break;
-                String currentName = !account.getUsernames().isEmpty()
-                    ? account.getUsernames().get(account.getUsernames().size() - 1).getUsername()
-                    : Constants.UNKNOWN;
-
-                CachedProfile accountProfile = account.getMinecraftUuid() != null ? cache.getPlayerProfile(account.getMinecraftUuid()) : null;
-                boolean accountBanned = accountProfile != null && accountProfile.isBanned();
-                boolean accountMuted = accountProfile != null && accountProfile.isMuted();
-
-                String status;
-                if (accountBanned && accountMuted) status = localeManager.getMessage("player_lookup.status.banned_and_muted");
-                else if (accountBanned) status = localeManager.getMessage("player_lookup.status.banned");
-                else if (accountMuted) status = localeManager.getMessage("player_lookup.status.muted");
-                else status = localeManager.getMessage("player_lookup.status.no_punishments");
-
                 actor.reply(localeManager.getMessage("print.inspect.linked_account_entry", mapOf(
                     "ordinal", String.valueOf(accountOrdinal),
-                    "username", currentName,
-                    "status", status
+                    "username", linkedAccountName(account),
+                    "status", linkedAccountStatus(account)
                 )));
                 accountOrdinal++;
             }
@@ -294,11 +298,32 @@ public class InspectCommand {
                     "count", String.valueOf(linkedResponse.getLinkedAccounts().size() - MAX_LINKED_ACCOUNTS_DISPLAYED)
                 )));
         } else actor.reply(localeManager.getMessage("print.inspect.no_linked_accounts"));
+    }
 
+    private String linkedAccountName(Account account) {
+        return !account.getUsernames().isEmpty()
+                ? account.getUsernames().get(account.getUsernames().size() - 1).getUsername()
+                : Constants.UNKNOWN;
+    }
+
+    private String linkedAccountStatus(Account account) {
+        CachedProfile accountProfile = account.getMinecraftUuid() != null ? cache.getPlayerProfile(account.getMinecraftUuid()) : null;
+        boolean accountBanned = accountProfile != null && accountProfile.isBanned();
+        boolean accountMuted = accountProfile != null && accountProfile.isMuted();
+
+        if (accountBanned && accountMuted) return localeManager.getMessage("player_lookup.status.banned_and_muted");
+        if (accountBanned) return localeManager.getMessage("player_lookup.status.banned");
+        if (accountMuted) return localeManager.getMessage("player_lookup.status.muted");
+        return localeManager.getMessage("player_lookup.status.no_punishments");
+    }
+
+    private void replyTicketTotal(CommandActor actor, PlayerLookupResponse.PlayerData data) {
         int totalTickets = 0;
         if (data.getRecentTickets() != null) totalTickets = data.getRecentTickets().size();
         actor.reply(localeManager.getMessage("print.inspect.total_tickets", mapOf("count", String.valueOf(totalTickets))));
+    }
 
+    private void replyProfileFooter(CommandActor actor, PlayerLookupResponse.PlayerData data, String playerName) {
         actor.reply(localeManager.getMessage("print.inspect.footer"));
 
         if (data.getMinecraftUuid() != null) {

@@ -1,6 +1,5 @@
-package gg.modl.minecraft.core.impl.http;
+package gg.modl.minecraft.api.http.response;
 
-import gg.modl.minecraft.api.http.response.PunishmentPreviewResponse;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;

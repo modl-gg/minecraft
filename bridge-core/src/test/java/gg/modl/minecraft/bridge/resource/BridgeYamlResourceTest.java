@@ -80,11 +80,6 @@ class BridgeYamlResourceTest {
         }
 
         @Override
-        public Logger getLogger() {
-            return Logger.getLogger("test");
-        }
-
-        @Override
         public void saveDefaultResource(String resourcePath) {
             try {
                 Path target = dataFolder.resolve(resourcePath);

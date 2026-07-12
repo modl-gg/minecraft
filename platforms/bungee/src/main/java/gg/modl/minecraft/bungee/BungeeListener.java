@@ -4,9 +4,9 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.LoginCache;
 import gg.modl.minecraft.core.chat.ChatService;
 import gg.modl.minecraft.core.chat.CommandInterceptService;
+import gg.modl.minecraft.core.login.LoginPipeline;
 import gg.modl.minecraft.core.login.LoginService;
 import gg.modl.minecraft.core.login.ProxyLoginFlow;
-import gg.modl.minecraft.core.session.PlayerSessionService;
 import gg.modl.minecraft.core.session.ServerSwitchService;
 import gg.modl.minecraft.core.util.StringUtil;
 import lombok.RequiredArgsConstructor;
@@ -43,12 +43,10 @@ public class BungeeListener implements Listener {
     private final BungeePlatform platform;
     private final Cache cache;
     private final Plugin plugin;
-    private final LoginCache loginCache;
+    private final LoginPipeline loginPipeline;
     private final ChatService chatService;
     private final CommandInterceptService commandInterceptService;
-    private final LoginService loginService;
     private final ProxyLoginFlow proxyLoginFlow;
-    private final PlayerSessionService playerSessionService;
     private final ServerSwitchService serverSwitchService;
     private final ThreadPoolExecutor loginExecutor = createLoginExecutor();
 
@@ -118,7 +116,7 @@ public class BungeeListener implements Listener {
     }
 
     private void handleLoginException(LoginEvent event, Exception e) {
-        LoginService.LoginResult result = loginService.handleLoginError(e);
+        LoginService.LoginResult result = loginPipeline.getLoginService().handleLoginError(e);
         if (result instanceof LoginService.LoginResult.Denied) {
             LoginService.LoginResult.Denied denied = (LoginService.LoginResult.Denied) result;
             platform.getLogger().warning("Login blocked for " + event.getConnection().getName() + ": " + denied.getMessage());
@@ -135,18 +133,18 @@ public class BungeeListener implements Listener {
     public void onPostLogin(PostLoginEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
 
-        playerSessionService.handlePlayerJoin(uuid, event.getPlayer().getName());
+        loginPipeline.getPlayerSessionService().handlePlayerJoin(uuid, event.getPlayer().getName());
 
         String texture = platform.getPlayerSkinTexture(uuid);
         if (texture != null) cache.cacheSkinTexture(uuid, texture);
 
-        LoginCache.CachedLoginResult cachedResult = loginCache.getCachedLoginResult(uuid);
-        loginService.cacheLoginData(uuid, cachedResult != null ? cachedResult.getResponse() : null);
+        LoginCache.CachedLoginResult cachedResult = loginPipeline.getLoginCache().getCachedLoginResult(uuid);
+        loginPipeline.getLoginService().cacheLoginData(uuid, cachedResult != null ? cachedResult.getResponse() : null);
     }
 
     @EventHandler
     public void onPlayerDisconnect(PlayerDisconnectEvent event) {
-        playerSessionService.handlePlayerDisconnect(
+        loginPipeline.getPlayerSessionService().handlePlayerDisconnect(
                 event.getPlayer().getUniqueId(), event.getPlayer().getName());
     }
 

@@ -54,6 +54,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         @Override public void info(String msg) { LOGGER.info(msg); }
         @Override public void warning(String msg) { LOGGER.warn(msg); }
         @Override public void severe(String msg) { LOGGER.error(msg); }
+        @Override public void warning(String msg, Throwable throwable) { LOGGER.warn(msg, throwable); }
     };
 
     private FabricBridgeComponent bridgeComponent;
@@ -163,13 +164,22 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
 
                 syncLampCommandsToServer(server, pluginLoader.getLamp());
 
-                TicketCreator ticketCreator = (creatorUuid, creatorName, type, subject, description,
-                                               reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer, replayUrl) -> {
+                TicketCreator ticketCreator = report -> {
+                    String tagsJoined = report.getTagsJoined();
                     List<String> tags = tagsJoined == null || tagsJoined.isEmpty() ? List.of() : Arrays.asList(tagsJoined.split(","));
-                    CreateTicketRequest request = new CreateTicketRequest(
-                            creatorUuid, type, creatorName, subject, description,
-                            reportedPlayerUuid, reportedPlayerName, priority, createdServer,
-                            null, tags, replayUrl);
+                    CreateTicketRequest request = CreateTicketRequest.builder()
+                            .creatorUuid(report.getCreatorUuid())
+                            .type(report.getType())
+                            .creatorName(report.getCreatorName())
+                            .subject(report.getSubject())
+                            .description(report.getDescription())
+                            .reportedPlayerUuid(report.getReportedPlayerUuid())
+                            .reportedPlayerName(report.getReportedPlayerName())
+                            .priority(report.getPriority())
+                            .createdServer(report.getCreatedServer())
+                            .tags(tags)
+                            .replayUrl(report.getReplayUrl())
+                            .build();
                     pluginLoader.getHttpClient().createTicket(request).thenAccept(response -> {
                         if (response.isSuccess()) {
                             LOGGER.info("[bridge] Report ticket created: {}", response.getTicketId());
@@ -199,7 +209,11 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
             TicketCreator ticketCreatorToUse = bridgeOnly
                     ? ProxyReportForwarder.create(bridgeRef::getBridgeClient)
                     : standaloneTicketCreator;
-            bridgeComponent.enable(ticketCreatorToUse, bridgeOnly);
+            if (bridgeOnly) {
+                bridgeComponent.enableBridgeOnly(ticketCreatorToUse);
+            } else {
+                bridgeComponent.enableStandalone(ticketCreatorToUse);
+            }
 
             if (pluginLoader != null && standaloneFabricPlatform != null) {
                 String serverName = bridgeComponent.getBridgeConfig() != null

@@ -43,10 +43,4 @@ public class ViewLinkedTicketsMenu extends ChromeListMenu<TicketsResponse.Ticket
     protected void handleClick(Click click, TicketsResponse.Ticket ticket) {
         LinkedTicketItems.handleTicketClick(click, ticket, platform, viewerUuid);
     }
-
-    @Override
-    protected void registerActionHandlers() {
-        super.registerActionHandlers();
-        chrome.registerNavigation(this::registerActionHandler);
-    }
 }

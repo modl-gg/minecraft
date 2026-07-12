@@ -10,21 +10,23 @@ public final class ProxyReportForwarder {
     }
 
     public static TicketCreator create(Supplier<BridgeQueryClient> clientSupplier) {
-        return (creatorUuid, creatorName, type, subject, description,
-                reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer, replayUrl) -> {
+        return request -> {
             BridgeQueryClient client = clientSupplier.get();
             if (client == null) return;
-            String tags = tagsJoined != null ? tagsJoined : "";
+            String tags = request.getTagsJoined() != null ? request.getTagsJoined() : "";
+            String replayUrl = request.getReplayUrl();
             if (replayUrl != null && !replayUrl.isEmpty()) {
                 client.sendMessage("CREATE_REPORT",
-                        creatorUuid, creatorName, type, subject, description,
-                        reportedPlayerUuid, reportedPlayerName, tags,
-                        priority, createdServer, replayUrl);
+                        request.getCreatorUuid(), request.getCreatorName(), request.getType(),
+                        request.getSubject(), request.getDescription(),
+                        request.getReportedPlayerUuid(), request.getReportedPlayerName(), tags,
+                        request.getPriority(), request.getCreatedServer(), replayUrl);
             } else {
                 client.sendMessage("CREATE_REPORT",
-                        creatorUuid, creatorName, type, subject, description,
-                        reportedPlayerUuid, reportedPlayerName, tags,
-                        priority, createdServer);
+                        request.getCreatorUuid(), request.getCreatorName(), request.getType(),
+                        request.getSubject(), request.getDescription(),
+                        request.getReportedPlayerUuid(), request.getReportedPlayerName(), tags,
+                        request.getPriority(), request.getCreatedServer());
             }
         };
     }

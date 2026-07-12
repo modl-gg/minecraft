@@ -3,19 +3,19 @@ package gg.modl.minecraft.bridge.locale;
 import gg.modl.minecraft.bridge.resource.BridgeYamlResource;
 import gg.modl.minecraft.core.locale.LegacyTextRenderer;
 import gg.modl.minecraft.core.locale.YamlMessageResolver;
+import gg.modl.minecraft.core.util.PluginLogger;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.logging.Logger;
 
 public class BridgeLocaleManager {
     private static final String LOCALE_RESOURCE = "/bridge_locale/en_US.yml";
 
-    private final Logger logger;
+    private final PluginLogger logger;
     private final YamlMessageResolver resolver = new YamlMessageResolver(LegacyTextRenderer::colorize);
     private Map<String, Object> messages = Collections.emptyMap();
 
-    public BridgeLocaleManager(Logger logger) {
+    public BridgeLocaleManager(PluginLogger logger) {
         this.logger = logger;
         load();
     }

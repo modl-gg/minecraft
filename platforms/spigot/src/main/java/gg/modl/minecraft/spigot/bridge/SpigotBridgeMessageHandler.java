@@ -5,8 +5,6 @@ import gg.modl.minecraft.bridge.query.BridgeMessageHandler;
 import gg.modl.minecraft.bridge.statwipe.StatWipeHandler;
 import gg.modl.minecraft.core.service.ReplayCaptureStatus;
 import gg.modl.minecraft.core.service.ReplayService;
-import gg.modl.minecraft.spigot.bridge.handler.FreezeHandler;
-import gg.modl.minecraft.spigot.bridge.handler.StaffModeHandler;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -17,40 +15,39 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SpigotBridgeMessageHandler implements BridgeMessageHandler {
     private final JavaPlugin plugin;
-    private final FreezeHandler freezeHandler;
-    private final StaffModeHandler staffModeHandler;
+    private final SpigotBridgeActions actions;
     private final StatWipeHandler statWipeHandler;
     private final BridgeComponent bridgeComponent;
     private final BridgeScheduler scheduler;
 
     @Override
     public void onFreeze(String targetUuid, String staffUuid) {
-        freezeHandler.freeze(targetUuid, staffUuid);
+        actions.freeze(targetUuid, staffUuid);
     }
 
     @Override
     public void onUnfreeze(String targetUuid) {
-        freezeHandler.unfreeze(targetUuid);
+        actions.unfreeze(targetUuid);
     }
 
     @Override
     public void onStaffModeEnter(String staffUuid, String staffName) {
-        staffModeHandler.enterStaffMode(staffUuid);
+        actions.enterStaffMode(staffUuid);
     }
 
     @Override
     public void onStaffModeExit(String staffUuid, String staffName) {
-        staffModeHandler.exitStaffMode(staffUuid);
+        actions.exitStaffMode(staffUuid);
     }
 
     @Override
     public void onVanishEnter(String staffUuid, String staffName) {
-        staffModeHandler.vanishFromBridge(staffUuid);
+        actions.enterVanish(staffUuid);
     }
 
     @Override
     public void onVanishExit(String staffUuid, String staffName) {
-        staffModeHandler.unvanishFromBridge(staffUuid);
+        actions.exitVanish(staffUuid);
     }
 
     @Override
@@ -62,7 +59,7 @@ public class SpigotBridgeMessageHandler implements BridgeMessageHandler {
 
             bridgeComponent.getBridgeClient().sendMessage("TARGET_RESPONSE", staffUuid, targetUuid,
                     bridgeComponent.getBridgeConfig().getServerName());
-            staffModeHandler.setTarget(staffUuid, targetUuid);
+            actions.setTarget(staffUuid, targetUuid);
         });
     }
 

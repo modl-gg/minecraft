@@ -56,14 +56,14 @@ public class FabricFreezeHandler {
                 continue;
             }
 
-            double dx = player.getX() - anchor.x;
-            double dy = player.getY() - anchor.y;
-            double dz = player.getZ() - anchor.z;
-            boolean wrongWorld = (ServerLevel) player.level() != anchor.world;
+            double dx = player.getX() - anchor.getX();
+            double dy = player.getY() - anchor.getY();
+            double dz = player.getZ() - anchor.getZ();
+            boolean wrongWorld = (ServerLevel) player.level() != anchor.getWorld();
 
             if (wrongWorld || dx * dx + dy * dy + dz * dz > MAX_DRIFT_SQUARED) {
-                player.teleportTo(anchor.world, anchor.x, anchor.y, anchor.z,
-                        Set.<Relative>of(), anchor.yaw, anchor.pitch, false);
+                player.teleportTo(anchor.getWorld(), anchor.getX(), anchor.getY(), anchor.getZ(),
+                        Set.<Relative>of(), anchor.getYaw(), anchor.getPitch(), false);
                 player.setDeltaMovement(Vec3.ZERO);
                 player.hurtMarked = true;
             }

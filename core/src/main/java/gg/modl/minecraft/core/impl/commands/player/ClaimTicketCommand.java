@@ -8,6 +8,7 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.ClaimTicketRequest;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.command.PlayerOnly;
+import gg.modl.minecraft.core.service.TicketService;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.Constants;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ public class ClaimTicketCommand {
     private final ModlHttpClient httpClient;
     private final String panelUrl;
     private final LocaleManager localeManager;
-    private final TicketCommandUtil ticketUtil;
+    private final TicketService ticketUtil;
 
     @Command("tclaim")
     @Description("Link an unlinked ticket to your account")
@@ -46,7 +47,7 @@ public class ClaimTicketCommand {
                     mapOf("ticketId", ticketId, "subject", response.getSubject() != null ? response.getSubject() : Constants.UNKNOWN)));
 
                 String ticketUrl = panelUrl + "/ticket/" + ticketId;
-                ticketUtil.sendClickableTicketMessage(actor, platform, localeManager,
+                ticketUtil.sendClickableTicketMessage(actor,
                         localeManager.getMessage("messages.view_ticket_label"), ticketUrl, ticketId);
             } else actor.reply(localeManager.getMessage("messages.ticket_claim_failed",
                     mapOf("error", localeManager.sanitizeErrorMessage(response.getMessage()))));

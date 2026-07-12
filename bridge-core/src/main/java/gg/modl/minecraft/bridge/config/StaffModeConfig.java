@@ -1,6 +1,7 @@
 package gg.modl.minecraft.bridge.config;
 
 import gg.modl.minecraft.bridge.resource.BridgeYamlResource;
+import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlValues;
 import lombok.Getter;
 
@@ -10,7 +11,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class StaffModeConfig {
@@ -25,14 +25,14 @@ public class StaffModeConfig {
     @Getter private ScoreboardConfig staffScoreboard = new ScoreboardConfig();
     @Getter private ScoreboardConfig targetScoreboard = new ScoreboardConfig();
 
-    private final Logger logger;
+    private final PluginLogger logger;
 
-    public static StaffModeConfig load(Path dataFolder, Logger logger) {
+    public static StaffModeConfig load(Path dataFolder, PluginLogger logger) {
         return new StaffModeConfig(dataFolder, logger);
     }
 
     @SuppressWarnings("unchecked")
-    private StaffModeConfig(Path dataFolder, Logger logger) {
+    private StaffModeConfig(Path dataFolder, PluginLogger logger) {
         this.logger = logger;
         Path configFile = dataFolder.resolve("staff_mode.yml");
         if (!configFile.toFile().exists()) {

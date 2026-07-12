@@ -23,6 +23,8 @@ import gg.modl.minecraft.core.boot.LibraryLoader;
 import gg.modl.minecraft.core.boot.PlatformType;
 import gg.modl.minecraft.core.boot.SetupWizard;
 import gg.modl.minecraft.core.boot.StartupClient;
+import gg.modl.minecraft.core.boot.SyncPollingRate;
+import gg.modl.minecraft.core.login.LoginPipeline;
 import gg.modl.minecraft.core.login.ProxyLoginFlow;
 import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 import gg.modl.minecraft.core.plugin.PluginInfo;
@@ -55,7 +57,6 @@ import com.alessiodp.libby.logging.LogLevel;
         url = PluginInfo.URL,
         dependencies = {})
 public final class VelocityPlugin {
-    private static final int MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
     private static final long LOGIN_TIMEOUT_SECONDS = 5;
 
     private final PluginContainer plugin;
@@ -74,12 +75,7 @@ public final class VelocityPlugin {
         this.server = server;
         this.folder = folder;
         this.logger = logger;
-        this.pluginLogger = new PluginLogger() {
-            @Override public void info(String message) { logger.info(message); }
-            @Override public void warning(String message) { logger.warn(message); }
-            @Override public void severe(String message) { logger.error(message); }
-            @Override public void debug(String message) { logger.debug(message); }
-        };
+        this.pluginLogger = new VelocityPluginLogger(logger);
     }
 
     @Subscribe
@@ -118,7 +114,7 @@ public final class VelocityPlugin {
 
         VelocityPlatform platform = new VelocityPlatform(this, this.server, logger, folder.toFile(), getConfigString("server.name", "Server 1"), pluginLogger);
         ChatMessageCache chatMessageCache = new ChatMessageCache();
-        int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfigInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
+        int syncPollingRate = SyncPollingRate.clamp(getConfigInt(SyncPollingRate.CONFIG_KEY, SyncPollingRate.DEFAULT_SECONDS));
 
         this.pluginLoader = new PluginLoader(platform, folder, chatMessageCache, httpManager, syncPollingRate);
         configureBridgeExecutor(platform, bootConfig, panelUrl);
@@ -135,11 +131,12 @@ public final class VelocityPlugin {
                 pluginLoader.getLoginRequestBuilder(), pluginLoader.getIpEnrichmentService(),
                 pluginLoader.getPendingIpLookupService(), LOGIN_TIMEOUT_SECONDS);
 
+        LoginPipeline loginPipeline = new LoginPipeline(
+                pluginLoader.getLoginService(), pluginLoader.getLoginCache(), pluginLoader.getPlayerSessionService());
+
         server.getEventManager().register(this, new JoinListener(
-                pluginLoader.getCache(), logger, platform, pluginLoader.getLoginCache(),
-                pluginLoader.getLoginService(), proxyLoginFlow,
-                pluginLoader.getPlayerSessionService(), pluginLoader.getServerSwitchService(),
-                pluginLoader.isDebugMode()));
+                pluginLoader.getCache(), logger, platform, loginPipeline, proxyLoginFlow,
+                pluginLoader.getServerSwitchService(), pluginLoader.isDebugMode()));
         server.getEventManager().register(this, new ChatListener(
                 pluginLoader.getChatService(), commandInterceptService));
 

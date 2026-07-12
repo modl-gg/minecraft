@@ -15,7 +15,6 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.AllArgsConstructor;
@@ -44,7 +43,6 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
     private final RoleListMenu.Role role;
     private final List<Permission> allPermissions = new ArrayList<>();
     private final Set<String> enabledPermissions, originalPermissions;
-    private final String panelUrl;
     private final boolean hasPermission;
 
     private static final List<String> AVAILABLE_PERMISSIONS = Arrays.asList(
@@ -92,9 +90,8 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
     public RolePermissionEditMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                    boolean isAdmin, String panelUrl, RoleListMenu.Role role, Consumer<CirrusPlayerWrapper> backAction) {
-        super("Edit: " + role.getName(), platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
+        super("Edit: " + role.getName(), platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         this.role = role;
-        this.panelUrl = panelUrl;
         activeTab = StaffTab.SETTINGS;
 
         Cache cache = PluginServices.cache();
@@ -238,10 +235,6 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             handleApply(click);
             return CallResult.DENY_GRABBING;
         });
-
-        StaffNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 
     private void handleApply(Click click) {

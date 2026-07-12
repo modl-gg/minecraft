@@ -16,15 +16,14 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.LinkReportsMenu;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
 import gg.modl.minecraft.core.impl.menus.base.InspectChrome;
-
-import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.Getter;
-
+import lombok.Value;
+import lombok.With;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,29 +39,38 @@ public class PunishSeverityMenu extends BaseInspectMenu {
 
     private final PunishmentTypesResponse.PunishmentTypeData punishmentType;
     private final Consumer<CirrusPlayerWrapper> menuBackAction, rootBackAction;
-    private final List<String> linkedReportIds;
+    private final PunishmentOptions options;
     private PunishmentPreviewResponse previewData;
-    private final boolean silentMode, altBlocking, statWipe;
     @Getter private final CompletableFuture<Void> dataFuture;
+
+    @Value
+    @With
+    public static class PunishmentOptions {
+        boolean silent;
+        boolean altBlocking;
+        boolean statWipe;
+        List<String> linkedReportIds;
+
+        static PunishmentOptions defaults() {
+            return new PunishmentOptions(false, false, false, new ArrayList<>());
+        }
+    }
 
     public PunishSeverityMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                Account targetAccount, PunishmentTypesResponse.PunishmentTypeData punishmentType,
                                Consumer<CirrusPlayerWrapper> rootBackAction, Consumer<CirrusPlayerWrapper> menuBackAction) {
-        this(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, false, false, false, new ArrayList<>());
+        this(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType, rootBackAction, menuBackAction, PunishmentOptions.defaults());
     }
 
     public PunishSeverityMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                                Account targetAccount, PunishmentTypesResponse.PunishmentTypeData punishmentType,
                                Consumer<CirrusPlayerWrapper> rootBackAction, Consumer<CirrusPlayerWrapper> menuBackAction,
-                               boolean silentMode, boolean altBlocking, boolean statWipe, List<String> linkedReportIds) {
-        super(platform, httpClient, viewerUuid, viewerName, targetAccount, menuBackAction);
+                               PunishmentOptions options) {
+        super(platform, httpClient, viewerUuid, viewerName, targetAccount, menuBackAction, rootBackAction);
         this.punishmentType = punishmentType;
         this.menuBackAction = menuBackAction;
         this.rootBackAction = rootBackAction;
-        this.silentMode = silentMode;
-        this.altBlocking = altBlocking;
-        this.statWipe = statWipe;
-        this.linkedReportIds = linkedReportIds != null ? linkedReportIds : new ArrayList<>();
+        this.options = options;
 
         title("Punish: " + punishmentType.getName());
         activeTab = InspectTab.PUNISH;
@@ -98,6 +106,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     }
 
     private void buildSingleSeverityLayout() {
+        boolean silentMode = options.isSilent();
         PunishmentPreviewResponse.SeverityPreview preview = previewData != null ?
                 previewData.getSingleSeverity() : null;
 
@@ -162,6 +171,7 @@ public class PunishSeverityMenu extends BaseInspectMenu {
 
     private CirrusItem createSeverityButton(String name, CirrusItemType itemType, String color,
                                              PunishmentPreviewResponse.SeverityPreview preview, String action, int slot) {
+        boolean silentMode = options.isSilent();
         List<String> lore = new ArrayList<>();
 
         lore.add(MenuItems.COLOR_GRAY + "Issue a " + name.toLowerCase() + " punishment");
@@ -197,6 +207,10 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     }
 
     private void buildToggleButtons() {
+        boolean silentMode = options.isSilent();
+        boolean altBlocking = options.isAltBlocking();
+        boolean statWipe = options.isStatWipe();
+        List<String> linkedReportIds = options.getLinkedReportIds();
         String linkTitle = MenuItems.COLOR_GOLD + "Link Reports";
         if (!linkedReportIds.isEmpty())
             linkTitle += MenuItems.COLOR_GREEN + " (" + linkedReportIds.size() + ")";
@@ -300,14 +314,15 @@ public class PunishSeverityMenu extends BaseInspectMenu {
             handleLinkReports(click);
             return CallResult.DENY_GRABBING;
         });
-
-        InspectNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction);
     }
 
     private void issuePunishment(Click click, int severityLevel) {
         click.clickedMenu().close();
+
+        boolean silentMode = options.isSilent();
+        boolean altBlocking = options.isAltBlocking();
+        boolean statWipe = options.isStatWipe();
+        List<String> linkedReportIds = options.getLinkedReportIds();
 
         PluginServices.chatInput().requestInput(viewerUuid, "Enter punishment reason for " + targetName + ":",
                 reason -> {
@@ -374,30 +389,30 @@ public class PunishSeverityMenu extends BaseInspectMenu {
     }
 
     private void handleToggleSilent(Click click) {
-        rebuildWith(click.player(), !silentMode, altBlocking, statWipe, linkedReportIds);
+        rebuildWith(click.player(), options.withSilent(!options.isSilent()));
     }
 
     private void handleToggleAltBlock(Click click) {
-        rebuildWith(click.player(), silentMode, !altBlocking, statWipe, linkedReportIds);
+        rebuildWith(click.player(), options.withAltBlocking(!options.isAltBlocking()));
     }
 
     private void handleToggleStatWipe(Click click) {
-        rebuildWith(click.player(), silentMode, altBlocking, !statWipe, linkedReportIds);
+        rebuildWith(click.player(), options.withStatWipe(!options.isStatWipe()));
     }
 
-    private void rebuildWith(CirrusPlayerWrapper player, boolean silentMode, boolean altBlocking, boolean statWipe, List<String> linkedReportIds) {
+    private void rebuildWith(CirrusPlayerWrapper player, PunishmentOptions options) {
         PunishSeverityMenu m = new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, punishmentType,
-                rootBackAction, menuBackAction, silentMode, altBlocking, statWipe, linkedReportIds);
+                rootBackAction, menuBackAction, options);
         MenuAsync.displayWhenLoaded(platform, m.getDataFuture(), player, m::display);
     }
 
     private void handleLinkReports(Click click) {
-        Set<String> preSelected = new HashSet<>(linkedReportIds);
+        Set<String> preSelected = new HashSet<>(options.getLinkedReportIds());
         Consumer<Set<String>> onComplete = selectedIds ->
-                rebuildWith(click.player(), silentMode, altBlocking, statWipe, new ArrayList<>(selectedIds));
+                rebuildWith(click.player(), options.withLinkedReportIds(new ArrayList<>(selectedIds)));
 
         Consumer<CirrusPlayerWrapper> backToSeverity = player ->
-                rebuildWith(player, silentMode, altBlocking, statWipe, linkedReportIds);
+                rebuildWith(player, options);
 
         LinkReportsMenu linkMenu = new LinkReportsMenu(platform, httpClient, viewerUuid, viewerName,
                 new InspectChrome(platform, httpClient, viewerUuid, viewerName, targetAccount, rootBackAction, null),

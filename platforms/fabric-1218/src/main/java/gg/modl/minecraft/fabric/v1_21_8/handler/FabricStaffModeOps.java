@@ -187,6 +187,7 @@ class FabricStaffModeOps implements StaffModeOps {
         }
         snapshots.put(uuid, new PlayerSnapshot(
                 allSlots,
+                ((ServerWorld) player.getWorld()).getRegistryKey(),
                 player.getX(), player.getY(), player.getZ(),
                 player.getYaw(), player.getPitch(),
                 player.interactionManager.getGameMode(),
@@ -207,16 +208,20 @@ class FabricStaffModeOps implements StaffModeOps {
         PlayerSnapshot snapshot = snapshots.remove(uuid);
         if (snapshot != null) {
             player.getInventory().clear();
-            for (int i = 0; i < snapshot.inventoryContents.length && i < player.getInventory().size(); i++) {
-                player.getInventory().setStack(i, snapshot.inventoryContents[i].copy());
+            for (int i = 0; i < snapshot.getInventoryContents().length && i < player.getInventory().size(); i++) {
+                player.getInventory().setStack(i, snapshot.getInventoryContents()[i].copy());
             }
-            player.changeGameMode(snapshot.gameMode);
-            player.setHealth(Math.min(snapshot.health, player.getMaxHealth()));
-            player.getHungerManager().setFoodLevel(snapshot.foodLevel);
-            player.experienceProgress = snapshot.exp;
-            player.experienceLevel = snapshot.level;
-            player.teleport((ServerWorld) player.getWorld(), snapshot.x, snapshot.y, snapshot.z,
-                    Set.of(), snapshot.yaw, snapshot.pitch, false);
+            player.changeGameMode(snapshot.getGameMode());
+            player.setHealth(Math.min(snapshot.getHealth(), player.getMaxHealth()));
+            player.getHungerManager().setFoodLevel(snapshot.getFoodLevel());
+            player.experienceProgress = snapshot.getExp();
+            player.experienceLevel = snapshot.getLevel();
+            ServerWorld world = server.getWorld(snapshot.getDimension());
+            if (world == null) {
+                world = (ServerWorld) player.getWorld();
+            }
+            player.teleport(world, snapshot.getX(), snapshot.getY(), snapshot.getZ(),
+                    Set.of(), snapshot.getYaw(), snapshot.getPitch(), false);
         } else {
             player.getInventory().clear();
             player.changeGameMode(GameMode.SURVIVAL);

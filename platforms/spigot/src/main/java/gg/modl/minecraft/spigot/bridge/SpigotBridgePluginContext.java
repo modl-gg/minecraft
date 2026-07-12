@@ -8,7 +8,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.nio.file.Path;
-import java.util.logging.Logger;
 
 public class SpigotBridgePluginContext implements BridgePluginContext {
     private final JavaPlugin plugin;
@@ -28,11 +27,6 @@ public class SpigotBridgePluginContext implements BridgePluginContext {
     @Override
     public Path getDataFolder() {
         return plugin.getDataFolder().toPath();
-    }
-
-    @Override
-    public Logger getLogger() {
-        return plugin.getLogger();
     }
 
     @Override

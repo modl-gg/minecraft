@@ -11,20 +11,16 @@ import gg.modl.minecraft.api.Note;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.CreatePlayerNoteRequest;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
+import gg.modl.minecraft.core.impl.menus.base.PaginatedInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource;
 import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource.FetchResult;
 import gg.modl.minecraft.core.impl.menus.util.InspectContext;
-import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
-
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -34,11 +30,8 @@ import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
-public class NotesMenu extends BaseInspectListMenu<Note> {
+public class NotesMenu extends PaginatedInspectListMenu<Note> {
     private static final int PAGE_SIZE = 7;
-
-    private final PaginatedDataSource<Note> dataSource;
-    private int pageRefreshRequest;
 
     public NotesMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                      Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
@@ -47,7 +40,7 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
 
     public NotesMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                      Account targetAccount, Consumer<CirrusPlayerWrapper> backAction, InspectContext inspectContext) {
-        super("Notes: " + ReportRenderUtil.getPlayerName(targetAccount), platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
+        super("Notes: " + ReportRenderUtil.getPlayerName(targetAccount), platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext, PAGE_SIZE);
         activeTab = InspectTab.NOTES;
 
         int totalCount = inspectContext != null ? inspectContext.noteCount() : targetAccount.getNotes().size();
@@ -87,34 +80,16 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
     }
 
     @Override
-    protected boolean interceptNextPage(Click click) {
-        int nextPage = currentPageIndex().get() + 1;
-        if (!dataSource.isPageLoaded(nextPage)) {
-            int refreshRequest = ++pageRefreshRequest;
-            dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1, () -> {
-                if (refreshRequest != pageRefreshRequest) return;
-                NotesMenu newMenu = new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
-                newMenu.dataSource.initialize(dataSource.getAllLoadedItems(), dataSource.getTotalCount());
-                newMenu.setInitialPage(nextPage);
-                newMenu.display(click.player());
-            });
-            return true;
-        }
-        dataSource.prefetchIfNeeded(nextPage);
-        return false;
+    protected void openLoadedPage(Click click, int nextPage) {
+        NotesMenu newMenu = new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
+        newMenu.dataSource.initialize(dataSource.getAllLoadedItems(), dataSource.getTotalCount());
+        newMenu.setInitialPage(nextPage);
+        newMenu.display(click.player());
     }
 
     @Override
-    public boolean hasNextPage() {
-        return currentPageIndex().get() < dataSource.getTotalMenuPages() - 1;
-    }
-
-    @Override
-    protected Collection<Note> elements() {
-        List<Note> notes = dataSource.getAllLoadedItems();
-        if (notes.isEmpty())
-            return Collections.singletonList(new Note(null, new Date(), "", ""));
-        return notes;
+    protected Note emptyElement() {
+        return new Note(null, new Date(), "", "");
     }
 
     @Override
@@ -172,9 +147,6 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
         super.registerActionHandlers();
 
         registerActionHandler("createNote", this::handleCreateNote);
-        InspectNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
         registerActionHandler("openNotes", click -> {});
     }
 

@@ -2,6 +2,9 @@ package gg.modl.minecraft.core.boot;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -53,77 +56,35 @@ public class RegistrationClient {
         return gson.fromJson(responseBody, CliStatusResponse.class);
     }
 
+    @Getter @NoArgsConstructor @AllArgsConstructor
     public static class AvailabilityResponse {
-        private final boolean emailAvailable;
-        private final boolean nameAvailable;
-        private final boolean subdomainAvailable;
-        private final String message;
-
-        public AvailabilityResponse(boolean emailAvailable, boolean nameAvailable, boolean subdomainAvailable, String message) {
-            this.emailAvailable = emailAvailable;
-            this.nameAvailable = nameAvailable;
-            this.subdomainAvailable = subdomainAvailable;
-            this.message = message;
-        }
-
-        public boolean emailAvailable() { return emailAvailable; }
-        public boolean nameAvailable() { return nameAvailable; }
-        public boolean subdomainAvailable() { return subdomainAvailable; }
-        public String message() { return message; }
+        private boolean emailAvailable;
+        private boolean nameAvailable;
+        private boolean subdomainAvailable;
+        private String message;
     }
 
+    @Getter @NoArgsConstructor @AllArgsConstructor
     public static class RegisterResponse {
-        private final boolean success;
-        private final String message;
-        private final ServerInfo server;
-        private final String setupToken;
+        private boolean success;
+        private String message;
+        private ServerInfo server;
+        private String setupToken;
 
-        public RegisterResponse(boolean success, String message, ServerInfo server, String setupToken) {
-            this.success = success;
-            this.message = message;
-            this.server = server;
-            this.setupToken = setupToken;
-        }
-
-        public boolean success() { return success; }
-        public String message() { return message; }
-        public ServerInfo server() { return server; }
-        public String setupToken() { return setupToken; }
-
+        @Getter @NoArgsConstructor @AllArgsConstructor
         public static class ServerInfo {
-            private final String id;
-            private final String name;
-
-            public ServerInfo(String id, String name) {
-                this.id = id;
-                this.name = name;
-            }
-
-            public String id() { return id; }
-            public String name() { return name; }
+            private String id;
+            private String name;
         }
     }
 
+    @Getter @NoArgsConstructor @AllArgsConstructor
     public static class CliStatusResponse {
-        private final boolean success;
-        private final Boolean emailVerified;
-        private final String provisioningStatus;
-        private final String apiKey;
-        private final String message;
-
-        public CliStatusResponse(boolean success, Boolean emailVerified, String provisioningStatus, String apiKey, String message) {
-            this.success = success;
-            this.emailVerified = emailVerified;
-            this.provisioningStatus = provisioningStatus;
-            this.apiKey = apiKey;
-            this.message = message;
-        }
-
-        public boolean success() { return success; }
-        public Boolean emailVerified() { return emailVerified; }
-        public String provisioningStatus() { return provisioningStatus; }
-        public String apiKey() { return apiKey; }
-        public String message() { return message; }
+        private boolean success;
+        private Boolean emailVerified;
+        private String provisioningStatus;
+        private String apiKey;
+        private String message;
 
         public boolean isComplete() {
             return apiKey != null && !apiKey.trim().isEmpty();

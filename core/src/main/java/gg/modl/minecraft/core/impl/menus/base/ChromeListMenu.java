@@ -25,4 +25,10 @@ public abstract class ChromeListMenu<T> extends BaseListMenu<T> {
         items.putAll(chrome.headerItems(false));
         return items;
     }
+
+    @Override
+    protected void registerActionHandlers() {
+        super.registerActionHandlers();
+        chrome.registerNavigation(this::registerActionHandler);
+    }
 }

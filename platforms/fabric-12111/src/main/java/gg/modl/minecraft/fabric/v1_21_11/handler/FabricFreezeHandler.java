@@ -55,14 +55,14 @@ public class FabricFreezeHandler {
                 continue;
             }
 
-            double dx = player.getX() - anchor.x;
-            double dy = player.getY() - anchor.y;
-            double dz = player.getZ() - anchor.z;
-            boolean wrongWorld = (ServerWorld) player.getEntityWorld() != anchor.world;
+            double dx = player.getX() - anchor.getX();
+            double dy = player.getY() - anchor.getY();
+            double dz = player.getZ() - anchor.getZ();
+            boolean wrongWorld = (ServerWorld) player.getEntityWorld() != anchor.getWorld();
 
             if (wrongWorld || dx * dx + dy * dy + dz * dz > MAX_DRIFT_SQUARED) {
-                player.teleport(anchor.world, anchor.x, anchor.y, anchor.z,
-                        Set.of(), anchor.yaw, anchor.pitch, false);
+                player.teleport(anchor.getWorld(), anchor.getX(), anchor.getY(), anchor.getZ(),
+                        Set.of(), anchor.getYaw(), anchor.getPitch(), false);
                 player.setVelocity(Vec3d.ZERO);
                 player.velocityDirty = true;
             }

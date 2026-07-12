@@ -10,7 +10,6 @@ import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.ReportsMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.staff.StaffReportsMenu;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.Constants;
@@ -97,7 +96,7 @@ public class ReportsCommand {
     private void printPlayerReports(CommandActor actor, String playerQuery, int page) {
         actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
 
-        PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
+        PlayerLookupRequest request = PlayerLookupRequest.builder().query(playerQuery).build();
 
         httpClientHolder.getClient().lookupPlayer(request).thenAccept(response -> {
             if (response.isSuccess() && response.getData() != null) {
@@ -181,7 +180,7 @@ public class ReportsCommand {
             platform, httpClientHolder.getClient(), senderUuid, senderName,
             isAdmin, panelUrl, null
         );
-        StaffNavigationHandlers.displayWhenLoaded(platform, menu.getDataFuture(),
+        MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(),
                 platform.getPlayerWrapper(senderUuid),
                 p -> { if (p != null) menu.display(p); });
     }

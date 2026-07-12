@@ -20,7 +20,6 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 
 public abstract class AbstractBridgeComponent {
 
@@ -49,17 +48,24 @@ public abstract class AbstractBridgeComponent {
         this.pluginLogger = pluginLogger;
     }
 
-    public void enable(TicketCreator ticketCreator, boolean connectToProxy) {
+    public void enableStandalone(TicketCreator ticketCreator) {
+        startBridge(ticketCreator, false);
+    }
+
+    public void enableBridgeOnly(TicketCreator ticketCreator) {
+        startBridge(ticketCreator, true);
+    }
+
+    private void startBridge(TicketCreator ticketCreator, boolean connectToProxy) {
         Path dataFolder = context.getDataFolder();
-        Logger logger = context.getLogger();
 
         prepareBridgeConfig(dataFolder);
-        prepareBridgeLocale(logger);
+        prepareBridgeLocale();
         prepareStaffModeConfig();
-        startLifecycleServices(dataFolder, logger);
+        startLifecycleServices(dataFolder);
         initializePlatformHandlers();
-        connectBridgeClientIfConfigured(connectToProxy, logger);
-        initializeAutoReporting(logger, ticketCreator);
+        connectBridgeClientIfConfigured(connectToProxy);
+        initializeAutoReporting(ticketCreator);
         registerRuntimeHooks();
     }
 
@@ -85,21 +91,21 @@ public abstract class AbstractBridgeComponent {
         bridgeConfig.setApiKey(apiKey);
     }
 
-    private void prepareBridgeLocale(Logger logger) {
-        localeManager = new BridgeLocaleManager(logger);
+    private void prepareBridgeLocale() {
+        localeManager = new BridgeLocaleManager(pluginLogger);
     }
 
     private void prepareStaffModeConfig() {
         BridgeYamlResource.ensureDefaultFile(context, "staff_mode.yml", pluginLogger);
     }
 
-    private void startLifecycleServices(Path dataFolder, Logger logger) {
+    private void startLifecycleServices(Path dataFolder) {
         violationTracker = new ViolationTracker();
         violationTracker.startCleanupTask(context.getScheduler());
 
-        statWipeHandler = new StatWipeHandler(logger, bridgeConfig, context.getPlayerProvider());
+        statWipeHandler = new StatWipeHandler(pluginLogger, bridgeConfig, context.getPlayerProvider());
 
-        staffModeConfig = StaffModeConfig.load(dataFolder, logger);
+        staffModeConfig = StaffModeConfig.load(dataFolder, pluginLogger);
     }
 
     private void initializePlatformHandlers() {
@@ -107,7 +113,7 @@ public abstract class AbstractBridgeComponent {
         initStaffModeHandler(bridgeConfig, localeManager, staffModeConfig);
     }
 
-    private void connectBridgeClientIfConfigured(boolean connectToProxy, Logger logger) {
+    private void connectBridgeClientIfConfigured(boolean connectToProxy) {
         if (!connectToProxy) {
             return;
         }
@@ -129,7 +135,7 @@ public abstract class AbstractBridgeComponent {
                 bridgeConfig.getProxyPort(),
                 bridgeConfig.getApiKey(),
                 bridgeConfig.getServerName(),
-                logger,
+                pluginLogger,
                 context.getScheduler(),
                 createMessageHandler()
         );
@@ -137,8 +143,8 @@ public abstract class AbstractBridgeComponent {
         onBridgeClientCreated(bridgeClient);
     }
 
-    private void initializeAutoReporting(Logger logger, TicketCreator ticketCreator) {
-        autoReporter = new AutoReporter(logger, bridgeConfig, ticketCreator, violationTracker);
+    private void initializeAutoReporting(TicketCreator ticketCreator) {
+        autoReporter = new AutoReporter(pluginLogger, bridgeConfig, ticketCreator, violationTracker);
 
         initReplayRecording(bridgeConfig);
         if (replayService != null) {

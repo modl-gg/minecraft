@@ -13,7 +13,7 @@ import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.ClickableJsonMessage;
@@ -50,13 +50,11 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
 
     private final List<Ticket> tickets = new ArrayList<>();
     private String currentStatusFilter = "open";
-    private final String panelUrl;
     @Getter private CompletableFuture<Void> dataFuture;
 
     public TicketsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                        boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
-        super("Support Tickets", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
-        this.panelUrl = panelUrl;
+        super("Support Tickets", platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         activeTab = StaffTab.TICKETS;
 
         this.dataFuture = fetchTickets();
@@ -187,10 +185,6 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
 
         registerActionHandler("filter", this::handleFilter);
 
-        StaffNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
-
         registerActionHandler("openTickets", click -> {});
     }
 
@@ -198,6 +192,6 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         String newStatus = "open".equalsIgnoreCase(currentStatusFilter) ? "closed" : "open";
         TicketsMenu menu = new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction)
                 .withStatusFilter(newStatus);
-        StaffNavigationHandlers.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+        MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
     }
 }

@@ -2,7 +2,7 @@ package gg.modl.minecraft.core.locale;
 
 public class MessageRenderer {
 
-    public static boolean isMiniMessage(String text) {
+    public boolean isMiniMessage(String text) {
         return LegacyTextRenderer.isMiniMessage(text);
     }
 

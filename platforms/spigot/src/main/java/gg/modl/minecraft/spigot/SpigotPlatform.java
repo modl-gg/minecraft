@@ -185,11 +185,6 @@ public class SpigotPlatform implements Platform {
     }
 
     @Override
-    public void runOnGameThread(Runnable task) {
-        runOnMainThread(task);
-    }
-
-    @Override
     public void kickPlayer(AbstractPlayer player, String reason) {
         if (player == null) return;
         Player bukkitPlayer = Bukkit.getPlayer(player.getUuid());

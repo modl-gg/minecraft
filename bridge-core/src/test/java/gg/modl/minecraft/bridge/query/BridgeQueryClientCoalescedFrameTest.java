@@ -4,6 +4,7 @@ import gg.modl.minecraft.bridge.BridgeScheduler;
 import gg.modl.minecraft.bridge.BridgeTask;
 import gg.modl.minecraft.core.bridge.protocol.BridgeAction;
 import gg.modl.minecraft.core.bridge.protocol.BridgeProtocol;
+import gg.modl.minecraft.core.util.PluginLogger;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
@@ -66,7 +67,7 @@ class BridgeQueryClientCoalescedFrameTest {
     private static ChannelHandler newClientHandler(BridgeMessageHandler messageHandler) throws Exception {
         BridgeQueryClient client = new BridgeQueryClient(
                 "localhost", 25590, "secret", "test-server",
-                Logger.getLogger("bridge-query-client-test"), new NoOpScheduler(), messageHandler);
+                PluginLogger.fromJul(Logger.getLogger("bridge-query-client-test")), new NoOpScheduler(), messageHandler);
         Class<?> handlerClass = Class.forName(BridgeQueryClient.class.getName() + "$BridgeClientHandler");
         Constructor<?> constructor = handlerClass.getDeclaredConstructor(BridgeQueryClient.class);
         constructor.setAccessible(true);

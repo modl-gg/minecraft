@@ -1,6 +1,7 @@
 package gg.modl.minecraft.fabric.v26.handler;
 
 import gg.modl.minecraft.bridge.freeze.FreezeOps;
+import lombok.Value;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -56,21 +57,13 @@ class FabricFreezeOps implements FreezeOps {
                 player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
     }
 
-    static final class FreezeAnchor {
-        final ServerLevel world;
-        final double x;
-        final double y;
-        final double z;
-        final float yaw;
-        final float pitch;
-
-        FreezeAnchor(ServerLevel world, double x, double y, double z, float yaw, float pitch) {
-            this.world = world;
-            this.x = x;
-            this.y = y;
-            this.z = z;
-            this.yaw = yaw;
-            this.pitch = pitch;
-        }
+    @Value
+    static class FreezeAnchor {
+        ServerLevel world;
+        double x;
+        double y;
+        double z;
+        float yaw;
+        float pitch;
     }
 }

@@ -71,6 +71,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
     private final boolean polarLoaderAvailable;
     @Getter private FreezeHandler freezeHandler;
     @Getter private StaffModeHandler staffModeHandler;
+    @Getter private SpigotBridgeActions bridgeActions;
 
     private RecordingManager recordingManager;
     private PacketRecorder packetRecorder;
@@ -98,11 +99,12 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         staffModeHandler = new StaffModeHandler(plugin, bridgeConfig, freezeHandler, localeManager, staffModeConfig, context.getScheduler());
         staffModeHandler.register();
         freezeHandler.setStaffModeHandler(staffModeHandler);
+        bridgeActions = new SpigotBridgeActions(staffModeHandler, freezeHandler);
     }
 
     @Override
     protected BridgeMessageHandler createMessageHandler() {
-        return new SpigotBridgeMessageHandler(plugin, freezeHandler, staffModeHandler,
+        return new SpigotBridgeMessageHandler(plugin, bridgeActions,
                 statWipeHandler, this, context.getScheduler());
     }
 

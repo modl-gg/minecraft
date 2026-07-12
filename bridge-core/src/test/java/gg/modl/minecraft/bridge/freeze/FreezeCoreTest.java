@@ -1,6 +1,7 @@
 package gg.modl.minecraft.bridge.freeze;
 
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
+import gg.modl.minecraft.core.util.PluginLogger;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -18,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FreezeCoreTest {
 
-    private final BridgeLocaleManager localeManager = new BridgeLocaleManager(Logger.getLogger("freeze-core-test"));
+    private final BridgeLocaleManager localeManager = new BridgeLocaleManager(PluginLogger.fromJul(Logger.getLogger("freeze-core-test")));
     private final RecordingFreezeOps ops = new RecordingFreezeOps();
     private final FreezeCore core = new FreezeCore(localeManager, ops);
 

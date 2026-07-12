@@ -7,11 +7,9 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.util.InspectContext;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
-import gg.modl.minecraft.core.impl.menus.util.TargetPlayerAction;
 
 import java.util.UUID;
 import java.util.function.Consumer;
-import dev.simplix.cirrus.model.Click;
 
 public abstract class BaseInspectListMenu<T> extends ChromeListMenu<T> {
 
@@ -41,13 +39,6 @@ public abstract class BaseInspectListMenu<T> extends ChromeListMenu<T> {
 
     protected String getPlayerName(Account account) {
         return ReportRenderUtil.getPlayerName(account);
-    }
-
-    @Override
-    protected void registerActionHandlers() {
-        super.registerActionHandlers();
-        registerActionHandler("targetPlayer", (Click click) ->
-                TargetPlayerAction.handle(click, platform, viewerUuid, targetUuid, targetName));
     }
 
 }

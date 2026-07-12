@@ -8,13 +8,12 @@ import gg.modl.minecraft.api.http.response.EvidenceUploadTokenResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfileRegistry;
+import gg.modl.minecraft.core.support.FakeCommandActor;
 import gg.modl.minecraft.core.support.FakeModlHttpClient;
 import gg.modl.minecraft.core.support.FakePlatform;
 import gg.modl.minecraft.core.support.MapLocaleManager;
 import org.junit.jupiter.api.Test;
-import revxrsal.commands.command.CommandActor;
 
-import java.lang.reflect.Proxy;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -37,7 +36,7 @@ class PunishmentActionCommandTest {
                 "https://panel.modl.gg"
         );
 
-        command.punishmentAction(actor(senderUuid), "upload-evidence", punishmentId);
+        command.punishmentAction(new FakeCommandActor(senderUuid, "Staff"), "upload-evidence", punishmentId);
 
         EvidenceUploadTokenResponse response = new EvidenceUploadTokenResponse(token, 200);
         tokenFuture.complete(response);
@@ -69,16 +68,4 @@ class PunishmentActionCommandTest {
         };
     }
 
-    private static CommandActor actor(UUID uuid) {
-        return (CommandActor) Proxy.newProxyInstance(
-                CommandActor.class.getClassLoader(),
-                new Class<?>[] {CommandActor.class},
-                (proxy, method, args) -> {
-                    if ("uniqueId".equals(method.getName())) return uuid;
-                    if ("reply".equals(method.getName())) return null;
-                    if ("name".equals(method.getName())) return "Staff";
-                    throw new UnsupportedOperationException(method.getName());
-                }
-        );
-    }
 }

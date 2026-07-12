@@ -223,11 +223,19 @@ public class BridgeMessageDispatcher {
 
         List<String> tags = tagsJoined.isEmpty() ? listOf() : Arrays.asList(tagsJoined.split(","));
 
-        CreateTicketRequest request = new CreateTicketRequest(
-                creatorUuid, type, creatorName, subject, description,
-                reportedPlayerUuid, reportedPlayerName, priority, createdServer,
-                null, tags, replayUrl
-        );
+        CreateTicketRequest request = CreateTicketRequest.builder()
+                .creatorUuid(creatorUuid)
+                .type(type)
+                .creatorName(creatorName)
+                .subject(subject)
+                .description(description)
+                .reportedPlayerUuid(reportedPlayerUuid)
+                .reportedPlayerName(reportedPlayerName)
+                .priority(priority)
+                .createdServer(createdServer)
+                .tags(tags)
+                .replayUrl(replayUrl)
+                .build();
 
         logger.info("[bridge] Creating report ticket for " + reportedPlayerName + ": " + subject
                 + (replayUrl != null ? " (replay: " + replayUrl + ")" : ""));

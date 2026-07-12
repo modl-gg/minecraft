@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
-import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.response.RolesListResponse;
 import gg.modl.minecraft.api.http.response.StaffListResponse;
@@ -9,14 +8,15 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 import gg.modl.minecraft.core.impl.commands.staff.StaffListCommand;
+import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
+import gg.modl.minecraft.core.support.FakeCirrusPlayerWrapper;
+import gg.modl.minecraft.core.support.FakeCommandActor;
 import gg.modl.minecraft.core.support.FakeModlHttpClient;
 import gg.modl.minecraft.core.support.FakePlatform;
 import gg.modl.minecraft.core.support.TestPluginServices;
 import gg.modl.minecraft.core.util.Permissions;
 import org.junit.jupiter.api.Test;
-import revxrsal.commands.command.CommandActor;
 
-import java.lang.reflect.Proxy;
 import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -97,7 +97,7 @@ class StaffMenuAsyncLoadTest {
         CompletableFuture<Void> dataFuture = new CompletableFuture<>();
         AtomicInteger displayCount = new AtomicInteger();
 
-        SettingsMenu.displayWhenLoaded(platform, dataFuture, playerWrapper(viewerUuid),
+        MenuAsync.displayWhenLoaded(platform, dataFuture, new FakeCirrusPlayerWrapper(viewerUuid),
                 player -> displayCount.incrementAndGet());
 
         assertEquals(0, platform.mainThreadScheduleCount());
@@ -121,7 +121,7 @@ class StaffMenuAsyncLoadTest {
         CompletableFuture<Void> dataFuture = new CompletableFuture<>();
         AtomicInteger displayCount = new AtomicInteger();
 
-        SettingsMenu.displayWhenLoaded(platform, dataFuture, playerWrapper(viewerUuid),
+        MenuAsync.displayWhenLoaded(platform, dataFuture, new FakeCirrusPlayerWrapper(viewerUuid),
                 player -> displayCount.incrementAndGet());
 
         dataFuture.completeExceptionally(new IllegalStateException("load failed"));
@@ -147,7 +147,7 @@ class StaffMenuAsyncLoadTest {
                         staffFuture)),
                 "https://panel.modl.gg");
 
-        command.staffList(commandActor(viewerUuid), null);
+        command.staffList(new FakeCommandActor(viewerUuid, "ModlStaff"), null);
 
         assertEquals(0, platform.mainThreadScheduleCount());
 
@@ -167,7 +167,7 @@ class StaffMenuAsyncLoadTest {
                         CompletableFuture.completedFuture(new StaffListResponse(Collections.emptyList(), 403)))),
                 "https://panel.modl.gg");
 
-        command.staffList(commandActor(viewerUuid), null);
+        command.staffList(new FakeCommandActor(viewerUuid, "ModlStaff"), null);
 
         assertEquals(0, platform.mainThreadScheduleCount());
     }
@@ -187,35 +187,6 @@ class StaffMenuAsyncLoadTest {
                 return staffFuture;
             }
         };
-    }
-
-    private static CirrusPlayerWrapper playerWrapper(UUID playerUuid) {
-        return (CirrusPlayerWrapper) Proxy.newProxyInstance(
-                CirrusPlayerWrapper.class.getClassLoader(),
-                new Class<?>[] {CirrusPlayerWrapper.class},
-                (proxy, method, args) -> {
-                    if ("uuid".equals(method.getName())) return playerUuid;
-                    if ("protocolVersion".equals(method.getName())) return 0;
-                    if ("handle".equals(method.getName())) return null;
-                    return null;
-                }
-        );
-    }
-
-    private static CommandActor commandActor(UUID playerUuid) {
-        return (CommandActor) Proxy.newProxyInstance(
-                CommandActor.class.getClassLoader(),
-                new Class<?>[] {CommandActor.class},
-                (proxy, method, args) -> {
-                    if ("uniqueId".equals(method.getName())) return playerUuid;
-                    if ("name".equals(method.getName())) return "ModlStaff";
-                    if ("reply".equals(method.getName())) return null;
-                    if ("sendRawMessage".equals(method.getName())) return null;
-                    if ("sendRawError".equals(method.getName())) return null;
-                    if ("lamp".equals(method.getName())) return null;
-                    throw new UnsupportedOperationException(method.getName());
-                }
-        );
     }
 
     private static FakePlatform platform(Cache cache) {

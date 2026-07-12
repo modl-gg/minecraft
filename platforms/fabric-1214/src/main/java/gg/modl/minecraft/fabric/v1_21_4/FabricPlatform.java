@@ -208,11 +208,6 @@ public class FabricPlatform implements Platform {
     }
 
     @Override
-    public void runOnGameThread(Runnable task) {
-        server.execute(task);
-    }
-
-    @Override
     public void kickPlayer(AbstractPlayer player, String reason) {
         if (player == null) return;
         ServerPlayerEntity serverPlayer = server.getPlayerManager().getPlayer(player.getUuid());

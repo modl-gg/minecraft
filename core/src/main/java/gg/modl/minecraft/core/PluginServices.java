@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core;
 
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.service.TicketService;
 import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.punishment.PunishmentActionMessageService;
@@ -30,6 +31,7 @@ public final class PluginServices implements StaffAudience {
     private final PunishmentActionMessageService punishmentActionMessageService;
 
     private volatile ReplayService replayService;
+    private volatile TicketService ticketService;
 
     public static void install(PluginServices services) {
         instance = services;
@@ -71,8 +73,16 @@ public final class PluginServices implements StaffAudience {
         return instance == null ? null : instance.replayService;
     }
 
+    public static TicketService ticket() {
+        return instance == null ? null : instance.ticketService;
+    }
+
     public void setReplayService(ReplayService replayService) {
         this.replayService = replayService;
+    }
+
+    public void setTicketService(TicketService ticketService) {
+        this.ticketService = ticketService;
     }
 
     @Override

@@ -209,6 +209,7 @@ build/
 # Eclipse
 .project
 .classpath
+bin/
 
 .env
 

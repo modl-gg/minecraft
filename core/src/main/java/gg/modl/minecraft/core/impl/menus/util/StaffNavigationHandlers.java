@@ -2,7 +2,6 @@ package gg.modl.minecraft.core.impl.menus.util;
 
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.model.Click;
-import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.staff.OnlinePlayersMenu;
@@ -13,17 +12,11 @@ import gg.modl.minecraft.core.impl.menus.staff.TicketsMenu;
 import gg.modl.minecraft.core.util.ClickableJsonMessage;
 
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public final class StaffNavigationHandlers {
     private StaffNavigationHandlers() {}
-
-    public static void displayWhenLoaded(Platform platform, CompletableFuture<Void> dataFuture,
-                                         CirrusPlayerWrapper player, Consumer<CirrusPlayerWrapper> displayAction) {
-        MenuAsync.displayWhenLoaded(platform, dataFuture, player, displayAction);
-    }
 
     public static void registerAll(
             BiConsumer<String, Consumer<Click>> registrar,
@@ -33,22 +26,22 @@ public final class StaffNavigationHandlers {
 
         registrar.accept("openOnlinePlayers", click -> {
             OnlinePlayersMenu menu = new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null);
-            displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+            MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
         });
 
         registrar.accept("openReports", click -> {
             StaffReportsMenu menu = new StaffReportsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null);
-            displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+            MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
         });
 
         registrar.accept("openPunishments", click -> {
             RecentPunishmentsMenu menu = new RecentPunishmentsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null);
-            displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+            MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
         });
 
         registrar.accept("openTickets", click -> {
             TicketsMenu menu = new TicketsMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null);
-            displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+            MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
         });
 
         registrar.accept("openPanel", click -> {

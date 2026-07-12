@@ -15,7 +15,7 @@ public class MaintenanceService {
         for (AbstractPlayer player : platform.getOnlinePlayers()) {
             UUID uuid = player.getUuid();
             if (!PermissionUtil.isStaff(uuid, cache)) {
-                platform.runOnGameThread(() -> platform.kickPlayer(player, kickMessage));
+                platform.runOnMainThread(() -> platform.kickPlayer(player, kickMessage));
             }
         }
     }

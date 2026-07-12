@@ -6,6 +6,7 @@ import gg.modl.minecraft.bridge.reporter.detection.ViolationTracker;
 import gg.modl.minecraft.core.service.ReplayCaptureResult;
 import gg.modl.minecraft.core.service.ReplayCaptureStatus;
 import gg.modl.minecraft.core.service.ReplayService;
+import gg.modl.minecraft.core.util.PluginLogger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -124,7 +125,7 @@ class AutoReporterTest {
         Logger logger = isolatedLogger("ticket-failure-no-replay");
         CapturingHandler handler = attachWarningHandler(logger);
         try {
-            AutoReporter autoReporter = new AutoReporter(logger, config, ticketCreator, violationTracker);
+            AutoReporter autoReporter = new AutoReporter(PluginLogger.fromJul(logger), config, ticketCreator, violationTracker);
             UUID playerUuid = UUID.randomUUID();
             violationTracker.addViolation(playerUuid, SOURCE, CHECK_NAME, "verbose");
 
@@ -149,7 +150,7 @@ class AutoReporterTest {
         Logger logger = isolatedLogger("ticket-failure-with-replay");
         CapturingHandler handler = attachWarningHandler(logger);
         try {
-            AutoReporter autoReporter = new AutoReporter(logger, config, ticketCreator, violationTracker);
+            AutoReporter autoReporter = new AutoReporter(PluginLogger.fromJul(logger), config, ticketCreator, violationTracker);
             FakeReplayService replayService = new FakeReplayService();
             replayService.status = ReplayCaptureStatus.OK;
             replayService.captureFuture = CompletableFuture.completedFuture(ReplayCaptureResult.ok("replay-xyz"));
@@ -201,7 +202,7 @@ class AutoReporterTest {
         RecordingTicketCreator ticketCreator = new RecordingTicketCreator();
         ViolationTracker violationTracker = new ViolationTracker();
         AutoReporter autoReporter = new AutoReporter(
-                Logger.getLogger("test"),
+                PluginLogger.fromJul(Logger.getLogger("test")),
                 config,
                 ticketCreator,
                 violationTracker
@@ -244,9 +245,7 @@ class AutoReporterTest {
         private int attempts;
 
         @Override
-        public void createTicket(String creatorUuid, String creatorName, String type, String subject,
-                                 String description, String reportedPlayerUuid, String reportedPlayerName,
-                                 String tagsJoined, String priority, String createdServer, String replayUrl) {
+        public void createTicket(TicketRequest request) {
             attempts++;
             throw new RuntimeException("ticket creation failed");
         }
@@ -256,10 +255,8 @@ class AutoReporterTest {
         private final List<CreatedTicket> tickets = new ArrayList<>();
 
         @Override
-        public void createTicket(String creatorUuid, String creatorName, String type, String subject,
-                                 String description, String reportedPlayerUuid, String reportedPlayerName,
-                                 String tagsJoined, String priority, String createdServer, String replayUrl) {
-            tickets.add(new CreatedTicket(replayUrl));
+        public void createTicket(TicketRequest request) {
+            tickets.add(new CreatedTicket(request.getReplayUrl()));
         }
     }
 

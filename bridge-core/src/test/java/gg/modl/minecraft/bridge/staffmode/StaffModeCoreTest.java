@@ -5,6 +5,7 @@ import gg.modl.minecraft.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.bridge.freeze.FreezeCore;
 import gg.modl.minecraft.bridge.freeze.FreezeOps;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
+import gg.modl.minecraft.core.util.PluginLogger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -24,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StaffModeCoreTest {
 
-    private static final Logger LOGGER = Logger.getLogger("staff-mode-core-test");
+    private static final PluginLogger LOGGER = PluginLogger.fromJul(Logger.getLogger("staff-mode-core-test"));
 
     @TempDir
     Path tempDir;

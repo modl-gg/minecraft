@@ -3,6 +3,7 @@ package gg.modl.minecraft.bridge.query;
 import gg.modl.minecraft.bridge.BridgeScheduler;
 import gg.modl.minecraft.core.bridge.protocol.BridgeAction;
 import gg.modl.minecraft.core.bridge.protocol.BridgeProtocol;
+import gg.modl.minecraft.core.util.PluginLogger;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -23,7 +24,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 
 public class BridgeQueryClient {
     private static final long[] BACKOFF_DELAYS = {5, 10, 20, 40, 60};
@@ -33,7 +33,7 @@ public class BridgeQueryClient {
     private final int port;
     private final String secret;
     private final String serverName;
-    private final Logger logger;
+    private final PluginLogger logger;
     private final BridgeScheduler scheduler;
     @Setter private BridgeMessageHandler messageHandler;
 
@@ -45,7 +45,7 @@ public class BridgeQueryClient {
     private volatile String cachedPanelUrl = "";
 
     public BridgeQueryClient(String host, int port, String secret, String serverName,
-                             Logger logger, BridgeScheduler scheduler,
+                             PluginLogger logger, BridgeScheduler scheduler,
                              BridgeMessageHandler messageHandler) {
         this.host = host;
         this.port = port;

@@ -14,6 +14,8 @@ import gg.modl.minecraft.core.boot.BootConfig;
 import gg.modl.minecraft.core.boot.BootConfigMigrator;
 import gg.modl.minecraft.core.boot.PlatformType;
 import gg.modl.minecraft.core.boot.StartupClient;
+import gg.modl.minecraft.core.boot.SyncPollingRate;
+import gg.modl.minecraft.core.login.LoginPipeline;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
@@ -36,9 +38,6 @@ import java.util.List;
 import java.util.Optional;
 
 public class SpigotPlugin extends JavaPlugin {
-    private static final int MIN_SYNC_POLLING_RATE = 1;
-    private static final int DEFAULT_SYNC_POLLING_RATE = 2;
-
     private PluginLoader loader;
     private BridgeComponent bridgeComponent;
     private PluginLogger pluginLogger;
@@ -173,12 +172,12 @@ public class SpigotPlugin extends JavaPlugin {
 
         TicketCreator ticketCreator = TicketCreatorFactory.standalone(this, () -> loader.getHttpClient());
 
-        bridgeComponent.enable(ticketCreator, false);
+        bridgeComponent.enableStandalone(ticketCreator);
         String serverName = bridgeComponent.getBridgeConfig().getServerName();
 
         SpigotPlatform platform = new SpigotPlatform(this, getLogger(), getDataFolder(), serverName, lateBootstrap);
         ChatMessageCache chatMessageCache = new ChatMessageCache();
-        int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfig().getInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
+        int syncPollingRate = SyncPollingRate.clamp(getConfig().getInt(SyncPollingRate.CONFIG_KEY, SyncPollingRate.DEFAULT_SECONDS));
         List<String> mutedCommands = getConfig().getStringList("muted_commands");
 
         this.loader = new PluginLoader(platform, getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
@@ -189,19 +188,20 @@ public class SpigotPlugin extends JavaPlugin {
         DirectStatWipeExecutor directExecutor = new DirectStatWipeExecutor(bridgeComponent, serverName);
         loader.getSyncService().setStatWipeExecutor(directExecutor);
 
-        loader.getBridgeService().setLocalHandler(new SpigotStandaloneLocalBridgeHandler(
-                bridgeComponent.getStaffModeHandler(),
-                bridgeComponent.getFreezeHandler()));
+        loader.getBridgeService().setLocalHandler(
+                new SpigotStandaloneLocalBridgeHandler(bridgeComponent.getBridgeActions()));
 
         CommandInterceptService commandInterceptService = new CommandInterceptService(
                 loader.getCache(), loader.getFreezeService(), loader.getChatCommandLogService(),
                 loader.getLocaleManager(), loader.getPunishmentMessageService(), mutedCommands);
 
+        LoginPipeline loginPipeline = new LoginPipeline(
+                loader.getLoginService(), loader.getLoginCache(), loader.getPlayerSessionService());
+
         getServer().getPluginManager().registerEvents(new SpigotListener(
                 platform, loader.getCache(), loader.getHttpClientHolder(), loader.getChatMessageCache(),
-                loader.getLocaleManager(), loader.getLoginCache(),
+                loader.getLocaleManager(), loginPipeline,
                 loader.getChatService(), commandInterceptService,
-                loader.getLoginService(), loader.getPlayerSessionService(),
                 loader.getIpEnrichmentService(), loader.getPendingIpLookupService()), this);
     }
 
@@ -210,7 +210,7 @@ public class SpigotPlugin extends JavaPlugin {
 
         TicketCreator tcpTicketCreator = TicketCreatorFactory.bridgeOnly(bridgeComponent);
 
-        bridgeComponent.enable(tcpTicketCreator, true);
+        bridgeComponent.enableBridgeOnly(tcpTicketCreator);
     }
 
     @Override
