@@ -1,718 +1,151 @@
 package gg.modl.minecraft.fabric.v1_21_11.handler;
 
-import com.github.retrooper.packetevents.PacketEvents;
-import com.github.retrooper.packetevents.PacketEventsAPI;
-import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
-import com.github.retrooper.packetevents.protocol.player.TextureProperty;
-import com.github.retrooper.packetevents.protocol.player.UserProfile;
-import com.github.retrooper.packetevents.protocol.score.ScoreFormat;
-import com.github.retrooper.packetevents.util.Vector3d;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDisplayScoreboard;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoRemove;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerResetScore;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerScoreboardObjective;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerUpdateScore;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
-import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
+import gg.modl.minecraft.bridge.BridgeScheduler;
 import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;
-import lombok.Setter;
-import net.kyori.adventure.text.Component;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-import net.minecraft.world.GameMode;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.stream.Collectors;
-
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
-import java.util.Set;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.LoreComponent;
-import net.minecraft.entity.mob.MobEntity;
+import gg.modl.minecraft.bridge.staffmode.StaffModeCore;
+import gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.inventory.SimpleInventory;
-import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.screen.GenericContainerScreenHandler;
 import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 
+import java.util.UUID;
+
 public class FabricStaffModeHandler {
-    private final MinecraftServer server;
-    private final BridgeConfig bridgeConfig;
-    private final FabricFreezeHandler freezeHandler;
-    private final BridgeLocaleManager localeManager;
-    private final StaffModeConfig staffModeConfig;
-    @Setter private BridgeQueryClient bridgeClient;
-
-    private static final String SCOREBOARD_OBJECTIVE = "modl_staff";
-    private static final int SCOREBOARD_MAX_LINE_LENGTH = 40;
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MM/dd/yyyy");
-    private static final String PLACEHOLDER_NA = "N/A";
-
-    private final Set<UUID> staffModeActive = ConcurrentHashMap.newKeySet();
-    private final Map<UUID, UUID> targetMap = new ConcurrentHashMap<>();
-    private final Set<UUID> vanished = ConcurrentHashMap.newKeySet();
-    private final Map<UUID, PlayerSnapshot> snapshots = new ConcurrentHashMap<>();
-    private final Set<UUID> scoreboardActive = ConcurrentHashMap.newKeySet();
-    private final Map<UUID, Set<String>> previousScoreEntries = new ConcurrentHashMap<>();
-    private final Set<String> warnedItemIds = ConcurrentHashMap.newKeySet();
-    private ScheduledExecutorService scoreboardExecutor;
-
+    private static final String SILENT_CONTAINER_PREFIX = "§8Viewing: ";
     private static final int VANISH_TARGET_CLEAR_INTERVAL_TICKS = 10;
     private static final double VANISH_TARGET_CLEAR_RADIUS = 48.0;
+    private static final int MAX_FOOD_LEVEL = 20;
+
+    private final MinecraftServer server;
+    private final FabricStaffModeOps ops;
+    private final StaffModeCore core;
+
     private int vanishClearTickCounter = 0;
 
     public FabricStaffModeHandler(MinecraftServer server, BridgeConfig bridgeConfig,
-                                   FabricFreezeHandler freezeHandler,
-                                   BridgeLocaleManager localeManager,
-                                   StaffModeConfig staffModeConfig) {
+                                  FabricFreezeHandler freezeHandler,
+                                  BridgeLocaleManager localeManager,
+                                  StaffModeConfig staffModeConfig,
+                                  BridgeScheduler scheduler) {
         this.server = server;
-        this.bridgeConfig = bridgeConfig;
-        this.freezeHandler = freezeHandler;
-        this.localeManager = localeManager;
-        this.staffModeConfig = staffModeConfig;
+        this.ops = new FabricStaffModeOps(server, ModlFabricModImpl.LOGGER);
+        this.core = new StaffModeCore(bridgeConfig, staffModeConfig, localeManager, scheduler,
+                freezeHandler.getFreezeCore(), ops);
+    }
+
+    public void start() {
+        core.start();
+    }
+
+    public void shutdown() {
+        core.shutdown();
+        ops.clearHidden();
+    }
+
+    public void setBridgeClient(BridgeQueryClient bridgeClient) {
+        core.setBridgeClient(bridgeClient);
     }
 
     public boolean isInStaffMode(UUID uuid) {
-        return staffModeActive.contains(uuid);
+        return core.isInStaffMode(uuid);
     }
 
     public boolean isVanished(UUID uuid) {
-        return vanished.contains(uuid);
+        return core.isVanished(uuid);
     }
 
     public void enterStaffMode(String staffUuid) {
-        UUID uuid = UUID.fromString(staffUuid);
-
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-        if (player == null) return;
-        // Idempotent: only run setup on a genuine OFF->STAFF transition for an online player.
-        if (!staffModeActive.add(uuid)) return;
-
-        applyStaffModeSetup(player);
-    }
-
-    private void applyStaffModeSetup(ServerPlayerEntity player) {
-        saveSnapshot(player);
-        player.getInventory().clear();
-        player.changeGameMode(GameMode.CREATIVE);
-
-        if (staffModeConfig.isVanishOnEnable()) {
-            vanish(player);
-        }
-
-        setupHotbar(player, staffModeConfig.getStaffHotbar());
-        createScoreboard(player);
+        core.enterStaffMode(staffUuid);
     }
 
     public void exitStaffMode(String staffUuid) {
-        UUID uuid = UUID.fromString(staffUuid);
-        staffModeActive.remove(uuid);
-        targetMap.remove(uuid);
-
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-        if (player == null) {
-            // Keep the snapshot so the real inventory is restored on rejoin (see onPlayerJoin).
-            vanished.remove(uuid);
-            return;
-        }
-
-        removeScoreboard(player);
-        unvanish(player);
-        restoreSnapshot(player);
-
-        // This player is now a normal (non-staff) observer; re-hide every vanished player from them.
-        for (UUID vanishedUuid : vanished) {
-            if (vanishedUuid.equals(uuid)) continue;
-            ServerPlayerEntity vanishedPlayer = server.getPlayerManager().getPlayer(vanishedUuid);
-            if (vanishedPlayer != null) {
-                hidePlayerFrom(vanishedPlayer, player);
-            }
-        }
+        core.exitStaffMode(staffUuid);
     }
 
     public void setTarget(String staffUuid, String targetUuid) {
-        UUID staff = UUID.fromString(staffUuid);
-        UUID target = UUID.fromString(targetUuid);
-        targetMap.put(staff, target);
-
-        ServerPlayerEntity staffPlayer = server.getPlayerManager().getPlayer(staff);
-        ServerPlayerEntity targetPlayer = server.getPlayerManager().getPlayer(target);
-
-        if (staffPlayer != null) {
-            setupHotbar(staffPlayer, staffModeConfig.getTargetHotbar());
-            refreshScoreboard(staffPlayer);
-            if (targetPlayer != null) {
-                staffPlayer.teleport((ServerWorld) targetPlayer.getEntityWorld(),
-                        targetPlayer.getX(), targetPlayer.getY(), targetPlayer.getZ(),
-                        Set.of(), targetPlayer.getYaw(), targetPlayer.getPitch(), false);
-            }
-        }
-    }
-
-    public void clearTarget(UUID staffUuid) {
-        targetMap.remove(staffUuid);
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(staffUuid);
-        if (player != null) {
-            setupHotbar(player, staffModeConfig.getStaffHotbar());
-            refreshScoreboard(player);
-        }
+        core.setTarget(staffUuid, targetUuid);
     }
 
     public void vanishFromBridge(String staffUuid) {
-        UUID uuid = UUID.fromString(staffUuid);
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-        if (player != null) {
-            vanish(player);
-            if (staffModeActive.contains(uuid)) {
-                updateVanishHotbarItem(player, true);
-            }
-        }
+        core.vanishFromBridge(staffUuid);
     }
 
     public void unvanishFromBridge(String staffUuid) {
-        UUID uuid = UUID.fromString(staffUuid);
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-        if (player != null) {
-            unvanish(player);
-            if (staffModeActive.contains(uuid)) {
-                updateVanishHotbarItem(player, false);
-            }
-        }
+        core.unvanishFromBridge(staffUuid);
     }
 
-    private void vanish(ServerPlayerEntity staff) {
-        vanished.add(staff.getUuid());
-        for (ServerPlayerEntity online : server.getPlayerManager().getPlayerList()) {
-            if (!online.equals(staff) && !staffModeActive.contains(online.getUuid())) {
-                hidePlayerFrom(staff, online);
-            }
-        }
+    public void handleHotbarAction(UUID staffUuid, int heldSlot) {
+        core.handleHotbarAction(staffUuid, heldSlot);
     }
 
-    private void unvanish(ServerPlayerEntity staff) {
-        vanished.remove(staff.getUuid());
-        for (ServerPlayerEntity online : server.getPlayerManager().getPlayerList()) {
-            // Mirror vanish()'s exclusion: staff-mode viewers were never sent the hide packets,
-            // so re-spawning the player for them would duplicate an entity they already see.
-            if (!online.equals(staff) && !staffModeActive.contains(online.getUuid())) {
-                showPlayerTo(staff, online);
-            }
-        }
+    public void handleTargetSelect(UUID staffUuid, int heldSlot, UUID clickedUuid) {
+        core.handleTargetSelect(staffUuid, heldSlot, clickedUuid);
     }
 
-    private void hidePlayerFrom(ServerPlayerEntity toHide, ServerPlayerEntity viewer) {
-        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
-        if (peApi == null) return;
-        peApi.getPlayerManager().sendPacket(viewer,
-                new WrapperPlayServerPlayerInfoRemove(toHide.getUuid()));
-        peApi.getPlayerManager().sendPacket(viewer,
-                new WrapperPlayServerDestroyEntities(toHide.getId()));
+    public void onPlayerJoin(ServerPlayerEntity player) {
+        core.handlePlayerJoin(player.getUuid());
     }
 
-    private void showPlayerTo(ServerPlayerEntity toShow, ServerPlayerEntity viewer) {
-        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
-        if (peApi == null) return;
-
-        GameProfile mojangProfile = toShow.getGameProfile();
-        List<TextureProperty> textureProperties = new ArrayList<>();
-        for (Property prop : mojangProfile.properties().get("textures")) {
-            textureProperties.add(new TextureProperty("textures", prop.value(), prop.signature()));
-        }
-        UserProfile profile = new UserProfile(toShow.getUuid(), mojangProfile.name(), textureProperties);
-
-        com.github.retrooper.packetevents.protocol.player.GameMode peGameMode =
-                com.github.retrooper.packetevents.protocol.player.GameMode.values()[toShow.interactionManager.getGameMode().ordinal()];
-
-        WrapperPlayServerPlayerInfoUpdate.PlayerInfo info = new WrapperPlayServerPlayerInfoUpdate.PlayerInfo(
-                profile, true, toShow.networkHandler.getLatency(), peGameMode,
-                Component.text(toShow.getName().getString()), null
-        );
-
-        peApi.getPlayerManager().sendPacket(viewer,
-                new WrapperPlayServerPlayerInfoUpdate(
-                        EnumSet.of(
-                                WrapperPlayServerPlayerInfoUpdate.Action.ADD_PLAYER,
-                                WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_LISTED,
-                                WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_LATENCY,
-                                WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_GAME_MODE
-                        ),
-                        info
-                ));
-
-        peApi.getPlayerManager().sendPacket(viewer,
-                new WrapperPlayServerSpawnEntity(
-                        toShow.getId(),
-                        Optional.of(toShow.getUuid()),
-                        EntityTypes.PLAYER,
-                        new Vector3d(toShow.getX(), toShow.getY(), toShow.getZ()),
-                        toShow.getPitch(),
-                        toShow.getYaw(),
-                        toShow.getYaw(),
-                        0,
-                        Optional.of(new Vector3d(0, 0, 0))
-                ));
-    }
-
-    private void updateVanishHotbarItem(ServerPlayerEntity player, boolean isVanished) {
-        Map<Integer, StaffModeConfig.HotbarItem> hotbar = getActiveHotbar(player.getUuid());
-        if (hotbar == null) return;
-        for (Map.Entry<Integer, StaffModeConfig.HotbarItem> entry : hotbar.entrySet()) {
-            if ("vanish_toggle".equals(entry.getValue().getAction())) {
-                boolean useToggle = !isVanished && entry.getValue().getToggleItem() != null;
-                player.getInventory().setStack(entry.getKey(), createItemStack(entry.getValue(), useToggle));
-                break;
-            }
-        }
-    }
-
-    private void saveSnapshot(ServerPlayerEntity player) {
-        // Never clobber a live snapshot of the player's real inventory.
-        if (snapshots.containsKey(player.getUuid())) return;
-        int size = player.getInventory().size();
-        ItemStack[] allSlots = new ItemStack[size];
-        for (int i = 0; i < size; i++) {
-            allSlots[i] = player.getInventory().getStack(i).copy();
-        }
-        snapshots.put(player.getUuid(), new PlayerSnapshot(
-                allSlots,
-                player.getX(), player.getY(), player.getZ(),
-                player.getYaw(), player.getPitch(),
-                player.interactionManager.getGameMode(),
-                player.getHealth(),
-                player.getHungerManager().getFoodLevel(),
-                player.experienceProgress,
-                player.experienceLevel
-        ));
-    }
-
-    private void restoreSnapshot(ServerPlayerEntity player) {
-        PlayerSnapshot snapshot = snapshots.remove(player.getUuid());
-        if (snapshot != null) {
-            player.getInventory().clear();
-            for (int i = 0; i < snapshot.inventoryContents.length && i < player.getInventory().size(); i++) {
-                player.getInventory().setStack(i, snapshot.inventoryContents[i].copy());
-            }
-            player.changeGameMode(snapshot.gameMode);
-            player.setHealth(Math.min(snapshot.health, player.getMaxHealth()));
-            player.getHungerManager().setFoodLevel(snapshot.foodLevel);
-            player.experienceProgress = snapshot.exp;
-            player.experienceLevel = snapshot.level;
-            player.teleport((ServerWorld) player.getEntityWorld(), snapshot.x, snapshot.y, snapshot.z,
-                    Set.of(), snapshot.yaw, snapshot.pitch, false);
-        } else {
-            player.getInventory().clear();
-            player.changeGameMode(GameMode.SURVIVAL);
-        }
-    }
-
-    private void setupHotbar(ServerPlayerEntity player, Map<Integer, StaffModeConfig.HotbarItem> hotbar) {
-        player.getInventory().clear();
-        boolean isVanished = vanished.contains(player.getUuid());
-        hotbar.forEach((slot, hotbarItem) -> {
-            if (slot >= 0 && slot <= 8) {
-                boolean useToggle = "vanish_toggle".equals(hotbarItem.getAction())
-                        && !isVanished && hotbarItem.getToggleItem() != null;
-                ItemStack item = createItemStack(hotbarItem, useToggle);
-                player.getInventory().setStack(slot, item);
-            }
-        });
-    }
-
-    private ItemStack createItemStack(StaffModeConfig.HotbarItem hotbarItem) {
-        return createItemStack(hotbarItem, false);
-    }
-
-    private ItemStack createItemStack(StaffModeConfig.HotbarItem hotbarItem, boolean useToggle) {
-        String itemId = useToggle && hotbarItem.getToggleItem() != null ? hotbarItem.getToggleItem() : hotbarItem.getItem();
-        String name = useToggle && hotbarItem.getToggleName() != null ? hotbarItem.getToggleName() : hotbarItem.getName();
-        List<String> lore = useToggle && hotbarItem.getToggleLore() != null && !hotbarItem.getToggleLore().isEmpty()
-                ? hotbarItem.getToggleLore() : hotbarItem.getLore();
-        return createItemStack(itemId, name, lore);
-    }
-
-    private ItemStack createItemStack(String itemId, String name) {
-        return createItemStack(itemId, name, Collections.emptyList());
-    }
-
-    private ItemStack createItemStack(String itemId, String name, List<String> lore) {
-        String materialName = itemId.replace("minecraft:", "");
-        Identifier id = Identifier.of("minecraft", materialName);
-        Item item;
-        if (Registries.ITEM.containsId(id)) {
-            item = Registries.ITEM.get(id);
-        } else {
-            if (warnedItemIds.add(itemId)) {
-                gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl.LOGGER.warn(
-                        "[staff-mode] Unknown hotbar item id '{}', using STONE", itemId);
-            }
-            item = Items.STONE;
-        }
-        ItemStack stack = new ItemStack(item, 1);
-        String displayName = localeManager.colorize(name);
-        stack.set(DataComponentTypes.CUSTOM_NAME, Text.literal(displayName));
-        if (lore != null && !lore.isEmpty()) {
-            stack.set(DataComponentTypes.LORE, new LoreComponent(
-                    lore.stream().<Text>map(line -> Text.literal(localeManager.colorize(line))).toList()
-            ));
-        }
-        return stack;
-    }
-
-    public void startScoreboardUpdater() {
-        scoreboardExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "modl-bridge-scoreboard");
-            t.setDaemon(true);
-            return t;
-        });
-        scoreboardExecutor.scheduleAtFixedRate(
-                () -> server.execute(this::updateAllScoreboards), 1, 1, TimeUnit.SECONDS
-        );
-    }
-
-    private void createScoreboard(ServerPlayerEntity player) {
-        StaffModeConfig.ScoreboardConfig config = getScoreboardConfig(player.getUuid());
-        if (!config.isEnabled()) return;
-
-        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
-        if (peApi == null) return;
-
-        scoreboardActive.add(player.getUuid());
-
-        String title = replacePlaceholders(config.getTitle(), player);
-        Component titleComponent = Component.text(localeManager.colorize(title));
-
-        peApi.getPlayerManager().sendPacket(player,
-                new WrapperPlayServerScoreboardObjective(
-                        SCOREBOARD_OBJECTIVE,
-                        WrapperPlayServerScoreboardObjective.ObjectiveMode.CREATE,
-                        titleComponent,
-                        WrapperPlayServerScoreboardObjective.RenderType.INTEGER,
-                        ScoreFormat.blankScore()
-                ));
-
-        peApi.getPlayerManager().sendPacket(player,
-                new WrapperPlayServerDisplayScoreboard(1, SCOREBOARD_OBJECTIVE));
-
-        updateScoreboard(player);
-    }
-
-    private void removeScoreboard(ServerPlayerEntity player) {
-        if (!scoreboardActive.remove(player.getUuid())) return;
-        previousScoreEntries.remove(player.getUuid());
-
-        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
-        if (peApi == null) return;
-
-        peApi.getPlayerManager().sendPacket(player,
-                new WrapperPlayServerScoreboardObjective(
-                        SCOREBOARD_OBJECTIVE,
-                        WrapperPlayServerScoreboardObjective.ObjectiveMode.REMOVE,
-                        Component.empty(),
-                        null
-                ));
-    }
-
-    private void refreshScoreboard(ServerPlayerEntity player) {
-        if (!scoreboardActive.contains(player.getUuid())) return;
-        removeScoreboard(player);
-        createScoreboard(player);
-    }
-
-    private void updateAllScoreboards() {
-        Iterator<UUID> it = scoreboardActive.iterator();
-        while (it.hasNext()) {
-            UUID uuid = it.next();
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-            if (player == null) {
-                it.remove();
-                previousScoreEntries.remove(uuid);
-                continue;
-            }
-            updateScoreboard(player);
-        }
-    }
-
-    private void updateScoreboard(ServerPlayerEntity player) {
-        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
-        if (peApi == null) return;
-
-        StaffModeConfig.ScoreboardConfig config = getScoreboardConfig(player.getUuid());
-
-        String title = replacePlaceholders(config.getTitle(), player);
-        Component titleComponent = Component.text(localeManager.colorize(title));
-        peApi.getPlayerManager().sendPacket(player,
-                new WrapperPlayServerScoreboardObjective(
-                        SCOREBOARD_OBJECTIVE,
-                        WrapperPlayServerScoreboardObjective.ObjectiveMode.UPDATE,
-                        titleComponent,
-                        WrapperPlayServerScoreboardObjective.RenderType.INTEGER,
-                        ScoreFormat.blankScore()
-                ));
-
-        Set<String> oldEntries = previousScoreEntries.getOrDefault(player.getUuid(), Collections.emptySet());
-        Set<String> newEntries = new HashSet<>();
-
-        List<String> lines = config.getLines();
-        int score = lines.size();
-        Set<String> usedEntries = new HashSet<>();
-
-        for (String line : lines) {
-            // Truncate (color-code-safe) FIRST, then de-dup in the truncated domain so two
-            // identical >=40-char lines don't collapse to the same scoreboard entry.
-            String resolved = localeManager.colorize(replacePlaceholders(line, player));
-            resolved = truncateColorSafe(resolved, SCOREBOARD_MAX_LINE_LENGTH);
-            while (usedEntries.contains(resolved)) {
-                resolved = truncateColorSafe(
-                        truncateColorSafe(resolved, SCOREBOARD_MAX_LINE_LENGTH - 2) + "\u00a7r",
-                        SCOREBOARD_MAX_LINE_LENGTH);
-            }
-            usedEntries.add(resolved);
-            newEntries.add(resolved);
-
-            peApi.getPlayerManager().sendPacket(player,
-                    new WrapperPlayServerUpdateScore(
-                            resolved,
-                            WrapperPlayServerUpdateScore.Action.CREATE_OR_UPDATE_ITEM,
-                            SCOREBOARD_OBJECTIVE,
-                            score--,
-                            null,
-                            ScoreFormat.blankScore()
-                    ));
-        }
-
-        for (String oldEntry : oldEntries) {
-            if (!newEntries.contains(oldEntry)) {
-                peApi.getPlayerManager().sendPacket(player,
-                        new WrapperPlayServerResetScore(oldEntry, SCOREBOARD_OBJECTIVE));
-            }
-        }
-
-        previousScoreEntries.put(player.getUuid(), newEntries);
-    }
-
-    private static String truncateColorSafe(String s, int n) {
-        if (s == null || s.length() <= n) return s;
-        if (n > 0 && s.charAt(n - 1) == '§') return s.substring(0, n - 1);
-        return s.substring(0, n);
-    }
-
-    private StaffModeConfig.ScoreboardConfig getScoreboardConfig(UUID uuid) {
-        return targetMap.containsKey(uuid) ? staffModeConfig.getTargetScoreboard() : staffModeConfig.getStaffScoreboard();
-    }
-
-    private String replacePlaceholders(String line, ServerPlayerEntity player) {
+    public void onPlayerQuit(ServerPlayerEntity player) {
         UUID uuid = player.getUuid();
-        boolean isVanished = vanished.contains(uuid);
-        StaffModeConfig.ScoreboardConfig config = getScoreboardConfig(uuid);
-
-        String result = line
-                .replace("{player_name}", player.getName().getString())
-                .replace("{server}", bridgeConfig.getServerName())
-                .replace("{online}", String.valueOf(server.getPlayerManager().getPlayerList().size()))
-                .replace("{max_players}", String.valueOf(server.getMaxPlayerCount()))
-                .replace("{date}", LocalDateTime.now().format(DATE_FORMAT))
-                .replace("{vanish}", isVanished ? config.getVanish() : "")
-                .replace("{vanish_status}", isVanished ? localeManager.colorize("&aON") : localeManager.colorize("&cOFF"))
-                .replace("{vanished}", isVanished ? "Vanished" : "Visible")
-                .replace("{staff_online}", String.valueOf(staffModeActive.size()));
-        return replaceTargetPlaceholders(result, uuid);
-    }
-
-    private String replaceTargetPlaceholders(String result, UUID staffUuid) {
-        UUID targetUuid = targetMap.get(staffUuid);
-        ServerPlayerEntity target = targetUuid != null ? server.getPlayerManager().getPlayer(targetUuid) : null;
-
-        if (target != null) {
-            return result
-                    .replace("{target_name}", target.getName().getString())
-                    .replace("{target_health}", String.format("%.1f", target.getHealth()))
-                    .replace("{target_ping}", String.valueOf(target.networkHandler.getLatency()))
-                    .replace("{freeze_status}", freezeHandler.isFrozen(targetUuid) ? localeManager.colorize("&cYes") : localeManager.colorize("&aNo"));
-        }
-
-        String nameValue = targetUuid != null ? "Offline" : "None";
-        return result
-                .replace("{target_name}", nameValue)
-                .replace("{target_health}", PLACEHOLDER_NA)
-                .replace("{target_ping}", PLACEHOLDER_NA)
-                .replace("{freeze_status}", PLACEHOLDER_NA);
+        core.handlePlayerQuit(uuid);
+        ops.forgetViewer(uuid);
     }
 
     public void onTick() {
-        if (!vanished.isEmpty() && (++vanishClearTickCounter % VANISH_TARGET_CLEAR_INTERVAL_TICKS == 0)) {
+        if (anyVanished() && (++vanishClearTickCounter % VANISH_TARGET_CLEAR_INTERVAL_TICKS == 0)) {
             clearVanishedMobTargets();
         }
-        if (staffModeActive.isEmpty()) return;
-        for (UUID uuid : staffModeActive) {
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-            if (player == null) continue;
-            // Safety net: never wipe the inventory of an active staffer whose snapshot was
-            // never captured (e.g. offline-enter race) — see enterStaffMode/onPlayerJoin.
-            if (!snapshots.containsKey(uuid)) continue;
-            if (player.getHungerManager().getFoodLevel() < 20) {
-                player.getHungerManager().setFoodLevel(20);
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            UUID uuid = player.getUuid();
+            if (!core.isInStaffMode(uuid) || !ops.hasSnapshot(uuid)) continue;
+
+            if (player.getHungerManager().getFoodLevel() < MAX_FOOD_LEVEL) {
+                player.getHungerManager().setFoodLevel(MAX_FOOD_LEVEL);
             }
             if (player.getHealth() < player.getMaxHealth()) {
                 player.setHealth(player.getMaxHealth());
             }
-            // Prevent item pickup: clear any slots not part of the expected hotbar
-            Map<Integer, StaffModeConfig.HotbarItem> hotbar = getActiveHotbar(uuid);
             for (int i = 0; i < player.getInventory().size(); i++) {
-                if (player.getInventory().getStack(i).isEmpty()) continue;
-                if (i <= 8 && hotbar != null && hotbar.containsKey(i)) continue;
+                if (player.getInventory().getStack(i).isEmpty() || ops.isProtectedSlot(uuid, i)) continue;
                 player.getInventory().setStack(i, ItemStack.EMPTY);
             }
         }
     }
 
+    private boolean anyVanished() {
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            if (core.isVanished(player.getUuid())) return true;
+        }
+        return false;
+    }
+
     private void clearVanishedMobTargets() {
-        for (UUID vanishedUuid : vanished) {
-            ServerPlayerEntity vp = server.getPlayerManager().getPlayer(vanishedUuid);
-            if (vp == null) continue;
-            ServerWorld world = (ServerWorld) vp.getEntityWorld();
-            Box box = vp.getBoundingBox().expand(VANISH_TARGET_CLEAR_RADIUS);
-            for (MobEntity mob : world.getEntitiesByClass(MobEntity.class, box, m -> m.getTarget() == vp)) {
+        for (ServerPlayerEntity vanishedPlayer : server.getPlayerManager().getPlayerList()) {
+            if (!core.isVanished(vanishedPlayer.getUuid())) continue;
+            ServerWorld world = (ServerWorld) vanishedPlayer.getEntityWorld();
+            Box box = vanishedPlayer.getBoundingBox().expand(VANISH_TARGET_CLEAR_RADIUS);
+            for (MobEntity mob : world.getEntitiesByClass(MobEntity.class, box, m -> m.getTarget() == vanishedPlayer)) {
                 mob.setTarget(null);
             }
         }
     }
 
-    public Map<Integer, StaffModeConfig.HotbarItem> getActiveHotbar(UUID uuid) {
-        return targetMap.containsKey(uuid) ? staffModeConfig.getTargetHotbar() : staffModeConfig.getStaffHotbar();
-    }
-
-    public void executeAction(ServerPlayerEntity player, StaffModeConfig.HotbarItem item) {
-        switch (item.getAction()) {
-            case "vanish_toggle" -> toggleVanish(player);
-            case "random_teleport" -> handleRandomTeleport(player);
-            case "freeze_target" -> handleFreezeTarget(player);
-            case "stop_target" -> handleStopTarget(player);
-            case "inspect_target" -> handleInspectTarget(player);
-            case "open_inventory" -> handleOpenInventory(player);
-            case "teleport_to_target" -> handleTeleportToTarget(player);
-            case "hackreport_target" -> handleHackreportTarget(player);
-            case "staff_menu" -> handleStaffMenu(player);
-        }
-    }
-
-    private void toggleVanish(ServerPlayerEntity player) {
-        if (vanished.contains(player.getUuid())) {
-            unvanish(player);
-            player.sendMessage(Text.literal(localeManager.getMessage("staff_mode.vanish.off")), false);
-            updateVanishHotbarItem(player, false);
-        } else {
-            vanish(player);
-            player.sendMessage(Text.literal(localeManager.getMessage("staff_mode.vanish.on")), false);
-            updateVanishHotbarItem(player, true);
-        }
-    }
-
-    private void handleRandomTeleport(ServerPlayerEntity player) {
-        List<ServerPlayerEntity> candidates = server.getPlayerManager().getPlayerList().stream()
-                .filter(p -> !p.equals(player) && !staffModeActive.contains(p.getUuid()))
-                .collect(Collectors.toList());
-
-        if (candidates.isEmpty()) {
-            player.sendMessage(Text.literal(localeManager.getMessage("staff_mode.random_teleport.no_players")), false);
-            return;
-        }
-
-        ServerPlayerEntity target = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
-        player.teleport((ServerWorld) target.getEntityWorld(), target.getX(), target.getY(), target.getZ(),
-                Set.of(), target.getYaw(), target.getPitch(), false);
-        player.sendMessage(Text.literal(localeManager.getMessage("staff_mode.random_teleport.teleported",
-                mapOf("player", target.getName().getString()))), false);
-    }
-
-    private void handleFreezeTarget(ServerPlayerEntity player) {
-        UUID targetUuid = targetMap.get(player.getUuid());
-        if (targetUuid == null) return;
-
-        ServerPlayerEntity target = server.getPlayerManager().getPlayer(targetUuid);
-        String targetName = target != null ? target.getName().getString() : "Unknown";
-
-        if (freezeHandler.isFrozen(targetUuid)) {
-            freezeHandler.unfreeze(targetUuid.toString());
-            player.sendMessage(Text.literal(localeManager.getMessage("staff_mode.freeze.unfrozen",
-                    mapOf("player", targetName))), false);
-        } else {
-            freezeHandler.freeze(targetUuid.toString(), player.getUuid().toString());
-            player.sendMessage(Text.literal(localeManager.getMessage("staff_mode.freeze.frozen",
-                    mapOf("player", targetName))), false);
-        }
-    }
-
-    private void handleStopTarget(ServerPlayerEntity player) {
-        ServerPlayerEntity target = resolveTarget(player.getUuid());
-        String targetName = target != null ? target.getName().getString() : "Unknown";
-        clearTarget(player.getUuid());
-        player.sendMessage(Text.literal(localeManager.getMessage("staff_mode.target.cleared",
-                mapOf("player", targetName))), false);
-    }
-
-    private void handleInspectTarget(ServerPlayerEntity player) {
-        ServerPlayerEntity target = resolveTarget(player.getUuid());
-        if (target == null) return;
-
-        if (bridgeClient != null && bridgeClient.isConnected()) {
-            bridgeClient.sendMessage("OPEN_INSPECT_MENU", player.getUuid().toString(), target.getName().getString());
-        } else {
-            server.getCommandManager().parseAndExecute(player.getCommandSource(), "inspect " + target.getName().getString());
-        }
-    }
-
-    private void handleOpenInventory(ServerPlayerEntity player) {
-        ServerPlayerEntity target = resolveTarget(player.getUuid());
-        if (target == null) return;
-
-        // Read-only point-in-time copy so clicks can never write through to the target's
-        // live inventory.
-        SimpleInventory view = new SimpleInventory(45);
-        for (int i = 0; i < 45 && i < target.getInventory().size(); i++) {
-            view.setStack(i, target.getInventory().getStack(i).copy());
-        }
-
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                (syncId, playerInv, p) -> new GenericContainerScreenHandler(
-                        ScreenHandlerType.GENERIC_9X5, syncId, playerInv, view, 5),
-                Text.literal(target.getName().getString() + "'s Inventory")));
-    }
-
-    private static final String SILENT_CONTAINER_PREFIX = "\u00a78Viewing: ";
-
     public void openSilentContainer(ServerPlayerEntity player, Inventory container, BlockPos pos) {
         int size = container.size();
-        // Round up to nearest multiple of 9 for chest-style GUI, max 54 (6 rows)
         int rows = Math.min(6, Math.max(1, (size + 8) / 9));
         int guiSize = rows * 9;
 
@@ -735,159 +168,4 @@ public class FabricStaffModeHandler {
                         handlerType, syncId, playerInv, viewInventory, rows),
                 Text.literal(SILENT_CONTAINER_PREFIX + pos.getX() + "," + pos.getY() + "," + pos.getZ())));
     }
-
-    private void handleTeleportToTarget(ServerPlayerEntity player) {
-        ServerPlayerEntity target = resolveTarget(player.getUuid());
-        if (target != null) {
-            player.teleport((ServerWorld) target.getEntityWorld(), target.getX(), target.getY(), target.getZ(),
-                    Set.of(), target.getYaw(), target.getPitch(), false);
-            player.sendMessage(Text.literal(localeManager.getMessage("staff_mode.teleport.teleported",
-                    mapOf("player", target.getName().getString()))), false);
-        } else {
-            player.sendMessage(Text.literal(localeManager.getMessage("staff_mode.teleport.target_offline")), false);
-        }
-    }
-
-    private void handleHackreportTarget(ServerPlayerEntity player) {
-        ServerPlayerEntity target = resolveTarget(player.getUuid());
-        if (target != null) {
-            server.getCommandManager().parseAndExecute(player.getCommandSource(), "hackreport " + target.getName().getString());
-        }
-    }
-
-    private void handleStaffMenu(ServerPlayerEntity player) {
-        if (bridgeClient != null && bridgeClient.isConnected()) {
-            bridgeClient.sendMessage("OPEN_STAFF_MENU", player.getUuid().toString());
-        } else {
-            server.getCommandManager().parseAndExecute(player.getCommandSource(), "staffmenu");
-        }
-    }
-
-    private ServerPlayerEntity resolveTarget(UUID staffUuid) {
-        UUID targetUuid = targetMap.get(staffUuid);
-        if (targetUuid == null) return null;
-        return server.getPlayerManager().getPlayer(targetUuid);
-    }
-
-    public void onPlayerJoin(ServerPlayerEntity player) {
-        UUID joiningId = player.getUuid();
-
-        // Staff member entered staff mode while offline on this node: apply setup now so the
-        // snapshot is captured before any onTick wipe.
-        if (staffModeActive.contains(joiningId) && !snapshots.containsKey(joiningId)) {
-            server.execute(() -> applyStaffModeSetup(player));
-        }
-        // Staff member exited staff mode while offline: restore + consume their real inventory.
-        if (!staffModeActive.contains(joiningId) && snapshots.containsKey(joiningId)) {
-            server.execute(() -> restoreSnapshot(player));
-        }
-        // Cross-server /target: replay the teleport/hotbar now that the staff member is present.
-        UUID targetUuid = targetMap.get(joiningId);
-        if (targetUuid != null) {
-            setTarget(joiningId.toString(), targetUuid.toString());
-        }
-
-        if (!staffModeActive.contains(player.getUuid())) {
-            server.execute(() -> {
-                for (UUID vanishedUuid : vanished) {
-                    ServerPlayerEntity vanishedPlayer = server.getPlayerManager().getPlayer(vanishedUuid);
-                    if (vanishedPlayer != null) {
-                        hidePlayerFrom(vanishedPlayer, player);
-                    }
-                }
-            });
-        }
-        if (vanished.contains(player.getUuid())) {
-            server.execute(() -> {
-                for (ServerPlayerEntity online : server.getPlayerManager().getPlayerList()) {
-                    if (!online.equals(player) && !staffModeActive.contains(online.getUuid())) {
-                        hidePlayerFrom(player, online);
-                    }
-                }
-            });
-        }
-    }
-
-    public void onPlayerQuit(ServerPlayerEntity player) {
-        UUID uuid = player.getUuid();
-
-        List<UUID> affectedStaff = targetMap.entrySet().stream()
-                .filter(entry -> entry.getValue().equals(uuid))
-                .map(Map.Entry::getKey)
-                .toList();
-        for (UUID staffUuid : affectedStaff) {
-            targetMap.remove(staffUuid);
-            ServerPlayerEntity staffPlayer = server.getPlayerManager().getPlayer(staffUuid);
-            if (staffPlayer != null && staffModeActive.contains(staffUuid)) {
-                staffPlayer.sendMessage(Text.literal(localeManager.getMessage("staff_mode.target.disconnected",
-                        mapOf("player", player.getName().getString()))), false);
-                setupHotbar(staffPlayer, staffModeConfig.getStaffHotbar());
-                refreshScoreboard(staffPlayer);
-            }
-        }
-
-        if (staffModeActive.remove(uuid)) {
-            removeScoreboard(player);
-            unvanish(player);
-            restoreSnapshot(player);
-        }
-        scoreboardActive.remove(uuid);
-        previousScoreEntries.remove(uuid);
-        targetMap.remove(uuid);
-        vanished.remove(uuid);
-        snapshots.remove(uuid);
-    }
-
-    public void shutdown() {
-        if (scoreboardExecutor != null) {
-            scoreboardExecutor.shutdownNow();
-        }
-        for (UUID uuid : staffModeActive) {
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-            if (player != null) {
-                removeScoreboard(player);
-                restoreSnapshot(player);
-            }
-        }
-        for (UUID uuid : vanished) {
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-            if (player != null) {
-                unvanish(player);
-            }
-        }
-        scoreboardActive.clear();
-        previousScoreEntries.clear();
-        staffModeActive.clear();
-        vanished.clear();
-        targetMap.clear();
-        snapshots.clear();
-    }
-
-    private static class PlayerSnapshot {
-        final ItemStack[] inventoryContents;
-        final double x, y, z;
-        final float yaw, pitch;
-        final GameMode gameMode;
-        final float health;
-        final int foodLevel;
-        final float exp;
-        final int level;
-
-        PlayerSnapshot(ItemStack[] inventoryContents,
-                       double x, double y, double z, float yaw, float pitch,
-                       GameMode gameMode, float health, int foodLevel, float exp, int level) {
-            this.inventoryContents = inventoryContents;
-            this.x = x;
-            this.y = y;
-            this.z = z;
-            this.yaw = yaw;
-            this.pitch = pitch;
-            this.gameMode = gameMode;
-            this.health = health;
-            this.foodLevel = foodLevel;
-            this.exp = exp;
-            this.level = level;
-        }
-    }
-
 }

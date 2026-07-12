@@ -99,7 +99,7 @@ public abstract class AbstractBridgeComponent {
 
         statWipeHandler = new StatWipeHandler(logger, bridgeConfig, context.getPlayerProvider());
 
-        staffModeConfig = new StaffModeConfig(dataFolder, logger);
+        staffModeConfig = StaffModeConfig.load(dataFolder, logger);
     }
 
     private void initializePlatformHandlers() {
@@ -108,23 +108,33 @@ public abstract class AbstractBridgeComponent {
     }
 
     private void connectBridgeClientIfConfigured(boolean connectToProxy, Logger logger) {
-        if (connectToProxy && !isBlank(bridgeConfig.getProxyHost()) && !isBlank(bridgeConfig.getApiKey())) {
-            bridgeClient = new BridgeQueryClient(
-                    bridgeConfig.getProxyHost(),
-                    bridgeConfig.getProxyPort(),
-                    bridgeConfig.getApiKey(),
-                    bridgeConfig.getServerName(),
-                    logger,
-                    context.getScheduler(),
-                    createMessageHandler()
-            );
-            bridgeClient.connect();
-            onBridgeClientCreated(bridgeClient);
-        } else if (connectToProxy && isBlank(bridgeConfig.getProxyHost())) {
-            pluginLogger.warning("[bridge] Bridge-only mode is enabled but proxy-host is empty; backend will not connect to proxy");
-        } else if (connectToProxy && isBlank(bridgeConfig.getApiKey())) {
-            pluginLogger.warning("[bridge] Bridge-only mode is enabled but api-key is empty; backend cannot authenticate to proxy");
+        if (!connectToProxy) {
+            return;
         }
+
+        boolean proxyHostMissing = isBlank(bridgeConfig.getProxyHost());
+        boolean apiKeyMissing = isBlank(bridgeConfig.getApiKey());
+
+        if (proxyHostMissing) {
+            pluginLogger.warning("[bridge] Bridge-only mode is enabled but proxy-host is empty; backend will not connect to proxy");
+            return;
+        }
+        if (apiKeyMissing) {
+            pluginLogger.warning("[bridge] Bridge-only mode is enabled but api-key is empty; backend cannot authenticate to proxy");
+            return;
+        }
+
+        bridgeClient = new BridgeQueryClient(
+                bridgeConfig.getProxyHost(),
+                bridgeConfig.getProxyPort(),
+                bridgeConfig.getApiKey(),
+                bridgeConfig.getServerName(),
+                logger,
+                context.getScheduler(),
+                createMessageHandler()
+        );
+        bridgeClient.connect();
+        onBridgeClientCreated(bridgeClient);
     }
 
     private void initializeAutoReporting(Logger logger, TicketCreator ticketCreator) {

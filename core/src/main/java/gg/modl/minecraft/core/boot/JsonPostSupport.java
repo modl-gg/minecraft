@@ -28,25 +28,9 @@ final class JsonPostSupport {
             }
             connection.setDoOutput(true);
 
-            // Don't use try-with-resources: OutputStream.close() can internally call
-            // getInputStream() on some JDK implementations, throwing an IOException
-            // with the JDK default message format before we can read the error body.
-            OutputStream os = connection.getOutputStream();
-            os.write(jsonBody.getBytes(StandardCharsets.UTF_8));
-            os.flush();
+            writeBodyWithoutAutoClose(connection, jsonBody);
 
-            int status;
-            try {
-                status = connection.getResponseCode();
-            } catch (IOException e) {
-                // Some JDK versions re-throw from getResponseCode() if status line
-                // is unavailable. Try to extract the error body for diagnostics.
-                String errorBody = readErrorStream(connection);
-                if (errorBody != null) {
-                    throw new IOException("Request to " + urlString + " failed: " + errorBody, e);
-                }
-                throw new IOException("Request to " + urlString + " failed: " + e.getMessage(), e);
-            }
+            int status = readResponseCodeOrExtractError(connection, urlString);
 
             InputStream stream = (status >= 200 && status < 300)
                     ? connection.getInputStream()
@@ -72,6 +56,24 @@ final class JsonPostSupport {
             return responseBody.toString();
         } finally {
             connection.disconnect();
+        }
+    }
+
+    private static void writeBodyWithoutAutoClose(HttpURLConnection connection, String jsonBody) throws IOException {
+        OutputStream os = connection.getOutputStream();
+        os.write(jsonBody.getBytes(StandardCharsets.UTF_8));
+        os.flush();
+    }
+
+    private static int readResponseCodeOrExtractError(HttpURLConnection connection, String urlString) throws IOException {
+        try {
+            return connection.getResponseCode();
+        } catch (IOException e) {
+            String errorBody = readErrorStream(connection);
+            if (errorBody != null) {
+                throw new IOException("Request to " + urlString + " failed: " + errorBody, e);
+            }
+            throw new IOException("Request to " + urlString + " failed: " + e.getMessage(), e);
         }
     }
 

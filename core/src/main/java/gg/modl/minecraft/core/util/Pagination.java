@@ -1,7 +1,6 @@
 package gg.modl.minecraft.core.util;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Value;
 
 import java.util.List;
 
@@ -45,12 +44,12 @@ public final class Pagination {
         return printMode ? page : 0;
     }
 
-    @Data @AllArgsConstructor
+    @Value
     public static class Page {
-        private final int page;
-        private final int totalPages;
-        private final int start;
-        private final int end;
+        int page;
+        int totalPages;
+        int start;
+        int end;
 
         public boolean hasNextPage() {
             return page < totalPages;

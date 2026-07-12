@@ -20,7 +20,6 @@ public class BootConfig {
     private String proxyType;
     private int bridgePort = 25590;
 
-    // Bridge-only proxy connection settings captured by the setup wizard and persisted in boot.yml
     private String wizardProxyHost;
     private int wizardProxyPort = 25590;
 
@@ -47,7 +46,7 @@ public class BootConfig {
 
     public boolean isValid() {
         if (apiKey == null || apiKey.isEmpty() || apiKey.equals(PLACEHOLDER_API_KEY)) {
-            return mode == Mode.BRIDGE_ONLY; // bridge-only can work without API key for now
+            return mode == Mode.BRIDGE_ONLY;
         }
         return true;
     }

@@ -1,14 +1,12 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Value;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+@Value
 public class PunishmentAcknowledgeRequest {
-    private @NotNull String punishmentId, playerUuid, executedAt;
-    private @Nullable String errorMessage;
-    private boolean success;
+    @NotNull String punishmentId, playerUuid, executedAt;
+    @Nullable String errorMessage;
+    boolean success;
 }

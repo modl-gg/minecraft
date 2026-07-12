@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -152,7 +153,7 @@ public class ReportConfirmMenu extends SimpleMenu {
         sendMessage(locale.getMessage("messages.submitting", mapOf("type", "report")));
 
         CompletableFuture<String> replayFuture;
-        ReplayService replayService = platform.getReplayService();
+        ReplayService replayService = PluginServices.replay();
         if (reportData.isAttachReplay() && replayService != null && replayService.shouldAttemptCapture(target.getUuid())) {
             replayFuture = replayService.captureReplay(target.getUuid(), target.getUsername());
         } else {
@@ -182,7 +183,7 @@ public class ReportConfirmMenu extends SimpleMenu {
 
             future.thenAccept(response -> {
                 if (response.isSuccess() && response.getTicketId() != null) {
-                    new TicketCommandUtil(platform.getCache()).setCooldown(reporter.getUuid(),
+                    new TicketCommandUtil(PluginServices.cache()).setCooldown(reporter.getUuid(),
                             reportData.isChatReport() ? "chat" : "player");
 
                     sendMessage(locale.getMessage("messages.success", mapOf("type", "Report")));

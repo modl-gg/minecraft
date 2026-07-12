@@ -1,7 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
-import dev.simplix.cirrus.Cirrus;
-import dev.simplix.cirrus.actionhandler.ActionHandlers;
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.CallResult;
@@ -18,24 +17,30 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
+import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
-import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.staff.PermissionUtil;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class PunishMenu extends BaseInspectMenu {
     private List<PunishmentTypesResponse.PunishmentTypeData> punishmentTypes = new ArrayList<>();
     private final Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal = new HashMap<>();
+    private final Map<Integer, PunishmentPreviewResponse> previewByOrdinal = new ConcurrentHashMap<>();
     private final PunishGuiConfig guiConfig;
-    private PunishmentPreviewResponse previewData;
     private final Consumer<CirrusPlayerWrapper> parentBackAction;
+    @Getter private final CompletableFuture<Void> dataFuture;
 
     private static final int[] GUI_SLOTS = {28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43};
+    private static final int PREVIEW_WINDOW_SIZE = 4;
 
     public PunishMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                       Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
@@ -45,7 +50,7 @@ public class PunishMenu extends BaseInspectMenu {
         title("Punish: " + targetName);
         activeTab = InspectTab.PUNISH;
 
-        Cache configCache = platform.getCache();
+        Cache configCache = PluginServices.cache();
         PunishGuiConfig cached = configCache != null ? configCache.getCachedPunishGuiConfig() : null;
         if (cached != null) {
             this.guiConfig = cached;
@@ -57,54 +62,63 @@ public class PunishMenu extends BaseInspectMenu {
             }
         }
 
-        loadPunishmentTypes();
-        loadPreviewData();
         buildHeader();
-        buildPunishmentGrid();
+        this.dataFuture = loadPunishmentTypes()
+                .thenCompose(v -> loadPreviews())
+                .thenRun(this::buildPunishmentGrid);
     }
 
-    private void loadPunishmentTypes() {
-        Cache cache = platform.getCache();
+    private CompletableFuture<Void> loadPunishmentTypes() {
+        Cache cache = PluginServices.cache();
 
         PunishmentTypesResponse cached = cache != null ? cache.getCachedPunishmentTypes() : null;
         if (cached != null && cached.isSuccess() && cached.getData() != null) {
-            punishmentTypes = new ArrayList<>(cached.getData());
-            for (PunishmentTypesResponse.PunishmentTypeData type : punishmentTypes) {
-                typesByOrdinal.put(type.getOrdinal(), type);
-            }
-            return;
+            applyPunishmentTypes(cached.getData());
+            return CompletableFuture.completedFuture(null);
         }
 
-        try {
-            httpClient.getPunishmentTypes().thenAccept(response -> {
-                if (response.isSuccess() && response.getData() != null) {
-                    punishmentTypes = new ArrayList<>(response.getData());
-                    for (PunishmentTypesResponse.PunishmentTypeData type : punishmentTypes) {
-                        typesByOrdinal.put(type.getOrdinal(), type);
-                    }
-                    if (cache != null) cache.cachePunishmentTypes(response);
-                }
-            }).join();
-        } catch (Exception ignored) {}
+        return httpClient.getPunishmentTypes().thenAccept(response -> {
+            if (response.isSuccess() && response.getData() != null) {
+                applyPunishmentTypes(response.getData());
+                if (cache != null) cache.cachePunishmentTypes(response);
+            }
+        }).exceptionally(e -> null);
     }
 
-    private void loadPreviewData() {
-        try {
-            int firstOrdinal = guiConfig.getEnabledSlots().stream()
-                    .findFirst()
-                    .map(PunishGuiConfig.PunishSlotConfig::getOrdinal)
-                    .orElse(6);
+    private void applyPunishmentTypes(List<PunishmentTypesResponse.PunishmentTypeData> data) {
+        punishmentTypes = new ArrayList<>(data);
+        for (PunishmentTypesResponse.PunishmentTypeData type : punishmentTypes) {
+            typesByOrdinal.put(type.getOrdinal(), type);
+        }
+    }
 
-            httpClient.getPunishmentPreview(targetUuid, firstOrdinal).thenAccept(response -> {
-                if (response.isSuccess()) {
-                    this.previewData = response;
-                }
-            }).join();
-        } catch (Exception ignored) {}
+    private CompletableFuture<Void> loadPreviews() {
+        List<Integer> pendingOrdinals = new ArrayList<>();
+        for (PunishGuiConfig.PunishSlotConfig slotConfig : guiConfig.getEnabledSlots()) {
+            int ordinal = slotConfig.getOrdinal();
+            if (!typesByOrdinal.containsKey(ordinal) || previewByOrdinal.containsKey(ordinal)) continue;
+            pendingOrdinals.add(ordinal);
+        }
+        return loadPreviewWindow(pendingOrdinals, 0);
+    }
+
+    private CompletableFuture<Void> loadPreviewWindow(List<Integer> ordinals, int windowStart) {
+        if (windowStart >= ordinals.size()) return CompletableFuture.completedFuture(null);
+
+        int windowEnd = Math.min(windowStart + PREVIEW_WINDOW_SIZE, ordinals.size());
+        List<CompletableFuture<Void>> window = new ArrayList<>();
+        for (int i = windowStart; i < windowEnd; i++) {
+            int ordinal = ordinals.get(i);
+            window.add(httpClient.getPunishmentPreview(targetUuid, ordinal).thenAccept(response -> {
+                if (response.isSuccess()) previewByOrdinal.put(ordinal, response);
+            }).exceptionally(e -> null));
+        }
+        return CompletableFuture.allOf(window.toArray(new CompletableFuture[0]))
+                .thenCompose(v -> loadPreviewWindow(ordinals, windowEnd));
     }
 
     private void buildPunishmentGrid() {
-        Cache cache = platform.getCache();
+        Cache cache = PluginServices.cache();
 
         for (int configSlot = 1; configSlot <= 14; configSlot++) {
             PunishGuiConfig.PunishSlotConfig slotConfig = guiConfig.getSlot(configSlot);
@@ -218,13 +232,14 @@ public class PunishMenu extends BaseInspectMenu {
         else
             result = result.replace("{staff-description}", "");
 
-        if (previewData != null) {
-            result = result.replace("{social-status}", previewData.getSocialStatus() != null ?
-                    previewData.getSocialStatus() : "Unknown");
-            result = result.replace("{gameplay-status}", previewData.getGameplayStatus() != null ?
-                    previewData.getGameplayStatus() : "Unknown");
-            result = result.replace("{social-points}", String.valueOf(previewData.getSocialPoints()));
-            result = result.replace("{gameplay-points}", String.valueOf(previewData.getGameplayPoints()));
+        PunishmentPreviewResponse preview = previewByOrdinal.get(type.getOrdinal());
+        if (preview != null) {
+            result = result.replace("{social-status}", preview.getSocialStatus() != null ?
+                    preview.getSocialStatus() : "Unknown");
+            result = result.replace("{gameplay-status}", preview.getGameplayStatus() != null ?
+                    preview.getGameplayStatus() : "Unknown");
+            result = result.replace("{social-points}", String.valueOf(preview.getSocialPoints()));
+            result = result.replace("{gameplay-points}", String.valueOf(preview.getGameplayPoints()));
         } else {
             result = result.replace("{social-status}", "Loading...");
             result = result.replace("{gameplay-status}", "Loading...");
@@ -259,12 +274,13 @@ public class PunishMenu extends BaseInspectMenu {
     }
 
     private void handlePunishmentType(Click click, PunishmentTypesResponse.PunishmentTypeData type) {
-        ActionHandlers.openAsync(c ->
-                new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, type, parentBackAction,
-                        player -> Cirrus.executor().execute(() -> {
-                            PunishMenu m = new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction);
-                            platform.runOnMainThread(() -> m.display(player));
-                        })))
-                .handle(click);
+        Consumer<CirrusPlayerWrapper> backToPunish = player -> {
+            PunishMenu m = new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, parentBackAction);
+            MenuAsync.displayWhenLoaded(platform, m.getDataFuture(), player, m::display);
+        };
+
+        PunishSeverityMenu severityMenu = new PunishSeverityMenu(platform, httpClient, viewerUuid, viewerName,
+                targetAccount, type, parentBackAction, backToPunish);
+        MenuAsync.displayWhenLoaded(platform, severityMenu.getDataFuture(), click.player(), severityMenu::display);
     }
 }

@@ -1,9 +1,9 @@
 package gg.modl.minecraft.fabric;
 
 import com.alessiodp.libby.FabricLibraryManager;
-import com.alessiodp.libby.Library;
 import gg.modl.minecraft.api.LibraryRecord;
 import gg.modl.minecraft.core.Libraries;
+import gg.modl.minecraft.core.boot.LibraryLoader;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
@@ -29,7 +29,8 @@ public class ModlFabricMod implements DedicatedServerModInitializer {
     @Override
     public void onInitializeServer() {
         String gameVersion = FabricLoader.getInstance()
-                .getModContainer("minecraft").get()
+                .getModContainer("minecraft")
+                .orElseThrow(() -> new IllegalStateException("minecraft mod container missing"))
                 .getMetadata().getVersion().getFriendlyString();
 
         loadLibraries();
@@ -132,19 +133,6 @@ public class ModlFabricMod implements DedicatedServerModInitializer {
     }
 
     private void loadLibrary(FabricLibraryManager libraryManager, LibraryRecord record) {
-        Library.Builder builder = Library.builder()
-                .groupId(record.getGroupId())
-                .artifactId(record.getArtifactId())
-                .version(record.getVersion());
-
-        if (record.hasRelocations()) {
-            for (String[] relocation : record.getRelocations()) {
-                builder.relocate(relocation[0], relocation[1]);
-            }
-        }
-        if (record.getUrl() != null) builder.url(record.getUrl());
-        if (record.hasChecksum()) builder.checksumFromBase64(record.getChecksum());
-
-        libraryManager.loadLibrary(builder.build());
+        libraryManager.loadLibrary(LibraryLoader.toLibrary(record));
     }
 }

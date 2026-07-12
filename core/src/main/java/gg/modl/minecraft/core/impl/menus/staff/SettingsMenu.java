@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -32,7 +33,7 @@ public class SettingsMenu extends BaseStaffMenu {
         super(platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
         this.panelUrl = panelUrl;
 
-        Cache cache = platform.getCache();
+        Cache cache = PluginServices.cache();
         if (cache != null) {
             this.canModifySettings = cache.hasPermission(viewerUuid, Permissions.SETTINGS_MODIFY);
             this.canManageStaff = cache.hasPermission(viewerUuid, Permissions.STAFF_MANAGE);
@@ -161,10 +162,10 @@ public class SettingsMenu extends BaseStaffMenu {
     private void handleReloadModl(Click click) {
         sendMessage(MenuItems.COLOR_GREEN + "Reloading modl.gg configuration...");
         try {
-            LocaleManager localeManager = platform.getLocaleManager();
+            LocaleManager localeManager = PluginServices.locale();
             if (localeManager != null) {
                 localeManager.reloadLocale();
-                Cache cache = platform.getCache();
+                Cache cache = PluginServices.cache();
                 if (cache != null) {
                     cache.clearPunishmentTypes();
                     cache.clearPunishGuiConfig();

@@ -3,52 +3,24 @@ package gg.modl.minecraft.fabric.v26;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
-import com.github.retrooper.packetevents.util.adventure.AdventureSerializer;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientChatCommand;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientChatCommandUnsigned;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
-import com.mojang.serialization.JsonOps;
-import dev.simplix.cirrus.text.CirrusChatElement;
-import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.service.ChatCommandLogService;
-import gg.modl.minecraft.core.service.FreezeService;
-import gg.modl.minecraft.core.util.CommandInterceptHandler;
-import gg.modl.minecraft.core.util.CommandInterceptHandler.CommandResult;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.ComponentSerialization;
-import net.minecraft.resources.RegistryOps;
+import gg.modl.minecraft.core.chat.CommandInterceptService;
+import gg.modl.minecraft.core.chat.CommandInterceptService.CommandResult;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
-import java.util.List;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
+@RequiredArgsConstructor
 public class FabricCommandPacketListener extends PacketListenerAbstract {
-    private static final Logger log = LoggerFactory.getLogger(FabricCommandPacketListener.class);
-
-    private final Cache cache;
-    private final FreezeService freezeService;
-    private final ChatCommandLogService chatCommandLogService;
-    private final LocaleManager localeManager;
-    private final List<String> mutedCommands;
+    private final CommandInterceptService commandInterceptService;
     private final String serverName;
     private final MinecraftServer server;
-
-    public FabricCommandPacketListener(Cache cache, FreezeService freezeService,
-                                       ChatCommandLogService chatCommandLogService, LocaleManager localeManager,
-                                       List<String> mutedCommands, String serverName, MinecraftServer server) {
-        this.cache = cache;
-        this.freezeService = freezeService;
-        this.chatCommandLogService = chatCommandLogService;
-        this.localeManager = localeManager;
-        this.mutedCommands = mutedCommands;
-        this.serverName = serverName;
-        this.server = server;
-    }
+    private final FabricTextSerializer textSerializer;
 
     @Override
     public void onPacketReceive(PacketReceiveEvent event) {
@@ -70,9 +42,7 @@ public class FabricCommandPacketListener extends PacketListenerAbstract {
         ServerPlayer player = resolvePlayer(event, uuid);
         String username = player != null ? player.getName().getString() : "Unknown";
 
-        CommandResult result = CommandInterceptHandler.handleCommand(
-                uuid, username, command, serverName,
-                mutedCommands, cache, freezeService, chatCommandLogService);
+        CommandResult result = commandInterceptService.handleCommand(uuid, username, command, serverName);
 
         if (result == CommandResult.ALLOWED) {
             return;
@@ -80,9 +50,9 @@ public class FabricCommandPacketListener extends PacketListenerAbstract {
 
         event.setCancelled(true);
 
-        String message = CommandInterceptHandler.getBlockMessage(result, uuid, cache, localeManager);
+        String message = commandInterceptService.getBlockMessage(result, uuid);
         if (message != null && player != null) {
-            sendLegacyMessage(player, message);
+            textSerializer.sendInterceptMessage(player, message);
         }
     }
 
@@ -106,20 +76,5 @@ public class FabricCommandPacketListener extends PacketListenerAbstract {
             return player;
         }
         return server.getPlayerList().getPlayer(uuid);
-    }
-
-    private void sendLegacyMessage(ServerPlayer player, String message) {
-        try {
-            String json = AdventureSerializer.toJson(CirrusChatElement.ofLegacyText(message).asComponent());
-            RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
-            Component component = ComponentSerialization.CODEC.parse(ops, JsonParser.parseString(json)).result().orElse(null);
-            if (component != null) {
-                player.sendSystemMessage(component, false);
-                return;
-            }
-        } catch (Exception ignored) {
-        }
-        player.sendSystemMessage(Component.literal(
-                message.replaceAll("\u00a7[0-9a-fk-or]", "")), false);
     }
 }

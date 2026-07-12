@@ -1,7 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
 import gg.modl.minecraft.api.AbstractPlayer;
-import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.OnlinePlayersResponse;
 import gg.modl.minecraft.api.http.response.RecentPunishmentsResponse;
 import gg.modl.minecraft.api.http.response.ReportsResponse;
@@ -10,13 +9,13 @@ import gg.modl.minecraft.api.http.response.TicketsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfileRegistry;
+import gg.modl.minecraft.core.support.FakeModlHttpClient;
+import gg.modl.minecraft.core.support.FakePlatform;
+import gg.modl.minecraft.core.support.TestPluginServices;
 import gg.modl.minecraft.core.util.Permissions;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Proxy;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -33,18 +32,23 @@ class StaffListMenuAsyncLoadTest {
         Platform platform = platform(cache);
         CompletableFuture<OnlinePlayersResponse> online = new CompletableFuture<>();
         CompletableFuture<ReportsResponse> reports = new CompletableFuture<>();
-        Map<String, Object> futures = new HashMap<>();
-        futures.put("getOnlinePlayers", online);
-        futures.put("getReports", reports);
 
-        OnlinePlayersMenu menu = new OnlinePlayersMenu(platform, httpClient(futures), VIEWER, "Staff",
-                true, "https://panel.modl.gg", null);
+        OnlinePlayersMenu menu = new OnlinePlayersMenu(platform, new FakeModlHttpClient() {
+            @Override
+            public CompletableFuture<OnlinePlayersResponse> getOnlinePlayers() {
+                return online;
+            }
+
+            @Override
+            public CompletableFuture<ReportsResponse> getReports(String status) {
+                return reports;
+            }
+        }, VIEWER, "Staff", true, "https://panel.modl.gg", null);
 
         assertNotNull(menu.getDataFuture());
         assertFalse(menu.getDataFuture().isDone());
 
         online.complete(new OnlinePlayersResponse(Collections.emptyList(), 200));
-        // Still waiting on getReports("open").
         assertFalse(menu.getDataFuture().isDone());
 
         reports.complete(new ReportsResponse(Collections.emptyList(), 200));
@@ -56,16 +60,17 @@ class StaffListMenuAsyncLoadTest {
         Cache cache = new Cache(new CachedProfileRegistry());
         Platform platform = platform(cache);
         CompletableFuture<ReportsResponse> reports = new CompletableFuture<>();
-        Map<String, Object> futures = new HashMap<>();
-        futures.put("getReports", reports);
 
-        StaffReportsMenu menu = new StaffReportsMenu(platform, httpClient(futures), VIEWER, "Staff",
-                true, "https://panel.modl.gg", null);
+        StaffReportsMenu menu = new StaffReportsMenu(platform, new FakeModlHttpClient() {
+            @Override
+            public CompletableFuture<ReportsResponse> getReports(String status) {
+                return reports;
+            }
+        }, VIEWER, "Staff", true, "https://panel.modl.gg", null);
 
         assertNotNull(menu.getDataFuture());
         assertFalse(menu.getDataFuture().isDone());
 
-        // Unsuccessful response: the menu must still complete its future normally so it opens empty.
         reports.complete(new ReportsResponse(Collections.emptyList(), 403));
         assertTrue(menu.getDataFuture().isDone());
         assertFalse(menu.getDataFuture().isCompletedExceptionally());
@@ -76,11 +81,13 @@ class StaffListMenuAsyncLoadTest {
         Cache cache = new Cache(new CachedProfileRegistry());
         Platform platform = platform(cache);
         CompletableFuture<RecentPunishmentsResponse> punishments = new CompletableFuture<>();
-        Map<String, Object> futures = new HashMap<>();
-        futures.put("getRecentPunishments", punishments);
 
-        RecentPunishmentsMenu menu = new RecentPunishmentsMenu(platform, httpClient(futures), VIEWER, "Staff",
-                true, "https://panel.modl.gg", null);
+        RecentPunishmentsMenu menu = new RecentPunishmentsMenu(platform, new FakeModlHttpClient() {
+            @Override
+            public CompletableFuture<RecentPunishmentsResponse> getRecentPunishments(int hours) {
+                return punishments;
+            }
+        }, VIEWER, "Staff", true, "https://panel.modl.gg", null);
 
         assertNotNull(menu.getDataFuture());
         assertFalse(menu.getDataFuture().isDone());
@@ -94,11 +101,13 @@ class StaffListMenuAsyncLoadTest {
         Cache cache = new Cache(new CachedProfileRegistry());
         Platform platform = platform(cache);
         CompletableFuture<TicketsResponse> tickets = new CompletableFuture<>();
-        Map<String, Object> futures = new HashMap<>();
-        futures.put("getTickets", tickets);
 
-        TicketsMenu menu = new TicketsMenu(platform, httpClient(futures), VIEWER, "Staff",
-                true, "https://panel.modl.gg", null);
+        TicketsMenu menu = new TicketsMenu(platform, new FakeModlHttpClient() {
+            @Override
+            public CompletableFuture<TicketsResponse> getTickets(String status, String type) {
+                return tickets;
+            }
+        }, VIEWER, "Staff", true, "https://panel.modl.gg", null);
 
         assertNotNull(menu.getDataFuture());
         assertFalse(menu.getDataFuture().isDone());
@@ -114,11 +123,13 @@ class StaffListMenuAsyncLoadTest {
                 Collections.singletonList(Permissions.SETTINGS_MODIFY));
         Platform platform = platform(cache);
         CompletableFuture<RolesListResponse> roles = new CompletableFuture<>();
-        Map<String, Object> futures = new HashMap<>();
-        futures.put("getRoles", roles);
 
-        RoleListMenu menu = new RoleListMenu(platform, httpClient(futures), VIEWER, "Staff",
-                true, "https://panel.modl.gg", null);
+        RoleListMenu menu = new RoleListMenu(platform, new FakeModlHttpClient() {
+            @Override
+            public CompletableFuture<RolesListResponse> getRoles() {
+                return roles;
+            }
+        }, VIEWER, "Staff", true, "https://panel.modl.gg", null);
 
         assertNotNull(menu.getDataFuture());
         assertFalse(menu.getDataFuture().isDone());
@@ -132,36 +143,20 @@ class StaffListMenuAsyncLoadTest {
         Cache cache = new Cache(new CachedProfileRegistry());
         Platform platform = platform(cache);
 
-        RoleListMenu menu = new RoleListMenu(platform, httpClient(new HashMap<>()), VIEWER, "Staff",
+        RoleListMenu menu = new RoleListMenu(platform, new FakeModlHttpClient(), VIEWER, "Staff",
                 false, "https://panel.modl.gg", null);
 
         assertNotNull(menu.getDataFuture());
         assertTrue(menu.getDataFuture().isDone());
     }
 
-    private static ModlHttpClient httpClient(Map<String, Object> futuresByMethod) {
-        return (ModlHttpClient) Proxy.newProxyInstance(
-                ModlHttpClient.class.getClassLoader(),
-                new Class<?>[] {ModlHttpClient.class},
-                (proxy, method, args) -> {
-                    Object future = futuresByMethod.get(method.getName());
-                    if (future != null) return future;
-                    throw new UnsupportedOperationException(method.getName());
-                }
-        );
-    }
-
     private static Platform platform(Cache cache) {
-        return (Platform) Proxy.newProxyInstance(
-                Platform.class.getClassLoader(),
-                new Class<?>[] {Platform.class},
-                (proxy, method, args) -> {
-                    if ("getCache".equals(method.getName())) return cache;
-                    if ("getAbstractPlayer".equals(method.getName()))
-                        return new AbstractPlayer((UUID) args[0], "Staff", true);
-                    if ("getPlayerWrapper".equals(method.getName())) return null;
-                    throw new UnsupportedOperationException(method.getName());
-                }
-        );
+        TestPluginServices.install(cache);
+        return new FakePlatform() {
+            @Override
+            public AbstractPlayer getAbstractPlayer(UUID uuid, boolean queryMojang) {
+                return new AbstractPlayer(uuid, "Staff", true);
+            }
+        };
     }
 }

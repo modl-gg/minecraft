@@ -1,7 +1,7 @@
 package gg.modl.minecraft.bridge.config;
 
 import gg.modl.minecraft.bridge.resource.BridgeYamlResource;
-import lombok.Data;
+import gg.modl.minecraft.core.util.YamlValues;
 import lombok.Getter;
 
 import java.nio.file.Path;
@@ -25,8 +25,15 @@ public class StaffModeConfig {
     @Getter private ScoreboardConfig staffScoreboard = new ScoreboardConfig();
     @Getter private ScoreboardConfig targetScoreboard = new ScoreboardConfig();
 
+    private final Logger logger;
+
+    public static StaffModeConfig load(Path dataFolder, Logger logger) {
+        return new StaffModeConfig(dataFolder, logger);
+    }
+
     @SuppressWarnings("unchecked")
-    public StaffModeConfig(Path dataFolder, Logger logger) {
+    private StaffModeConfig(Path dataFolder, Logger logger) {
+        this.logger = logger;
         Path configFile = dataFolder.resolve("staff_mode.yml");
         if (!configFile.toFile().exists()) {
             setDefaults();
@@ -40,7 +47,7 @@ public class StaffModeConfig {
                 return;
             }
 
-            vanishOnEnable = !Boolean.FALSE.equals(data.getOrDefault("vanish_on_enable", true));
+            vanishOnEnable = YamlValues.asBoolean(data.get("vanish_on_enable"), true);
 
             Optional.ofNullable((Map<?, ?>) data.get("staff_hotbar")).map(this::parseHotbar).ifPresent(h -> staffHotbar = h);
             Optional.ofNullable((Map<?, ?>) data.get("target_hotbar")).map(this::parseHotbar).ifPresent(h -> targetHotbar = h);
@@ -75,7 +82,9 @@ public class StaffModeConfig {
                 item.lore = parseStringList(itemData.get("lore"));
                 item.toggleLore = parseStringList(itemData.get("toggle_lore"));
                 result.put(slot, item);
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                logger.warning("[StaffMode] Skipping malformed hotbar entry: " + e.getMessage());
+            }
         }
         return result;
     }
@@ -134,7 +143,7 @@ public class StaffModeConfig {
         return item;
     }
 
-    @Data
+    @Getter
     public static class HotbarItem {
         private String item = "minecraft:stone";
         private String name = "";
@@ -145,7 +154,7 @@ public class StaffModeConfig {
         private List<String> toggleLore = new ArrayList<>();
     }
 
-    @Data
+    @Getter
     public static class ScoreboardConfig {
         private boolean enabled = false;
         private String title = "";

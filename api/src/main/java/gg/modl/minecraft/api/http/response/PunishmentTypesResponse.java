@@ -1,22 +1,18 @@
 package gg.modl.minecraft.api.http.response;
 
-import gg.modl.minecraft.api.PunishmentTypeRegistry;
+import gg.modl.minecraft.api.PunishmentTypeClassifier;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Data @NoArgsConstructor @AllArgsConstructor
-public class PunishmentTypesResponse {
+@Getter @NoArgsConstructor @AllArgsConstructor
+public class PunishmentTypesResponse extends StatusResponse {
     private List<PunishmentTypeData> data;
     private int status;
 
-    public boolean isSuccess() {
-        return status >= 200 && status < 300;
-    }
-    
-    @Data
+    @Getter @AllArgsConstructor
     public static class PunishmentTypeData {
         private final String name, category, staffDescription, playerDescription;
         private final Object durations, points;
@@ -27,7 +23,7 @@ public class PunishmentTypesResponse {
         private final boolean isCustomizable;
 
         public boolean isKick() {
-            return "KICK".equalsIgnoreCase(category) || ordinal == PunishmentTypeRegistry.ORDINAL_KICK;
+            return "KICK".equalsIgnoreCase(category) || ordinal == PunishmentTypeClassifier.ORDINAL_KICK;
         }
 
         public boolean isBan() {

@@ -3,15 +3,12 @@ package gg.modl.minecraft.spigot.bridge;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.spigot.bridge.handler.FreezeHandler;
 import gg.modl.minecraft.spigot.bridge.handler.StaffModeHandler;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 public class SpigotStandaloneLocalBridgeHandler implements BridgeService.LocalBridgeHandler {
     private final StaffModeHandler staffModeHandler;
     private final FreezeHandler freezeHandler;
-
-    public SpigotStandaloneLocalBridgeHandler(StaffModeHandler staffModeHandler, FreezeHandler freezeHandler) {
-        this.staffModeHandler = staffModeHandler;
-        this.freezeHandler = freezeHandler;
-    }
 
     @Override
     public void onStaffModeEnter(String staffUuid) {

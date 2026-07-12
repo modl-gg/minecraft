@@ -1,6 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
-import dev.simplix.cirrus.Cirrus;
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -10,7 +10,6 @@ import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
-import gg.modl.minecraft.api.http.response.LinkedAccountsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
 import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource;
@@ -18,10 +17,12 @@ import gg.modl.minecraft.core.impl.menus.pagination.PaginatedDataSource.FetchRes
 import gg.modl.minecraft.core.impl.menus.util.InspectContext;
 import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
+import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
+import gg.modl.minecraft.core.impl.menus.util.SkinTextureCache;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.util.WebPlayer;
+import gg.modl.minecraft.core.integration.mojang.MojangProfiles;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,11 +36,11 @@ import java.util.Objects;
 import java.util.UUID;
 import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import lombok.Getter;
 
 public class AltsMenu extends BaseInspectListMenu<Account> {
     private static final Logger logger = Logger.getLogger(AltsMenu.class.getName());
@@ -48,6 +49,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
 
     private final PaginatedDataSource<Account> dataSource;
     private int pageRefreshRequest;
+    @Getter private final CompletableFuture<Void> dataFuture;
 
     public AltsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                     Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
@@ -59,7 +61,23 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         super("Alts: " + ReportRenderUtil.getPlayerName(targetAccount), platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
         activeTab = InspectTab.ALTS;
 
-        dataSource = new PaginatedDataSource<>(PAGE_SIZE, (page, limit) -> {
+        dataSource = buildDataSource();
+        this.dataFuture = loadLinkedAccounts();
+    }
+
+    private AltsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
+                     Account targetAccount, Consumer<CirrusPlayerWrapper> backAction, InspectContext inspectContext,
+                     List<Account> preloaded, int totalCount) {
+        super("Alts: " + ReportRenderUtil.getPlayerName(targetAccount), platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
+        activeTab = InspectTab.ALTS;
+
+        dataSource = buildDataSource();
+        dataSource.initialize(preloaded, totalCount);
+        this.dataFuture = CompletableFuture.completedFuture(null);
+    }
+
+    private PaginatedDataSource<Account> buildDataSource() {
+        return new PaginatedDataSource<>(PAGE_SIZE, (page, limit) -> {
             CompletableFuture<FetchResult<Account>> future = new CompletableFuture<>();
             httpClient.getLinkedAccounts(targetUuid, page, limit).thenAccept(response -> {
                 if (response.getStatus() == 200) {
@@ -74,42 +92,31 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
             });
             return future;
         });
-
-        loadLinkedAccounts();
     }
 
-    private void loadLinkedAccounts() {
-        try {
-            LinkedAccountsResponse response = httpClient.getLinkedAccounts(targetUuid, 1, PAGE_SIZE * INITIAL_LOAD_PAGES).join();
+    private CompletableFuture<Void> loadLinkedAccounts() {
+        return httpClient.getLinkedAccounts(targetUuid, 1, PAGE_SIZE * INITIAL_LOAD_PAGES).thenAccept(response -> {
             if (response.getStatus() == 200) {
                 List<Account> initialAccounts = new ArrayList<>(response.getLinkedAccounts());
                 cacheSkinTextures(initialAccounts);
                 dataSource.initialize(initialAccounts, response.getTotalCount());
             }
-        } catch (Exception e) {
+        }).exceptionally(e -> {
             logger.log(Level.WARNING, "Failed to fetch linked accounts for " + targetUuid, e);
-        }
+            return null;
+        });
     }
 
     private void cacheSkinTextures(List<Account> accounts) {
-        if (platform.getCache() == null) return;
-
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
         for (Account alt : accounts) {
-            if (alt.getMinecraftUuid() != null && platform.getCache().getSkinTexture(alt.getMinecraftUuid()) == null) {
+            if (alt.getMinecraftUuid() != null && PluginServices.cache().getSkinTexture(alt.getMinecraftUuid()) == null) {
                 final UUID altUuid = alt.getMinecraftUuid();
-                futures.add(WebPlayer.get(altUuid).thenAccept(wp -> {
+                MojangProfiles.client().get(altUuid).thenAccept(wp -> {
                     if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
-                        platform.getCache().cacheSkinTexture(altUuid, wp.getTextureValue());
+                        PluginServices.cache().cacheSkinTexture(altUuid, wp.getTextureValue());
                     }
-                }));
+                });
             }
-        }
-        if (!futures.isEmpty()) {
-            try {
-                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                        .get(5, TimeUnit.SECONDS);
-            } catch (Exception ignored) {}
         }
     }
 
@@ -120,10 +127,10 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
             int refreshRequest = ++pageRefreshRequest;
             dataSource.fetchPage(dataSource.getAllLoadedItems().size() / PAGE_SIZE + 1, () -> {
                 if (refreshRequest != pageRefreshRequest) return;
-                AltsMenu newMenu = new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
-                newMenu.dataSource.initialize(dataSource.getAllLoadedItems(), dataSource.getTotalCount());
+                AltsMenu newMenu = new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext,
+                        dataSource.getAllLoadedItems(), dataSource.getTotalCount());
                 newMenu.setInitialPage(nextPage);
-                newMenu.display(click.player());
+                MenuAsync.displayWhenLoaded(platform, newMenu.getDataFuture(), click.player(), newMenu::display);
             });
             return true;
         }
@@ -148,7 +155,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
 
     @Override
     protected CirrusItem map(Account alt) {
-        LocaleManager locale = platform.getLocaleManager();
+        LocaleManager locale = PluginServices.locale();
 
         if (alt.getMinecraftUuid() == null) {
             return createEmptyPlaceholder(locale.getMessage("menus.empty.alts"));
@@ -172,7 +179,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
         else
             color = "&a";
 
-        boolean isOnline = platform.getCache() != null && platform.getCache().getPlayerProfile(alt.getMinecraftUuid()) != null;
+        boolean isOnline = PluginServices.cache() != null && PluginServices.cache().getPlayerProfile(alt.getMinecraftUuid()) != null;
         boolean realIpLogged = !alt.getIpList().isEmpty();
 
         String firstLogin = "Unknown";
@@ -276,10 +283,7 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
                 MenuItems.lore(lore)
         );
 
-        if (platform.getCache() != null) {
-            String cachedTexture = platform.getCache().getSkinTexture(alt.getMinecraftUuid());
-            if (cachedTexture != null) headItem = headItem.texture(cachedTexture);
-        }
+        headItem = SkinTextureCache.applyCached(headItem, alt.getMinecraftUuid());
 
         return headItem;
     }
@@ -288,10 +292,10 @@ public class AltsMenu extends BaseInspectListMenu<Account> {
     protected void handleClick(Click click, Account alt) {
         if (alt.getMinecraftUuid() == null) return;
 
-        Consumer<CirrusPlayerWrapper> backToAlts = player -> Cirrus.executor().execute(() -> {
+        Consumer<CirrusPlayerWrapper> backToAlts = player -> {
             AltsMenu m = new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
-            platform.runOnMainThread(() -> m.display(player));
-        });
+            MenuAsync.displayWhenLoaded(platform, m.getDataFuture(), player, m::display);
+        };
 
         ActionHandlers.openMenu(
                 new InspectMenu(platform, httpClient, viewerUuid, viewerName, alt, backToAlts))

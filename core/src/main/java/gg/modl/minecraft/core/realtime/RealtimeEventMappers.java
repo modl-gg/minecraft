@@ -11,15 +11,6 @@ import gg.modl.proto.modl.v1.StaffNotificationPushEvent;
 import gg.modl.proto.modl.v1.StatWipePushEvent;
 import gg.modl.proto.modl.v1.SyncData;
 
-/**
- * Converts the authoritative minecraft push events into the plain {@link SyncResponse.SyncData}
- * DTO shape that {@code SyncService}'s apply methods already consume.
- *
- * <p>Each push event wraps the same {@code sync.proto} messages that compose a {@code SyncData},
- * so we wrap the event payload back into a proto {@link SyncData} and reuse the existing
- * {@link SyncProtoMapper#toSyncResponse} converter. This keeps a single mapping implementation
- * shared between the HTTP baseline sync and the websocket push path.</p>
- */
 final class RealtimeEventMappers {
 
     private RealtimeEventMappers() {

@@ -1,21 +1,17 @@
 package gg.modl.minecraft.api.http.response;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Data @NoArgsConstructor @AllArgsConstructor
-public class RolesListResponse {
+@Getter @NoArgsConstructor @AllArgsConstructor
+public class RolesListResponse extends StatusResponse {
     private List<RoleEntry> roles;
     private int status;
 
-    public boolean isSuccess() {
-        return status >= 200 && status < 300;
-    }
-
-    @Data @NoArgsConstructor @AllArgsConstructor
+    @Getter @NoArgsConstructor @AllArgsConstructor
     public static class RoleEntry {
         private String id, name, description;
         private List<String> permissions;

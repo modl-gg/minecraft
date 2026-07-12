@@ -1,12 +1,12 @@
 package gg.modl.minecraft.api.http.response;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+@Getter @NoArgsConstructor @AllArgsConstructor
 public class StartupResponse {
     private String panelUrl;
     private String timestamp;

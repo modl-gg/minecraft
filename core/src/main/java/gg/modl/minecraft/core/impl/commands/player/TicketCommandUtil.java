@@ -10,6 +10,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.ClickableJsonMessage;
 
 import java.util.UUID;
@@ -146,7 +147,7 @@ public class TicketCommandUtil {
 
     public void sendClickableTicketMessage(CommandActor actor, Platform platform, LocaleManager localeManager,
                                             String message, String ticketUrl, String ticketId) {
-        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
+        if (CommandUtil.isConsole(actor)) {
             actor.reply(localeManager.getMessage("messages.console_ticket_url", mapOf("message", message, "url", ticketUrl)));
             return;
         }

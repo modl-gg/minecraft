@@ -2,6 +2,7 @@ package gg.modl.minecraft.core.impl.http.proto;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 import gg.modl.minecraft.api.Evidence;
 import gg.modl.minecraft.api.Modification;
 import gg.modl.minecraft.api.Note;
@@ -25,20 +26,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Maps punishment-domain DTOs to/from their proto V3 counterparts. Mirrors the inline mappers in the
- * backend {@code MinecraftPunishmentV3Controller}, inverted (domain&rarr;proto requests, proto&rarr;domain responses).
- */
 public final class PunishmentProtoMapper {
 
     private static final Gson GSON = new Gson();
-    private static final Type STRING_OBJECT_MAP = new com.google.gson.reflect.TypeToken<Map<String, Object>>() {
+    private static final Type STRING_OBJECT_MAP = new TypeToken<Map<String, Object>>() {
     }.getType();
 
     private PunishmentProtoMapper() {
     }
-
-    // ---- Requests (domain -> proto) ----
 
     public static gg.modl.proto.modl.v1.CreatePunishmentRequest toProto(CreatePunishmentRequest request) {
         gg.modl.proto.modl.v1.CreatePunishmentRequest.Builder builder =
@@ -148,89 +143,81 @@ public final class PunishmentProtoMapper {
         return builder.build();
     }
 
-    // ---- Responses (proto -> domain) ----
-
     public static PunishmentCreateResponse toPunishmentCreateResponse(gg.modl.proto.modl.v1.PunishmentCreateResponse proto) {
         return new PunishmentCreateResponse(proto.getMessage(), proto.getPunishmentId(), proto.getStatus());
     }
 
     public static EvidenceUploadTokenResponse toUploadTokenResponse(gg.modl.proto.modl.v1.EvidenceUploadTokenResponse proto) {
-        EvidenceUploadTokenResponse response = new EvidenceUploadTokenResponse();
-        response.setToken(ProtoConversions.emptyToNull(proto.getToken()));
-        response.setStatus(proto.getStatus());
-        return response;
+        return new EvidenceUploadTokenResponse(ProtoConversions.emptyToNull(proto.getToken()), proto.getStatus());
     }
 
     public static PunishmentPreviewResponse toPreviewResponse(gg.modl.proto.modl.v1.PunishmentPreviewResponse proto) {
-        PunishmentPreviewResponse response = new PunishmentPreviewResponse();
-        response.setMessage(proto.getMessage());
-        response.setSocialStatus(proto.getSocialStatus());
-        response.setGameplayStatus(proto.getGameplayStatus());
-        response.setOffenderStatus(proto.getOffenderStatus());
-        response.setCategory(proto.getCategory());
-        response.setSuccess(proto.getSuccess());
-        response.setSingleSeverityPunishment(proto.getSingleSeverityPunishment());
-        response.setPermanentUntilUsernameChange(proto.getPermanentUntilUsernameChange());
-        response.setPermanentUntilSkinChange(proto.getPermanentUntilSkinChange());
-        response.setCanBeAltBlocking(proto.getCanBeAltBlocking());
-        response.setCanBeStatWiping(proto.getCanBeStatWiping());
-        response.setStatus(proto.getStatus());
-        response.setSocialPoints(proto.getSocialPoints());
-        response.setGameplayPoints(proto.getGameplayPoints());
-
-        if (proto.hasLenient()) response.setLenient(toSeverityPreview(proto.getLenient()));
-        if (proto.hasRegular()) response.setRegular(toSeverityPreview(proto.getRegular()));
-        if (proto.hasAggravated()) response.setAggravated(toSeverityPreview(proto.getAggravated()));
-        if (proto.hasSingleSeverity()) response.setSingleSeverity(toSeverityPreview(proto.getSingleSeverity()));
-        return response;
+        return PunishmentPreviewResponse.builder()
+            .message(proto.getMessage())
+            .socialStatus(proto.getSocialStatus())
+            .gameplayStatus(proto.getGameplayStatus())
+            .offenderStatus(proto.getOffenderStatus())
+            .category(proto.getCategory())
+            .success(proto.getSuccess())
+            .singleSeverityPunishment(proto.getSingleSeverityPunishment())
+            .permanentUntilUsernameChange(proto.getPermanentUntilUsernameChange())
+            .permanentUntilSkinChange(proto.getPermanentUntilSkinChange())
+            .canBeAltBlocking(proto.getCanBeAltBlocking())
+            .canBeStatWiping(proto.getCanBeStatWiping())
+            .status(proto.getStatus())
+            .socialPoints(proto.getSocialPoints())
+            .gameplayPoints(proto.getGameplayPoints())
+            .lenient(proto.hasLenient() ? toSeverityPreview(proto.getLenient()) : null)
+            .regular(proto.hasRegular() ? toSeverityPreview(proto.getRegular()) : null)
+            .aggravated(proto.hasAggravated() ? toSeverityPreview(proto.getAggravated()) : null)
+            .singleSeverity(proto.hasSingleSeverity() ? toSeverityPreview(proto.getSingleSeverity()) : null)
+            .build();
     }
 
     private static PunishmentPreviewResponse.SeverityPreview toSeverityPreview(
         gg.modl.proto.modl.v1.PunishmentPreviewResponse.SeverityPreview proto) {
-        PunishmentPreviewResponse.SeverityPreview preview = new PunishmentPreviewResponse.SeverityPreview();
-        preview.setSeverity(proto.getSeverity());
-        preview.setDurationFormatted(proto.getDurationFormatted());
-        preview.setPunishmentType(proto.getPunishmentType());
-        preview.setNewSocialStatus(proto.getNewSocialStatus());
-        preview.setNewGameplayStatus(proto.getNewGameplayStatus());
-        preview.setPermanent(proto.getPermanent());
-        preview.setPoints(proto.getPoints());
-        preview.setNewSocialPoints(proto.getNewSocialPoints());
-        preview.setNewGameplayPoints(proto.getNewGameplayPoints());
-        preview.setDurationMs(proto.getDurationMs());
-        return preview;
+        return PunishmentPreviewResponse.SeverityPreview.builder()
+            .severity(proto.getSeverity())
+            .durationFormatted(proto.getDurationFormatted())
+            .punishmentType(proto.getPunishmentType())
+            .newSocialStatus(proto.getNewSocialStatus())
+            .newGameplayStatus(proto.getNewGameplayStatus())
+            .permanent(proto.getPermanent())
+            .points(proto.getPoints())
+            .newSocialPoints(proto.getNewSocialPoints())
+            .newGameplayPoints(proto.getNewGameplayPoints())
+            .durationMs(proto.getDurationMs())
+            .build();
     }
 
     public static PunishmentDetailResponse toDetailResponse(gg.modl.proto.modl.v1.PunishmentDetailResponse proto) {
-        PunishmentDetailResponse response = new PunishmentDetailResponse();
-        response.setStatus(proto.getStatus());
-
         gg.modl.proto.modl.v1.PunishmentDetailResponse.PunishmentDetailEntry entry = proto.getPunishment();
-        PunishmentDetailResponse.PunishmentDetail detail = new PunishmentDetailResponse.PunishmentDetail();
-        detail.setId(entry.getId());
-        detail.setPlayerUuid(entry.getPlayerUuid());
-        detail.setPlayerName(entry.getPlayerName());
-        detail.setIssuerName(entry.getIssuerName());
-        detail.setIssued(entry.getIssued());
-        detail.setStarted(entry.getStarted());
-        detail.setType(entry.getType());
-        detail.setTypeOrdinal(entry.getTypeOrdinal());
-        detail.setData(ProtoConversions.structToMap(entry.getData()));
 
         List<Object> modifications = new ArrayList<>();
         entry.getModificationsList().forEach(s -> modifications.add(ProtoConversions.structToMap(s)));
-        detail.setModifications(modifications);
 
         List<Object> notes = new ArrayList<>();
         entry.getNotesList().forEach(s -> notes.add(ProtoConversions.structToMap(s)));
-        detail.setNotes(notes);
 
         List<Object> evidence = new ArrayList<>();
         entry.getEvidenceList().forEach(s -> evidence.add(ProtoConversions.structToMap(s)));
-        detail.setEvidence(evidence);
 
-        response.setPunishment(detail);
-        return response;
+        PunishmentDetailResponse.PunishmentDetail detail = PunishmentDetailResponse.PunishmentDetail.builder()
+            .id(entry.getId())
+            .playerUuid(entry.getPlayerUuid())
+            .playerName(entry.getPlayerName())
+            .issuerName(entry.getIssuerName())
+            .issued(entry.getIssued())
+            .started(entry.getStarted())
+            .type(entry.getType())
+            .typeOrdinal(entry.getTypeOrdinal())
+            .data(ProtoConversions.structToMap(entry.getData()))
+            .modifications(modifications)
+            .notes(notes)
+            .evidence(evidence)
+            .build();
+
+        return new PunishmentDetailResponse(detail, proto.getStatus());
     }
 
     public static RecentPunishmentsResponse toRecentResponse(gg.modl.proto.modl.v1.RecentPunishmentsResponse proto) {
@@ -241,19 +228,8 @@ public final class PunishmentProtoMapper {
 
     private static RecentPunishmentsResponse.RecentPunishment toRecentPunishment(
         gg.modl.proto.modl.v1.RecentPunishmentsResponse.RecentPunishment proto) {
-        RecentPunishmentsResponse.RecentPunishment punishment = new RecentPunishmentsResponse.RecentPunishment();
-        punishment.setPlayerName(proto.getPlayerName());
-        punishment.setPlayerUuid(proto.getPlayerUuid());
-        punishment.setId(proto.getId());
-        punishment.setIssuerName(proto.getIssuerName());
-        punishment.setIssued(ProtoConversions.dateFromMillis(proto.getIssued()));
-        if (proto.hasStarted()) punishment.setStarted(ProtoConversions.dateFromMillis(proto.getStarted()));
-        punishment.setType(proto.getType());
-        if (proto.hasTypeOrdinal()) punishment.setTypeOrdinal(proto.getTypeOrdinal());
-
         List<Modification> modifications = new ArrayList<>();
         proto.getModificationsList().forEach(m -> modifications.add(PlayerProtoMapper.toModification(m)));
-        punishment.setModifications(modifications);
 
         List<Note> notes = new ArrayList<>();
         proto.getNotesList().forEach(n -> notes.add(new Note(
@@ -261,15 +237,25 @@ public final class PunishmentProtoMapper {
             ProtoConversions.dateFromMillis(n.getDate()),
             n.hasIssuerName() ? n.getIssuerName() : null,
             n.hasIssuerId() ? n.getIssuerId() : null)));
-        punishment.setNotes(notes);
 
         List<Evidence> evidence = new ArrayList<>();
         proto.getEvidenceList().forEach(e -> evidence.add(PlayerProtoMapper.toEvidence(e)));
-        punishment.setEvidence(evidence);
 
-        punishment.setAttachedTicketIds(new ArrayList<>(proto.getAttachedTicketIdsList()));
-        if (proto.hasData()) punishment.setData(ProtoConversions.structToMap(proto.getData()));
-        return punishment;
+        return RecentPunishmentsResponse.RecentPunishment.builder()
+            .playerName(proto.getPlayerName())
+            .playerUuid(proto.getPlayerUuid())
+            .id(proto.getId())
+            .issuerName(proto.getIssuerName())
+            .issued(ProtoConversions.dateFromMillis(proto.getIssued()))
+            .started(proto.hasStarted() ? ProtoConversions.dateFromMillis(proto.getStarted()) : null)
+            .type(proto.getType())
+            .typeOrdinal(proto.hasTypeOrdinal() ? proto.getTypeOrdinal() : null)
+            .modifications(modifications)
+            .notes(notes)
+            .evidence(evidence)
+            .attachedTicketIds(new ArrayList<>(proto.getAttachedTicketIdsList()))
+            .data(proto.hasData() ? ProtoConversions.structToMap(proto.getData()) : null)
+            .build();
     }
 
     private static Map<String, Object> jsonObjectToMap(JsonObject json) {

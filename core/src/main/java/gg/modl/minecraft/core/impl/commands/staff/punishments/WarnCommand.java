@@ -14,6 +14,7 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.command.ConsumeRemaining;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
+import gg.modl.minecraft.core.punishment.PunishmentFlagParser;
 import gg.modl.minecraft.core.util.CommandUtil;
 import lombok.RequiredArgsConstructor;
 
@@ -37,8 +38,8 @@ public class WarnCommand {
             return;
         }
 
-        final WarnArgs warnArgs = parseArguments(args);
-        if (warnArgs.reason.isEmpty()) {
+        final PunishmentFlagParser.Flags warnArgs = PunishmentFlagParser.builder().silent(true).build().parse(args);
+        if (warnArgs.getReason().isEmpty()) {
             actor.reply(localeManager.getPunishmentMessage("general.invalid_syntax", mapOf()));
             return;
         }
@@ -47,7 +48,7 @@ public class WarnCommand {
         final String issuerId = CommandUtil.resolveActorId(actor, cache);
 
         CreatePlayerNoteRequest noteRequest = new CreatePlayerNoteRequest(
-            target.getMinecraftUuid().toString(), issuerName, issuerId, WARNING_NOTE_PREFIX + warnArgs.reason
+            target.getMinecraftUuid().toString(), issuerName, issuerId, WARNING_NOTE_PREFIX + warnArgs.getReason()
         );
 
         httpClientHolder.getClient().createPlayerNote(noteRequest).thenAccept(response -> {
@@ -55,15 +56,15 @@ public class WarnCommand {
                     ? target.getMinecraftUuid().toString()
                     : target.getUsernames().get(0).getUsername();
             platform.runOnMainThread(() -> {
-                notifyTargetIfOnline(target, issuerName, warnArgs.reason);
+                notifyTargetIfOnline(target, issuerName, warnArgs.getReason());
 
                 actor.reply(localeManager.getMessage("warn.success", mapOf(
-                    "target", targetName, "reason", warnArgs.reason
+                    "target", targetName, "reason", warnArgs.getReason()
                 )));
 
-                if (!warnArgs.silent) {
+                if (!warnArgs.isSilent()) {
                     platform.staffBroadcast(localeManager.getMessage("warn.staff_notification", mapOf(
-                        "issuer", issuerName, "target", targetName, "reason", warnArgs.reason
+                        "issuer", issuerName, "target", targetName, "reason", warnArgs.getReason()
                     )));
                 }
             });
@@ -85,28 +86,5 @@ public class WarnCommand {
                 "issuer", issuerName, "reason", reason
             )));
         }
-    }
-
-    private WarnArgs parseArguments(String args) {
-        if (args == null || args.trim().isEmpty()) return new WarnArgs();
-        String[] arguments = args.split(" ");
-        WarnArgs result = new WarnArgs();
-        StringBuilder reasonBuilder = new StringBuilder();
-
-        for (String arg : arguments) {
-            if (arg.equalsIgnoreCase("-silent") || arg.equalsIgnoreCase("-s")) result.silent = true;
-            else {
-                if (reasonBuilder.length() > 0) reasonBuilder.append(" ");
-                reasonBuilder.append(arg);
-            }
-        }
-
-        result.reason = reasonBuilder.toString().trim();
-        return result;
-    }
-
-    private static class WarnArgs {
-        String reason = "";
-        boolean silent = false;
     }
 }

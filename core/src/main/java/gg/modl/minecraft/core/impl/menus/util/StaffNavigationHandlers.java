@@ -20,18 +20,9 @@ import java.util.function.Consumer;
 public final class StaffNavigationHandlers {
     private StaffNavigationHandlers() {}
 
-    /**
-     * Schedules a menu's display action on the main thread once its data has loaded.
-     * On a load failure the player is notified rather than left with a silent no-op.
-     */
     public static void displayWhenLoaded(Platform platform, CompletableFuture<Void> dataFuture,
                                          CirrusPlayerWrapper player, Consumer<CirrusPlayerWrapper> displayAction) {
-        dataFuture.thenRun(() -> platform.runOnMainThread(() -> displayAction.accept(player)))
-                .exceptionally(throwable -> {
-                    platform.runOnMainThread(() -> platform.sendMessage(player.uuid(),
-                            platform.getLocaleManager().getMessage("api_errors.panel_restarting")));
-                    return null;
-                });
+        MenuAsync.displayWhenLoaded(platform, dataFuture, player, displayAction);
     }
 
     public static void registerAll(

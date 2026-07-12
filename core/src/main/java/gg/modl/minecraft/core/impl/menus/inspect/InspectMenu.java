@@ -23,20 +23,12 @@ public class InspectMenu extends BaseInspectMenu {
 
     public InspectMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                        Account targetAccount, Consumer<CirrusPlayerWrapper> backAction, InspectContext inspectContext) {
-        super(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, CirrusInventoryType.GENERIC_9X3);
+        super(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, CirrusInventoryType.GENERIC_9X3, inspectContext);
         this.inspectContext = inspectContext;
 
         title("Inspect: " + targetName);
         activeTab = InspectTab.NONE;
-        buildCompactHeader(inspectContext);
-    }
-
-    private void buildCompactHeader(InspectContext ctx) {
-        if (ctx != null) {
-            buildCompactHeader(ctx.punishmentCount(), ctx.noteCount());
-        } else {
-            buildCompactHeader();
-        }
+        buildCompactHeader();
     }
 
     @Override

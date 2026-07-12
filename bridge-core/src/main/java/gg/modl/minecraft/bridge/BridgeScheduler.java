@@ -1,11 +1,11 @@
 package gg.modl.minecraft.bridge;
 
+import gg.modl.minecraft.core.Scheduler;
+
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-public interface BridgeScheduler {
-
-    void runSync(Runnable task);
+public interface BridgeScheduler extends Scheduler {
 
     void runForPlayer(UUID playerUuid, Runnable task);
 

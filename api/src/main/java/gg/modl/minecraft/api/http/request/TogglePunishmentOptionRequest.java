@@ -1,11 +1,9 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Value;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+@Value
 public class TogglePunishmentOptionRequest {
-    private String punishmentId, issuerName, issuerId, option;
-    private boolean enabled;
+    String punishmentId, issuerName, issuerId, option;
+    boolean enabled;
 }

@@ -45,12 +45,6 @@ public class JdbcDatabaseProvider implements DatabaseProvider {
     }
 
     @Override
-    public Connection getConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) connection = establishConnection();
-        return connection;
-    }
-
-    @Override
     public void close() {
         if (connection == null) return;
         try {
@@ -59,11 +53,6 @@ public class JdbcDatabaseProvider implements DatabaseProvider {
         } catch (SQLException e) {
             logger.warning("Failed to close database connection: " + e.getMessage());
         }
-    }
-
-    @Override
-    public boolean isUsingLiteBansApi() {
-        return false;
     }
 
     private String replaceTableTokens(String query) {

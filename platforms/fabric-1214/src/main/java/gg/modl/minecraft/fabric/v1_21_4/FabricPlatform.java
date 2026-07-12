@@ -4,28 +4,14 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
-import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.service.BridgeService;
-import gg.modl.minecraft.core.service.ReplayService;
-import gg.modl.minecraft.core.service.Staff2faService;
-import gg.modl.minecraft.core.service.StaffModeService;
-import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.StaffAudience;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.StringUtil;
-import gg.modl.minecraft.core.util.WebPlayer;
-import com.github.retrooper.packetevents.util.adventure.AdventureSerializer;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import dev.simplix.cirrus.text.CirrusChatElement;
+import gg.modl.minecraft.core.integration.mojang.MojangProfiles;
+import gg.modl.minecraft.core.integration.mojang.WebPlayer;
 import lombok.Setter;
-import net.kyori.adventure.text.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
 import revxrsal.commands.Lamp;
 import revxrsal.commands.command.CommandActor;
 import revxrsal.commands.fabric.FabricLamp;
@@ -39,27 +25,20 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
-import com.mojang.serialization.JsonOps;
-import net.minecraft.registry.RegistryOps;
-import net.minecraft.text.TextCodecs;
 
 public class FabricPlatform implements Platform {
     private final MinecraftServer server;
     private final Path dataFolder;
     private final PluginLogger logger;
-    private @Setter Cache cache;
-    private @Setter LocaleManager localeManager;
-    private @Setter StaffModeService staffModeService;
-    private @Setter BridgeService bridgeService;
-    private @Setter Staff2faService staff2faService;
-    private @Setter ChatInputManager chatInputManager;
-    private @Setter ReplayService replayService;
+    private final FabricTextSerializer textSerializer;
+    private @Setter StaffAudience staffAudience;
     private @Setter String serverName = "fabric-server";
 
     public FabricPlatform(MinecraftServer server, Path dataFolder, PluginLogger logger) {
         this.server = server;
         this.dataFolder = dataFolder;
         this.logger = logger;
+        this.textSerializer = new FabricTextSerializer(logger);
     }
 
     @Override
@@ -71,7 +50,7 @@ public class FabricPlatform implements Platform {
     public void broadcast(String string) {
         server.execute(() -> {
             for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-                sendLegacyMessage(player, string);
+                textSerializer.sendLegacyMessage(player, string);
             }
         });
     }
@@ -81,7 +60,7 @@ public class FabricPlatform implements Platform {
         server.execute(() -> {
             for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
                 if (isAuthenticatedStaff(player.getUuid())) {
-                    sendLegacyMessage(player, string);
+                    textSerializer.sendLegacyMessage(player, string);
                 }
             }
         });
@@ -92,7 +71,7 @@ public class FabricPlatform implements Platform {
         server.execute(() -> {
             for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
                 if (isAuthenticatedStaff(player.getUuid())) {
-                    sendJsonToPlayer(player, jsonMessage);
+                    textSerializer.sendJsonToPlayer(player, jsonMessage);
                 }
             }
         });
@@ -103,7 +82,7 @@ public class FabricPlatform implements Platform {
         server.execute(() -> {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
             if (player != null) {
-                sendLegacyMessage(player, StringUtil.unescapeNewlines(message));
+                textSerializer.sendLegacyMessage(player, StringUtil.unescapeNewlines(message));
             }
         });
     }
@@ -113,7 +92,7 @@ public class FabricPlatform implements Platform {
         server.execute(() -> {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
             if (player != null) {
-                sendJsonToPlayer(player, jsonMessage);
+                textSerializer.sendJsonToPlayer(player, jsonMessage);
             }
         });
     }
@@ -142,8 +121,9 @@ public class FabricPlatform implements Platform {
 
         WebPlayer webPlayer;
         try {
-            webPlayer = WebPlayer.getSync(uuid);
-        } catch (Exception ignored) {
+            webPlayer = MojangProfiles.client().getSync(uuid);
+        } catch (Exception e) {
+            logger.debug("Mojang profile lookup failed: " + e.getMessage());
             return null;
         }
         if (webPlayer == null) return null;
@@ -161,8 +141,9 @@ public class FabricPlatform implements Platform {
 
         WebPlayer webPlayer;
         try {
-            webPlayer = WebPlayer.getSync(username);
-        } catch (Exception ignored) {
+            webPlayer = MojangProfiles.client().getSync(username);
+        } catch (Exception e) {
+            logger.debug("Mojang profile lookup failed: " + e.getMessage());
             return null;
         }
         if (webPlayer == null) return null;
@@ -177,6 +158,7 @@ public class FabricPlatform implements Platform {
             Class<?> wrapperClass = Class.forName("dev.simplix.cirrus.fabric.wrapper.FabricPlayerWrapper");
             return (CirrusPlayerWrapper) wrapperClass.getConstructor(ServerPlayerEntity.class).newInstance(player);
         } catch (Exception e) {
+            logger.debug("Failed to build Cirrus player wrapper for " + uuid + ": " + e.getMessage());
             return null;
         }
     }
@@ -235,7 +217,7 @@ public class FabricPlatform implements Platform {
         if (player == null) return;
         ServerPlayerEntity serverPlayer = server.getPlayerManager().getPlayer(player.getUuid());
         if (serverPlayer != null) {
-            serverPlayer.networkHandler.disconnect(parseLegacyText(serverPlayer, StringUtil.unescapeNewlines(reason)));
+            serverPlayer.networkHandler.disconnect(textSerializer.parseLegacyText(serverPlayer, StringUtil.unescapeNewlines(reason)));
         }
     }
 
@@ -274,116 +256,8 @@ public class FabricPlatform implements Platform {
         return property != null ? property.value() : null;
     }
 
-    @Override
-    public Cache getCache() {
-        return cache;
-    }
-
-    @Override
-    public LocaleManager getLocaleManager() {
-        return localeManager;
-    }
-
-    @Override
-    public StaffModeService getStaffModeService() {
-        return staffModeService;
-    }
-
-    @Override
-    public BridgeService getBridgeService() {
-        return bridgeService;
-    }
-
-    @Override
-    public ChatInputManager getChatInputManager() {
-        return chatInputManager;
-    }
-
-    @Override
-    public ReplayService getReplayService() {
-        return replayService;
-    }
-
     private boolean isAuthenticatedStaff(UUID uuid) {
-        return PermissionUtil.isStaff(uuid, cache)
-                && (staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(uuid));
+        return staffAudience != null && staffAudience.includes(uuid);
     }
 
-    private void sendJsonToPlayer(ServerPlayerEntity player, String jsonMessage) {
-        try {
-            JsonElement element = JsonParser.parseString(jsonMessage);
-            fixLegacyHoverEvents(element);
-            String fixedJson = new Gson().toJson(element);
-            Component component = AdventureSerializer.serializer().fromJson(fixedJson);
-            String normalizedJson = AdventureSerializer.toJson(component);
-            JsonElement jsonElement = JsonParser.parseString(normalizedJson);
-            Text text = TextCodecs.CODEC.parse(
-                    RegistryOps.of(JsonOps.INSTANCE, player.getRegistryManager()),
-                    jsonElement).result().orElse(null);
-            if (text != null) {
-                player.sendMessage(text, false);
-                return;
-            }
-        } catch (Exception e) {
-            logger.warning("Failed to parse JSON message: " + e.getMessage());
-        }
-        player.sendMessage(Text.literal(stripLegacyFormatting(jsonMessage)), false);
-    }
-
-    private void sendLegacyMessage(ServerPlayerEntity player, String message) {
-        player.sendMessage(parseLegacyText(player, message), false);
-    }
-
-    private Text parseLegacyText(ServerPlayerEntity player, String message) {
-        String normalizedMessage = message == null ? "" : message;
-        try {
-            String json = AdventureSerializer.toJson(CirrusChatElement.ofLegacyText(normalizedMessage).asComponent());
-            Text text = TextCodecs.CODEC.parse(
-                    RegistryOps.of(JsonOps.INSTANCE, player.getRegistryManager()),
-                    JsonParser.parseString(json)).result().orElse(null);
-            if (text != null) {
-                return text;
-            }
-        } catch (Exception ignored) {
-        }
-        return Text.literal(stripLegacyFormatting(normalizedMessage));
-    }
-
-    private void fixLegacyHoverEvents(JsonElement element) {
-        if (element == null || element.isJsonNull()) {
-            return;
-        }
-        if (element.isJsonArray()) {
-            for (JsonElement child : element.getAsJsonArray()) {
-                fixLegacyHoverEvents(child);
-            }
-            return;
-        }
-        if (!element.isJsonObject()) {
-            return;
-        }
-
-        JsonObject obj = element.getAsJsonObject();
-        if (obj.has("hoverEvent") && obj.get("hoverEvent").isJsonObject()) {
-            JsonObject hover = obj.getAsJsonObject("hoverEvent");
-            if (hover != null && hover.has("value") && !hover.has("contents")) {
-                JsonElement value = hover.remove("value");
-                if (value.isJsonPrimitive()) {
-                    JsonObject contents = new JsonObject();
-                    contents.add("text", value);
-                    hover.add("contents", contents);
-                } else {
-                    hover.add("contents", value);
-                }
-            }
-        }
-
-        for (String key : obj.keySet()) {
-            fixLegacyHoverEvents(obj.get(key));
-        }
-    }
-
-    private String stripLegacyFormatting(String message) {
-        return (message == null ? "" : message).replaceAll("(?i)[&\u00a7][0-9a-fk-or]", "");
-    }
 }

@@ -14,7 +14,11 @@ import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 import gg.modl.minecraft.core.config.ConfigManager;
 import gg.modl.minecraft.core.impl.menus.StandingMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.util.PluginLogger;
+import gg.modl.minecraft.core.support.FakeModlHttpClient;
+import gg.modl.minecraft.core.support.FakePlatform;
+import gg.modl.minecraft.core.support.MapLocaleManager;
+import gg.modl.minecraft.core.support.RecordingPluginLogger;
+import gg.modl.minecraft.core.support.TestAccounts;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import revxrsal.commands.Lamp;
@@ -24,11 +28,9 @@ import java.lang.reflect.Proxy;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -47,12 +49,12 @@ class StandingCommandTest {
     Path tempDir;
 
     @Test
-    void standing_returns_without_waiting_for_preview_and_types_requests() {
+    void standingReturnsWithoutWaitingForPreviewAndTypesRequests() {
         UUID playerUuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174100");
         CompletableFuture<PlayerProfileResponse> profileFuture = CompletableFuture.completedFuture(profileResponse(playerUuid));
         CompletableFuture<PunishmentPreviewResponse> previewFuture = new CompletableFuture<>();
         CompletableFuture<PunishmentTypesResponse> typesFuture = new CompletableFuture<>();
-        TestPlatform platform = new TestPlatform(playerUuid);
+        FakePlatform platform = platform(playerUuid, true);
         TestStandingCommand command = command(platform, httpClient(profileFuture, previewFuture, typesFuture));
         TestActor actor = new TestActor(playerUuid);
         ExecutorService executor = Executors.newSingleThreadExecutor(task -> {
@@ -73,10 +75,9 @@ class StandingCommandTest {
     }
 
     @Test
-    void standing_replies_error_without_display_when_player_wrapper_is_missing() {
+    void standingRepliesErrorWithoutDisplayWhenPlayerWrapperIsMissing() {
         UUID playerUuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174101");
-        TestPlatform platform = new TestPlatform(playerUuid);
-        platform.wrapper = null;
+        FakePlatform platform = new FakePlatform().register(new AbstractPlayer(playerUuid, "modlplayer", true));
         TestStandingCommand command = command(platform, httpClient(
                 CompletableFuture.completedFuture(profileResponse(playerUuid)),
                 CompletableFuture.completedFuture(successfulPreview()),
@@ -86,16 +87,15 @@ class StandingCommandTest {
 
         command.standing(actor);
 
-        assertEquals(2, platform.mainThreadTasks.get());
+        assertEquals(2, platform.mainThreadScheduleCount());
         assertEquals(0, command.displayCount.get());
         assertEquals(Arrays.asList(message("standing.loading"), message("standing.error")), actor.messages);
     }
 
     @Test
-    void standing_schedules_error_reply_when_profile_response_is_null() {
+    void standingSchedulesErrorReplyWhenProfileResponseIsNull() {
         UUID playerUuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174102");
-        TestPlatform platform = new TestPlatform(playerUuid);
-        platform.autoRunMainThreadTasks = false;
+        FakePlatform platform = platform(playerUuid, false);
         CompletableFuture<PlayerProfileResponse> profileFuture = new CompletableFuture<>();
         TestStandingCommand command = command(platform, httpClient(
                 profileFuture,
@@ -107,20 +107,19 @@ class StandingCommandTest {
         command.standing(actor);
         profileFuture.complete(null);
 
-        assertEquals(2, platform.mainThreadTasks.get());
+        assertEquals(2, platform.mainThreadScheduleCount());
         assertEquals(Collections.emptyList(), actor.messages);
 
-        platform.runQueuedMainThreadTasks();
+        platform.runScheduledTasks();
 
         assertEquals(Arrays.asList(message("standing.loading"), message("standing.error")), actor.messages);
         assertEquals(0, command.displayCount.get());
     }
 
     @Test
-    void standing_schedules_error_reply_when_profile_account_is_null() {
+    void standingSchedulesErrorReplyWhenProfileAccountIsNull() {
         UUID playerUuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174103");
-        TestPlatform platform = new TestPlatform(playerUuid);
-        platform.autoRunMainThreadTasks = false;
+        FakePlatform platform = platform(playerUuid, false);
         PlayerProfileResponse response = profileResponse(playerUuid);
         setProfileFieldToNull(response);
         TestStandingCommand command = command(platform, httpClient(
@@ -132,20 +131,19 @@ class StandingCommandTest {
 
         command.standing(actor);
 
-        assertEquals(2, platform.mainThreadTasks.get());
+        assertEquals(2, platform.mainThreadScheduleCount());
         assertEquals(Collections.emptyList(), actor.messages);
 
-        platform.runQueuedMainThreadTasks();
+        platform.runScheduledTasks();
 
         assertEquals(Arrays.asList(message("standing.loading"), message("standing.error")), actor.messages);
         assertEquals(0, command.displayCount.get());
     }
 
     @Test
-    void standing_schedules_error_reply_when_profile_request_fails() {
+    void standingSchedulesErrorReplyWhenProfileRequestFails() {
         UUID playerUuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174104");
-        TestPlatform platform = new TestPlatform(playerUuid);
-        platform.autoRunMainThreadTasks = false;
+        FakePlatform platform = platform(playerUuid, false);
         CompletableFuture<PlayerProfileResponse> profileFuture = new CompletableFuture<>();
         TestStandingCommand command = command(platform, httpClient(
                 profileFuture,
@@ -157,30 +155,27 @@ class StandingCommandTest {
         command.standing(actor);
         profileFuture.completeExceptionally(new IllegalStateException("boom"));
 
-        assertEquals(2, platform.mainThreadTasks.get());
+        assertEquals(2, platform.mainThreadScheduleCount());
         assertEquals(Collections.emptyList(), actor.messages);
 
-        platform.runQueuedMainThreadTasks();
+        platform.runScheduledTasks();
 
         assertEquals(Arrays.asList(message("standing.loading"), message("standing.error")), actor.messages);
         assertEquals(0, command.displayCount.get());
     }
 
-    private TestStandingCommand command(TestPlatform platform, ModlHttpClient httpClient) {
-        LocaleManager localeManager = new LocaleManager("en_US") {
-            @Override
-            public String getMessage(String path) {
-                return message(path);
-            }
+    private static FakePlatform platform(UUID playerUuid, boolean autoRunMainThread) {
+        return new FakePlatform()
+                .register(new AbstractPlayer(playerUuid, "modlplayer", true))
+                .registerWrapper(playerUuid, playerWrapper(playerUuid))
+                .autoRunMainThread(autoRunMainThread);
+    }
 
-            @Override
-            public String getMessage(String path, Map<String, String> placeholders) {
-                return message(path);
-            }
-        };
-        ConfigManager configManager = new ConfigManager(tempDir, noopLogger());
+    private TestStandingCommand command(FakePlatform platform, ModlHttpClient httpClient) {
+        LocaleManager localeManager = new MapLocaleManager().withFallback(StandingCommandTest::message);
+        ConfigManager configManager = new ConfigManager(tempDir, new RecordingPluginLogger());
         Cache cache = new Cache(new CachedProfileRegistry());
-        return new TestStandingCommand(new HttpClientHolder(httpClient), platform.asPlatform(), localeManager, configManager, cache);
+        return new TestStandingCommand(new HttpClientHolder(httpClient), platform, localeManager, configManager, cache);
     }
 
     private static ModlHttpClient httpClient(
@@ -188,16 +183,22 @@ class StandingCommandTest {
             CompletableFuture<PunishmentPreviewResponse> previewFuture,
             CompletableFuture<PunishmentTypesResponse> typesFuture
     ) {
-        return (ModlHttpClient) Proxy.newProxyInstance(
-                ModlHttpClient.class.getClassLoader(),
-                new Class<?>[]{ModlHttpClient.class},
-                (proxy, method, args) -> {
-                    if ("getPlayerProfile".equals(method.getName())) return profileFuture;
-                    if ("getPunishmentPreview".equals(method.getName())) return previewFuture;
-                    if ("getPunishmentTypes".equals(method.getName())) return typesFuture;
-                    throw new UnsupportedOperationException(method.getName());
-                }
-        );
+        return new FakeModlHttpClient() {
+            @Override
+            public CompletableFuture<PlayerProfileResponse> getPlayerProfile(UUID uuid) {
+                return profileFuture;
+            }
+
+            @Override
+            public CompletableFuture<PunishmentPreviewResponse> getPunishmentPreview(UUID playerUuid, int typeOrdinal) {
+                return previewFuture;
+            }
+
+            @Override
+            public CompletableFuture<PunishmentTypesResponse> getPunishmentTypes() {
+                return typesFuture;
+            }
+        };
     }
 
     private static CirrusPlayerWrapper playerWrapper(UUID playerUuid) {
@@ -213,33 +214,12 @@ class StandingCommandTest {
         );
     }
 
-    private static PluginLogger noopLogger() {
-        return (PluginLogger) Proxy.newProxyInstance(
-                PluginLogger.class.getClassLoader(),
-                new Class<?>[]{PluginLogger.class},
-                (proxy, method, args) -> null
-        );
-    }
-
     private static PlayerProfileResponse profileResponse(UUID playerUuid) {
-        PlayerProfileResponse response = new PlayerProfileResponse(new Account(
-                "player-1",
-                playerUuid,
-                Collections.singletonList(new Account.Username("modlplayer", null)),
-                Collections.emptyList(),
-                Collections.emptyList(),
-                Collections.emptyList(),
-                Collections.emptyList(),
-                Collections.emptyMap()
-        ));
-        response.setStatus(200);
-        return response;
+        return TestAccounts.profileResponse(playerUuid, "modlplayer");
     }
 
     private static PunishmentPreviewResponse successfulPreview() {
-        PunishmentPreviewResponse response = new PunishmentPreviewResponse();
-        response.setStatus(200);
-        return response;
+        return PunishmentPreviewResponse.builder().success(true).build();
     }
 
     private static PunishmentTypesResponse successfulTypes() {
@@ -278,52 +258,6 @@ class StandingCommandTest {
         @Override
         protected void displayMenu(StandingMenu menu, CirrusPlayerWrapper player) {
             displayCount.incrementAndGet();
-        }
-    }
-
-    private static class TestPlatform {
-        private final UUID playerUuid;
-        private final AtomicInteger mainThreadTasks = new AtomicInteger();
-        private final Queue<Runnable> queuedMainThreadTasks = new ArrayDeque<>();
-        private boolean autoRunMainThreadTasks = true;
-        private AbstractPlayer abstractPlayer;
-        private CirrusPlayerWrapper wrapper;
-
-        TestPlatform(UUID playerUuid) {
-            this.playerUuid = playerUuid;
-            this.abstractPlayer = new AbstractPlayer(playerUuid, "modlplayer", true);
-            this.wrapper = playerWrapper(playerUuid);
-        }
-
-        private Platform asPlatform() {
-            return (Platform) Proxy.newProxyInstance(
-                    Platform.class.getClassLoader(),
-                    new Class<?>[]{Platform.class},
-                    (proxy, method, args) -> {
-                        if ("getAbstractPlayer".equals(method.getName()) && args[0] instanceof UUID)
-                            return playerUuid.equals(args[0]) ? abstractPlayer : null;
-                        if ("getPlayerWrapper".equals(method.getName()))
-                            return playerUuid.equals(args[0]) ? wrapper : null;
-                        if ("runOnMainThread".equals(method.getName())) {
-                            mainThreadTasks.incrementAndGet();
-                            Runnable task = (Runnable) args[0];
-                            if (autoRunMainThreadTasks) {
-                                task.run();
-                            } else {
-                                queuedMainThreadTasks.add(task);
-                            }
-                            return null;
-                        }
-                        throw new UnsupportedOperationException(method.getName());
-                    }
-            );
-        }
-
-        private void runQueuedMainThreadTasks() {
-            Runnable task;
-            while ((task = queuedMainThreadTasks.poll()) != null) {
-                task.run();
-            }
         }
     }
 

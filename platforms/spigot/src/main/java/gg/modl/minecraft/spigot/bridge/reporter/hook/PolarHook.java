@@ -4,28 +4,22 @@ import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.bridge.reporter.detection.DetectionSource;
 import gg.modl.minecraft.bridge.reporter.detection.ViolationTracker;
 import gg.modl.minecraft.bridge.reporter.AutoReporter;
-import gg.modl.minecraft.bridge.reporter.hook.AntiCheatHook;
-import lombok.RequiredArgsConstructor;
 import org.bukkit.plugin.java.JavaPlugin;
 import top.polar.api.PolarApi;
 import top.polar.api.PolarApiAccessor;
+import top.polar.api.event.listener.RegisteredListener;
+import top.polar.api.event.listener.repository.EventListenerRepository;
 import top.polar.api.user.event.DetectionAlertEvent;
 
-import java.util.UUID;
-
-@RequiredArgsConstructor
-public class PolarHook implements AntiCheatHook {
+public class PolarHook extends AbstractAnticheatHook<DetectionAlertEvent> {
     private static final String HOOK_NAME = "Polar";
     private static final String POLAR_API_CLASS = "top.polar.api.PolarApiAccessor";
 
-    private final JavaPlugin plugin;
-    private final BridgeConfig config;
-    private final ViolationTracker violationTracker;
-    private final AutoReporter autoReporter;
+    private EventListenerRepository repository;
+    private RegisteredListener<DetectionAlertEvent> registeredListener;
 
-    @Override
-    public String getName() {
-        return HOOK_NAME;
+    public PolarHook(JavaPlugin plugin, BridgeConfig config, ViolationTracker violationTracker, AutoReporter autoReporter) {
+        super(plugin, config, violationTracker, autoReporter, HOOK_NAME, HOOK_NAME, DetectionSource.POLAR);
     }
 
     @Override
@@ -46,39 +40,38 @@ public class PolarHook implements AntiCheatHook {
                 plugin.getLogger().warning("Polar API reference was null");
                 return;
             }
-            polarApi.events().repository().registerListener(DetectionAlertEvent.class, this::onDetection);
-            plugin.getLogger().info("Hooked into " + HOOK_NAME);
+            repository = polarApi.events().repository();
+            registeredListener = repository.registerListener(DetectionAlertEvent.class, this::handle);
+            logHooked();
         } catch (Exception e) {
-            plugin.getLogger().warning("Failed to hook into " + HOOK_NAME + ": " + e.getMessage());
+            logHookFailure(e);
         }
     }
 
     @Override
     public void unregister() {
-    }
-
-    private void onDetection(DetectionAlertEvent event) {
-        try {
-            UUID uuid = event.user().uuid();
-            String playerName = event.user().username();
-            String checkName = event.check().type().name();
-            String verbose = event.details();
-
-            logDebugDetection(HOOK_NAME, playerName, uuid, checkName, verbose);
-            violationTracker.addViolation(uuid, DetectionSource.POLAR, checkName, verbose);
-            autoReporter.checkAndReport(uuid, playerName, DetectionSource.POLAR, checkName);
-        } catch (Exception e) {
-            plugin.getLogger().warning("Error processing Polar detection event: " + e.getMessage());
-            e.printStackTrace();
+        if (repository != null && registeredListener != null) {
+            repository.unregisterListener(registeredListener);
         }
     }
 
-    private void logDebugDetection(String sourceName, String playerName, UUID uuid, String checkName, String verbose) {
-        if (!config.isDebug()) return;
-        int currentCount = violationTracker.getViolationCount(uuid, DetectionSource.POLAR, checkName);
-        plugin.getLogger().info("[DEBUG] " + sourceName + " detection: player=" + playerName
-                + " check=" + checkName + " currentVL=" + (currentCount + 1)
-                + " threshold=" + config.getReportViolationThreshold(checkName)
-                + " details=" + verbose);
+    public boolean isRegistered() {
+        return registeredListener != null;
+    }
+
+    @Override
+    protected String eventNoun() {
+        return "detection";
+    }
+
+    @Override
+    protected String verboseLabel() {
+        return "details";
+    }
+
+    @Override
+    protected AnticheatFlag extractFlag(DetectionAlertEvent event) {
+        return new AnticheatFlag(event.user().uuid(), event.user().username(),
+                event.check().type().name(), event.details());
     }
 }

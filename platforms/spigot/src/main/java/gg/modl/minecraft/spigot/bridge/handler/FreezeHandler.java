@@ -1,9 +1,9 @@
 package gg.modl.minecraft.spigot.bridge.handler;
 
 import gg.modl.minecraft.bridge.BridgeScheduler;
+import gg.modl.minecraft.bridge.freeze.FreezeCore;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -25,37 +25,45 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
-@RequiredArgsConstructor
 public class FreezeHandler implements Listener {
     private final JavaPlugin plugin;
     private final BridgeLocaleManager localeManager;
     private final BridgeScheduler scheduler;
-    private final Map<UUID, UUID> frozenPlayers = new ConcurrentHashMap<>(); // frozen -> staff
+    private final FreezeCore freezeCore;
 
     @Setter private StaffModeHandler staffModeHandler;
-    @Setter private BridgeQueryClient bridgeClient;
+
+    public FreezeHandler(JavaPlugin plugin, BridgeLocaleManager localeManager, BridgeScheduler scheduler) {
+        this.plugin = plugin;
+        this.localeManager = localeManager;
+        this.scheduler = scheduler;
+        this.freezeCore = new FreezeCore(localeManager, new SpigotFreezeOps(scheduler));
+    }
 
     public void register() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
+    public void setBridgeClient(BridgeQueryClient bridgeClient) {
+        freezeCore.setBridgeClient(bridgeClient);
+    }
+
     public void freeze(String targetUuid, String staffUuid) {
-        frozenPlayers.put(UUID.fromString(targetUuid), UUID.fromString(staffUuid));
-        notifyPlayer(UUID.fromString(targetUuid), "freeze.frozen");
+        freezeCore.freeze(targetUuid, staffUuid);
     }
 
     public void unfreeze(String targetUuid) {
-        UUID target = UUID.fromString(targetUuid);
-        frozenPlayers.remove(target);
-        notifyPlayer(target, "freeze.unfrozen");
+        freezeCore.unfreeze(targetUuid);
     }
 
     public boolean isFrozen(UUID uuid) {
-        return frozenPlayers.containsKey(uuid);
+        return freezeCore.isFrozen(uuid);
+    }
+
+    FreezeCore getFreezeCore() {
+        return freezeCore;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -82,7 +90,7 @@ public class FreezeHandler implements Listener {
         String message = localeManager.getMessage("freeze.chat",
                 mapOf("player", player.getName(), "message", event.getMessage()));
 
-        scheduler.runSync(() -> {
+        scheduler.runOnMainThread(() -> {
             if (staffModeHandler != null) {
                 Bukkit.getOnlinePlayers().stream()
                         .filter(online -> staffModeHandler.isInStaffMode(online.getUniqueId()))
@@ -130,29 +138,16 @@ public class FreezeHandler implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        if (frozenPlayers.remove(uuid) == null) return;
+        if (!isFrozen(uuid)) return;
 
-        String playerName = event.getPlayer().getName();
-        plugin.getLogger().warning("Frozen player " + playerName + " logged out!");
-
-        if (bridgeClient != null) {
-            bridgeClient.sendMessage("FREEZE_LOGOUT", uuid.toString(), playerName);
-        }
+        plugin.getLogger().warning("Frozen player " + event.getPlayer().getName() + " logged out!");
+        freezeCore.handleQuit(uuid);
     }
 
     private boolean cancelIfFrozen(Cancellable event, Player player) {
         if (!isFrozen(player.getUniqueId())) return false;
         event.setCancelled(true);
         return true;
-    }
-
-    private void notifyPlayer(UUID target, String messageKey) {
-        scheduler.runForPlayer(target, () -> {
-            Player player = Bukkit.getPlayer(target);
-            if (player != null) {
-                player.sendMessage(localeManager.getMessage(messageKey));
-            }
-        });
     }
 
     private void sendScheduledMessage(UUID target, String message) {

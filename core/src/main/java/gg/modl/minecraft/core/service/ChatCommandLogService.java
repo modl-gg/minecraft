@@ -1,14 +1,12 @@
 package gg.modl.minecraft.core.service;
 
-import gg.modl.minecraft.api.http.request.SyncRequest;
+import gg.modl.minecraft.api.http.ChatLogEntry;
+import gg.modl.minecraft.api.http.CommandLogEntry;
 import gg.modl.minecraft.core.HttpClientHolder;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 
 public class ChatCommandLogService {
@@ -27,57 +25,34 @@ public class ChatCommandLogService {
         }
     }
 
-    public List<SyncRequest.ChatLogEntry> drainChatBuffer() {
-        List<ChatLogEntry> entries;
-        synchronized (chatBuffer) {
-            if (chatBuffer.isEmpty()) return listOf();
-            entries = new ArrayList<>(chatBuffer);
-            chatBuffer.clear();
-        }
-        return entries.stream()
-                .map(e -> new SyncRequest.ChatLogEntry(e.getUuid(), e.getUsername(), e.getMessage(), e.getServer(), e.getTimestamp()))
-                .collect(Collectors.toList());
+    public List<ChatLogEntry> drainChatBuffer() {
+        return drain(chatBuffer);
     }
 
-    public List<SyncRequest.CommandLogEntry> drainCommandBuffer() {
-        List<CommandLogEntry> entries;
-        synchronized (commandBuffer) {
-            if (commandBuffer.isEmpty()) return listOf();
-            entries = new ArrayList<>(commandBuffer);
-            commandBuffer.clear();
+    public List<CommandLogEntry> drainCommandBuffer() {
+        return drain(commandBuffer);
+    }
+
+    private static <T> List<T> drain(List<T> buffer) {
+        synchronized (buffer) {
+            if (buffer.isEmpty()) return listOf();
+            List<T> drained = new ArrayList<>(buffer);
+            buffer.clear();
+            return drained;
         }
-        return entries.stream()
-                .map(e -> new SyncRequest.CommandLogEntry(e.getUuid(), e.getUsername(), e.getCommand(), e.getServer(), e.getTimestamp()))
-                .collect(Collectors.toList());
     }
 
     public CompletableFuture<List<ChatLogEntry>> getChatLogs(HttpClientHolder httpClientHolder, String uuid, int limit) {
         return httpClientHolder.getClient().getChatLogs(uuid, limit).thenApply(response -> {
             if (response.getEntries() == null) return listOf();
-            return response.getEntries().stream()
-                    .map(e -> new ChatLogEntry(e.getUuid(), e.getUsername(), e.getMessage(), e.getServer(), e.getTimestamp()))
-                    .collect(Collectors.toList());
+            return new ArrayList<>(response.getEntries());
         });
     }
 
     public CompletableFuture<List<CommandLogEntry>> getCommandLogs(HttpClientHolder httpClientHolder, String uuid, int limit) {
         return httpClientHolder.getClient().getCommandLogs(uuid, limit).thenApply(response -> {
             if (response.getEntries() == null) return listOf();
-            return response.getEntries().stream()
-                    .map(e -> new CommandLogEntry(e.getUuid(), e.getUsername(), e.getCommand(), e.getServer(), e.getTimestamp()))
-                    .collect(Collectors.toList());
+            return new ArrayList<>(response.getEntries());
         });
-    }
-
-    @Data @AllArgsConstructor
-    public static class ChatLogEntry {
-        private final String uuid, username, message, server;
-        private final long timestamp;
-    }
-
-    @Data @AllArgsConstructor
-    public static class CommandLogEntry {
-        private final String uuid, username, command, server;
-        private final long timestamp;
     }
 }

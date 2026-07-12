@@ -1,14 +1,12 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Value;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+@Value
 public class StatWipeAcknowledgeRequest {
-    private @NotNull String punishmentId;
-    private @Nullable String serverName;
-    private boolean success;
+    @NotNull String punishmentId;
+    @Nullable String serverName;
+    boolean success;
 }

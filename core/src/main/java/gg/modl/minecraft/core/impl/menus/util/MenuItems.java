@@ -14,12 +14,10 @@ import java.util.stream.Collectors;
 public final class MenuItems {
     private MenuItems() {}
 
-    public static void setDateFormat(String pattern) {
-        DateFormatter.setDateFormat(pattern);
-    }
+    private static volatile DateFormatter dateFormatter = new DateFormatter(DateFormatter.DEFAULT_PATTERN, null);
 
-    public static void setTimezone(String timezoneId) {
-        DateFormatter.setTimezone(timezoneId);
+    public static void setDateFormatter(DateFormatter formatter) {
+        if (formatter != null) dateFormatter = formatter;
     }
 
     public static final String COLOR_GOLD = "§6", COLOR_YELLOW = "§e", COLOR_GREEN = "§a", COLOR_RED = "§c",
@@ -130,7 +128,7 @@ public final class MenuItems {
 
     public static String formatDate(Date date) {
         if (date == null) return "Unknown";
-        return DateFormatter.format(date);
+        return dateFormatter.format(date);
     }
 
     public static String formatDuration(Long durationMs) {

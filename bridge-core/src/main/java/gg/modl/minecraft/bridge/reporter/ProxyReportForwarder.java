@@ -4,12 +4,6 @@ import gg.modl.minecraft.bridge.query.BridgeQueryClient;
 
 import java.util.function.Supplier;
 
-/**
- * Builds a {@link TicketCreator} that forwards anti-cheat auto-reports to the proxy as a
- * CREATE_REPORT bridge message. Used by BRIDGE_ONLY-mode backends (Fabric) so they have a
- * non-null TicketCreator, mirroring the Spigot BRIDGE_ONLY wiring exactly (arg order and
- * replay-present/absent branch).
- */
 public final class ProxyReportForwarder {
 
     private ProxyReportForwarder() {

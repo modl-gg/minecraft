@@ -137,7 +137,7 @@ class FreezeHandlerTest {
         private int syncRuns;
 
         @Override
-        public void runSync(Runnable task) {
+        public void runOnMainThread(Runnable task) {
             syncRuns++;
             syncTask = task;
         }

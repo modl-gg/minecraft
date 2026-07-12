@@ -6,7 +6,7 @@ import gg.modl.minecraft.core.boot.ConsoleInput;
 import gg.modl.minecraft.core.boot.PlatformType;
 import gg.modl.minecraft.core.boot.SetupWizard;
 import gg.modl.minecraft.core.util.PluginLogger;
-import gg.modl.minecraft.spigot.bridge.folia.FoliaSchedulerHelper;
+import gg.modl.minecraft.spigot.bridge.folia.FoliaScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -25,23 +25,28 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class SpigotSetupWizard implements Listener {
+    private static final long WIZARD_START_DELAY_TICKS = 60L;
+    private static final long WIZARD_START_DELAY_SECONDS = 3L;
+
     private final JavaPlugin plugin;
     private final PluginLogger logger;
     private final Consumer<BootConfig> onComplete;
     private final BlockingQueue<String> inputQueue = new LinkedBlockingQueue<>();
+    private final FoliaScheduler foliaScheduler;
     private volatile boolean active = false;
 
     public SpigotSetupWizard(JavaPlugin plugin, PluginLogger logger, Consumer<BootConfig> onComplete) {
         this.plugin = plugin;
         this.logger = logger;
         this.onComplete = onComplete;
+        this.foliaScheduler = new FoliaScheduler(plugin);
     }
 
     public void start() {
         active = true;
         Bukkit.getPluginManager().registerEvents(this, plugin);
 
-        if (FoliaSchedulerHelper.isFolia()) {
+        if (FoliaScheduler.isFolia()) {
             startFolia();
         } else {
             startBukkit();
@@ -51,7 +56,7 @@ public class SpigotSetupWizard implements Listener {
     private void startBukkit() {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Bukkit.getScheduler().runTaskAsynchronously(plugin, this::runWizard);
-        }, 60L);
+        }, WIZARD_START_DELAY_TICKS);
     }
 
     private void startFolia() {
@@ -60,8 +65,7 @@ public class SpigotSetupWizard implements Listener {
             t.setDaemon(true);
             return t;
         });
-        // 60 ticks = 3 seconds delay
-        executor.schedule(this::runWizard, 3, TimeUnit.SECONDS);
+        executor.schedule(this::runWizard, WIZARD_START_DELAY_SECONDS, TimeUnit.SECONDS);
         executor.shutdown();
     }
 
@@ -90,8 +94,8 @@ public class SpigotSetupWizard implements Listener {
     }
 
     private void runOnMain(Runnable task) {
-        if (FoliaSchedulerHelper.isFolia()) {
-            FoliaSchedulerHelper.runGlobal(plugin, task);
+        if (FoliaScheduler.isFolia()) {
+            foliaScheduler.runGlobal(task);
         } else {
             Bukkit.getScheduler().runTask(plugin, task);
         }

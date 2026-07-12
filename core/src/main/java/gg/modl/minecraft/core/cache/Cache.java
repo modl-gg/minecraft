@@ -35,9 +35,19 @@ public class Cache {
     @Getter private volatile PunishmentTypesResponse cachedPunishmentTypes;
     @Getter private volatile PunishGuiConfig cachedPunishGuiConfig;
     @Getter private volatile ReportGuiConfig cachedReportGuiConfig;
-    @Getter @Setter private volatile Map<Integer, String> punishmentTypeItems;
+    private volatile Map<Integer, String> punishmentTypeItems = Collections.emptyMap();
 
     @Getter @Setter private boolean queryMojang;
+
+    public Map<Integer, String> getPunishmentTypeItems() {
+        return punishmentTypeItems;
+    }
+
+    public void setPunishmentTypeItems(Map<Integer, String> items) {
+        this.punishmentTypeItems = items == null
+                ? Collections.emptyMap()
+                : Collections.unmodifiableMap(new LinkedHashMap<>(items));
+    }
 
     public CachedProfile getPlayerProfile(UUID uuid) {
         return registry.getProfile(uuid);

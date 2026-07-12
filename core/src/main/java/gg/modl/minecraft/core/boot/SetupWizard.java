@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 
 public class SetupWizard {
     private static final long POLL_INTERVAL_MS = 5000;
-    private static final int MAX_POLL_ATTEMPTS = 120; // 10 minutes
+    private static final int MAX_POLL_ATTEMPTS = 120;
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private static final Pattern SUBDOMAIN_PATTERN = Pattern.compile("^[a-z0-9-]+$");
@@ -54,7 +54,6 @@ public class SetupWizard {
         }
     }
 
-    // ── Input helpers ──
 
     private String readLine(String prompt) {
         String response = input.readLine(prompt);
@@ -202,7 +201,7 @@ public class SetupWizard {
                     continue;
                 }
             } catch (Exception e) {
-                // If the check fails, proceed anyway — the registration call will catch it
+                logger.debug("Email availability check failed; proceeding to registration: " + e.getMessage());
             }
             return email;
         }
@@ -218,7 +217,7 @@ public class SetupWizard {
                     continue;
                 }
             } catch (Exception e) {
-                // If the check fails, proceed anyway
+                logger.debug("Server name availability check failed; proceeding to registration: " + e.getMessage());
             }
             return name;
         }
@@ -234,13 +233,12 @@ public class SetupWizard {
                     continue;
                 }
             } catch (Exception e) {
-                // If the check fails, proceed anyway
+                logger.debug("Subdomain availability check failed; proceeding to registration: " + e.getMessage());
             }
             return subdomain;
         }
     }
 
-    // ── Wizard flows ──
 
     private BootConfig runSpigotWizard() {
         boolean standalone = askYesNo("Is this a standalone server (no proxy)?");
@@ -357,7 +355,6 @@ public class SetupWizard {
         return askYesNo("Save this configuration?");
     }
 
-    // ── Registration flow ──
 
     private RegistrationResult runRegistrationFlowWithRetry() {
         while (true) {
@@ -446,7 +443,6 @@ public class SetupWizard {
         return null;
     }
 
-    // ── Utilities ──
 
     private void printBanner() {
         logger.info("===========================================");

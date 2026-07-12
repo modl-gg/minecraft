@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Punishment;
@@ -31,7 +32,7 @@ public class PunishmentActionCommand {
     @Command("punishment_action")
     @StaffOnly
     public void punishmentAction(CommandActor actor, String action, String punishmentId) {
-        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
+        if (CommandUtil.isConsole(actor)) {
             actor.reply(localeManager.getMessage("general.gui_requires_player"));
             return;
         }
@@ -102,7 +103,7 @@ public class PunishmentActionCommand {
         UUID senderUuid = actor.uniqueId();
         String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
         String issuerId = cache.getStaffId(senderUuid);
-        platform.getChatInputManager().requestInput(senderUuid,
+        PluginServices.chatInput().requestInput(senderUuid,
                 localeManager.getMessage("punishment_action.enter_evidence_url", mapOf("id", punishmentId)),
                 (url) -> {
                     if (url == null || url.trim().isEmpty()) {

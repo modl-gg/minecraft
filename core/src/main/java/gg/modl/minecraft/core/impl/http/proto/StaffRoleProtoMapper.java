@@ -14,17 +14,10 @@ import gg.modl.proto.modl.v1.PunishmentTypesResponse.PunishmentTypeData;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Maps staff/role/dashboard/punishment-type responses and their request payloads between domain DTOs
- * and proto V3. Inverse of the backend {@code MinecraftStaffProtoMapper}, {@code MinecraftRolesProtoMapper},
- * {@code MinecraftDashboardProtoMapper}, and {@code MinecraftPunishmentTypeProtoMapper}.
- */
 public final class StaffRoleProtoMapper {
 
     private StaffRoleProtoMapper() {
     }
-
-    // ---- Requests (domain -> proto) ----
 
     public static gg.modl.proto.modl.v1.UpdateStaffRoleRequest toUpdateStaffRoleRequest(String roleName) {
         return gg.modl.proto.modl.v1.UpdateStaffRoleRequest.newBuilder()
@@ -46,8 +39,6 @@ public final class StaffRoleProtoMapper {
             .addAllPermissions(permissions)
             .build();
     }
-
-    // ---- Responses (proto -> domain) ----
 
     public static StaffListResponse toStaffListResponse(gg.modl.proto.modl.v1.StaffListResponse proto) {
         List<StaffListResponse.StaffEntry> staff = new ArrayList<>();

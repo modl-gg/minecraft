@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.commands.player;
 
+import gg.modl.minecraft.core.PluginServices;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
 import revxrsal.commands.annotation.Named;
@@ -50,7 +51,7 @@ public class HackReportCommand {
         String description = details != null && !details.isEmpty() ? details : null;
         String createdServer = platform.getPlayerServer(actor.uniqueId());
 
-        ReplayService replayService = platform.getReplayService();
+        ReplayService replayService = PluginServices.replay();
         CompletableFuture<String> replayFuture;
         if (replayService != null && replayService.shouldAttemptCapture(targetPlayer.getUuid())) {
             replayFuture = replayService.captureReplay(targetPlayer.getUuid(), targetPlayer.getUsername());

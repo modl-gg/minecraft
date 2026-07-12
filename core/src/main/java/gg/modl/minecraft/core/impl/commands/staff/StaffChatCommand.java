@@ -8,8 +8,9 @@ import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.StaffChatService;
 import gg.modl.minecraft.core.service.StaffChatService.ChatMode;
-import gg.modl.minecraft.core.util.StaffCommandUtil;
-import gg.modl.minecraft.core.util.StaffCommandUtil.StaffDisplay;
+import gg.modl.minecraft.core.util.CommandUtil;
+import gg.modl.minecraft.core.staff.StaffCommandUtil;
+import gg.modl.minecraft.core.staff.StaffCommandUtil.StaffDisplay;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
@@ -40,7 +41,7 @@ public class StaffChatCommand {
             return;
         }
 
-        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
+        if (CommandUtil.isConsole(actor)) {
             actor.reply(localeManager.getMessage("general.players_only"));
             return;
         }
@@ -53,7 +54,7 @@ public class StaffChatCommand {
     }
 
     private void sendStaffChatMessage(CommandActor actor, String message) {
-        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
+        if (CommandUtil.isConsole(actor)) {
             platform.staffBroadcast(staffChatConfig.formatMessage("Console", "Console", message));
             return;
         }

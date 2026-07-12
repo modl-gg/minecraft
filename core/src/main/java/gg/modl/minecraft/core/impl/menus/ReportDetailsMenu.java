@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -85,7 +86,7 @@ public class ReportDetailsMenu extends SimpleMenu {
         registerActionHandler("addDetails", click -> {
             click.clickedMenu().close();
             String prompt = locale.getMessage("messages.report_details_prompt", mapOf("player", target.getUsername()));
-            platform.getChatInputManager().requestInput(reporter.getUuid(), prompt, input -> {
+            PluginServices.chatInput().requestInput(reporter.getUuid(), prompt, input -> {
                 reportData.setDetails(input);
                 displayMenu(new ReportConfirmMenu(
                     reporter, target, httpClient, locale, platform, panelUrl,

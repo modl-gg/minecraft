@@ -10,8 +10,8 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
-import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.util.PunishmentMessages;
+import gg.modl.minecraft.core.locale.PunishmentMessageContext;
+import gg.modl.minecraft.core.punishment.PunishmentMessageService;
 
 import static gg.modl.minecraft.core.util.Java8Collections.orTimeout;
 
@@ -27,16 +27,16 @@ class PunishmentExecutor {
     private final HttpClientHolder httpClientHolder;
     private final Cache cache;
     private final PluginLogger logger;
-    private final LocaleManager localeManager;
+    private final PunishmentMessageService punishmentMessages;
     private final boolean debugMode;
 
     PunishmentExecutor(Platform platform, HttpClientHolder httpClientHolder, Cache cache,
-                       PluginLogger logger, LocaleManager localeManager, boolean debugMode) {
+                       PluginLogger logger, PunishmentMessageService punishmentMessages, boolean debugMode) {
         this.platform = platform;
         this.httpClientHolder = httpClientHolder;
         this.cache = cache;
         this.logger = logger;
-        this.localeManager = localeManager;
+        this.punishmentMessages = punishmentMessages;
         this.debugMode = debugMode;
     }
 
@@ -51,7 +51,7 @@ class PunishmentExecutor {
                     punishment.isBan(), punishment.isMute(), punishment.isKick()));
         }
 
-        platform.runOnGameThread(() -> {
+        platform.runOnMainThread(() -> {
             boolean success = executePunishment(playerUuid, username, punishment);
             acknowledgePunishment(punishment.getId(), playerUuid, success);
         });
@@ -89,7 +89,7 @@ class PunishmentExecutor {
         try {
             CachedProfile profile = cache.getPlayerProfile(uuid);
             if (profile != null) profile.setActiveMute(punishment);
-            platform.broadcast(PunishmentMessages.formatPunishmentBroadcast(username, punishment, localeManager));
+            platform.broadcast(punishmentMessages.formatPunishmentBroadcast(username, punishment));
             if (debugMode) logger.info("Executed mute for " + username + ": " + punishment.getDescription());
             return true;
         } catch (Exception e) {
@@ -102,9 +102,9 @@ class PunishmentExecutor {
         try {
             AbstractPlayer player = platform.getPlayer(uuid);
             if (player != null && player.isOnline()) {
-                platform.kickPlayer(player, PunishmentMessages.formatBanMessage(punishment, localeManager, PunishmentMessages.MessageContext.SYNC));
+                platform.kickPlayer(player, punishmentMessages.formatBanMessage(punishment, PunishmentMessageContext.SYNC));
             }
-            platform.broadcast(PunishmentMessages.formatPunishmentBroadcast(username, punishment, localeManager));
+            platform.broadcast(punishmentMessages.formatPunishmentBroadcast(username, punishment));
             if (debugMode) logger.info("Executed ban for " + username + ": " + punishment.getDescription());
             return true;
         } catch (Exception e) {
@@ -120,8 +120,8 @@ class PunishmentExecutor {
                 if (debugMode) logger.info("Player " + username + " is not online, kick ignored");
                 return true;
             }
-            platform.kickPlayer(player, PunishmentMessages.formatKickMessage(punishment, localeManager, PunishmentMessages.MessageContext.SYNC));
-            platform.broadcast(PunishmentMessages.formatPunishmentBroadcast(username, punishment, localeManager));
+            platform.kickPlayer(player, punishmentMessages.formatKickMessage(punishment, PunishmentMessageContext.SYNC));
+            platform.broadcast(punishmentMessages.formatPunishmentBroadcast(username, punishment));
             if (debugMode) logger.info("Executed kick for " + username + ": " + punishment.getDescription());
             return true;
         } catch (Exception e) {

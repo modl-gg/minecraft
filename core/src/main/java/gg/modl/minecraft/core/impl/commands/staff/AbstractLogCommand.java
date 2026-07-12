@@ -2,13 +2,11 @@ package gg.modl.minecraft.core.impl.commands.staff;
 
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
 import gg.modl.minecraft.core.HttpClientHolder;
-import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.Constants;
 import gg.modl.minecraft.core.util.DateFormatter;
 import gg.modl.minecraft.core.util.Pagination;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import revxrsal.commands.command.CommandActor;
 
 import java.util.Date;
@@ -21,16 +19,16 @@ public abstract class AbstractLogCommand<T> {
     private static final int ENTRIES_PER_PAGE = 10;
 
     protected final HttpClientHolder httpClientHolder;
-    protected final Cache cache;
     protected final LocaleManager localeManager;
+    protected final DateFormatter dateFormatter;
 
-    protected AbstractLogCommand(HttpClientHolder httpClientHolder, Cache cache, LocaleManager localeManager) {
+    protected AbstractLogCommand(HttpClientHolder httpClientHolder, LocaleManager localeManager,
+                                 DateFormatter dateFormatter) {
         this.httpClientHolder = httpClientHolder;
-        this.cache = cache;
         this.localeManager = localeManager;
+        this.dateFormatter = dateFormatter;
     }
 
-    protected abstract String permission();
     protected abstract String localePrefix();
     protected abstract CompletableFuture<List<T>> fetchEntries(String uuid);
     protected abstract long getTimestamp(T entry);
@@ -38,11 +36,6 @@ public abstract class AbstractLogCommand<T> {
     protected abstract Map<String, String> entryPlaceholders(T entry, String playerName, String timestamp, String server);
 
     protected void execute(CommandActor actor, String playerQuery, String pageArg) {
-        if (!PermissionUtil.hasPermission(actor, cache, permission())) {
-            actor.reply(localeManager.getMessage("general.no_permission"));
-            return;
-        }
-
         final int requestedPage = Pagination.parsePage(pageArg);
         String errorKey = localePrefix() + ".error";
 
@@ -73,16 +66,13 @@ public abstract class AbstractLogCommand<T> {
             return;
         }
 
-        Pagination.Page pg = Pagination.paginate(entries, ENTRIES_PER_PAGE, page);
-
-        for (int i = pg.getStart(); i < pg.getEnd(); i++) {
-            T entry = entries.get(i);
-            String timestamp = DateFormatter.format(new Date(getTimestamp(entry)));
+        Pagination.Page pg = PaginatedChatPrinter.printPage(entries, ENTRIES_PER_PAGE, page, (index, ordinal) -> {
+            T entry = entries.get(index);
+            String timestamp = dateFormatter.format(new Date(getTimestamp(entry)));
             String server = getServer(entry) != null ? getServer(entry) : Constants.UNKNOWN;
-
             actor.reply(localeManager.getMessage(localePrefix() + ".entry",
                     entryPlaceholders(entry, playerName, timestamp, server)));
-        }
+        });
 
         actor.reply(localeManager.getMessage(localePrefix() + ".footer", mapOf(
                 "page", String.valueOf(pg.getPage()),

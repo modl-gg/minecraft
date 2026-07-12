@@ -10,15 +10,8 @@ import revxrsal.commands.Lamp;
 import revxrsal.commands.command.CommandActor;
 import revxrsal.commands.bungee.BungeeLamp;
 import revxrsal.commands.bungee.actor.BungeeCommandActor;
-import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
-import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.service.BridgeService;
-import gg.modl.minecraft.core.service.ReplayService;
-import gg.modl.minecraft.core.service.Staff2faService;
-import gg.modl.minecraft.core.service.StaffModeService;
+import gg.modl.minecraft.core.StaffAudience;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
 import lombok.Setter;
 import net.md_5.bungee.api.ChatColor;
@@ -27,7 +20,6 @@ import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import java.util.function.Consumer;
 import java.io.File;
-import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.UUID;
@@ -43,19 +35,8 @@ public class BungeePlatform implements Platform {
     private final File dataFolder;
     private final String configServerName;
     private final PluginLogger pluginLogger;
-    private @Setter Cache cache;
-    private @Setter LocaleManager localeManager;
-    private @Setter StaffModeService staffModeService;
-    private @Setter BridgeService bridgeService;
-    private @Setter Staff2faService staff2faService;
-    private @Setter ChatInputManager chatInputManager;
-    private @Setter ReplayService replayService;
-
-    private static volatile boolean skinMethodsResolved = false;
-    private static volatile Method getLoginProfileMethod;
-    private static volatile Method getPropertiesMethod;
-    private static volatile Method getNameMethod;
-    private static volatile Method getValueMethod;
+    private final BungeeSkinResolver skinResolver;
+    private @Setter StaffAudience staffAudience;
 
     public BungeePlatform(Plugin plugin, Logger logger, File dataFolder, String configServerName) {
         this.plugin = plugin;
@@ -63,6 +44,7 @@ public class BungeePlatform implements Platform {
         this.dataFolder = dataFolder;
         this.configServerName = configServerName;
         this.pluginLogger = PluginLogger.fromJul(logger);
+        this.skinResolver = new BungeeSkinResolver(pluginLogger);
     }
 
     @Override
@@ -75,8 +57,7 @@ public class BungeePlatform implements Platform {
     public void staffBroadcast(String string) {
         TextComponent message = new TextComponent(ChatColor.translateAlternateColorCodes('&', string));
         ProxyServer.getInstance().getPlayers().stream()
-            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
-            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
+            .filter(player -> staffAudience != null && staffAudience.includes(player.getUniqueId()))
             .forEach(player -> player.sendMessage(message));
     }
 
@@ -92,8 +73,7 @@ public class BungeePlatform implements Platform {
     @Override
     public void staffJsonBroadcast(String jsonMessage) {
         ProxyServer.getInstance().getPlayers().stream()
-            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
-            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
+            .filter(player -> staffAudience != null && staffAudience.includes(player.getUniqueId()))
             .forEach(player -> player.sendMessage(ComponentSerializer.parse(jsonMessage)));
     }
 
@@ -237,46 +217,7 @@ public class BungeePlatform implements Platform {
     public String getPlayerSkinTexture(UUID uuid) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
         if (player == null) return null;
-        try {
-            if (!skinMethodsResolved) {
-                resolveSkinMethods(player);
-            }
-            if (getLoginProfileMethod == null) return null;
-
-            Object pendingConnection = player.getPendingConnection();
-            Object profile = getLoginProfileMethod.invoke(pendingConnection);
-            if (profile == null) return null;
-            Object[] properties = (Object[]) getPropertiesMethod.invoke(profile);
-            if (properties == null) return null;
-            for (Object prop : properties) {
-                String name = (String) getNameMethod.invoke(prop);
-                if ("textures".equals(name)) return (String) getValueMethod.invoke(prop);
-            }
-        } catch (Exception ignored) {}
-        return null;
-    }
-
-    private static synchronized void resolveSkinMethods(ProxiedPlayer player) {
-        if (skinMethodsResolved) return;
-        try {
-            Object pendingConnection = player.getPendingConnection();
-            getLoginProfileMethod = pendingConnection.getClass().getMethod("getLoginProfile");
-            Object profile = getLoginProfileMethod.invoke(pendingConnection);
-            if (profile != null) {
-                getPropertiesMethod = profile.getClass().getMethod("getProperties");
-                Object[] properties = (Object[]) getPropertiesMethod.invoke(profile);
-                if (properties != null) {
-                    for (Object prop : properties) {
-                        getNameMethod = prop.getClass().getMethod("getName");
-                        getValueMethod = prop.getClass().getMethod("getValue");
-                        break;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            getLoginProfileMethod = null;
-        }
-        skinMethodsResolved = true;
+        return skinResolver.resolveTexture(player);
     }
 
     @Override
@@ -284,33 +225,4 @@ public class BungeePlatform implements Platform {
         logger.info(msg);
     }
 
-    @Override
-    public Cache getCache() {
-        return cache;
-    }
-
-    @Override
-    public LocaleManager getLocaleManager() {
-        return localeManager;
-    }
-
-    @Override
-    public StaffModeService getStaffModeService() {
-        return staffModeService;
-    }
-
-    @Override
-    public BridgeService getBridgeService() {
-        return bridgeService;
-    }
-
-    @Override
-    public ChatInputManager getChatInputManager() {
-        return chatInputManager;
-    }
-
-    @Override
-    public ReplayService getReplayService() {
-        return replayService;
-    }
 }

@@ -3,48 +3,46 @@ package gg.modl.minecraft.core.util;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.logging.Logger;
 
 public final class DateFormatter {
-    private DateFormatter() {}
-    private static volatile String dateFormatPattern = "MM/dd/yyyy HH:mm";
-    private static volatile TimeZone timeZone = null;
+    public static final String DEFAULT_PATTERN = "MM/dd/yyyy HH:mm";
 
-    private static final ThreadLocal<SimpleDateFormat> FORMAT_CACHE = new ThreadLocal<>();
-    private static final ThreadLocal<String> CACHED_PATTERN = new ThreadLocal<>();
-    private static final ThreadLocal<TimeZone> CACHED_TIMEZONE = new ThreadLocal<>();
+    private static final Logger logger = Logger.getLogger(DateFormatter.class.getName());
 
-    public static void setDateFormat(String pattern) {
+    private final String pattern;
+    private final TimeZone timeZone;
+    private final ThreadLocal<SimpleDateFormat> formatCache;
+
+    public DateFormatter(String pattern, String timezoneId) {
+        this.pattern = validatedPattern(pattern);
+        this.timeZone = resolveTimeZone(timezoneId);
+        this.formatCache = ThreadLocal.withInitial(this::newFormatter);
+    }
+
+    public String format(Date dateToFormat) {
+        return formatCache.get().format(dateToFormat);
+    }
+
+    private SimpleDateFormat newFormatter() {
+        SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+        if (timeZone != null) sdf.setTimeZone(timeZone);
+        return sdf;
+    }
+
+    private static String validatedPattern(String pattern) {
+        if (pattern == null || pattern.isEmpty()) return DEFAULT_PATTERN;
         try {
             new SimpleDateFormat(pattern);
-            dateFormatPattern = pattern;
-            FORMAT_CACHE.remove();
-        } catch (IllegalArgumentException ignored) {}
-    }
-
-    public static void setTimezone(String timezoneId) {
-        if (timezoneId != null && !timezoneId.isEmpty()) {
-            timeZone = TimeZone.getTimeZone(timezoneId);
-        } else timeZone = null;
-
-        FORMAT_CACHE.remove();
-    }
-
-    public static String format(Date dateToFormat) {
-        SimpleDateFormat sdf = getFormatter();
-        return sdf.format(dateToFormat);
-    }
-
-    private static SimpleDateFormat getFormatter() {
-        String pattern = dateFormatPattern;
-        TimeZone tz = timeZone;
-        SimpleDateFormat sdf = FORMAT_CACHE.get();
-        if (sdf == null || !pattern.equals(CACHED_PATTERN.get()) || tz != CACHED_TIMEZONE.get()) {
-            sdf = new SimpleDateFormat(pattern);
-            if (tz != null) sdf.setTimeZone(tz);
-            FORMAT_CACHE.set(sdf);
-            CACHED_PATTERN.set(pattern);
-            CACHED_TIMEZONE.set(tz);
+            return pattern;
+        } catch (IllegalArgumentException e) {
+            logger.warning("Ignoring invalid date format pattern '" + pattern + "': " + e.getMessage());
+            return DEFAULT_PATTERN;
         }
-        return sdf;
+    }
+
+    private static TimeZone resolveTimeZone(String timezoneId) {
+        if (timezoneId == null || timezoneId.isEmpty()) return null;
+        return TimeZone.getTimeZone(timezoneId);
     }
 }

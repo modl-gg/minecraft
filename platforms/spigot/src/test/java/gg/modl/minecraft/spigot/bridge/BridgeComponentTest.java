@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -23,6 +24,8 @@ import static org.mockito.Mockito.when;
 class BridgeComponentTest {
     @TempDir
     Path tempDir;
+
+    private static final Logger LOGGER = Logger.getLogger("BridgeComponentTest");
 
     public interface ModernBlockAccess {
         Object getBlockData();
@@ -51,7 +54,7 @@ class BridgeComponentTest {
         verify(((ModernBlockAccess) block)).getBlockData();
         verify(block, never()).getType();
         verify(block, never()).getData();
-        assertEquals(false, legacyUsed.get());
+        assertFalse(legacyUsed.get());
     }
 
     @Test
@@ -75,7 +78,7 @@ class BridgeComponentTest {
     void cleanupDeletesReplayFileAfterSuccessfulUploadWhenLocalSaveIsDisabled() throws IOException {
         File replayFile = createReplayFile();
 
-        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, false, ReplayCaptureResult.ok("replay-id"), null);
+        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, false, ReplayCaptureResult.ok("replay-id"), null, LOGGER);
 
         assertFalse(replayFile.exists());
     }
@@ -84,7 +87,7 @@ class BridgeComponentTest {
     void cleanupKeepsReplayFileAfterFailedUploadWhenLocalSaveIsDisabled() throws IOException {
         File replayFile = createReplayFile();
 
-        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, false, null, new RuntimeException("upload failed"));
+        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, false, null, new RuntimeException("upload failed"), LOGGER);
 
         assertTrue(replayFile.exists());
     }
@@ -93,7 +96,7 @@ class BridgeComponentTest {
     void cleanupKeepsReplayFileWhenUploadResultIsMissing() throws IOException {
         File replayFile = createReplayFile();
 
-        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, false, null, null);
+        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, false, null, null, LOGGER);
 
         assertTrue(replayFile.exists());
     }
@@ -102,7 +105,7 @@ class BridgeComponentTest {
     void cleanupKeepsReplayFileWhenUploadResultIsNotOk() throws IOException {
         File replayFile = createReplayFile();
 
-        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, false, ReplayCaptureResult.error(), null);
+        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, false, ReplayCaptureResult.error(), null, LOGGER);
 
         assertTrue(replayFile.exists());
     }
@@ -111,7 +114,7 @@ class BridgeComponentTest {
     void cleanupKeepsReplayFileWhenLocalSaveIsEnabled() throws IOException {
         File replayFile = createReplayFile();
 
-        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, true, ReplayCaptureResult.ok("replay-id"), null);
+        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, true, ReplayCaptureResult.ok("replay-id"), null, LOGGER);
 
         assertTrue(replayFile.exists());
     }
@@ -120,7 +123,7 @@ class BridgeComponentTest {
     void cleanupKeepsReplayFileAfterFailedUploadWhenLocalSaveIsEnabled() throws IOException {
         File replayFile = createReplayFile();
 
-        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, true, null, new RuntimeException("upload failed"));
+        BridgeComponent.cleanupReplayFileAfterUpload(replayFile, true, null, new RuntimeException("upload failed"), LOGGER);
 
         assertTrue(replayFile.exists());
     }

@@ -1,12 +1,12 @@
 package gg.modl.minecraft.core.boot;
 
+import gg.modl.minecraft.core.support.RecordingPluginLogger;
+import gg.modl.minecraft.core.support.TempConfigs;
 import gg.modl.minecraft.core.util.PluginLogger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
@@ -18,11 +18,7 @@ class BootConfigMigratorTest {
     @TempDir
     Path tempDir;
 
-    private final PluginLogger logger = new PluginLogger() {
-        @Override public void info(String message) {}
-        @Override public void warning(String message) {}
-        @Override public void severe(String message) {}
-    };
+    private final PluginLogger logger = new RecordingPluginLogger();
 
     @Test
     void migratesFabricWithBridgeHostAsBridgeOnlyBackend() throws IOException {
@@ -69,7 +65,6 @@ class BootConfigMigratorTest {
     }
 
     private void writeLegacyConfig(String... lines) throws IOException {
-        Files.write(tempDir.resolve("config.yml"),
-                String.join(System.lineSeparator(), lines).getBytes(StandardCharsets.UTF_8));
+        TempConfigs.write(tempDir.resolve("config.yml"), lines);
     }
 }

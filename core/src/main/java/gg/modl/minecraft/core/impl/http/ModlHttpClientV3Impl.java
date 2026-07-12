@@ -1,11 +1,11 @@
 package gg.modl.minecraft.core.impl.http;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.Message;
 import com.google.protobuf.Parser;
 import gg.modl.minecraft.api.http.ApiClientException;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
-import java.io.File;
 import gg.modl.minecraft.api.http.request.AddPunishmentEvidenceRequest;
 import gg.modl.minecraft.api.http.request.AddPunishmentNoteRequest;
 import gg.modl.minecraft.api.http.request.ChangePunishmentDurationRequest;
@@ -25,7 +25,6 @@ import gg.modl.minecraft.api.http.request.PlayerGetRequest;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
 import gg.modl.minecraft.api.http.request.PlayerNameRequest;
-import gg.modl.minecraft.api.http.request.PlayerNoteCreateRequest;
 import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
 import gg.modl.minecraft.api.http.request.StatWipeAcknowledgeRequest;
@@ -68,58 +67,23 @@ import gg.modl.minecraft.core.impl.http.proto.SyncProtoMapper;
 import gg.modl.minecraft.core.impl.http.proto.TicketProtoMapper;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.util.CircuitBreaker;
-import gg.modl.minecraft.core.util.Java8Collections;
 import gg.modl.proto.modl.v1.ApiError;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.File;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.logging.Logger;
 
-/**
- * Proto V3 implementation of {@link ModlHttpClient}. Calls {@code /v3/minecraft/...} with
- * {@code application/x-protobuf} bodies, building proto request messages and parsing proto
- * response messages via the plugin-side {@code *ProtoMapper} classes.
- *
- * <p>Four interface methods have no V3 controller (migration status, staff 2FA token, chat/command
- * log retrieval); those are delegated to a retained {@link ModlHttpClientV2Impl} (V2 JSON), making
- * this a hybrid client until the matching V3 endpoints land.</p>
- *
- * <p>Transport scaffolding (executor, circuit breaker, timeouts, connection lifecycle) mirrors
- * {@link ModlHttpClientV2Impl}; the difference is binary {@code byte[]} bodies instead of JSON strings.</p>
- */
-public class ModlHttpClientV3Impl implements ModlHttpClient {
-    private static final String HEADER_API_KEY = "X-API-Key", HEADER_SERVER_DOMAIN = "X-Server-Domain",
-        HEADER_CONTENT_TYPE = "Content-Type", HEADER_ACCEPT = "Accept",
-        HEADER_ACTING_STAFF_ID = "X-Acting-Staff-Id",
-        CONTENT_TYPE_PROTOBUF = "application/x-protobuf";
-    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10), LOGIN_TIMEOUT = Duration.ofSeconds(15),
-        SYNC_TIMEOUT = Duration.ofSeconds(20);
-    private static final int HTTP_BAD_GATEWAY = 502, STATUS_UNREACHABLE = -1;
-    private static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5L;
+public class ModlHttpClientV3Impl extends AbstractModlHttpTransport implements ModlHttpClient {
+    private static final String HEADER_ACCEPT = "Accept", CONTENT_TYPE_PROTOBUF = "application/x-protobuf";
 
-    private final @NotNull String baseUrl, apiKey, serverDomain;
-    private final @NotNull ThreadPoolExecutor executor;
-    private final @NotNull Logger logger;
-    private final @NotNull CircuitBreaker backgroundCircuitBreaker;
-    private final @NotNull CircuitBreaker loginCircuitBreaker;
     private final @NotNull ModlHttpClientV2Impl legacyClient;
-    private final boolean debugMode;
 
     public ModlHttpClientV3Impl(@NotNull String baseUrl, @NotNull String apiKey,
                                 @NotNull String serverDomain, boolean debugMode) {
@@ -128,29 +92,10 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
 
     ModlHttpClientV3Impl(@NotNull String baseUrl, @NotNull String apiKey, @NotNull String serverDomain,
                          boolean debugMode, @NotNull String legacyBaseUrl) {
-        this.baseUrl = baseUrl;
-        this.apiKey = apiKey;
-        this.serverDomain = serverDomain;
-        this.debugMode = debugMode;
-        this.backgroundCircuitBreaker = new CircuitBreaker();
-        this.loginCircuitBreaker = new CircuitBreaker();
-
-        AtomicInteger threadCounter = new AtomicInteger();
-        this.executor = new ThreadPoolExecutor(0, 8, 60L, TimeUnit.SECONDS,
-            new SynchronousQueue<>(), r -> {
-            Thread t = new Thread(r, "modl-http-v3-" + threadCounter.incrementAndGet());
-            t.setDaemon(true);
-            t.setPriority(Thread.NORM_PRIORITY);
-            return t;
-        });
-        this.logger = Logger.getLogger(ModlHttpClientV3Impl.class.getName());
+        super(baseUrl, apiKey, serverDomain, debugMode, "V3", "modl-http-v3-");
         this.legacyClient = new ModlHttpClientV2Impl(legacyBaseUrl, apiKey, serverDomain, debugMode);
     }
 
-    /**
-     * Derives the {@code /v1} legacy base URL from the {@code /v3} base, so the retained V2 client
-     * (used for the gap methods) targets the still-live JSON endpoints.
-     */
     private static String deriveLegacyBaseUrl(String v3BaseUrl) {
         int index = v3BaseUrl.lastIndexOf("/v3");
         return index >= 0 ? v3BaseUrl.substring(0, index) + "/v1" : v3BaseUrl;
@@ -159,16 +104,8 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
     @Override
     public void shutdown() {
         legacyClient.shutdown();
-        executor.shutdown();
-        try {
-            if (!executor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) executor.shutdownNow();
-        } catch (InterruptedException e) {
-            executor.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
+        super.shutdown();
     }
-
-    // ---- Players ----
 
     @NotNull @Override
     public CompletableFuture<PlayerLoginResponse> playerLogin(@NotNull PlayerLoginRequest request) {
@@ -240,7 +177,7 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
     }
 
     @NotNull @Override
-    public CompletableFuture<PlayerNoteCreateResponse> createPlayerNoteWithResponse(@NotNull PlayerNoteCreateRequest request) {
+    public CompletableFuture<PlayerNoteCreateResponse> createPlayerNoteWithResponse(@NotNull CreatePlayerNoteRequest request) {
         return post("/minecraft/players/" + request.getTargetUuid() + "/notes",
             PlayerProtoMapper.toProto(request).toByteArray(), null,
             gg.modl.proto.modl.v1.PlayerNoteCreateResponse.parser(), PlayerProtoMapper::toPlayerNoteCreateResponse, null);
@@ -276,8 +213,6 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
             gg.modl.proto.modl.v1.PardonResponse.parser(), PlayerProtoMapper::toPardonResponse, null);
     }
 
-    // ---- Notifications ----
-
     @NotNull @Override
     public CompletableFuture<Void> acknowledgeNotifications(@NotNull NotificationAcknowledgeRequest request) {
         return postVoid("/minecraft/notifications/acknowledge", PlayerProtoMapper.toProto(request).toByteArray());
@@ -285,36 +220,13 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
 
     @NotNull @Override
     public CompletableFuture<Void> submitChatLogs(@NotNull ChatLogBatchRequest request) {
-        gg.modl.proto.modl.v1.ChatLogBatchRequest.Builder builder = gg.modl.proto.modl.v1.ChatLogBatchRequest.newBuilder();
-        if (request.getEntries() != null) {
-            request.getEntries().forEach(entry -> builder.addEntries(gg.modl.proto.modl.v1.ChatLogEntry.newBuilder()
-                .setUuid(nullToEmpty(entry.getUuid()))
-                .setUsername(nullToEmpty(entry.getUsername()))
-                .setMessage(nullToEmpty(entry.getMessage()))
-                .setServer(nullToEmpty(entry.getServer()))
-                .setTimestamp(entry.getTimestamp())
-                .build()));
-        }
-        return postVoid("/minecraft/players/chat-log", builder.build().toByteArray());
+        return postVoid("/minecraft/players/chat-log", PlayerProtoMapper.toProto(request).toByteArray());
     }
 
     @NotNull @Override
     public CompletableFuture<Void> submitCommandLogs(@NotNull CommandLogBatchRequest request) {
-        gg.modl.proto.modl.v1.CommandLogBatchRequest.Builder builder =
-            gg.modl.proto.modl.v1.CommandLogBatchRequest.newBuilder();
-        if (request.getEntries() != null) {
-            request.getEntries().forEach(entry -> builder.addEntries(gg.modl.proto.modl.v1.CommandLogEntry.newBuilder()
-                .setUuid(nullToEmpty(entry.getUuid()))
-                .setUsername(nullToEmpty(entry.getUsername()))
-                .setCommand(nullToEmpty(entry.getCommand()))
-                .setServer(nullToEmpty(entry.getServer()))
-                .setTimestamp(entry.getTimestamp())
-                .build()));
-        }
-        return postVoid("/minecraft/players/command-log", builder.build().toByteArray());
+        return postVoid("/minecraft/players/command-log", PlayerProtoMapper.toProto(request).toByteArray());
     }
-
-    // ---- Punishments ----
 
     @NotNull @Override
     public CompletableFuture<Void> createPunishment(@NotNull CreatePunishmentRequest request) {
@@ -407,15 +319,11 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
             gg.modl.proto.modl.v1.PunishmentTypesResponse.parser(), StaffRoleProtoMapper::toPunishmentTypesResponse);
     }
 
-    // ---- Sync ----
-
     @NotNull @Override
     public CompletableFuture<SyncResponse> sync(@NotNull SyncRequest request) {
         return post("/minecraft/players/sync", SyncProtoMapper.toProto(request).toByteArray(), SYNC_TIMEOUT,
             gg.modl.proto.modl.v1.SyncResponse.parser(), SyncProtoMapper::toSyncResponse, "SYNC");
     }
-
-    // ---- Tickets ----
 
     @NotNull @Override
     public CompletableFuture<CreateTicketResponse> createTicket(@NotNull CreateTicketRequest request) {
@@ -456,8 +364,6 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
             gg.modl.proto.modl.v1.TicketsResponse.parser(), TicketProtoMapper::toTicketsResponse, null);
     }
 
-    // ---- Reports ----
-
     @NotNull @Override
     public CompletableFuture<ReportsResponse> getReports(String status) {
         String endpoint = "/minecraft/reports";
@@ -484,8 +390,6 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
         return postVoid("/minecraft/reports/" + reportId + "/resolve",
             TicketProtoMapper.toResolveReportRequest(resolvedBy, resolution, punishmentId).toByteArray());
     }
-
-    // ---- Staff / Roles / Dashboard ----
 
     @NotNull @Override
     public CompletableFuture<StaffListResponse> getStaffList() {
@@ -529,8 +433,6 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
             gg.modl.proto.modl.v1.MinecraftDashboardResponse.parser(), StaffRoleProtoMapper::toDashboardStatsResponse);
     }
 
-    // ---- Gap methods: no V3 controller, delegated to V2 JSON (hybrid) ----
-
     @NotNull @Override
     public CompletableFuture<Void> updateMigrationStatus(@NotNull MigrationStatusUpdateRequest request) {
         return legacyClient.updateMigrationStatus(request);
@@ -556,160 +458,76 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
         return legacyClient.getCommandLogs(playerUuid, limit);
     }
 
-    // ---- Transport ----
-
-    private <P extends com.google.protobuf.Message, R> CompletableFuture<R> get(
-        String endpoint, Parser<P> parser, Function<P, R> mapper) {
-        return send(new ProtoRequest(baseUrl + endpoint, "GET", null, null), parser, mapper, null);
+    private <P extends Message, R> CompletableFuture<R> get(String endpoint, Parser<P> parser, Function<P, R> mapper) {
+        return send(request(endpoint, "GET", null, null, null), parser, mapper, null, backgroundCircuitBreaker);
     }
 
-    private <P extends com.google.protobuf.Message, R> CompletableFuture<R> post(
-        String endpoint, byte[] body, Duration timeout, Parser<P> parser, Function<P, R> mapper, String operation) {
-        return send(new ProtoRequest(baseUrl + endpoint, "POST", body, timeout), parser, mapper, operation);
+    private <P extends Message, R> CompletableFuture<R> post(String endpoint, byte[] body, Duration timeout,
+                                                             Parser<P> parser, Function<P, R> mapper, String operation) {
+        return send(request(endpoint, "POST", body, timeout, null), parser, mapper, operation, backgroundCircuitBreaker);
     }
 
-    private <P extends com.google.protobuf.Message, R> CompletableFuture<R> post(
-        String endpoint, byte[] body, Duration timeout, Parser<P> parser, Function<P, R> mapper, String operation,
-        CircuitBreaker breaker) {
-        return send(new ProtoRequest(baseUrl + endpoint, "POST", body, timeout), parser, mapper, operation, breaker);
+    private <P extends Message, R> CompletableFuture<R> post(String endpoint, byte[] body, Duration timeout,
+                                                             Parser<P> parser, Function<P, R> mapper, String operation,
+                                                             CircuitBreaker breaker) {
+        return send(request(endpoint, "POST", body, timeout, null), parser, mapper, operation, breaker);
     }
 
     private CompletableFuture<Void> postVoid(String endpoint, byte[] body) {
-        return sendVoid(new ProtoRequest(baseUrl + endpoint, "POST", body, null));
-    }
-
-    private CompletableFuture<Void> patchVoid(String endpoint, byte[] body) {
-        return sendVoid(new ProtoRequest(baseUrl + endpoint, "PATCH", body, null));
+        return sendVoid(request(endpoint, "POST", body, null, null));
     }
 
     private CompletableFuture<Void> patchVoid(String endpoint, byte[] body, String actingStaffId) {
-        return sendVoid(new ProtoRequest(baseUrl + endpoint, "PATCH", body, null, actingStaffId));
+        return sendVoid(request(endpoint, "PATCH", body, null, actingStaffId));
     }
 
-    private CompletableFuture<Void> sendVoid(ProtoRequest request) {
-        return send(request, null, ignored -> null, null);
+    private HttpRequest request(String endpoint, String method, byte[] body, Duration timeout, String actingStaffId) {
+        return new HttpRequest(baseUrl + endpoint, method, body, timeout, protoHeaders(body, actingStaffId));
     }
 
-    private <P extends com.google.protobuf.Message, R> CompletableFuture<R> send(
-        ProtoRequest request, Parser<P> parser, Function<P, R> mapper, String operation) {
-        return send(request, parser, mapper, operation, backgroundCircuitBreaker);
+    private Map<String, String> protoHeaders(byte[] body, String actingStaffId) {
+        Map<String, String> headers = new LinkedHashMap<>();
+        headers.put(HEADER_API_KEY, apiKey);
+        headers.put(HEADER_SERVER_DOMAIN, serverDomain);
+        headers.put(HEADER_USER_AGENT, "modl-minecraft/" + PluginInfo.VERSION);
+        headers.put(HEADER_ACCEPT, CONTENT_TYPE_PROTOBUF);
+        if (actingStaffId != null && !actingStaffId.trim().isEmpty()) headers.put(HEADER_ACTING_STAFF_ID, actingStaffId);
+        if (body != null) headers.put(HEADER_CONTENT_TYPE, CONTENT_TYPE_PROTOBUF);
+        return headers;
     }
 
-    private <P extends com.google.protobuf.Message, R> CompletableFuture<R> send(
-        ProtoRequest request, Parser<P> parser, Function<P, R> mapper, String operation, CircuitBreaker breaker) {
-        final Instant startTime = Instant.now();
-        final String requestId = generateRequestId();
-
-        if (!breaker.allowRequest()) {
-            return Java8Collections.failedFuture(new PanelUnavailableException(
-                request.url, HttpURLConnection.HTTP_UNAVAILABLE,
-                "V3 API is temporarily unavailable (circuit breaker open)"));
-        }
-
-        if (debugMode) {
-            logger.info(String.format("[V3-REQ-%s] %s %s", requestId, request.method, request.url));
-            if (request.body != null) logger.info(String.format("[V3-REQ-%s] Body present (%d bytes)", requestId, request.body.length));
-        }
-
-        return CompletableFuture.supplyAsync(() -> {
-            HttpURLConnection connection = null;
-            try {
-                connection = open(request);
-
-                int statusCode = connection.getResponseCode();
-                byte[] responseBody = readBody(connection, statusCode);
-                final Duration duration = Duration.between(startTime, Instant.now());
-
-                if (debugMode) {
-                    logger.info(String.format("[V3-RES-%s] Status: %d (%d bytes, took %dms)",
-                        requestId, statusCode, responseBody.length, duration.toMillis()));
-                }
-
-                if (statusCode >= 200 && statusCode < 300) {
-                    breaker.recordSuccess();
-                    if (parser == null) return null;
-                    try {
-                        return mapper.apply(parser.parseFrom(responseBody));
-                    } catch (InvalidProtocolBufferException e) {
-                        logger.severe(String.format("[V3-REQ-%s] Failed to parse response: %s", requestId, e.getMessage()));
-                        throw new RuntimeException("Failed to parse V3 response: " + e.getMessage(), e);
-                    }
-                }
-
-                throw toError(requestId, request, statusCode, responseBody);
-            } catch (RuntimeException e) {
-                throw e;
-            } catch (java.io.IOException e) {
-                // Socket-level failure (connect-refused, DNS, read-timeout) -> panel unreachable (fail-closed on login).
-                throw new PanelUnavailableException(request.url, STATUS_UNREACHABLE,
-                    "V3 API unreachable: " + e.getClass().getSimpleName() + " - " + e.getMessage());
-            } catch (Exception e) {
-                throw new RuntimeException("V3 HTTP request failed", e);
-            } finally {
-                if (connection != null) connection.disconnect();
-            }
-        }, executor)
-            .exceptionally(throwable -> {
-                // Single funnel for circuit-breaker accounting: every failed call records exactly
-                // once here (toError() classifies/logs but no longer records, to avoid double-counting).
-                // 4xx client outcomes (ApiClientException) are routine and must NOT count.
-                Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
-                    ? throwable.getCause() : throwable;
-                if (!(cause instanceof ApiClientException)) breaker.recordFailure();
-                if (cause instanceof RuntimeException) throw (RuntimeException) cause;
-                throw new RuntimeException("V3 HTTP request failed", throwable);
-            });
+    private <P extends Message, R> CompletableFuture<R> send(HttpRequest request, Parser<P> parser,
+                                                             Function<P, R> mapper, String operation, CircuitBreaker breaker) {
+        return execute(request, operation, breaker, (requestId, body) -> decodeProto(requestId, body, parser, mapper));
     }
 
-    private HttpURLConnection open(ProtoRequest request) throws Exception {
-        URL url = new URL(request.url);
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod(request.method);
-        connection.setConnectTimeout((int) CONNECT_TIMEOUT.toMillis());
-        connection.setReadTimeout((int) (request.timeout != null ? request.timeout : CONNECT_TIMEOUT).toMillis());
-        connection.setInstanceFollowRedirects(true);
-
-        connection.setRequestProperty(HEADER_API_KEY, apiKey);
-        connection.setRequestProperty(HEADER_SERVER_DOMAIN, serverDomain);
-        connection.setRequestProperty("User-Agent", "modl-minecraft/" + PluginInfo.VERSION);
-        connection.setRequestProperty(HEADER_ACCEPT, CONTENT_TYPE_PROTOBUF);
-        if (request.actingStaffId != null && !request.actingStaffId.trim().isEmpty()) {
-            connection.setRequestProperty(HEADER_ACTING_STAFF_ID, request.actingStaffId);
-        }
-
-        if (request.body != null) {
-            connection.setRequestProperty(HEADER_CONTENT_TYPE, CONTENT_TYPE_PROTOBUF);
-            connection.setDoOutput(true);
-            try (OutputStream os = connection.getOutputStream()) {
-                os.write(request.body);
-            }
-        }
-        return connection;
+    private CompletableFuture<Void> sendVoid(HttpRequest request) {
+        return this.<Void>execute(request, null, backgroundCircuitBreaker, (requestId, body) -> null);
     }
 
-    private static byte[] readBody(HttpURLConnection connection, int statusCode) {
+    private <P extends Message, R> R decodeProto(String requestId, byte[] body, Parser<P> parser, Function<P, R> mapper) {
+        if (parser == null) return null;
         try {
-            InputStream stream = statusCode >= 400 ? connection.getErrorStream() : connection.getInputStream();
-            if (stream == null) return new byte[0];
-            try (InputStream in = stream) {
-                return readAllBytes(in);
-            }
-        } catch (Exception e) {
-            return new byte[0];
+            return mapper.apply(parser.parseFrom(body));
+        } catch (InvalidProtocolBufferException e) {
+            logger.severe(String.format("[V3-REQ-%s] Failed to parse response: %s", requestId, e.getMessage()));
+            throw new RuntimeException("Failed to parse V3 response: " + e.getMessage(), e);
         }
     }
 
-    private static byte[] readAllBytes(InputStream in) throws java.io.IOException {
-        java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
-        byte[] chunk = new byte[8192];
-        int read;
-        while ((read = in.read(chunk)) != -1) {
-            buffer.write(chunk, 0, read);
-        }
-        return buffer.toByteArray();
+    @Override
+    protected void logRequest(String requestId, HttpRequest request) {
+        logger.info(String.format("[V3-REQ-%s] %s %s", requestId, request.method, request.url));
+        if (request.body != null) logger.info(String.format("[V3-REQ-%s] Body present (%d bytes)", requestId, request.body.length));
     }
 
-    private RuntimeException toError(String requestId, ProtoRequest request, int statusCode, byte[] responseBody) {
+    @Override
+    protected void logResponse(String requestId, int statusCode, byte[] body, long durationMs, String operation) {
+        logger.info(String.format("[V3-RES-%s] Status: %d (%d bytes, took %dms)", requestId, statusCode, body.length, durationMs));
+    }
+
+    @Override
+    protected RuntimeException toError(String requestId, HttpRequest request, int statusCode, byte[] responseBody) {
         String message;
         try {
             ApiError error = ApiError.parseFrom(responseBody);
@@ -720,9 +538,6 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
             message = String.format("V3 request failed: HTTP %d", statusCode);
         }
 
-        // Classify/log only; circuit-breaker accounting happens once in the send() exceptionally funnel.
-        // Any 5xx is treated as "panel unreachable" (fail-closed on the login path); 4xx is a routine
-        // client outcome that must NOT count toward the circuit breaker.
         if (statusCode >= 500 && statusCode < 600) {
             if (debugMode) logger.warning(String.format("[V3-REQ-%s] HTTP %d - %s %s: %s", requestId, statusCode, request.method, request.url, message));
             return new PanelUnavailableException(request.url, statusCode,
@@ -739,33 +554,5 @@ public class ModlHttpClientV3Impl implements ModlHttpClient {
 
         if (statusCode >= 400 && statusCode < 500) return new ApiClientException(statusCode, message);
         return new RuntimeException(message);
-    }
-
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
-    }
-
-    private String generateRequestId() {
-        return "V3-" + (System.nanoTime() % 1000000);
-    }
-
-    private static final class ProtoRequest {
-        final String url;
-        final String method;
-        final byte[] body;
-        final Duration timeout;
-        final String actingStaffId;
-
-        ProtoRequest(String url, String method, byte[] body, Duration timeout) {
-            this(url, method, body, timeout, null);
-        }
-
-        ProtoRequest(String url, String method, byte[] body, Duration timeout, String actingStaffId) {
-            this.url = url;
-            this.method = method;
-            this.body = body;
-            this.timeout = timeout;
-            this.actingStaffId = actingStaffId;
-        }
     }
 }

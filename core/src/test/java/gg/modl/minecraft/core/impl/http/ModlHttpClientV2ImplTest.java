@@ -2,24 +2,28 @@ package gg.modl.minecraft.core.impl.http;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import gg.modl.minecraft.api.http.ChatLogEntry;
+import gg.modl.minecraft.api.http.CommandLogEntry;
 import gg.modl.minecraft.api.http.request.SyncRequest;
+import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.response.PlayerProfileResponse;
+import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
 import gg.modl.minecraft.api.http.response.ReportsResponse;
 import gg.modl.minecraft.api.http.response.TicketsResponse;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.List;
+import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ModlHttpClientV2ImplTest {
     @Test
-    void gson_parses_iso_timestamps_in_player_profile_responses() throws Exception {
+    void gsonParsesIsoTimestampsInPlayerProfileResponses() throws Exception {
         Gson gson = extractGson();
 
         PlayerProfileResponse response = gson.fromJson(
@@ -38,7 +42,7 @@ class ModlHttpClientV2ImplTest {
     }
 
     @Test
-    void gson_parses_iso_timestamps_in_reports_and_tickets_responses() throws Exception {
+    void gsonParsesIsoTimestampsInReportsAndTicketsResponses() throws Exception {
         Gson gson = extractGson();
 
         ReportsResponse reports = gson.fromJson(
@@ -69,15 +73,15 @@ class ModlHttpClientV2ImplTest {
     }
 
     @Test
-    void gson_serializes_sync_chat_and_command_logs() throws Exception {
+    void gsonSerializesSyncChatAndCommandLogs() throws Exception {
         Gson gson = extractGson();
         SyncRequest request = new SyncRequest(
                 "2026-05-18T00:00:00.000Z",
-                List.of(new SyncRequest.OnlinePlayer("player-uuid", "modlplayer", "127.0.0.1", 1234L)),
+                Collections.singletonList(new SyncRequest.OnlinePlayer("player-uuid", "modlplayer", "127.0.0.1", 1234L)),
                 "hub",
                 "hub-1",
-                List.of(new SyncRequest.ChatLogEntry("player-uuid", "modlplayer", "hello", "hub", 1779062400000L)),
-                List.of(new SyncRequest.CommandLogEntry("player-uuid", "modlplayer", "/spawn", "hub", 1779062401000L)),
+                Collections.singletonList(new ChatLogEntry("player-uuid", "modlplayer", "hello", "hub", 1779062400000L)),
+                Collections.singletonList(new CommandLogEntry("player-uuid", "modlplayer", "/spawn", "hub", 1779062401000L)),
                 null
         );
 
@@ -90,22 +94,21 @@ class ModlHttpClientV2ImplTest {
     }
 
     @Test
-    void shutdown_stops_http_executor() throws Exception {
+    void shutdownStopsHttpExecutor() throws Exception {
         ModlHttpClientV2Impl client = new ModlHttpClientV2Impl("http://localhost", "api-key", "example.com", false);
-        Field field = ModlHttpClientV2Impl.class.getDeclaredField("executor");
+        Field field = findField(ModlHttpClientV2Impl.class, "executor");
         field.setAccessible(true);
         ThreadPoolExecutor executor = (ThreadPoolExecutor) field.get(client);
 
-        Method shutdown = ModlHttpClientV2Impl.class.getDeclaredMethod("shutdown");
-        shutdown.invoke(client);
+        client.shutdown();
 
         assertTrue(executor.isShutdown());
     }
 
     @Test
-    void new_http_executor_threads_are_daemon_and_named() throws Exception {
+    void newHttpExecutorThreadsAreDaemonAndNamed() throws Exception {
         ModlHttpClientV2Impl client = new ModlHttpClientV2Impl("http://localhost", "api-key", "example.com", false);
-        Field field = ModlHttpClientV2Impl.class.getDeclaredField("executor");
+        Field field = findField(ModlHttpClientV2Impl.class, "executor");
         field.setAccessible(true);
         ThreadPoolExecutor executor = (ThreadPoolExecutor) field.get(client);
 
@@ -113,13 +116,44 @@ class ModlHttpClientV2ImplTest {
 
         assertTrue(thread.isDaemon());
         assertTrue(thread.getName().startsWith("modl-http-"));
-        assertFalse(thread.getName().equals("modl-http"));
+        assertNotEquals("modl-http", thread.getName());
+    }
+
+    @Test
+    void saturatedExecutorYieldsFailedFutureInsteadOfThrowing() throws Exception {
+        ModlHttpClientV2Impl client = new ModlHttpClientV2Impl("http://localhost", "api-key", "example.com", false);
+        Field field = findField(ModlHttpClientV2Impl.class, "executor");
+        field.setAccessible(true);
+        ((ThreadPoolExecutor) field.get(client)).shutdown();
+
+        CompletableFuture<PunishmentTypesResponse> future = client.getPunishmentTypes();
+
+        assertTrue(future.isCompletedExceptionally());
+
+        Throwable[] captured = new Throwable[1];
+        future.exceptionally(throwable -> {
+            captured[0] = throwable;
+            return null;
+        }).join();
+        assertTrue(captured[0] instanceof PanelUnavailableException);
     }
 
     private Gson extractGson() throws Exception {
         ModlHttpClientV2Impl client = new ModlHttpClientV2Impl("http://localhost", "api-key", "example.com", false);
-        Field field = ModlHttpClientV2Impl.class.getDeclaredField("gson");
+        Field field = findField(ModlHttpClientV2Impl.class, "gson");
         field.setAccessible(true);
         return (Gson) field.get(client);
+    }
+
+    private static Field findField(Class<?> type, String name) throws NoSuchFieldException {
+        Class<?> current = type;
+        while (current != null) {
+            try {
+                return current.getDeclaredField(name);
+            } catch (NoSuchFieldException ignored) {
+                current = current.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(name);
     }
 }

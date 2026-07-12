@@ -6,6 +6,7 @@ import revxrsal.commands.command.CommandActor;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.Account;
+import gg.modl.minecraft.api.PunishmentTypeClassifier;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.PunishmentPreviewResponse;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
@@ -18,6 +19,7 @@ import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.impl.menus.StandingMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.RequiredArgsConstructor;
+import lombok.Value;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,7 +31,7 @@ import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 public class StandingCommand {
     private static final long COOLDOWN_MS = 60_000;
     private static final String COOLDOWN_KEY = "standing";
-    private static final int PREVIEW_TYPE_ORDINAL = 6;
+    private static final int PREVIEW_TYPE_ORDINAL = PunishmentTypeClassifier.ORDINAL_BLACKLIST + 1;
 
     private final HttpClientHolder httpClientHolder;
     private final Platform platform;
@@ -101,7 +103,7 @@ public class StandingCommand {
         }
 
         StandingMenu menu = createMenu(httpClient, uuid, abstractPlayer.getUsername(),
-                data.account, data.previewData, data.typesByOrdinal);
+                data.getAccount(), data.getPreviewData(), data.getTypesByOrdinal());
         displayMenu(menu, player);
         return true;
     }
@@ -140,16 +142,10 @@ public class StandingCommand {
         });
     }
 
+    @Value
     private static class StandingData {
-        private final Account account;
-        private final PunishmentPreviewResponse previewData;
-        private final Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal;
-
-        private StandingData(Account account, PunishmentPreviewResponse previewData,
-                             Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal) {
-            this.account = account;
-            this.previewData = previewData;
-            this.typesByOrdinal = typesByOrdinal;
-        }
+        Account account;
+        PunishmentPreviewResponse previewData;
+        Map<Integer, PunishmentTypesResponse.PunishmentTypeData> typesByOrdinal;
     }
 }

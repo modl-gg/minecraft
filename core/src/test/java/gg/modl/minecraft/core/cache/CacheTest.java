@@ -27,7 +27,6 @@ class CacheTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void returnedPermissionListCannotMutateCache() throws Exception {
         Cache cache = new Cache(new CachedProfileRegistry());
         UUID playerUuid = UUID.randomUUID();
@@ -36,16 +35,19 @@ class CacheTest {
 
         cache.cacheStaffPermissions(playerUuid, "staff", "staff-id", "Moderator", sourcePermissions);
 
-        // No public accessor exists for the cached permission list; reflect to verify
-        // the production wrapping (Collections.unmodifiableList) prevents mutation.
-        Field cacheField = Cache.class.getDeclaredField("staffPermissionsCache");
-        cacheField.setAccessible(true);
-        Map<UUID, Cache.StaffPermissions> staffPermissionsCache =
-                (Map<UUID, Cache.StaffPermissions>) cacheField.get(cache);
-        List<String> cachedPermissions = staffPermissionsCache.get(playerUuid).getPermissions();
+        List<String> cachedPermissions = reflectCachedPermissions(cache, playerUuid);
 
         assertThrows(UnsupportedOperationException.class, () -> cachedPermissions.add("modl.admin"));
         assertThrows(UnsupportedOperationException.class, () -> cachedPermissions.remove(0));
         assertThrows(UnsupportedOperationException.class, cachedPermissions::clear);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> reflectCachedPermissions(Cache cache, UUID playerUuid) throws Exception {
+        Field cacheField = Cache.class.getDeclaredField("staffPermissionsCache");
+        cacheField.setAccessible(true);
+        Map<UUID, Cache.StaffPermissions> staffPermissionsCache =
+                (Map<UUID, Cache.StaffPermissions>) cacheField.get(cache);
+        return staffPermissionsCache.get(playerUuid).getPermissions();
     }
 }

@@ -40,10 +40,7 @@ public class ChatReportCommand {
 
         if (ticketUtil.denySelfReport(actor, reporter, targetPlayer, localeManager)) return;
 
-        String chatLog = chatMessageCache.getChatLogForReport(
-            targetPlayer.getUuid().toString(),
-            reporter.getUuid().toString()
-        );
+        String chatLog = chatMessageCache.getChatLogForReport(targetPlayer.getUuid().toString());
 
         if (chatLog.isEmpty()) {
             actor.reply(localeManager.getMessage("messages.no_chat_logs_available", mapOf("player", targetPlayer.getUsername())));

@@ -49,8 +49,6 @@ public class ChatInputManager {
         PendingInput pending = pendingInputs.remove(playerUuid);
         if (pending == null) return false;
         if (pending.isExpired()) {
-            // Consume the line so an expired prompt's follow-up text (evidence URL/note/reason/duration) is
-            // never broadcast to public chat, and notify + reopen via the cancel callback.
             cancelPending(playerUuid, pending);
             return true;
         }
@@ -83,8 +81,6 @@ public class ChatInputManager {
     }
 
     public void cleanupExpired() {
-        // Collect evicted entries, then marshal each cancel callback onto the main thread (the sweeper runs
-        // off-thread and the callbacks open Cirrus GUIs). Java-8 safe: no Map.entry.
         List<Map.Entry<UUID, PendingInput>> expired = new ArrayList<>();
         pendingInputs.entrySet().removeIf(entry -> {
             if (entry.getValue().isExpired()) {

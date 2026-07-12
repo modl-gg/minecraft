@@ -12,13 +12,16 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 public class ViolationTracker {
     private static final int MAX_RECORDS_PER_PLAYER = 200;
-    private static final long RECORD_TTL_MS = 10 * 60 * 1000L; // 10 minutes
+    private static final long RECORD_TTL_MINUTES = 10L;
+    private static final long RECORD_TTL_MS = RECORD_TTL_MINUTES * 60 * 1000L;
     private static final long CLEANUP_INTERVAL_SECONDS = 60L;
 
     private final ConcurrentHashMap<UUID, Deque<ViolationRecord>> records = new ConcurrentHashMap<>();
+    private volatile BiConsumer<UUID, Deque<ViolationRecord>> beforeAddHook = (uuid, playerRecords) -> {};
     private BridgeTask cleanupTask;
 
     public void startCleanupTask(BridgeScheduler scheduler) {
@@ -39,7 +42,7 @@ public class ViolationTracker {
             if (updatedRecords == null) {
                 updatedRecords = new ArrayDeque<>();
             }
-            beforeViolationRecordAddedForTest(uuid, updatedRecords);
+            beforeAddHook.accept(uuid, updatedRecords);
             synchronized (updatedRecords) {
                 updatedRecords.addLast(new ViolationRecord(source, checkName, verbose));
                 if (updatedRecords.size() > MAX_RECORDS_PER_PLAYER) {
@@ -90,6 +93,7 @@ public class ViolationTracker {
         }
     }
 
-    void beforeViolationRecordAddedForTest(UUID uuid, Deque<ViolationRecord> playerRecords) {
+    void setBeforeAddHook(BiConsumer<UUID, Deque<ViolationRecord>> hook) {
+        this.beforeAddHook = hook != null ? hook : (uuid, playerRecords) -> {};
     }
 }

@@ -1,0 +1,104 @@
+[versions]
+cirrus = "4.2.4"
+lamp = "4.0.0-rc.17"
+lombok = "1.18.44"
+lombokFabric26 = "1.18.44"
+gson = "2.12.1"
+slf4j = "2.0.16"
+snakeyaml = "2.3"
+httpcore5 = "5.2.4"
+httpclient5 = "5.2.1"
+libby = "2.0.0-SNAPSHOT"
+netty = "4.1.97.Final"
+packetevents = "1.0.4-modl"
+replay-recording = "1.1.7"
+replay-format = "1.1.0"
+bungeecord = "1.21-R0.4"
+spigot = "1.8.8-R0.1-20160221.082514-43"
+velocity = "3.4.0-SNAPSHOT"
+paper = "1.21.4-R0.1-SNAPSHOT"
+adventure = "4.26.1"
+brigadier = "1.2.9"
+junit-bom = "5.11.4"
+mockito-inline = "5.2.0"
+mockito-junit-jupiter = "5.20.0"
+proto = "1.6.1"
+protobuf-java = "4.35.1"
+guava = "33.3.0-jre"
+failureaccess = "1.0.2"
+protovalidate = "0.4.1"
+cel = "0.5.1"
+agrona = "1.22.0"
+ipaddress = "5.5.1"
+jakarta-mail = "2.1.3"
+jakarta-activation = "2.1.3"
+examination = "1.3.0"
+java-websocket = "1.5.6"
+annotations = "13.0"
+grim-api = "1.0.0"
+polar-api = "2.3.0"
+
+[libraries]
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+lombokFabric26 = { module = "org.projectlombok:lombok", version.ref = "lombokFabric26" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "annotations" }
+
+proto = { module = "gg.modl:proto", version.ref = "proto" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
+protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf-java" }
+protobuf-util = { module = "com.google.protobuf:protobuf-java-util", version.ref = "protobuf-java" }
+
+cirrus-api = { module = "gg.modl.minecraft.cirrus:cirrus-api", version.ref = "cirrus" }
+cirrus-common = { module = "gg.modl.minecraft.cirrus:cirrus-common", version.ref = "cirrus" }
+cirrus-spigot = { module = "gg.modl.minecraft.cirrus:cirrus-spigot", version.ref = "cirrus" }
+cirrus-velocity = { module = "gg.modl.minecraft.cirrus:cirrus-velocity", version.ref = "cirrus" }
+cirrus-bungeecord = { module = "gg.modl.minecraft.cirrus:cirrus-bungeecord", version.ref = "cirrus" }
+cirrus-fabric = { module = "gg.modl.minecraft.cirrus:cirrus-fabric", version.ref = "cirrus" }
+
+lamp-common = { module = "io.github.revxrsal:lamp.common", version.ref = "lamp" }
+lamp-bukkit = { module = "io.github.revxrsal:lamp.bukkit", version.ref = "lamp" }
+lamp-brigadier = { module = "io.github.revxrsal:lamp.brigadier", version.ref = "lamp" }
+lamp-velocity = { module = "io.github.revxrsal:lamp.velocity", version.ref = "lamp" }
+lamp-bungee = { module = "io.github.revxrsal:lamp.bungee", version.ref = "lamp" }
+lamp-fabric = { module = "io.github.revxrsal:lamp.fabric", version.ref = "lamp" }
+brigadier = { module = "com.mojang:brigadier", version.ref = "brigadier" }
+
+snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
+httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version.ref = "httpclient5" }
+java-websocket = { module = "org.java-websocket:Java-WebSocket", version.ref = "java-websocket" }
+netty-all = { module = "io.netty:netty-all", version.ref = "netty" }
+
+adventure-api = { module = "net.kyori:adventure-api", version.ref = "adventure" }
+adventure-nbt = { module = "net.kyori:adventure-nbt", version.ref = "adventure" }
+adventure-minimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventure" }
+adventure-serializer-legacy = { module = "net.kyori:adventure-text-serializer-legacy", version.ref = "adventure" }
+adventure-serializer-gson = { module = "net.kyori:adventure-text-serializer-gson", version.ref = "adventure" }
+
+packetevents-api = { module = "gg.modl.minecraft.packetevents:packetevents-api", version.ref = "packetevents" }
+packetevents-spigot = { module = "gg.modl.minecraft.packetevents:packetevents-spigot", version.ref = "packetevents" }
+packetevents-bungeecord = { module = "gg.modl.minecraft.packetevents:packetevents-bungeecord", version.ref = "packetevents" }
+packetevents-velocity = { module = "gg.modl.minecraft.packetevents:packetevents-velocity", version.ref = "packetevents" }
+
+libby-core = { module = "com.alessiodp.libby:libby-core", version.ref = "libby" }
+libby-bukkit = { module = "com.alessiodp.libby:libby-bukkit", version.ref = "libby" }
+libby-bungee = { module = "com.alessiodp.libby:libby-bungee", version.ref = "libby" }
+libby-velocity = { module = "com.alessiodp.libby:libby-velocity", version.ref = "libby" }
+libby-fabric = { module = "com.alessiodp.libby:libby-fabric", version.ref = "libby" }
+
+spigot-api = { module = "org.spigotmc:spigot-api", version.ref = "spigot" }
+bungeecord-api = { module = "net.md-5:bungeecord-api", version.ref = "bungeecord" }
+velocity-api = { module = "com.velocitypowered:velocity-api", version.ref = "velocity" }
+paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
+grim-api = { module = "ac.grim.grimac:GrimAPI", version.ref = "grim-api" }
+polar-api = { module = "top.polar:api", version.ref = "polar-api" }
+
+replay-format = { module = "gg.modl.minecraft.replay:replay-format", version.ref = "replay-format" }
+replay-recording = { module = "gg.modl.minecraft.replay:modl-replay-recording", version.ref = "replay-recording" }
+
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit-bom" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+mockito-inline = { module = "org.mockito:mockito-inline", version.ref = "mockito-inline" }
+mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito-junit-jupiter" }

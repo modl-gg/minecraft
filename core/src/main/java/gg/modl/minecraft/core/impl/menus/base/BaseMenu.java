@@ -54,8 +54,7 @@ public abstract class BaseMenu extends SimpleMenu {
     }
 
     protected void handleBack(Click click) {
-        click.clickedMenu().close();
-        if (backAction != null) backAction.accept(click.player());
+        MenuNavigation.handleBack(click, backAction);
     }
 
 }

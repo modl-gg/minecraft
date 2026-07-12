@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -51,7 +52,7 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
         this.panelUrl = panelUrl;
         activeTab = StaffTab.SETTINGS;
 
-        Cache cache = platform.getCache();
+        Cache cache = PluginServices.cache();
         this.hasPermission = cache != null && cache.hasPermission(viewerUuid, Permissions.SETTINGS_MODIFY);
 
         if (hasPermission)
@@ -131,7 +132,7 @@ public class RoleListMenu extends BaseStaffListMenu<RoleListMenu.Role> {
             return;
         }
 
-        Cache cache = platform.getCache();
+        Cache cache = PluginServices.cache();
         if (cache != null) {
             String viewerRole = cache.getStaffRole(viewerUuid);
             if (viewerRole != null && viewerRole.equals(role.getName())) {

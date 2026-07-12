@@ -2,13 +2,13 @@ package gg.modl.minecraft.api.http.response;
 
 import gg.modl.minecraft.api.SimplePunishment;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
 import java.util.Map;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+@Getter @NoArgsConstructor @AllArgsConstructor
 public class PlayerLoginResponse {
     private List<SimplePunishment> activePunishments;
     private List<Map<String, Object>> pendingNotifications;

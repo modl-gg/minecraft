@@ -27,6 +27,10 @@ public class ClaimTicketCommand {
     @PlayerOnly
     public void claimTicket(CommandActor actor, String ticketId) {
         AbstractPlayer player = platform.getAbstractPlayer(actor.uniqueId(), false);
+        if (player == null) {
+            actor.reply(localeManager.getMessage("general.player_not_found"));
+            return;
+        }
 
         actor.reply(localeManager.getMessage("messages.claiming_ticket", mapOf("ticketId", ticketId)));
 

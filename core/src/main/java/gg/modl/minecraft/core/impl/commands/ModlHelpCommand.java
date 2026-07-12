@@ -9,11 +9,10 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.util.Pagination;
-import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.staff.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,23 +65,23 @@ public class ModlHelpCommand {
             addEntry(entries, "staff_commands.reports");
             addEntry(entries, "staff_commands.punish");
 
-            if (senderUuid == null || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_MANUAL_BAN)) {
+            if (visibleWith(senderUuid, Permissions.PUNISHMENT_APPLY_MANUAL_BAN)) {
                 addEntry(entries, "staff_commands.ban");
             }
 
-            if (senderUuid == null || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_MANUAL_MUTE)) {
+            if (visibleWith(senderUuid, Permissions.PUNISHMENT_APPLY_MANUAL_MUTE)) {
                 addEntry(entries, "staff_commands.mute");
             }
 
-            if (senderUuid == null || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_KICK)) {
+            if (visibleWith(senderUuid, Permissions.PUNISHMENT_APPLY_KICK)) {
                 addEntry(entries, "staff_commands.kick");
             }
 
-            if (senderUuid == null || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_APPLY_BLACKLIST)) {
+            if (visibleWith(senderUuid, Permissions.PUNISHMENT_APPLY_BLACKLIST)) {
                 addEntry(entries, "staff_commands.blacklist");
             }
 
-            if (senderUuid == null || cache.hasPermission(senderUuid, Permissions.PUNISHMENT_MODIFY)) {
+            if (visibleWith(senderUuid, Permissions.PUNISHMENT_MODIFY)) {
                 addEntry(entries, "staff_commands.pardon");
                 addEntry(entries, "staff_commands.unban");
                 addEntry(entries, "staff_commands.unmute");
@@ -125,6 +124,10 @@ public class ModlHelpCommand {
         actor.reply("");
     }
 
+    private boolean visibleWith(UUID senderUuid, String permission) {
+        return senderUuid == null || cache.hasPermission(senderUuid, permission);
+    }
+
     private void addEntry(List<HelpEntry> entries, String localeKey) {
         String usageKey = "help." + localeKey + ".usage";
         if (!localeManager.hasMessage(usageKey)) return;
@@ -134,9 +137,9 @@ public class ModlHelpCommand {
         entries.add(new HelpEntry(usage, description));
     }
 
-    @Data @AllArgsConstructor
+    @Value
     private static class HelpEntry {
-        private final String command;
-        private final String description;
+        String command;
+        String description;
     }
 }

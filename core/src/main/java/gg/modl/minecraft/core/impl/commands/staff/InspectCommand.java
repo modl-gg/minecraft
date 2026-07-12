@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Note;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
@@ -17,12 +16,12 @@ import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.InspectContext;
 import gg.modl.minecraft.core.util.ClickableJsonMessage;
-import gg.modl.minecraft.core.util.PunishmentActionMessages;
+import gg.modl.minecraft.core.PluginServices;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.Constants;
-import gg.modl.minecraft.core.util.PunishmentMessages;
-import gg.modl.minecraft.core.util.PunishmentTypeCacheManager;
+import gg.modl.minecraft.core.punishment.PunishmentTypeCacheManager;
+import gg.modl.minecraft.core.util.TimeUtil;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
@@ -68,34 +67,25 @@ public class InspectCommand {
 
         boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
 
-        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor) || printMode) {
+        if (CommandUtil.isConsole(actor) || printMode) {
             printLookup(actor, playerQuery);
             return;
         }
 
         UUID senderUuid = actor.uniqueId();
-        actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
-
-        StaffProfileLookup.lookupPlayerProfile(httpClientHolder.getClient(), platform, playerQuery).thenAccept(profileResponse -> {
-            if (profileResponse.getStatus() == 200) {
-                String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
-                InspectContext context = new InspectContext(
-                    profileResponse.getProfile(),
-                    profileResponse.getPunishmentCount(),
-                    profileResponse.getNoteCount()
-                );
-                InspectMenu menu = new InspectMenu(
-                    platform, httpClientHolder.getClient(), senderUuid, senderName,
-                    profileResponse.getProfile(), null, context
-                );
-                CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-                menu.display(player);
-            } else actor.reply(localeManager.getMessage("general.player_not_found"));
-        }).exceptionally(throwable -> {
-            logInspectFailure(playerQuery, throwable);
-            CommandUtil.handleException(actor, throwable, localeManager);
-            return null;
-        });
+        ProfileMenuOpener.openProfileMenu(actor, httpClientHolder.getClient(), platform, cache, localeManager, playerQuery,
+                (profileResponse, senderName, viewer) -> {
+                    InspectContext context = new InspectContext(
+                        profileResponse.getProfile(),
+                        profileResponse.getPunishmentCount(),
+                        profileResponse.getNoteCount()
+                    );
+                    new InspectMenu(
+                        platform, httpClientHolder.getClient(), senderUuid, senderName,
+                        profileResponse.getProfile(), null, context
+                    ).display(viewer);
+                },
+                this::logInspectFailure);
     }
 
     private void printPunishmentDetail(CommandActor actor, String punishmentId) {
@@ -131,7 +121,7 @@ public class InspectCommand {
                 Object dur = data.get("duration");
                 if (dur instanceof Number) {
                     long millis = ((Number) dur).longValue();
-                    if (millis > 0) duration = PunishmentMessages.formatDuration(millis);
+                    if (millis > 0) duration = TimeUtil.formatTimeMillis(millis);
                 }
             }
 
@@ -161,7 +151,7 @@ public class InspectCommand {
             if (actor.uniqueId() != null) {
                 UUID senderUuid = actor.uniqueId();
                 platform.runOnMainThread(() ->
-                    PunishmentActionMessages.sendPunishmentActions(platform, senderUuid, punishmentId));
+                    PluginServices.punishmentActions().sendPunishmentActions(senderUuid, punishmentId));
             }
         }).exceptionally(throwable -> {
             logInspectFailure("#" + punishmentId, throwable);
@@ -197,20 +187,21 @@ public class InspectCommand {
         httpClientHolder.getClient().lookupPlayer(request).thenAccept(response -> {
             if (response.isSuccess() && response.getData() != null) {
                 UUID playerUuid = UUID.fromString(response.getData().getMinecraftUuid());
-
-                // Resolve the target's OWN notes (best-effort): the linked-accounts endpoint excludes self.
-                StaffProfileLookup.lookupPlayerProfile(httpClientHolder.getClient(), platform, playerQuery).thenAccept(profileResponse -> {
-                    List<Note> targetNotes = (profileResponse != null && profileResponse.getStatus() == 200)
-                            ? profileResponse.getProfile().getNotes() : Collections.emptyList();
-                    fetchLinkedAndDisplay(actor, response.getData(), playerUuid, targetNotes);
-                }).exceptionally(profileThrowable -> {
-                    // Profile lookup failed: degrade to no notes rather than erroring the whole command.
-                    fetchLinkedAndDisplay(actor, response.getData(), playerUuid, Collections.emptyList());
-                    return null;
-                });
+                resolveOwnNotesThenDisplay(actor, response.getData(), playerUuid, playerQuery);
             } else actor.reply(localeManager.getMessage("general.player_not_found"));
         }).exceptionally(throwable -> {
             CommandUtil.handleException(actor, throwable, localeManager);
+            return null;
+        });
+    }
+
+    private void resolveOwnNotesThenDisplay(CommandActor actor, PlayerLookupResponse.PlayerData data, UUID playerUuid, String playerQuery) {
+        StaffProfileLookup.lookupPlayerProfile(httpClientHolder.getClient(), platform, playerQuery).thenAccept(profileResponse -> {
+            List<Note> ownNotes = (profileResponse != null && profileResponse.getStatus() == 200)
+                    ? profileResponse.getProfile().getNotes() : Collections.emptyList();
+            fetchLinkedAndDisplay(actor, data, playerUuid, ownNotes);
+        }).exceptionally(profileThrowable -> {
+            fetchLinkedAndDisplay(actor, data, playerUuid, Collections.emptyList());
             return null;
         });
     }
@@ -241,11 +232,8 @@ public class InspectCommand {
                 for (PlayerLookupResponse.RecentPunishment punishment : data.getRecentPunishments()) {
                     if (punishment.isActive()) {
                         String type = punishment.getType();
-                        if (type != null) {
-                            String typeName = type.toLowerCase();
-                            if (!isBanned && (typeName.contains("ban") || typeName.equals("blacklist"))) isBanned = true;
-                            if (!isMuted && (typeName.contains("mute") || typeName.equals("silence"))) isMuted = true;
-                        }
+                        if (!isBanned && punishmentTypeCache.isBanType(type)) isBanned = true;
+                        if (!isMuted && punishmentTypeCache.isMuteType(type)) isMuted = true;
                     }
                 }
         }

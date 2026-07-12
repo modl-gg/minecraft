@@ -1,35 +1,30 @@
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
-
 repositories {
     maven("https://repo.papermc.io/repository/maven-public/")
 }
 
 dependencies {
-    compileOnly("com.velocitypowered:velocity-api:${property("velocity.version")}")
-    annotationProcessor("com.velocitypowered:velocity-api:${property("velocity.version")}")
-    annotationProcessor("org.projectlombok:lombok:${property("lombok.version")}")
+    compileOnly(libs.velocity.api)
+    annotationProcessor(libs.velocity.api)
+    annotationProcessor(libs.lombok)
 
     implementation(project(":core"))
 
-    compileOnly("io.github.revxrsal:lamp.common:${property("lamp.version")}")
-    compileOnly("io.github.revxrsal:lamp.brigadier:${property("lamp.version")}")
-    compileOnly("io.github.revxrsal:lamp.velocity:${property("lamp.version")}")
-    compileOnly("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
-    compileOnly("gg.modl.minecraft.cirrus:cirrus-velocity:${property("cirrus.version")}")
-    compileOnly("org.yaml:snakeyaml:${property("snakeyaml.version")}")
+    compileOnly(libs.lamp.common)
+    compileOnly(libs.lamp.brigadier)
+    compileOnly(libs.lamp.velocity)
+    compileOnly(libs.cirrus.api)
+    compileOnly(libs.cirrus.velocity)
+    compileOnly(libs.snakeyaml)
 
-    implementation("com.alessiodp.libby:libby-core:${property("libby.version")}")
-    implementation("com.alessiodp.libby:libby-velocity:${property("libby.version")}")
+    implementation(libs.libby.core)
+    implementation(libs.libby.velocity)
 
-    compileOnly("gg.modl.minecraft.packetevents:packetevents-api:${property("packetevents.version")}")
-    compileOnly("gg.modl.minecraft.packetevents:packetevents-velocity:${property("packetevents.version")}")
+    compileOnly(libs.packetevents.api)
+    compileOnly(libs.packetevents.velocity)
 
-    testImplementation(platform("org.junit:junit-bom:${property("junit.bom.version")}"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 tasks.jar {

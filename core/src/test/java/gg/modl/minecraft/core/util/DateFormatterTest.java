@@ -12,19 +12,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class DateFormatterTest {
     @AfterEach
     void resetFormatterState() {
-        DateFormatter.setDateFormat("MM/dd/yyyy HH:mm");
-        DateFormatter.setTimezone("");
+        MenuItems.setDateFormatter(new DateFormatter(DateFormatter.DEFAULT_PATTERN, null));
     }
 
     @Test
-    void menuItemsFormatDateDelegatesToDateFormatterConfiguration() {
+    void menuItemsFormatDateDelegatesToConfiguredFormatter() {
         Date date = new Date(0L);
+        DateFormatter formatter = new DateFormatter("yyyy-MM-dd HH:mm z", "UTC");
 
-        MenuItems.setDateFormat("yyyy-MM-dd HH:mm z");
-        MenuItems.setTimezone("UTC");
+        MenuItems.setDateFormatter(formatter);
 
-        assertEquals("1970-01-01 00:00 UTC", DateFormatter.format(date));
-        assertEquals(DateFormatter.format(date), MenuItems.formatDate(date));
+        assertEquals("1970-01-01 00:00 UTC", formatter.format(date));
+        assertEquals(formatter.format(date), MenuItems.formatDate(date));
     }
 
     @Test
@@ -33,12 +32,18 @@ class DateFormatterTest {
     }
 
     @Test
-    void menuItemsCanClearConfiguredTimezone() {
+    void emptyTimezoneUsesSystemDefault() {
         Date date = new Date(0L);
-        MenuItems.setDateFormat("yyyy-MM-dd HH:mm z");
-        MenuItems.setTimezone("UTC");
-        MenuItems.setTimezone("");
+        MenuItems.setDateFormatter(new DateFormatter("yyyy-MM-dd HH:mm z", ""));
 
         assertEquals(new SimpleDateFormat("yyyy-MM-dd HH:mm z").format(date), MenuItems.formatDate(date));
+    }
+
+    @Test
+    void invalidPatternFallsBackToDefault() {
+        Date date = new Date(0L);
+        DateFormatter formatter = new DateFormatter("not-a-]pattern[", null);
+
+        assertEquals(new SimpleDateFormat(DateFormatter.DEFAULT_PATTERN).format(date), formatter.format(date));
     }
 }

@@ -5,7 +5,6 @@ import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
-import gg.modl.minecraft.api.Modification;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.PunishmentPreviewResponse;
@@ -14,11 +13,13 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ConfigManager.StandingGuiConfig;
 import gg.modl.minecraft.core.impl.menus.base.BaseListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
+import gg.modl.minecraft.core.impl.menus.util.PunishmentItemRenderer;
 import gg.modl.minecraft.core.locale.LocaleManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +51,7 @@ public class StandingMenu extends BaseListMenu<Punishment> {
         for (Punishment p : account.getPunishments())
             if (!p.isKickType())
                 punishments.add(p);
-        punishments.sort((a, b) -> b.getIssued().compareTo(a.getIssued()));
+        punishments.sort(Comparator.comparing(Punishment::getIssued, Comparator.nullsLast(Comparator.reverseOrder())));
     }
 
     @Override
@@ -94,7 +95,7 @@ public class StandingMenu extends BaseListMenu<Punishment> {
         String date = MenuItems.formatDate(punishment.getIssued());
         String typeName = getTypeName(punishment);
 
-        Long effectiveDuration = getEffectiveDuration(punishment);
+        Long effectiveDuration = PunishmentItemRenderer.effectiveDuration(punishment);
         String duration;
         if (effectiveDuration == null || effectiveDuration <= 0)
             duration = "Permanent";
@@ -175,7 +176,7 @@ public class StandingMenu extends BaseListMenu<Punishment> {
             return "queued";
         }
 
-        boolean active = isPunishmentActive(punishment, effectiveDuration);
+        boolean active = PunishmentItemRenderer.isEffectivelyActive(punishment, effectiveDuration);
         if (active) {
             if (effectiveDuration == null || effectiveDuration <= 0) {
                 return "permanent";
@@ -213,25 +214,5 @@ public class StandingMenu extends BaseListMenu<Punishment> {
             return typeData.getPlayerDescription();
         }
         return punishment.getReason();
-    }
-
-    private Long getEffectiveDuration(Punishment punishment) {
-        Long duration = punishment.getDuration();
-        for (Modification mod : punishment.getModifications()) {
-            if (mod.getType() == Modification.Type.MANUAL_DURATION_CHANGE) {
-                Long modDuration = mod.getEffectiveDuration();
-                duration = (modDuration == null || modDuration <= 0) ? null : modDuration;
-            }
-        }
-        return duration;
-    }
-
-    private boolean isPunishmentActive(Punishment punishment, Long effectiveDuration) {
-        if (punishment.getPardonDate() != null) return false;
-        if (!punishment.isActive()) return false;
-        if (punishment.getStarted() == null) return false;
-        if (effectiveDuration == null || effectiveDuration <= 0) return true;
-        long expiryTime = punishment.getStarted().getTime() + effectiveDuration;
-        return System.currentTimeMillis() < expiryTime;
     }
 }

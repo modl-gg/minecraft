@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
@@ -11,6 +12,7 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
+import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -29,10 +31,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
+    @Getter
     public static class Ticket {
-        @Getter private final String id, playerName, title;
-        @Getter private final Date created;
-        @Getter private final String status;
+        private final String id, playerName, title;
+        private final Date created;
+        private final String status;
         private final boolean hasStaffResponse;
 
         public Ticket(String id, String playerName, String title, Date created, String status, boolean hasStaffResponse) {
@@ -43,8 +46,6 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
             this.status = status;
             this.hasStaffResponse = hasStaffResponse;
         }
-
-        public boolean hasStaffResponse() { return hasStaffResponse; }
     }
 
     private final List<Ticket> tickets = new ArrayList<>();
@@ -104,9 +105,7 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
         List<Ticket> filtered = new ArrayList<>();
 
         for (Ticket ticket : tickets) {
-            boolean statusMatch = "open".equalsIgnoreCase(currentStatusFilter)
-                    != "closed".equalsIgnoreCase(ticket.getStatus());
-            if (statusMatch)
+            if (ReportRenderUtil.matchesStatusFilter(currentStatusFilter, ticket.getStatus()))
                 filtered.add(ticket);
         }
 
@@ -124,7 +123,7 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
 
     @Override
     protected CirrusItem map(Ticket ticket) {
-        LocaleManager locale = platform.getLocaleManager();
+        LocaleManager locale = PluginServices.locale();
 
         if (ticket.getId() == null) return createEmptyPlaceholder(locale.getMessage("menus.empty.tickets"));
 
@@ -146,7 +145,7 @@ public class TicketsMenu extends BaseStaffListMenu<TicketsMenu.Ticket> {
 
         String title = locale.getMessage("menus.ticket_item.title", vars);
 
-        CirrusItemType itemType = ticket.hasStaffResponse() ? CirrusItemType.WRITABLE_BOOK : CirrusItemType.BOOK;
+        CirrusItemType itemType = ticket.isHasStaffResponse() ? CirrusItemType.WRITABLE_BOOK : CirrusItemType.BOOK;
 
         return CirrusItem.of(
                 itemType,

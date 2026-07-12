@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.commands.player;
 
+import gg.modl.minecraft.core.PluginServices;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
 import revxrsal.commands.command.CommandActor;
@@ -67,7 +68,7 @@ public class ReportCommand {
     }
 
     private ReportGuiConfig getOrLoadReportGuiConfig() {
-        Cache cache = platform.getCache();
+        Cache cache = PluginServices.cache();
 
         if (cache != null) {
             ReportGuiConfig cached = cache.getCachedReportGuiConfig();

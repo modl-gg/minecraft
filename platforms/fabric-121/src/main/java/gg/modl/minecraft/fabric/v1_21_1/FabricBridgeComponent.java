@@ -26,9 +26,7 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
@@ -69,8 +67,8 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
                                          BridgeLocaleManager localeManager,
                                          StaffModeConfig staffModeConfig) {
         fabricStaffModeHandler = new FabricStaffModeHandler(server, bridgeConfig, fabricFreezeHandler,
-                localeManager, staffModeConfig);
-        fabricStaffModeHandler.startScoreboardUpdater();
+                localeManager, staffModeConfig, context.getScheduler());
+        fabricStaffModeHandler.start();
     }
 
     @Override
@@ -138,7 +136,6 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
             if (fabricFreezeHandler.isFrozen(sp.getUuid())) return ActionResult.FAIL;
 
             if (fabricStaffModeHandler.isInStaffMode(sp.getUuid())) {
-                // Silent container viewing for vanished staff
                 if (fabricStaffModeHandler.isVanished(sp.getUuid())) {
                     BlockPos pos = hitResult.getBlockPos();
                     BlockEntity be = world.getBlockEntity(pos);
@@ -163,13 +160,11 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
                 return TypedActionResult.pass(ItemStack.EMPTY);
 
             int slot = sp.getInventory().selectedSlot;
-            Map<Integer, StaffModeConfig.HotbarItem> hotbar = fabricStaffModeHandler.getActiveHotbar(sp.getUuid());
-            StaffModeConfig.HotbarItem item = hotbar != null ? hotbar.get(slot) : null;
-            if (item != null && item.getAction() != null && !item.getAction().isEmpty()) {
-                fabricStaffModeHandler.executeAction(sp, item);
-                return TypedActionResult.success(sp.getMainHandStack());
+            if (sp.getInventory().getStack(slot).isEmpty()) {
+                return TypedActionResult.pass(ItemStack.EMPTY);
             }
-            return TypedActionResult.pass(ItemStack.EMPTY);
+            fabricStaffModeHandler.handleHotbarAction(sp.getUuid(), slot);
+            return TypedActionResult.success(sp.getMainHandStack());
         });
 
         UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
@@ -178,13 +173,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
 
             if (hand == Hand.MAIN_HAND && entity instanceof ServerPlayerEntity targetPlayer) {
                 int slot = sp.getInventory().selectedSlot;
-                Map<Integer, StaffModeConfig.HotbarItem> hotbar = fabricStaffModeHandler.getActiveHotbar(sp.getUuid());
-                StaffModeConfig.HotbarItem item = hotbar != null ? hotbar.get(slot) : null;
-                if (item != null && "target_selector".equals(item.getAction())) {
-                    fabricStaffModeHandler.setTarget(sp.getUuid().toString(), targetPlayer.getUuid().toString());
-                    sp.sendMessage(Text.literal(localeManager.getMessage("staff_mode.target.now_targeting",
-                            mapOf("player", targetPlayer.getName().getString()))), false);
-                }
+                fabricStaffModeHandler.handleTargetSelect(sp.getUuid(), slot, targetPlayer.getUuid());
             }
             return ActionResult.FAIL;
         });

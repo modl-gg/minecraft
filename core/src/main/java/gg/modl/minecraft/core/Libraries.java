@@ -20,7 +20,6 @@ public final class Libraries {
             {"com{}google{}protobuf", "gg{}modl{}libs{}protobuf"}
     };
 
-    // Version uses timestamp instead of "-SNAPSHOT" because libby 1.3.1 re-downloads SNAPSHOT versions every startup
     public static final LibraryRecord SNAKEYAML = LibraryRecord.of(
             "org{}yaml",
             "snakeyaml",

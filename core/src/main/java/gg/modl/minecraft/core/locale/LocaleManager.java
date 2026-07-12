@@ -1,9 +1,8 @@
 package gg.modl.minecraft.core.locale;
 
 import gg.modl.minecraft.api.SimplePunishment;
-import gg.modl.minecraft.core.util.PunishmentMessages;
+import gg.modl.minecraft.core.util.TimeUtil;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
-import lombok.Getter;
 import lombok.Setter;
 import org.yaml.snakeyaml.Yaml;
 
@@ -31,15 +30,21 @@ public class LocaleManager {
     private static final String MISSING_MESSAGE_PREFIX = "&cMissing locale: ";
     private static final String MISSING_LIST_PREFIX = "&cMissing locale list: ";
 
-    @Getter private Map<String, Object> messages;
+    private static final String WILL_EXPIRE_FALLBACK = "\n&7This {type} will expire in &f{duration}&7.";
+    private static final String DURATION_FORMATTED_FALLBACK = "\n&7This {type} will expire in {duration}";
+    private static final String MUTE_DURATION_FORMATTED_FALLBACK = " for {duration}";
+
+    private Map<String, Object> messages;
     private Map<String, Object> configValues;
     private final String currentLocale;
+    private final YamlMessageResolver resolver;
     @Setter private MessageRenderer renderer;
 
     public LocaleManager(String locale) {
         this.currentLocale = locale;
         this.messages = new HashMap<>();
         this.configValues = new HashMap<>();
+        this.resolver = new YamlMessageResolver(this::colorize);
         loadLocale(locale);
     }
 
@@ -83,47 +88,21 @@ public class LocaleManager {
     }
 
     public String getMessage(String path, Map<String, String> placeholders) {
-        Object value;
-        if (path.startsWith("config.")) {
-            String configPath = path.substring(7);
-            value = getNestedValue(configValues, configPath);
-            if (value == null) value = getNestedValue(messages, path);
-        } else {
-            value = getNestedValue(messages, path);
-        }
-
-        if (value instanceof String) {
-            String message = (String) value;
-            for (Map.Entry<String, String> entry : placeholders.entrySet())
-                message = message.replace("{" + entry.getKey() + "}", entry.getValue());
-
-            return colorize(message);
-        }
+        Object value = resolveValue(path);
+        if (value instanceof String) return resolver.render((String) value, placeholders);
         return MISSING_MESSAGE_PREFIX + path;
     }
 
-    /**
-     * Returns true when {@code path} resolves to an authored String value, mirroring
-     * getMessage()'s exact resolution (including the {@code config.} prefix fallback).
-     * This is the precise inverse of "getMessage would return the missing sentinel".
-     */
     public boolean hasMessage(String path) {
-        Object value;
-        if (path.startsWith("config.")) {
-            String configPath = path.substring(7);
-            value = getNestedValue(configValues, configPath);
-            if (value == null) value = getNestedValue(messages, path);
-        } else {
-            value = getNestedValue(messages, path);
-        }
-        return value instanceof String;
+        return resolveValue(path) instanceof String;
     }
 
-    /**
-     * Returns true when {@code path} resolves to an authored list value.
-     */
-    public boolean hasMessageList(String path) {
-        return getNestedValue(messages, path) instanceof List;
+    private Object resolveValue(String path) {
+        if (path.startsWith("config.")) {
+            Object value = resolver.lookup(configValues, path.substring(7));
+            return value != null ? value : resolver.lookup(messages, path);
+        }
+        return resolver.lookup(messages, path);
     }
 
     @SuppressWarnings("unchecked")
@@ -133,49 +112,27 @@ public class LocaleManager {
 
     @SuppressWarnings("unchecked")
     public List<String> getMessageList(String path, Map<String, String> placeholders) {
-        Object value = getNestedValue(messages, path);
+        Object value = resolver.lookup(messages, path);
         if (value instanceof List) {
             List<String> list = (List<String>) value;
             return list.stream()
-                    .map(line -> replacePlaceholders(line, placeholders))
+                    .map(line -> resolver.render(line, placeholders))
                     .collect(Collectors.toList());
         }
         return listOf(MISSING_LIST_PREFIX + path);
     }
 
     private String resolveAsJoinedLines(String path, Map<String, String> variables) {
-        Object value = getNestedValue(messages, path);
+        Object value = resolver.lookup(messages, path);
         if (value instanceof List<?>) {
             @SuppressWarnings("unchecked")
             List<String> lines = (List<String>) value;
             return lines.stream()
-                    .map(line -> replacePlaceholders(line, variables))
+                    .map(line -> resolver.render(line, variables))
                     .collect(Collectors.joining("\n"));
         }
         if (value instanceof String) return getMessage(path, variables);
         return null;
-    }
-
-    private Object getNestedValue(Map<String, Object> map, String path) {
-        String[] keys = path.split("\\.");
-        Object current = map;
-
-        for (String key : keys) {
-            if (current instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> currentMap = (Map<String, Object>) current;
-                current = currentMap.get(key);
-            } else return null;
-        }
-
-        return current;
-    }
-
-    private String replacePlaceholders(String line, Map<String, String> variables) {
-        for (Map.Entry<String, String> entry : variables.entrySet()) {
-            line = line.replace("{" + entry.getKey() + "}", entry.getValue());
-        }
-        return colorize(line);
     }
 
     private String colorize(String message) {
@@ -196,13 +153,13 @@ public class LocaleManager {
 
     public String getPublicNotificationMessage(int ordinal, Map<String, String> variables) {
         String path = "punishment_types.ordinal_" + ordinal + ".public_notification";
-        Object value = getNestedValue(messages, path);
+        Object value = resolver.lookup(messages, path);
 
         if (value instanceof String) return getMessage(path, variables);
         return getDefaultPublicNotification(ordinal, variables);
     }
 
-    public String getPlayerNotificationMessage(int ordinal, String punishmentType, Map<String, String> baseVariables, SimplePunishment punishment, PunishmentMessages.MessageContext context) {
+    public String getPlayerNotificationMessage(int ordinal, String punishmentType, Map<String, String> baseVariables, SimplePunishment punishment, PunishmentMessageContext context) {
         Map<String, String> variables = new HashMap<>(baseVariables);
         variables.put("tense", getTenseForContext(context));
         variables.put("tense2", getTense2ForContext(context));
@@ -227,18 +184,11 @@ public class LocaleManager {
     }
 
     private String getWillExpireMessage(SimplePunishment punishment) {
-        if (punishment.isPermanent()) return "";
-
-        Long expiration = punishment.getExpiration();
-        if (expiration == null) return "";
-
-        long timeLeft = expiration - System.currentTimeMillis();
+        long timeLeft = remainingMillis(punishment);
         if (timeLeft <= 0) return "";
 
-        String duration = PunishmentMessages.formatDuration(timeLeft);
         String punishmentTypeWord = punishment.isBan() ? "ban" : (punishment.isMute() ? "mute" : "punishment");
-
-        return "\n&7This " + punishmentTypeWord + " will expire in &f" + duration + "&7.";
+        return formatExpiryTemplate("punishment_words.will_expire", WILL_EXPIRE_FALLBACK, punishmentTypeWord, timeLeft);
     }
 
     private String getPlayerNotificationMessageWithCategory(int ordinal, String category, Map<String, String> variables) {
@@ -278,15 +228,15 @@ public class LocaleManager {
         return ordinal >= 2 ? "ban_default" : "default";
     }
 
-    private String getTenseForContext(PunishmentMessages.MessageContext context) {
-        if (context == PunishmentMessages.MessageContext.SYNC || context == PunishmentMessages.MessageContext.CHAT) {
+    private String getTenseForContext(PunishmentMessageContext context) {
+        if (context == PunishmentMessageContext.SYNC || context == PunishmentMessageContext.CHAT) {
             return getRawMessage("punishment_words.tense_active", "are");
         }
         return getRawMessage("punishment_words.tense_default", "have been");
     }
 
-    private String getTense2ForContext(PunishmentMessages.MessageContext context) {
-        if (context == PunishmentMessages.MessageContext.SYNC || context == PunishmentMessages.MessageContext.CHAT) {
+    private String getTense2ForContext(PunishmentMessageContext context) {
+        if (context == PunishmentMessageContext.SYNC || context == PunishmentMessageContext.CHAT) {
             return getRawMessage("punishment_words.tense2_active", "is");
         }
         return getRawMessage("punishment_words.tense2_default", "has been");
@@ -301,28 +251,34 @@ public class LocaleManager {
     }
 
     private String getRawMessage(String path, String fallback) {
-        Object value = getNestedValue(messages, path);
+        Object value = resolver.lookup(messages, path);
         return value instanceof String ? (String) value : fallback;
     }
 
+    private String formatExpiryTemplate(String path, String fallback, String type, long timeLeftMillis) {
+        Map<String, String> variables = new HashMap<>();
+        if (type != null) variables.put("type", type);
+        variables.put("duration", TimeUtil.formatTimeMillis(timeLeftMillis));
+        return resolver.applyPlaceholders(getRawMessage(path, fallback), variables);
+    }
+
+    private long remainingMillis(SimplePunishment punishment) {
+        if (punishment.isPermanent()) return 0;
+        Long expiration = punishment.getExpiration();
+        if (expiration == null) return 0;
+        return expiration - System.currentTimeMillis();
+    }
+
     private String getDurationFormatted(SimplePunishment punishment, String punishmentType) {
-        if (punishment.isPermanent()) return "";
-
-        long timeLeft = punishment.getExpiration() - System.currentTimeMillis();
+        long timeLeft = remainingMillis(punishment);
         if (timeLeft <= 0) return "";
-
-        String duration = PunishmentMessages.formatDuration(timeLeft);
-        return "\n&7This " + punishmentType + " will expire in " + duration;
+        return formatExpiryTemplate("punishment_words.duration_formatted", DURATION_FORMATTED_FALLBACK, punishmentType, timeLeft);
     }
 
     private String getMuteDurationFormatted(SimplePunishment punishment) {
-        if (punishment.isPermanent()) return "";
-
-        long timeLeft = punishment.getExpiration() - System.currentTimeMillis();
+        long timeLeft = remainingMillis(punishment);
         if (timeLeft <= 0) return "";
-
-        String duration = PunishmentMessages.formatDuration(timeLeft);
-        return " for " + duration;
+        return formatExpiryTemplate("punishment_words.mute_duration_formatted", MUTE_DURATION_FORMATTED_FALLBACK, null, timeLeft);
     }
 
     private String getPunishmentTypeName(String punishmentType) {

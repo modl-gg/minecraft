@@ -2,6 +2,7 @@ package gg.modl.minecraft.bridge.locale;
 
 import gg.modl.minecraft.bridge.resource.BridgeYamlResource;
 import gg.modl.minecraft.core.locale.LegacyTextRenderer;
+import gg.modl.minecraft.core.locale.YamlMessageResolver;
 
 import java.util.Collections;
 import java.util.Map;
@@ -11,6 +12,7 @@ public class BridgeLocaleManager {
     private static final String LOCALE_RESOURCE = "/bridge_locale/en_US.yml";
 
     private final Logger logger;
+    private final YamlMessageResolver resolver = new YamlMessageResolver(LegacyTextRenderer::colorize);
     private Map<String, Object> messages = Collections.emptyMap();
 
     public BridgeLocaleManager(Logger logger) {
@@ -30,15 +32,9 @@ public class BridgeLocaleManager {
     }
 
     public String getMessage(String key, Map<String, String> placeholders) {
-        String raw = resolve(key);
-        if (raw == null) return key;
-
-        if (placeholders != null) {
-            for (Map.Entry<String, String> entry : placeholders.entrySet()) {
-                raw = raw.replace("{" + entry.getKey() + "}", entry.getValue());
-            }
-        }
-        return colorize(raw);
+        Object value = resolver.lookup(messages, key);
+        if (!(value instanceof String)) return key;
+        return resolver.render((String) value, placeholders);
     }
 
     public String getMessage(String key) {
@@ -47,16 +43,5 @@ public class BridgeLocaleManager {
 
     public String colorize(String text) {
         return LegacyTextRenderer.colorize(text);
-    }
-
-    @SuppressWarnings("unchecked")
-    private String resolve(String key) {
-        String[] parts = key.split("\\.");
-        Object current = messages;
-        for (String part : parts) {
-            if (!(current instanceof Map)) return null;
-            current = ((Map<String, Object>) current).get(part);
-        }
-        return current instanceof String ? (String) current : null;
     }
 }

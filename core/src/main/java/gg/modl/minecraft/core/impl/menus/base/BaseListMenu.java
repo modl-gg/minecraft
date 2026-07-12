@@ -74,8 +74,7 @@ public abstract class BaseListMenu<T> extends AbstractBrowser<T> {
     }
 
     protected void handleBack(Click click) {
-        click.clickedMenu().close();
-        if (backAction != null) backAction.accept(click.player());
+        MenuNavigation.handleBack(click, backAction);
     }
 
     protected void sendMessage(String message) {

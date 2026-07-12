@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.config;
 
+import gg.modl.minecraft.core.util.YamlValues;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -120,11 +121,11 @@ public class ReportGuiConfig {
         ReportSlotConfig config = new ReportSlotConfig();
         config.setSlotNumber(slotNumber);
 
-        if (data.containsKey("enabled")) config.setEnabled(coerceBoolean(data.get("enabled"), config.isEnabled()));
-        if (data.containsKey("item")) config.setItem(coerceString(data.get("item"), config.getItem()));
-        if (data.containsKey("title")) config.setTitle(coerceString(data.get("title"), config.getTitle()));
-        if (data.containsKey("chat-report")) config.setChatReport(coerceBoolean(data.get("chat-report"), config.isChatReport()));
-        if (data.containsKey("replay-capture")) config.setReplayCapture(coerceBoolean(data.get("replay-capture"), config.isReplayCapture()));
+        if (data.containsKey("enabled")) config.setEnabled(YamlValues.coerceBoolean(data.get("enabled"), config.isEnabled()));
+        if (data.containsKey("item")) config.setItem(YamlValues.coerceString(data.get("item"), config.getItem()));
+        if (data.containsKey("title")) config.setTitle(YamlValues.coerceString(data.get("title"), config.getTitle()));
+        if (data.containsKey("chat-report")) config.setChatReport(YamlValues.coerceBoolean(data.get("chat-report"), config.isChatReport()));
+        if (data.containsKey("replay-capture")) config.setReplayCapture(YamlValues.coerceBoolean(data.get("replay-capture"), config.isReplayCapture()));
         if (data.containsKey("description")) {
             Object desc = data.get("description");
             if (desc instanceof List) config.setDescription(new ArrayList<>((List<String>) desc));
@@ -136,26 +137,13 @@ public class ReportGuiConfig {
     @SuppressWarnings("unchecked")
     private static InfoConfig parseInfoConfig(Map<String, Object> data) {
         InfoConfig config = new InfoConfig();
-        if (data.containsKey("item")) config.setItem(coerceString(data.get("item"), config.getItem()));
-        if (data.containsKey("title")) config.setTitle(coerceString(data.get("title"), config.getTitle()));
+        if (data.containsKey("item")) config.setItem(YamlValues.coerceString(data.get("item"), config.getItem()));
+        if (data.containsKey("title")) config.setTitle(YamlValues.coerceString(data.get("title"), config.getTitle()));
         if (data.containsKey("description")) {
             Object desc = data.get("description");
             if (desc instanceof List) config.setDescription(new ArrayList<>((List<String>) desc));
         }
         return config;
-    }
-
-    private static String coerceString(Object value, String fallback) {
-        return value == null ? fallback : String.valueOf(value);
-    }
-
-    private static boolean coerceBoolean(Object value, boolean fallback) {
-        if (value instanceof Boolean) return (Boolean) value;
-        if (value == null) return fallback;
-        String s = String.valueOf(value).trim();
-        if (s.equalsIgnoreCase("true") || s.equals("1") || s.equalsIgnoreCase("yes") || s.equalsIgnoreCase("on")) return true;
-        if (s.equalsIgnoreCase("false") || s.equals("0") || s.equalsIgnoreCase("no") || s.equalsIgnoreCase("off")) return false;
-        return fallback;
     }
 
     public static ReportGuiConfig createDefault() {

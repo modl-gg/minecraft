@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.Click;
@@ -118,7 +119,7 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
 
     @Override
     protected CirrusItem map(Note note) {
-        LocaleManager locale = platform.getLocaleManager();
+        LocaleManager locale = PluginServices.locale();
 
         if (note.getText() == null) return createEmptyPlaceholder(locale.getMessage("menus.empty.notes"));
 
@@ -180,9 +181,9 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
     private void handleCreateNote(Click click) {
         click.clickedMenu().close();
 
-        platform.getChatInputManager().requestInput(viewerUuid, "Enter note content for " + targetName + ":",
+        PluginServices.chatInput().requestInput(viewerUuid, "Enter note content for " + targetName + ":",
                 input -> {
-                    String issuerId = platform.getCache() != null ? platform.getCache().getStaffId(viewerUuid) : null;
+                    String issuerId = PluginServices.cache() != null ? PluginServices.cache().getStaffId(viewerUuid) : null;
                     CreatePlayerNoteRequest request = new CreatePlayerNoteRequest(
                             targetUuid.toString(),
                             viewerName,
@@ -191,7 +192,7 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
                     );
 
                     httpClient.createPlayerNote(request).thenAccept(v -> {
-                        sendMessage(platform.getLocaleManager().getMessage("menus.notes.created"));
+                        sendMessage(PluginServices.locale().getMessage("menus.notes.created"));
                         httpClient.getPlayerProfile(targetUuid).thenAccept(response -> {
                             if (response.getStatus() == 200) {
                                 InspectContext newContext = new InspectContext(response.getProfile(),
@@ -203,12 +204,12 @@ public class NotesMenu extends BaseInspectListMenu<Note> {
                             }
                         });
                     }).exceptionally(e -> {
-                        sendMessage(platform.getLocaleManager().getMessage("menus.notes.create_failed"));
+                        sendMessage(PluginServices.locale().getMessage("menus.notes.create_failed"));
                         return null;
                     });
                 },
                 () -> {
-                    sendMessage(platform.getLocaleManager().getMessage("menus.notes.cancelled"));
+                    sendMessage(PluginServices.locale().getMessage("menus.notes.cancelled"));
                     display(click.player());
                 }
         );

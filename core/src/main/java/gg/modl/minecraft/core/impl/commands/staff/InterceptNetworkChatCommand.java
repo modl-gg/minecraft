@@ -1,10 +1,10 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.PlayerOnly;
+import gg.modl.minecraft.core.command.RequiresPermission;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.NetworkChatInterceptService;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
@@ -13,23 +13,14 @@ import revxrsal.commands.command.CommandActor;
 
 import java.util.UUID;
 
-@RequiredArgsConstructor @Command("interceptnetworkchat") @StaffOnly
+@RequiredArgsConstructor @Command("interceptnetworkchat") @StaffOnly @PlayerOnly
 public class InterceptNetworkChatCommand {
     private final NetworkChatInterceptService interceptService;
-    private final Cache cache;
     private final LocaleManager localeManager;
 
     @Description("Toggle network chat interception")
+    @RequiresPermission(Permissions.INTERCEPT)
     public void toggle(CommandActor actor) {
-        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
-            actor.reply(localeManager.getMessage("general.players_only"));
-            return;
-        }
-        if (!PermissionUtil.hasPermission(actor, cache, Permissions.INTERCEPT)) {
-            actor.reply(localeManager.getMessage("general.no_permission"));
-            return;
-        }
-
         UUID senderUuid = actor.uniqueId();
         boolean nowIntercepting = interceptService.toggle(senderUuid);
 

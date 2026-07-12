@@ -1,18 +1,11 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import gg.modl.minecraft.api.http.CommandLogEntry;
+import lombok.Value;
 
 import java.util.List;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+@Value
 public class CommandLogBatchRequest {
-    private List<CommandLogEntry> entries;
-
-    @Data @NoArgsConstructor @AllArgsConstructor
-    public static class CommandLogEntry {
-        private String uuid, username, command, server;
-        private long timestamp;
-    }
+    List<CommandLogEntry> entries;
 }

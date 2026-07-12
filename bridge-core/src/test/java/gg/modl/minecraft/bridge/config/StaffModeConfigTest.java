@@ -42,7 +42,7 @@ class StaffModeConfigTest {
                 "    - \"&fPlayers: &a{online}\""
         );
 
-        StaffModeConfig config = new StaffModeConfig(tempDir, Logger.getLogger("test"));
+        StaffModeConfig config = StaffModeConfig.load(tempDir, Logger.getLogger("test"));
 
         assertFalse(config.isVanishOnEnable());
         assertEquals("minecraft:stick", config.getStaffHotbar().get(2).getItem());
@@ -56,7 +56,7 @@ class StaffModeConfigTest {
 
     @Test
     void usesDefaultsWhenFileIsMissing() {
-        StaffModeConfig config = new StaffModeConfig(tempDir, Logger.getLogger("test"));
+        StaffModeConfig config = StaffModeConfig.load(tempDir, Logger.getLogger("test"));
 
         assertTrue(config.isVanishOnEnable());
         assertEquals("minecraft:lead", config.getStaffHotbar().get(0).getItem());
@@ -73,7 +73,7 @@ class StaffModeConfigTest {
                 "    item: ["
         );
 
-        StaffModeConfig config = new StaffModeConfig(tempDir, Logger.getLogger("test"));
+        StaffModeConfig config = StaffModeConfig.load(tempDir, Logger.getLogger("test"));
 
         assertTrue(config.isVanishOnEnable());
         assertEquals("minecraft:lead", config.getStaffHotbar().get(0).getItem());

@@ -1,10 +1,12 @@
 package gg.modl.minecraft.api.http.response;
 
 import gg.modl.minecraft.api.Account;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
-@Data
+@Getter @NoArgsConstructor @AllArgsConstructor
 public class PlayerProfileResponse {
     private @NotNull Account profile;
     private int status;
@@ -12,10 +14,12 @@ public class PlayerProfileResponse {
     private int noteCount = -1;
 
     public int getPunishmentCount() {
-        return punishmentCount >= 0 ? punishmentCount : profile.getPunishments().size();
+        if (punishmentCount >= 0) return punishmentCount;
+        return profile != null ? profile.getPunishments().size() : 0;
     }
 
     public int getNoteCount() {
-        return noteCount >= 0 ? noteCount : profile.getNotes().size();
+        if (noteCount >= 0) return noteCount;
+        return profile != null ? profile.getNotes().size() : 0;
     }
 }

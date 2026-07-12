@@ -1,8 +1,8 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.Data;
+import lombok.Value;
 
-@Data
+@Value
 public class PlayerGetRequest {
-    private final String minecraftUuid;
+    String minecraftUuid;
 }

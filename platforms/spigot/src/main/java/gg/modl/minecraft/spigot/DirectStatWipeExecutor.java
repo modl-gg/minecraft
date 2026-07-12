@@ -14,13 +14,15 @@ public class DirectStatWipeExecutor implements StatWipeExecutor {
     public void executeStatWipe(String username, String uuid, String punishmentId, StatWipeCallback callback) {
         final StatWipeHandler handler = bridgeComponent.getStatWipeHandler();
         if (handler == null) {
-            return; // will retry on next sync
+            return;
         }
 
-        // Stat-wipe dispatches console commands; hop to the main/server thread so they
-        // never run from the async login/sync/realtime threads (runSync is inline when
-        // already on the primary thread, and Folia-correct).
-        bridgeComponent.getScheduler().runSync(() -> {
+        dispatchStatWipeOnMainThread(handler, username, uuid, punishmentId, callback);
+    }
+
+    private void dispatchStatWipeOnMainThread(StatWipeHandler handler, String username, String uuid,
+                                              String punishmentId, StatWipeCallback callback) {
+        bridgeComponent.getScheduler().runOnMainThread(() -> {
             boolean success = handler.execute(username, uuid, punishmentId);
             callback.onComplete(success, serverName);
         });

@@ -1,20 +1,21 @@
 package gg.modl.minecraft.api;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Date;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+@Getter @NoArgsConstructor @AllArgsConstructor
 public class SimplePunishment {
     private static final String CATEGORY_BAN = "BAN", CATEGORY_MUTE = "MUTE", CATEGORY_KICK = "KICK";
 
     private @NotNull String type;
     private @Nullable String category;
-    private @Nullable Long expiration;
+    private @Setter @Nullable Long expiration;
     private @NotNull String description;
     private @NotNull String id;
     private @Nullable String issuerName;
@@ -25,20 +26,22 @@ public class SimplePunishment {
 
     public boolean isBan() {
         if (category != null) return CATEGORY_BAN.equalsIgnoreCase(category);
-        if (PunishmentTypeRegistry.isInitialized()) return PunishmentTypeRegistry.isBan(ordinal);
-        if (ordinal >= PunishmentTypeRegistry.ORDINAL_BAN && ordinal <= PunishmentTypeRegistry.ORDINAL_BLACKLIST) return true;
+        PunishmentTypeClassifier classifier = PunishmentTypeClassifiers.active();
+        if (classifier.isPopulated()) return classifier.isBan(ordinal);
+        if (ordinal >= PunishmentTypeClassifier.ORDINAL_BAN && ordinal <= PunishmentTypeClassifier.ORDINAL_BLACKLIST) return true;
         return CATEGORY_BAN.equalsIgnoreCase(type);
     }
 
     public boolean isMute() {
         if (category != null) return CATEGORY_MUTE.equalsIgnoreCase(category);
-        if (PunishmentTypeRegistry.isInitialized()) return PunishmentTypeRegistry.isMute(ordinal);
-        if (ordinal == PunishmentTypeRegistry.ORDINAL_MUTE) return true;
+        PunishmentTypeClassifier classifier = PunishmentTypeClassifiers.active();
+        if (classifier.isPopulated()) return classifier.isMute(ordinal);
+        if (ordinal == PunishmentTypeClassifier.ORDINAL_MUTE) return true;
         return CATEGORY_MUTE.equalsIgnoreCase(type);
     }
 
     public boolean isKick() {
-        return PunishmentTypeRegistry.isKick(ordinal) || CATEGORY_KICK.equalsIgnoreCase(type);
+        return PunishmentTypeClassifiers.active().isKick(ordinal) || CATEGORY_KICK.equalsIgnoreCase(type);
     }
 
     public boolean isPermanent() {

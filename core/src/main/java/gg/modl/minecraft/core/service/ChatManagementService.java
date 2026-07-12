@@ -46,11 +46,6 @@ public class ChatManagementService {
         return true;
     }
 
-    /**
-     * Atomically admits a non-staff message into the slow-mode window. Returns true if the message is
-     * admitted (and the timer advanced), false if it is still within the cooldown window. Must be called
-     * only after all other gates pass (on the delivery path), so a cancelled message never advances the timer.
-     */
     public boolean recordMessageSent(UUID playerUuid) {
         if (slowModeSeconds <= 0) return true;
         CachedProfile profile = registry.getProfile(playerUuid);

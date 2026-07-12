@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import gg.modl.minecraft.api.http.ApiClientException;
 import gg.modl.minecraft.api.http.ModlHttpClient;
@@ -28,7 +29,6 @@ import gg.modl.minecraft.api.http.request.PlayerGetRequest;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
 import gg.modl.minecraft.api.http.request.PlayerNameRequest;
-import gg.modl.minecraft.api.http.request.PlayerNoteCreateRequest;
 import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
 import gg.modl.minecraft.api.http.request.StatWipeAcknowledgeRequest;
@@ -64,8 +64,8 @@ import gg.modl.minecraft.api.http.response.StaffPermissionsResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.api.http.response.TicketsResponse;
 import gg.modl.minecraft.core.boot.StartupClient;
+import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.util.CircuitBreaker;
-import gg.modl.minecraft.core.util.Java8Collections;
 import org.jetbrains.annotations.NotNull;
 
 import org.apache.hc.client5.http.classic.methods.HttpPost;
@@ -75,13 +75,9 @@ import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -89,33 +85,20 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Logger;
-import com.google.gson.JsonObject;
-import gg.modl.minecraft.core.plugin.PluginInfo;
-import java.io.InputStream;
+import java.util.logging.Level;
 
-public class ModlHttpClientV2Impl implements ModlHttpClient {
-    private static final String HEADER_API_KEY = "X-API-Key", HEADER_SERVER_DOMAIN = "X-Server-Domain",
-            HEADER_CONTENT_TYPE = "Content-Type", CONTENT_TYPE_JSON = "application/json",
-            HEADER_ACTING_STAFF_ID = "X-Acting-Staff-Id";
-    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10), LOGIN_TIMEOUT = Duration.ofSeconds(15),
-            SYNC_TIMEOUT = Duration.ofSeconds(20);
-    private static final int MAX_LOG_BODY_LENGTH = 1000, HTTP_BAD_GATEWAY = 502, STATUS_UNREACHABLE = -1;
-    private static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5L;
+public class ModlHttpClientV2Impl extends AbstractModlHttpTransport implements ModlHttpClient {
+    private static final String CONTENT_TYPE_JSON = "application/json";
+    private static final int MAX_LOG_BODY_LENGTH = 1000;
     private static final String[] FALLBACK_DATE_PATTERNS = {
             "yyyy-MM-dd'T'HH:mm:ss.SSSX",
             "yyyy-MM-dd'T'HH:mm:ssX",
@@ -123,45 +106,13 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
             "MMM d, yyyy, h:mm:ss a",
     };
 
-    private @NotNull final String baseUrl, apiKey, serverDomain;
-    private @NotNull final ThreadPoolExecutor executor;
     private @NotNull final Gson gson;
-    private @NotNull final Logger logger;
-    private @NotNull final CircuitBreaker backgroundCircuitBreaker;
-    private @NotNull final CircuitBreaker loginCircuitBreaker;
-    private final boolean debugMode;
 
     public ModlHttpClientV2Impl(@NotNull String baseUrl, @NotNull String apiKey, @NotNull String serverDomain, boolean debugMode) {
-        this.baseUrl = baseUrl;
-        this.apiKey = apiKey;
-        this.serverDomain = serverDomain;
-        this.debugMode = debugMode;
-        this.backgroundCircuitBreaker = new CircuitBreaker();
-        this.loginCircuitBreaker = new CircuitBreaker();
-
-        AtomicInteger threadCounter = new AtomicInteger();
-        this.executor = new ThreadPoolExecutor(0, 8, 60L, TimeUnit.SECONDS,
-                new SynchronousQueue<>(), r -> {
-            Thread t = new Thread(r, "modl-http-" + threadCounter.incrementAndGet());
-            t.setDaemon(true);
-            t.setPriority(Thread.NORM_PRIORITY);
-            return t;
-        });
+        super(baseUrl, apiKey, serverDomain, debugMode, "V2", "modl-http-");
         this.gson = new GsonBuilder()
                 .registerTypeAdapter(Date.class, flexibleDateDeserializer())
                 .create();
-        this.logger = Logger.getLogger(ModlHttpClientV2Impl.class.getName());
-    }
-
-    @Override
-    public void shutdown() {
-        executor.shutdown();
-        try {
-            if (!executor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) executor.shutdownNow();
-        } catch (InterruptedException e) {
-            executor.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
     }
 
     private static JsonDeserializer<Date> flexibleDateDeserializer() {
@@ -215,8 +166,8 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         final String url;
         final String method;
         final Map<String, String> headers = new LinkedHashMap<>();
-        final String body; // null for GET
-        final Duration timeout; // read timeout; null means use CONNECT_TIMEOUT
+        final String body;
+        final Duration timeout;
 
         RequestConfig(String url, String method, String body, Duration timeout) {
             this.url = url;
@@ -233,18 +184,11 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         private String body = null;
         private Duration timeout = null;
 
-        RequestBuilder(String endpoint) {
-            this.url = baseUrl + endpoint;
+        RequestBuilder(String url) {
+            this.url = url;
             headers.put(HEADER_API_KEY, apiKey);
             headers.put(HEADER_SERVER_DOMAIN, serverDomain);
-            headers.put("User-Agent", "modl-minecraft/" + PluginInfo.VERSION);
-        }
-
-        RequestBuilder(String absoluteUrl, boolean absolute) {
-            this.url = absoluteUrl;
-            headers.put(HEADER_API_KEY, apiKey);
-            headers.put(HEADER_SERVER_DOMAIN, serverDomain);
-            headers.put("User-Agent", "modl-minecraft/" + PluginInfo.VERSION);
+            headers.put(HEADER_USER_AGENT, "modl-minecraft/" + PluginInfo.VERSION);
         }
 
         RequestBuilder header(String name, String value) {
@@ -283,7 +227,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     }
 
     private RequestBuilder requestBuilder(String endpoint) {
-        return new RequestBuilder(endpoint);
+        return new RequestBuilder(baseUrl + endpoint);
     }
 
     @NotNull @Override
@@ -379,7 +323,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
     }
 
     @NotNull @Override
-    public CompletableFuture<PlayerNoteCreateResponse> createPlayerNoteWithResponse(@NotNull PlayerNoteCreateRequest request) {
+    public CompletableFuture<PlayerNoteCreateResponse> createPlayerNoteWithResponse(@NotNull CreatePlayerNoteRequest request) {
         return sendAsync(requestBuilder("/minecraft/players/" + request.getTargetUuid() + "/notes")
                 .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .POST(gson.toJson(request))
@@ -391,13 +335,17 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
         String requestBody = gson.toJson(request);
         if (debugMode) logger.info(String.format("[V2] Sync request body: %s", requestBody));
 
-        String v2BaseUrl = baseUrl.substring(0, baseUrl.lastIndexOf("/v1")) + "/v2";
-        String v2SyncUrl = v2BaseUrl + "/minecraft/players/sync";
-        return sendAsync(new RequestBuilder(v2SyncUrl, true)
+        String v2SyncUrl = deriveV2SyncBaseUrl() + "/minecraft/players/sync";
+        return sendAsync(new RequestBuilder(v2SyncUrl)
                 .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .timeout(SYNC_TIMEOUT)
                 .POST(requestBody)
                 .build(), SyncResponse.class, "SYNC");
+    }
+
+    private String deriveV2SyncBaseUrl() {
+        int index = baseUrl.lastIndexOf("/v1");
+        return index >= 0 ? baseUrl.substring(0, index) + "/v2" : baseUrl;
     }
 
     @NotNull @Override
@@ -702,7 +650,7 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
                     return false;
                 });
             } catch (Exception e) {
-                logger.severe("Error uploading migration file: " + e.getMessage());
+                logger.log(Level.WARNING, "Error uploading migration file: " + e.getMessage(), e);
                 return false;
             }
         }, executor);
@@ -864,159 +812,95 @@ public class ModlHttpClientV2Impl implements ModlHttpClient {
 
     private <T> CompletableFuture<T> sendAsync(RequestConfig request, Class<T> responseType, String operation,
                                                CircuitBreaker breaker) {
-        final Instant startTime = Instant.now();
-        final String requestId = generateRequestId();
-
-        if (!breaker.allowRequest()) {
-            return Java8Collections.failedFuture(
-                    new PanelUnavailableException(request.url, HttpURLConnection.HTTP_UNAVAILABLE,
-                            "V2 API is temporarily unavailable (circuit breaker open)"));
-        }
-
-        if (debugMode) {
-            logger.info(String.format("[V2-REQ-%s] %s %s", requestId, request.method, request.url));
-            logger.info(String.format("[V2-REQ-%s] Headers: %s", requestId, request.headers));
-            if (request.body != null) logger.info(String.format("[V2-REQ-%s] Body present", requestId));
-        }
-
-        return CompletableFuture.supplyAsync(() -> {
-            HttpURLConnection connection = null;
-            try {
-                URL url = new URL(request.url);
-                connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod(request.method);
-                connection.setConnectTimeout((int) CONNECT_TIMEOUT.toMillis());
-                connection.setReadTimeout((int) (request.timeout != null ? request.timeout : CONNECT_TIMEOUT).toMillis());
-                connection.setInstanceFollowRedirects(true);
-
-                for (Map.Entry<String, String> header : request.headers.entrySet()) {
-                    connection.setRequestProperty(header.getKey(), header.getValue());
-                }
-
-                if (request.body != null) {
-                    connection.setDoOutput(true);
-                    try (OutputStream os = connection.getOutputStream()) {
-                        os.write(request.body.getBytes(StandardCharsets.UTF_8));
-                    }
-                }
-
-                int statusCode = connection.getResponseCode();
-
-                String responseBody;
-                try {
-                    InputStream stream = statusCode >= 400
-                            ? connection.getErrorStream() : connection.getInputStream();
-                    if (stream == null) {
-                        responseBody = "";
-                    } else {
-                        StringBuilder sb = new StringBuilder();
-                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                sb.append(line);
-                            }
-                        }
-                        responseBody = sb.toString();
-                    }
-                } catch (Exception e) {
-                    responseBody = "";
-                }
-
-                final Duration duration = Duration.between(startTime, Instant.now());
-
-                if (debugMode) {
-                    logger.info(String.format("[V2-RES-%s] Status: %d (took %dms)",
-                            requestId, statusCode, duration.toMillis()));
-
-                    if (!responseBody.isEmpty()) {
-                        if ("LOGIN".equals(operation) || "SYNC".equals(operation) || responseBody.length() <= MAX_LOG_BODY_LENGTH) logger.info(String.format("[V2-RES-%s] Body: %s", requestId, responseBody));
-                        else logger.info(String.format("[V2-RES-%s] Body: %s... (truncated, %d chars total)", requestId, responseBody.substring(0, MAX_LOG_BODY_LENGTH), responseBody.length()));
-                    }
-                }
-
-                if (statusCode >= 200 && statusCode < 300) {
-                    breaker.recordSuccess();
-
-                    if (responseType == Void.class) return null;
-
-                    try {
-                        T result = gson.fromJson(responseBody, responseType);
-                        if (debugMode) logger.info(String.format("[V2-REQ-%s] Successfully parsed response to %s", requestId, responseType.getSimpleName()));
-                        return result;
-                    } catch (Exception e) {
-                        logger.severe(String.format("[V2-REQ-%s] Failed to parse response: %s", requestId, e.getMessage()));
-                        throw new RuntimeException("Failed to parse V2 response: " + e.getMessage(), e);
-                    }
-                } else {
-                    String errorMessage;
-                    try {
-                        JsonObject errorResponse = gson.fromJson(responseBody, JsonObject.class);
-                        if (errorResponse != null) {
-                            // Backend wire shape for all /v1 and v2-minecraft JSON errors is ErrorResponseDTO(status, error).
-                            // Prefer "error"; fall back to legacy "message"/"errors".
-                            String error = errorResponse.has("error") ? errorResponse.get("error").getAsString() : "";
-                            if (error.isEmpty() && errorResponse.has("message")) error = errorResponse.get("message").getAsString();
-                            String details = errorResponse.has("errors") ? errorResponse.get("errors").getAsString() : "";
-                            errorMessage = !details.isEmpty() ? error + " Details: " + details : error;
-                            if (errorMessage.isEmpty()) errorMessage = String.format("V2 request failed with status code %d: %s", statusCode, responseBody);
-                        } else {
-                            errorMessage = String.format("V2 request failed with status code %d: %s",
-                                    statusCode, responseBody);
-                        }
-                    } catch (Exception e) {
-                        errorMessage = String.format("V2 request failed with status code %d: %s",
-                                statusCode, responseBody);
-                    }
-
-                    // Classify only; circuit-breaker accounting happens once in the exceptionally funnel.
-                    // Any 5xx is "panel unreachable" (fail-closed on login); 4xx is a routine client outcome
-                    // that must NOT count toward the breaker.
-                    if (statusCode >= 500 && statusCode < 600) {
-                        logger.severe(String.format("[V2-REQ-%s] Server error (HTTP %d) - %s %s: %s", requestId, statusCode, request.method, request.url, responseBody));
-                        throw new PanelUnavailableException(request.url, statusCode,
-                                "V2 API is temporarily unavailable (HTTP " + statusCode + ")");
-                    } else if (statusCode == HttpURLConnection.HTTP_NOT_FOUND) {
-                        if (debugMode) logger.fine(String.format("[V2-REQ-%s] Not found (404): %s - %s", requestId,
-                            request.url, errorMessage));
-                    } else if (statusCode == 401 || statusCode == 403) {
-                        logger.severe(String.format("[V2-REQ-%s] Authentication failed - check API key and server domain", requestId));
-                    } else if (statusCode == 405) {
-                        logger.severe(String.format("[V2-REQ-%s] Method Not Allowed (405) - %s %s", requestId, request.method, request.url));
-                        logger.severe(String.format("[V2-REQ-%s] This usually means the endpoint exists but doesn't accept %s requests", requestId, request.method));
-                    } else {
-                        logger.warning(String.format("[V2-REQ-%s] %s", requestId, errorMessage));
-                    }
-
-                    if (statusCode >= 400 && statusCode < 500) throw new ApiClientException(statusCode, errorMessage);
-                    throw new RuntimeException(errorMessage);
-                }
-            } catch (PanelUnavailableException e) {
-                throw e;
-            } catch (RuntimeException e) {
-                throw e;
-            } catch (java.io.IOException e) {
-                throw new PanelUnavailableException(request.url, STATUS_UNREACHABLE,
-                        "V2 API unreachable: " + e.getClass().getSimpleName() + " - " + e.getMessage());
-            } catch (Exception e) {
-                throw new RuntimeException("V2 HTTP request failed", e);
-            } finally {
-                if (connection != null) connection.disconnect();
-            }
-        }, executor)
-                .exceptionally(throwable -> {
-                    Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
-                            ? throwable.getCause() : throwable;
-
-                    // Single funnel: 4xx client outcomes (ApiClientException) never count; everything else
-                    // (PanelUnavailableException for 5xx/transport, plain RuntimeException) counts exactly once.
-                    if (!(cause instanceof ApiClientException)) breaker.recordFailure();
-
-                    if (cause instanceof RuntimeException) throw (RuntimeException) cause;
-                    throw new RuntimeException("V2 HTTP request failed", throwable);
-                });
+        byte[] body = request.body == null ? null : request.body.getBytes(StandardCharsets.UTF_8);
+        HttpRequest httpRequest = new HttpRequest(request.url, request.method, body, request.timeout, request.headers);
+        return execute(httpRequest, operation, breaker,
+                (requestId, responseBody) -> decodeJson(requestId, responseBody, responseType));
     }
 
-    private String generateRequestId() {
-        return "V2-" + (System.nanoTime() % 1000000);
+    private <T> T decodeJson(String requestId, byte[] responseBody, Class<T> responseType) {
+        if (responseType == Void.class) return null;
+        String text = new String(responseBody, StandardCharsets.UTF_8);
+        try {
+            T result = gson.fromJson(text, responseType);
+            if (debugMode) logger.info(String.format("[V2-REQ-%s] Successfully parsed response to %s", requestId, responseType.getSimpleName()));
+            return result;
+        } catch (Exception e) {
+            logger.severe(String.format("[V2-REQ-%s] Failed to parse response: %s", requestId, e.getMessage()));
+            throw new RuntimeException("Failed to parse V2 response: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    protected void logRequest(String requestId, HttpRequest request) {
+        logger.info(String.format("[V2-REQ-%s] %s %s", requestId, request.method, request.url));
+        logger.info(String.format("[V2-REQ-%s] Headers: %s", requestId, redactHeaders(request.headers)));
+        if (request.body != null) logger.info(String.format("[V2-REQ-%s] Body present", requestId));
+    }
+
+    @Override
+    protected void logResponse(String requestId, int statusCode, byte[] body, long durationMs, String operation) {
+        logger.info(String.format("[V2-RES-%s] Status: %d (took %dms)", requestId, statusCode, durationMs));
+        if (body.length == 0) return;
+        String responseBody = new String(body, StandardCharsets.UTF_8);
+        if ("LOGIN".equals(operation) || "SYNC".equals(operation) || responseBody.length() <= MAX_LOG_BODY_LENGTH) {
+            logger.info(String.format("[V2-RES-%s] Body: %s", requestId, responseBody));
+        } else {
+            logger.info(String.format("[V2-RES-%s] Body: %s... (truncated, %d chars total)",
+                    requestId, responseBody.substring(0, MAX_LOG_BODY_LENGTH), responseBody.length()));
+        }
+    }
+
+    @Override
+    protected RuntimeException toError(String requestId, HttpRequest request, int statusCode, byte[] body) {
+        String responseBody = new String(body, StandardCharsets.UTF_8);
+        String errorMessage = extractErrorMessage(responseBody, statusCode);
+
+        if (statusCode >= 500 && statusCode < 600) {
+            logger.severe(String.format("[V2-REQ-%s] Server error (HTTP %d) - %s %s: %s", requestId, statusCode, request.method, request.url, responseBody));
+            return new PanelUnavailableException(request.url, statusCode,
+                    "V2 API is temporarily unavailable (HTTP " + statusCode + ")");
+        } else if (statusCode == HttpURLConnection.HTTP_NOT_FOUND) {
+            if (debugMode) logger.fine(String.format("[V2-REQ-%s] Not found (404): %s - %s", requestId, request.url, errorMessage));
+        } else if (statusCode == 401 || statusCode == 403) {
+            logger.severe(String.format("[V2-REQ-%s] Authentication failed - check API key and server domain", requestId));
+        } else if (statusCode == 405) {
+            logger.severe(String.format("[V2-REQ-%s] Method Not Allowed (405) - %s %s", requestId, request.method, request.url));
+            logger.severe(String.format("[V2-REQ-%s] This usually means the endpoint exists but doesn't accept %s requests", requestId, request.method));
+        } else {
+            logger.warning(String.format("[V2-REQ-%s] %s", requestId, errorMessage));
+        }
+
+        if (statusCode >= 400 && statusCode < 500) return new ApiClientException(statusCode, errorMessage);
+        return new RuntimeException(errorMessage);
+    }
+
+    private String extractErrorMessage(String responseBody, int statusCode) {
+        try {
+            JsonObject errorResponse = gson.fromJson(responseBody, JsonObject.class);
+            if (errorResponse != null) {
+                String error = errorResponse.has("error") ? errorResponse.get("error").getAsString() : "";
+                if (error.isEmpty() && errorResponse.has("message")) error = errorResponse.get("message").getAsString();
+                String details = errorResponse.has("errors") ? errorResponse.get("errors").getAsString() : "";
+                String message = !details.isEmpty() ? error + " Details: " + details : error;
+                return message.isEmpty()
+                        ? String.format("V2 request failed with status code %d: %s", statusCode, responseBody)
+                        : message;
+            }
+        } catch (Exception ignored) {
+        }
+        return String.format("V2 request failed with status code %d: %s", statusCode, responseBody);
+    }
+
+    private Map<String, String> redactHeaders(Map<String, String> headers) {
+        Map<String, String> copy = new LinkedHashMap<>(headers);
+        if (copy.containsKey(HEADER_API_KEY)) copy.put(HEADER_API_KEY, mask(copy.get(HEADER_API_KEY)));
+        return copy;
+    }
+
+    private static String mask(String value) {
+        if (value == null || value.isEmpty()) return "***";
+        int visible = Math.min(4, value.length());
+        return "***" + value.substring(value.length() - visible);
     }
 }

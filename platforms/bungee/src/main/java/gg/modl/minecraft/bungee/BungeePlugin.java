@@ -7,11 +7,14 @@ import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.core.chat.CommandInterceptService;
 import gg.modl.minecraft.api.http.request.StartupRequest;
 import gg.modl.minecraft.core.boot.BootConfig;
 import gg.modl.minecraft.core.boot.BootConfigMigrator;
+import gg.modl.minecraft.core.boot.LibraryLoader;
 import gg.modl.minecraft.core.boot.PlatformType;
 import gg.modl.minecraft.core.boot.StartupClient;
+import gg.modl.minecraft.core.login.ProxyLoginFlow;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.query.ProxyBridgeRuntime;
 import gg.modl.minecraft.core.service.ChatMessageCache;
@@ -19,7 +22,6 @@ import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github.retrooper.packetevents.bungee.factory.BungeePacketEventsBuilder;
 import com.alessiodp.libby.BungeeLibraryManager;
-import com.alessiodp.libby.Library;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
@@ -36,6 +38,7 @@ import com.alessiodp.libby.logging.LogLevel;
 
 public class BungeePlugin extends Plugin {
     private static final int MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
+    private static final long LOGIN_TIMEOUT_SECONDS = 5;
 
     private Configuration configuration;
     private PluginLoader loader;
@@ -98,22 +101,24 @@ public class BungeePlugin extends Plugin {
         this.loader = new PluginLoader(platform, getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
         configureBridgeExecutor(platform, bootConfig, panelUrl);
 
+        CommandInterceptService commandInterceptService = new CommandInterceptService(
+                loader.getCache(), loader.getFreezeService(), loader.getChatCommandLogService(),
+                loader.getLocaleManager(), loader.getPunishmentMessageService(), mutedCommands);
+
+        ProxyLoginFlow proxyLoginFlow = new ProxyLoginFlow(
+                loader.getHttpClientHolder(), loader.getLoginCache(), loader.getLoginService(),
+                loader.getLoginRequestBuilder(), loader.getIpEnrichmentService(),
+                loader.getPendingIpLookupService(), LOGIN_TIMEOUT_SECONDS);
+
         bungeeListener = new BungeeListener(
-                platform, loader.getCache(), loader.getHttpClientHolder(), loader.getChatMessageCache(),
-                loader.getSyncService(), loader.getLocaleManager(),
-                mutedCommands, this, loader.getStaffChatService(),
-                loader.getChatManagementService(), loader.getMaintenanceService(),
-                loader.getFreezeService(), loader.getNetworkChatInterceptService(),
-                loader.getChatCommandLogService(), loader.getStaff2faService(),
-                loader.getConfigManager().getStaffChatConfig(), loader.getLoginCache(),
-                loader.getBridgeService(), loader.getCachedProfileRegistry(),
-                loader.isDebugMode());
+                platform, loader.getCache(), this, loader.getLoginCache(),
+                loader.getChatService(), commandInterceptService, loader.getLoginService(),
+                proxyLoginFlow, loader.getPlayerSessionService(), loader.getServerSwitchService());
         getProxy().getPluginManager().registerListener(this, bungeeListener);
 
         AsyncCommandExecutor asyncExecutor = loader.getAsyncCommandExecutor();
         getProxy().getPluginManager().registerListener(this, new AsyncCommandInterceptor(
-                asyncExecutor, getProxy(), loader.getCache(), loader.getFreezeService(),
-                loader.getChatCommandLogService(), loader.getLocaleManager(), mutedCommands));
+                asyncExecutor, getProxy(), commandInterceptService));
 
         getLogger().info("Successfully booted modl.gg platform plugin!");
     }
@@ -196,22 +201,7 @@ public class BungeePlugin extends Plugin {
     }
 
     private void loadLibrary(BungeeLibraryManager libraryManager, LibraryRecord record) {
-        Library.Builder builder = Library.builder()
-                .groupId(record.getGroupId())
-                .artifactId(record.getArtifactId())
-                .version(record.getVersion())
-                
-                .isolatedLoad(false);
-
-        if (record.hasRelocations()) {
-            for (String[] relocation : record.getRelocations()) {
-                builder.relocate(relocation[0], relocation[1]);
-            }
-        }
-        if (record.getUrl() != null) builder.url(record.getUrl());
-        if (record.hasChecksum()) builder.checksumFromBase64(record.getChecksum());
-
-        libraryManager.loadLibrary(builder.build());
+        libraryManager.loadLibrary(LibraryLoader.toLibrary(record));
     }
 
     private void loadConfig() {

@@ -27,29 +27,23 @@ public final class BridgeYamlResource {
         YamlMergeUtil.mergeWithDefaults("/" + resourcePath, externalFile, logger);
     }
 
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> loadMap(Path file) throws IOException {
         try (InputStream input = Files.newInputStream(file)) {
-            Object loaded = new Yaml().load(input);
-            if (loaded == null) {
-                return Collections.emptyMap();
-            }
-            return (Map<String, Object>) loaded;
+            return asStringKeyedMap(new Yaml().load(input));
         }
     }
 
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> loadResourceMap(Class<?> owner, String resourcePath) throws IOException {
         try (InputStream input = owner.getResourceAsStream(resourcePath)) {
             if (input == null) {
                 throw new FileNotFoundException(resourcePath);
             }
-
-            Object loaded = new Yaml().load(input);
-            if (loaded == null) {
-                return Collections.emptyMap();
-            }
-            return (Map<String, Object>) loaded;
+            return asStringKeyedMap(new Yaml().load(input));
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> asStringKeyedMap(Object loaded) {
+        return loaded instanceof Map ? (Map<String, Object>) loaded : Collections.emptyMap();
     }
 }

@@ -5,6 +5,7 @@ import revxrsal.commands.annotation.Named;
 import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.Account;
+import gg.modl.minecraft.api.PunishmentTypeClassifier;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
@@ -21,7 +22,7 @@ public class BanCommand extends AbstractManualPunishmentCommand {
         super(httpClientHolder, platform, cache, localeManager);
     }
 
-    @Override protected int getOrdinal() { return 2; }
+    @Override protected int getOrdinal() { return PunishmentTypeClassifier.ORDINAL_BAN; }
     @Override protected String getTypeName() { return "ban"; }
     @Override protected long getDefaultDuration() { return 0; }
     @Override protected Set<Flag> getSupportedFlags() { return setOf(Flag.DURATION, Flag.ALT_BLOCKING, Flag.STAT_WIPE); }

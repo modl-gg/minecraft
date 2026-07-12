@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.util;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.model.CirrusClickType;
 import dev.simplix.cirrus.model.Click;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
@@ -48,13 +49,13 @@ public final class PunishmentModificationActions {
     }
 
     private String resolveViewerIssuerId() {
-        return platform.getCache() != null ? platform.getCache().getStaffId(viewerUuid) : null;
+        return PluginServices.cache() != null ? PluginServices.cache().getStaffId(viewerUuid) : null;
     }
 
     public void handleAddNote(Click click) {
         click.clickedMenu().close();
 
-        platform.getChatInputManager().requestInput(viewerUuid, "Enter note to add to this punishment:",
+        PluginServices.chatInput().requestInput(viewerUuid, "Enter note to add to this punishment:",
                 input -> {
                     AddPunishmentNoteRequest request = new AddPunishmentNoteRequest(
                             punishment.getId(), viewerName, resolveViewerIssuerId(), input);
@@ -97,7 +98,7 @@ public final class PunishmentModificationActions {
 
         click.clickedMenu().close();
 
-        platform.getChatInputManager().requestInput(viewerUuid, "Enter evidence URL:",
+        PluginServices.chatInput().requestInput(viewerUuid, "Enter evidence URL:",
                 input -> {
                     AddPunishmentEvidenceRequest request = new AddPunishmentEvidenceRequest(
                             punishment.getId(), viewerName, resolveViewerIssuerId(), input);
@@ -140,7 +141,7 @@ public final class PunishmentModificationActions {
     public void handleChangeDuration(Click click) {
         click.clickedMenu().close();
 
-        platform.getChatInputManager().requestInput(viewerUuid,
+        PluginServices.chatInput().requestInput(viewerUuid,
                 "Enter new duration (e.g., 30d, 2h, 30m, 1d2h30m, or 'perm' for permanent):",
                 input -> {
                     Long durationMs = parseDuration(input);
@@ -201,8 +202,8 @@ public final class PunishmentModificationActions {
     }
 
     public void invalidateCache() {
-        if (platform.getCache() != null) {
-            CachedProfile profile = platform.getCache().getPlayerProfile(targetUuid);
+        if (PluginServices.cache() != null) {
+            CachedProfile profile = PluginServices.cache().getPlayerProfile(targetUuid);
             if (profile != null) {
                 profile.setActiveBan(null);
                 profile.setActiveMute(null);

@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.CirrusClickType;
@@ -115,7 +116,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
 
         for (Report report : reports) {
             boolean typeMatch = currentFilter.equals("all") || (report.getType() != null && report.getType().equalsIgnoreCase(currentFilter));
-            boolean statusMatch = "open".equalsIgnoreCase(currentStatusFilter) != "closed".equalsIgnoreCase(report.getStatus());
+            boolean statusMatch = ReportRenderUtil.matchesStatusFilter(currentStatusFilter, report.getStatus());
             if (typeMatch && statusMatch)
                 filtered.add(report);
         }
@@ -134,7 +135,7 @@ public class StaffReportsMenu extends BaseStaffListMenu<StaffReportsMenu.Report>
 
     @Override
     protected CirrusItem map(Report report) {
-        LocaleManager locale = platform.getLocaleManager();
+        LocaleManager locale = PluginServices.locale();
 
         if (report.getId() == null) return createEmptyPlaceholder(locale.getMessage("menus.empty.staff_reports"));
 

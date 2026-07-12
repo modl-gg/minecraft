@@ -2,19 +2,19 @@ package gg.modl.minecraft.api.http.request;
 
 import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
-import lombok.Data;
+import lombok.Value;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-@Data
+@Value
 public class CreatePunishmentRequest {
-    private @NotNull final String targetUuid;
-    private @Nullable final String issuerName, issuerId;
-    private @Nullable final String reason;
-    private @Nullable final JsonObject data;
-    private @Nullable final List<String> notes, attachedTicketIds;
-    private @SerializedName("type_ordinal") final int typeOrdinal;
-    private final long duration;
+    @NotNull String targetUuid;
+    @Nullable String issuerName, issuerId;
+    @Nullable String reason;
+    @Nullable JsonObject data;
+    @Nullable List<String> notes, attachedTicketIds;
+    @SerializedName("type_ordinal") int typeOrdinal;
+    long duration;
 }

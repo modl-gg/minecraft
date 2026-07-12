@@ -1,19 +1,15 @@
 package gg.modl.minecraft.api.http.response;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Data @NoArgsConstructor @AllArgsConstructor
-public class DashboardStatsResponse {
+@Getter @NoArgsConstructor @AllArgsConstructor
+public class DashboardStatsResponse extends StatusResponse {
     private Stats stats;
     private int status;
 
-    public boolean isSuccess() {
-        return status >= 200 && status < 300;
-    }
-
-    @Data @NoArgsConstructor @AllArgsConstructor
+    @Getter @NoArgsConstructor @AllArgsConstructor
     public static class Stats {
         private long unresolvedReports, unresolvedTickets, onlineStaff, onlinePlayers,
                 activeBans, activeMutes, totalActivePunishments, totalPlayers;

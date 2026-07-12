@@ -39,16 +39,24 @@ public final class InspectNavigationHandlers {
         registrar.accept("openNotes", click ->
                 ActionHandlers.openMenu(new NotesMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext)).handle(click));
 
-        registrar.accept("openAlts", click ->
-                ActionHandlers.openMenu(new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext)).handle(click));
+        registrar.accept("openAlts", click -> {
+            AltsMenu menu = new AltsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
+            MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+        });
 
-        registrar.accept("openHistory", click ->
-                ActionHandlers.openMenu(new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext)).handle(click));
+        registrar.accept("openHistory", click -> {
+            HistoryMenu menu = new HistoryMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction, inspectContext);
+            MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+        });
 
-        registrar.accept("openReports", click ->
-                ActionHandlers.openMenu(new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)).handle(click));
+        registrar.accept("openReports", click -> {
+            ReportsMenu menu = new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
+            MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+        });
 
-        registrar.accept("openPunish", click ->
-                ActionHandlers.openMenu(new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)).handle(click));
+        registrar.accept("openPunish", click -> {
+            PunishMenu menu = new PunishMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
+            MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+        });
     }
 }

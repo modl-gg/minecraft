@@ -18,11 +18,6 @@ public class HttpManager {
     private static final String V2_BASE_PATH = "/v1";
     private static final String V3_BASE_PATH = "/v3";
 
-    /**
-     * Kill-switch for the proto V3 HTTP client. Defaults to {@code true} (V3 proto); set
-     * {@code -Dmodl.http.protoV3.enabled=false} or env {@code MODL_HTTP_PROTO_V3_ENABLED=false}
-     * to fall back to the legacy V2 JSON client without a redeploy.
-     */
     private static final String PROTO_V3_PROPERTY = "modl.http.protoV3.enabled";
     private static final String PROTO_V3_ENV = "MODL_HTTP_PROTO_V3_ENABLED";
 
@@ -84,9 +79,6 @@ public class HttpManager {
         }
     }
 
-    /**
-     * Swaps .modl.gg ↔ .modl.top in the panel URL based on the testing API flag.
-     */
     public static String adjustPanelUrlForEnv(String panelUrl, boolean useTestingApi) {
         if (panelUrl == null || panelUrl.isEmpty()) return panelUrl;
         if (useTestingApi) {

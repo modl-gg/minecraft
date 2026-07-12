@@ -9,13 +9,13 @@ import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.staff.StaffMembersMenu;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.VanishService;
+import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.Constants;
 import gg.modl.minecraft.core.util.Pagination;
-import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.staff.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.Value;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
 import revxrsal.commands.annotation.Optional;
@@ -43,7 +43,7 @@ public class StaffListCommand {
         int page = flag != null ? Pagination.parsePrintFlags(flag) : 0;
         boolean printMode = page > 0;
 
-        if (printMode || gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
+        if (printMode || CommandUtil.isConsole(actor)) {
             printStaffList(actor, Math.max(1, page));
             return;
         }
@@ -58,7 +58,7 @@ public class StaffListCommand {
                 platform, httpClientHolder.getClient(), viewerUuid, viewerName, isAdmin, panelUrl, null);
         menu.getDataFuture().whenComplete((unused, throwable) -> {
             if (throwable != null) {
-                gg.modl.minecraft.core.util.CommandUtil.handleException(actor, throwable, localeManager);
+                CommandUtil.handleException(actor, throwable, localeManager);
                 return;
             }
             platform.runOnMainThread(() -> {
@@ -79,25 +79,21 @@ public class StaffListCommand {
 
         if (staffEntries.isEmpty()) {
             actor.reply(localeManager.getMessage("print.staff_list.empty"));
-        } else {
-            Pagination.Page pg = Pagination.paginate(staffEntries, ENTRIES_PER_PAGE, page);
-            for (int i = pg.getStart(); i < pg.getEnd(); i++) {
-                StaffEntry entry = staffEntries.get(i);
-                String vanishTag = entry.isVanished() ? localeManager.getMessage("print.staff_list.vanish") : "";
-                actor.reply(localeManager.getMessage("print.staff_list.entry", mapOf(
-                        "role", entry.getRole(),
-                        "player", entry.getDisplayName(),
-                        "in-game-name", entry.getInGameName(),
-                        "server", entry.getServer(),
-                        "v", vanishTag
-                )));
-            }
-            actor.reply(localeManager.getMessage("print.staff_list.total", mapOf(
-                    "count", String.valueOf(staffEntries.size()),
-                    "page", String.valueOf(pg.getPage()),
-                    "total_pages", String.valueOf(pg.getTotalPages())
-            )));
+            return;
         }
+
+        PaginatedChatPrinter.printPageWithTotal(actor, localeManager, staffEntries, ENTRIES_PER_PAGE, page,
+                "print.staff_list.total", (index, ordinal) -> {
+                    StaffEntry entry = staffEntries.get(index);
+                    String vanishTag = entry.isVanished() ? localeManager.getMessage("print.staff_list.vanish") : "";
+                    actor.reply(localeManager.getMessage("print.staff_list.entry", mapOf(
+                            "role", entry.getRole(),
+                            "player", entry.getDisplayName(),
+                            "in-game-name", entry.getInGameName(),
+                            "server", entry.getServer(),
+                            "v", vanishTag
+                    )));
+                });
     }
 
     private List<StaffEntry> collectOnlineStaff() {
@@ -122,13 +118,13 @@ public class StaffListCommand {
         return entries;
     }
 
-    @Data @AllArgsConstructor
+    @Value
     private static class StaffEntry {
-        private final String displayName;
-        private final String inGameName;
-        private final String role;
-        private final String server;
-        private final boolean vanished;
+        String displayName;
+        String inGameName;
+        String role;
+        String server;
+        boolean vanished;
     }
 }
 

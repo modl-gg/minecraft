@@ -6,6 +6,8 @@ import revxrsal.commands.annotation.Named;
 import revxrsal.commands.command.CommandActor;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
+import gg.modl.minecraft.api.PunishmentTypeClassifier;
+import gg.modl.minecraft.api.RebuildablePunishmentTypeClassifier;
 import gg.modl.minecraft.api.http.request.PunishmentCreateRequest;
 import gg.modl.minecraft.api.http.response.PunishmentCreateResponse;
 import gg.modl.minecraft.api.http.response.PunishmentTypesResponse;
@@ -14,14 +16,17 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.impl.menus.inspect.PunishMenu;
-import gg.modl.minecraft.core.util.PunishmentActionMessages;
+import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
+import gg.modl.minecraft.core.integration.mojang.MojangProfiles;
+import gg.modl.minecraft.core.integration.mojang.WebPlayer;
+import gg.modl.minecraft.core.punishment.PunishmentFlagParser;
+import gg.modl.minecraft.core.punishment.PunishmentIssuer;
+import gg.modl.minecraft.core.punishment.PunishmentTypeParser;
+import gg.modl.minecraft.core.staff.StaffPermissionService;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.Constants;
-import gg.modl.minecraft.core.util.PermissionUtil;
-import gg.modl.minecraft.core.util.PunishmentTypeParser;
-import gg.modl.minecraft.core.util.StaffPermissionLoader;
-import gg.modl.minecraft.core.util.WebPlayer;
+import gg.modl.minecraft.core.staff.PermissionUtil;
 import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
@@ -41,23 +46,16 @@ import java.util.logging.Logger;
 @RequiredArgsConstructor
 @Command("punish")
 public class PunishCommand {
-    private static final Map<String, String> SEVERITY_ALIASES = mapOf(
-        "lenient", "low",
-        "normal", "regular",
-        "regular", "regular",
-        "aggravated", "severe",
-        "severe", "severe",
-        "low", "low"
-    );
-
     private static final Set<String> VALID_SEVERITIES = setOf("low", "regular", "severe");
     private static final String DEFAULT_SEVERITY = "regular";
-    private static final int MANUAL_PUNISHMENT_MAX_ORDINAL = 5, MAX_TYPE_WORD_LENGTH = 4;
+    private static final int MANUAL_PUNISHMENT_MAX_ORDINAL = PunishmentTypeClassifier.ORDINAL_BLACKLIST, MAX_TYPE_WORD_LENGTH = 4;
 
     private final HttpClientHolder httpClientHolder;
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
+    private final RebuildablePunishmentTypeClassifier punishmentTypeClassifier;
+    private final StaffPermissionService staffPermissionService;
 
     private volatile List<PunishmentTypesResponse.PunishmentTypeData> cachedPunishmentTypes = new ArrayList<>();
     private volatile boolean cacheInitialized = false;
@@ -104,8 +102,10 @@ public class PunishCommand {
             return;
         }
 
-        PunishmentArgs punishmentArgs = parseArguments(parsed.remainingArgs);
-        if (punishmentArgs.severity != null && !VALID_SEVERITIES.contains(punishmentArgs.severity)) {
+        PunishmentFlagParser.Flags punishmentArgs = PunishmentFlagParser.builder()
+            .severity(true).silent(true).altBlocking(true).statWipe(true).build()
+            .parse(parsed.remainingArgs);
+        if (punishmentArgs.getSeverity() != null && !VALID_SEVERITIES.contains(punishmentArgs.getSeverity())) {
             actor.reply(localeManager.getMessage("punishment_commands.invalid_severity"));
             return;
         }
@@ -116,7 +116,7 @@ public class PunishCommand {
             return;
         }
 
-        if (punishmentArgs.severity == null) punishmentArgs.severity = DEFAULT_SEVERITY;
+        String severity = punishmentArgs.getSeverity() == null ? DEFAULT_SEVERITY : punishmentArgs.getSeverity();
         final String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
         final String issuerId = CommandUtil.resolveActorId(actor, cache);
         Map<String, Object> data = buildPunishmentData(punishmentArgs, punishmentType, target);
@@ -126,42 +126,27 @@ public class PunishCommand {
             : platform.getServerName());
 
         List<String> notes = new ArrayList<>();
-        if (!punishmentArgs.reason.isEmpty()) notes.add(punishmentArgs.reason);
+        if (!punishmentArgs.getReason().isEmpty()) notes.add(punishmentArgs.getReason());
 
         PunishmentCreateRequest request = new PunishmentCreateRequest(
             target.getMinecraftUuid().toString(),
             issuerName,
             issuerId,
-            punishmentArgs.reason.isEmpty() ? localeManager.getMessage("config.default_reason") : punishmentArgs.reason,
-            punishmentArgs.severity,
+            punishmentArgs.getReason().isEmpty() ? localeManager.getMessage("config.default_reason") : punishmentArgs.getReason(),
+            severity,
             null,
             punishmentType.getOrdinal(),
-            punishmentArgs.duration > 0 ? punishmentArgs.duration : null,
+            punishmentArgs.getDuration() > 0 ? punishmentArgs.getDuration() : null,
             data,
             notes,
             new ArrayList<>()
         );
 
         final String punishmentTypeName = punishmentType.getName();
+        final String targetName = target.getUsernames().get(0).getUsername();
 
         CompletableFuture<PunishmentCreateResponse> future = httpClientHolder.getClient().createPunishmentWithResponse(request);
-
-        future.thenAccept(response -> {
-            if (response.isSuccess()) {
-                String targetName = target.getUsernames().get(0).getUsername();
-
-                actor.reply(localeManager.punishment()
-                    .type(punishmentTypeName)
-                    .target(targetName)
-                    .punishmentId(response.getPunishmentId())
-                    .get("general.punishment_issued"));
-
-                if (actor.uniqueId() != null && response.getPunishmentId() != null)
-                    platform.runOnMainThread(() ->
-                        PunishmentActionMessages.sendPunishmentActions(platform, actor.uniqueId(), response.getPunishmentId()));
-            } else actor.reply(localeManager.getPunishmentMessage("general.punishment_error",
-                    mapOf("error", localeManager.sanitizeErrorMessage(response.getMessage()))));
-        }).exceptionally(throwable -> CommandUtil.handleApiError(actor, throwable, localeManager));
+        new PunishmentIssuer(platform, localeManager).issue(actor, future, punishmentTypeName, targetName, null);
     }
 
     private void openPunishmentGui(CommandActor actor, Account target) {
@@ -172,13 +157,13 @@ public class PunishCommand {
             platform, httpClientHolder.getClient(), senderUuid, senderName, target, null
         );
         CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-        menu.display(player);
+        MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), player, menu::display);
     }
 
     public void initializePunishmentTypes() {
         httpClientHolder.getClient().getPunishmentTypes().thenAccept(response -> {
             if (response.isSuccess()) {
-                PunishmentTypeParser.populateRegistry(response.getData());
+                PunishmentTypeParser.populate(punishmentTypeClassifier, response.getData());
                 cachedPunishmentTypes = response.getData().stream()
                         .filter(pt -> pt.getOrdinal() > MANUAL_PUNISHMENT_MAX_ORDINAL)
                         .collect(Collectors.toList());
@@ -195,8 +180,7 @@ public class PunishCommand {
             return null;
         });
 
-        StaffPermissionLoader.load(
-            httpClientHolder.getClient(), cache, platform.getLogger(), false, true);
+        staffPermissionService.reload();
     }
 
     public List<String> getPunishmentTypeNames() {
@@ -206,41 +190,14 @@ public class PunishCommand {
     }
 
     public void updatePunishmentTypesCache(List<PunishmentTypesResponse.PunishmentTypeData> allTypes) {
-        PunishmentTypeParser.populateRegistry(allTypes);
+        PunishmentTypeParser.populate(punishmentTypeClassifier, allTypes);
         cachedPunishmentTypes = allTypes.stream()
                 .filter(pt -> pt.getOrdinal() > MANUAL_PUNISHMENT_MAX_ORDINAL)
                 .collect(Collectors.toList());
         cacheInitialized = true;
     }
 
-    private PunishmentArgs parseArguments(String args) {
-        String[] arguments = args.split(" ");
-        PunishmentArgs result = new PunishmentArgs();
-        StringBuilder reasonBuilder = new StringBuilder();
-
-        for (int i = 0; i < arguments.length; i++) {
-            String arg = arguments[i];
-
-            if (arg.equalsIgnoreCase("-severity") && i + 1 < arguments.length) {
-                String severityInput = arguments[++i].toLowerCase();
-                result.severity = SEVERITY_ALIASES.getOrDefault(severityInput, severityInput);
-            } else if (arg.equalsIgnoreCase("-lenient")) result.severity = "low";
-            else if (arg.equalsIgnoreCase("-regular") || arg.equalsIgnoreCase("-normal")) result.severity = DEFAULT_SEVERITY;
-            else if (arg.equalsIgnoreCase("-severe")) result.severity = "severe";
-            else if (arg.equalsIgnoreCase("-alt-blocking") || arg.equalsIgnoreCase("-ab")) result.altBlocking = true;
-            else if (arg.equalsIgnoreCase("-silent") || arg.equalsIgnoreCase("-s")) result.silent = true;
-            else if (arg.equalsIgnoreCase("-stat-wipe") || arg.equalsIgnoreCase("-sw")) result.statWipe = true;
-            else {
-                if (reasonBuilder.length() > 0) reasonBuilder.append(" ");
-                reasonBuilder.append(arg);
-            }
-        }
-
-        result.reason = reasonBuilder.toString().trim();
-        return result;
-    }
-
-    private Map<String, Object> buildPunishmentData(PunishmentArgs args, PunishmentTypesResponse.PunishmentTypeData punishmentType, Account target) {
+    private Map<String, Object> buildPunishmentData(PunishmentFlagParser.Flags args, PunishmentTypesResponse.PunishmentTypeData punishmentType, Account target) {
         Map<String, Object> data = new HashMap<>();
         data.put("duration", 0L);
         data.put("blockedName", resolveBlockedName(punishmentType, target));
@@ -248,11 +205,11 @@ public class PunishCommand {
         data.put("linkedBanId", null);
         data.put("linkedBanExpiry", null);
         data.put("chatLog", null);
-        data.put("altBlocking", Boolean.TRUE.equals(punishmentType.getCanBeAltBlocking()) && args.altBlocking);
-        data.put("wipeAfterExpiry", Boolean.TRUE.equals(punishmentType.getCanBeStatWiping()) && args.statWipe);
-        data.put("silent", args.silent);
+        data.put("altBlocking", Boolean.TRUE.equals(punishmentType.getCanBeAltBlocking()) && args.isAltBlocking());
+        data.put("wipeAfterExpiry", Boolean.TRUE.equals(punishmentType.getCanBeStatWiping()) && args.isStatWipe());
+        data.put("silent", args.isSilent());
 
-        if (args.duration > 0) data.put("duration", args.duration);
+        if (args.getDuration() > 0) data.put("duration", args.getDuration());
 
         return data;
     }
@@ -267,7 +224,7 @@ public class PunishCommand {
     private String resolveBlockedSkin(PunishmentTypesResponse.PunishmentTypeData punishmentType, Account target) {
         if (!Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange())) return null;
         try {
-            WebPlayer webPlayer = WebPlayer.getSync(target.getMinecraftUuid());
+            WebPlayer webPlayer = MojangProfiles.client().getSync(target.getMinecraftUuid());
             return (webPlayer != null && webPlayer.isValid()) ? webPlayer.getSkin() : null;
         } catch (Exception e) {
             Logger.getLogger("modl").warning(
@@ -276,20 +233,20 @@ public class PunishCommand {
         }
     }
 
-    private String validatePunishmentCompatibility(PunishmentArgs args, PunishmentTypesResponse.PunishmentTypeData punishmentType) {
-        if (Boolean.TRUE.equals(punishmentType.getSingleSeverityPunishment()) && args.severity != null)
+    private String validatePunishmentCompatibility(PunishmentFlagParser.Flags args, PunishmentTypesResponse.PunishmentTypeData punishmentType) {
+        if (Boolean.TRUE.equals(punishmentType.getSingleSeverityPunishment()) && args.getSeverity() != null)
             return localeManager.getPunishmentMessage("validation.single_severity_error",
                 mapOf("type", punishmentType.getName()));
-        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange()) && args.severity != null)
+        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilSkinChange()) && args.getSeverity() != null)
             return localeManager.getPunishmentMessage("validation.permanent_skin_change_error",
                 mapOf("type", punishmentType.getName()));
-        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilUsernameChange()) && args.severity != null)
+        if (Boolean.TRUE.equals(punishmentType.getPermanentUntilUsernameChange()) && args.getSeverity() != null)
             return localeManager.getPunishmentMessage("validation.permanent_username_change_error",
                 mapOf("type", punishmentType.getName()));
-        if (args.altBlocking && !Boolean.TRUE.equals(punishmentType.getCanBeAltBlocking()))
+        if (args.isAltBlocking() && !Boolean.TRUE.equals(punishmentType.getCanBeAltBlocking()))
             return localeManager.getPunishmentMessage("validation.alt_blocking_not_supported",
                 mapOf("type", punishmentType.getName()));
-        if (args.statWipe && !Boolean.TRUE.equals(punishmentType.getCanBeStatWiping()))
+        if (args.isStatWipe() && !Boolean.TRUE.equals(punishmentType.getCanBeStatWiping()))
             return localeManager.getPunishmentMessage("validation.stat_wiping_not_supported",
                 mapOf("type", punishmentType.getName()));
         return null;
@@ -319,11 +276,5 @@ public class PunishCommand {
             this.punishmentType = punishmentType;
             this.remainingArgs = remainingArgs;
         }
-    }
-
-    private static class PunishmentArgs {
-        String severity = null, reason = "";
-        long duration = 0;
-        boolean altBlocking = false, silent = false, statWipe = false;
     }
 }

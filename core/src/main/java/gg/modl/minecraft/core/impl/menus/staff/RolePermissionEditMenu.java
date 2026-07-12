@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -96,7 +97,7 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         this.panelUrl = panelUrl;
         activeTab = StaffTab.SETTINGS;
 
-        Cache cache = platform.getCache();
+        Cache cache = PluginServices.cache();
         boolean isSuperAdmin = role.getId() != null && role.getId().contains("super-admin");
         this.hasPermission = !isSuperAdmin && cache != null && cache.hasPermission(viewerUuid, Permissions.SETTINGS_MODIFY);
 
@@ -208,11 +209,7 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
         boolean newState = !permission.isEnabled();
         permission.setEnabled(newState);
 
-        // Store only the explicitly-toggled node. The backend permission model is prefix-hierarchical
-        // (holding X grants X.*), so materializing children is redundant and caused privilege retention
-        // when a parent was later disabled. "Auto-granted by parent" is computed for display only.
-        if (newState) enabledPermissions.add(permission.getNode());
-        else enabledPermissions.remove(permission.getNode());
+        storeOnlyExplicitlyToggledNode(permission.getNode(), newState);
 
         RoleListMenu.Role localRole = new RoleListMenu.Role(
                 role.getId(), role.getName(), role.getDescription(), new ArrayList<>(enabledPermissions));
@@ -226,6 +223,11 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
             newMenu.allPermissions.add(new Permission(p.getNode(), enabledPermissions.contains(p.getNode())));
 
         ActionHandlers.openMenu(newMenu).handle(click);
+    }
+
+    private void storeOnlyExplicitlyToggledNode(String node, boolean enabled) {
+        if (enabled) enabledPermissions.add(node);
+        else enabledPermissions.remove(node);
     }
 
     @Override
@@ -250,7 +252,7 @@ public class RolePermissionEditMenu extends BaseStaffListMenu<RolePermissionEdit
 
         sendMessage(MenuItems.COLOR_YELLOW + "Saving permissions for " + role.getName() + "...");
 
-        String actingStaffId = platform.getCache() != null ? platform.getCache().getStaffId(viewerUuid) : null;
+        String actingStaffId = PluginServices.cache() != null ? PluginServices.cache().getStaffId(viewerUuid) : null;
         httpClient.updateRolePermissions(role.getId(), new ArrayList<>(enabledPermissions), actingStaffId).thenAccept(v -> {
             sendMessage(MenuItems.COLOR_GREEN + "Permissions saved successfully!");
             if (backAction != null) backAction.accept(click.player());
