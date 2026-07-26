@@ -36,8 +36,19 @@ final class BufferedLogChannel<T> {
     }
 
     CompletableFuture<Void> flush() {
+        try {
+            return uploadDrainedEntries();
+        } catch (Exception e) {
+            logger.warning("Failed to collect " + kind + " logs for upload: " + e.getMessage());
+            CompletableFuture<Void> failed = new CompletableFuture<>();
+            failed.completeExceptionally(e);
+            return failed;
+        }
+    }
+
+    private CompletableFuture<Void> uploadDrainedEntries() {
         List<T> entries = sanitize(SyncService.filterByUsername(drain(), usernameAccessor));
-        if (entries.isEmpty()) return null;
+        if (entries.isEmpty()) return CompletableFuture.completedFuture(null);
 
         List<CompletableFuture<Void>> chunkUploads = new ArrayList<>();
         for (int start = 0; start < entries.size(); start += maxBatchSize) {

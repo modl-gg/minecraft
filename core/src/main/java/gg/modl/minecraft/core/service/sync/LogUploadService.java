@@ -8,7 +8,7 @@ import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.service.ChatCommandLogService;
 import gg.modl.minecraft.core.util.PluginLogger;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -72,10 +72,8 @@ public class LogUploadService {
     }
 
     private void drainOnShutdown() {
-        List<CompletableFuture<Void>> uploads = flush();
-        if (uploads.isEmpty()) return;
         try {
-            CompletableFuture.allOf(uploads.toArray(new CompletableFuture[0]))
+            CompletableFuture.allOf(flush().toArray(new CompletableFuture[0]))
                 .get(SHUTDOWN_DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
             logger.warning("Timed out draining buffered logs on shutdown; final batch may be incomplete");
@@ -87,17 +85,6 @@ public class LogUploadService {
     }
 
     private List<CompletableFuture<Void>> flush() {
-        List<CompletableFuture<Void>> uploads = new ArrayList<>();
-        try {
-            addIfPresent(uploads, chatChannel.flush());
-            addIfPresent(uploads, commandChannel.flush());
-        } catch (Exception e) {
-            logger.warning("Log flush failed: " + e.getMessage());
-        }
-        return uploads;
-    }
-
-    private static void addIfPresent(List<CompletableFuture<Void>> uploads, CompletableFuture<Void> upload) {
-        if (upload != null) uploads.add(upload);
+        return Arrays.asList(chatChannel.flush(), commandChannel.flush());
     }
 }

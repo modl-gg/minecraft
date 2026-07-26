@@ -14,7 +14,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BufferedLogChannelTest {
@@ -83,7 +82,7 @@ class BufferedLogChannelTest {
         CompletableFuture<Void> second = channel.flush();
 
         assertEquals(1, submitted.size());
-        assertNull(second);
+        assertNotNull(second);
     }
 
     @Test
@@ -151,7 +150,7 @@ class BufferedLogChannelTest {
         CompletableFuture<Void> second = channel.flush();
 
         assertEquals(1, submitted.size());
-        assertNull(second);
+        assertNotNull(second);
     }
 
     @Test
@@ -179,12 +178,33 @@ class BufferedLogChannelTest {
     }
 
     @Test
-    void emptyAfterSanitizeReturnsNull() {
+    void emptyAfterSanitizeCompletesWithoutSubmitting() {
         List<ChatLogEntry> source = new ArrayList<>();
         source.add(chat("Notch", "  "));
         List<List<ChatLogEntry>> submitted = new ArrayList<>();
 
-        assertNull(channel(source, submitted, CompletableFuture.completedFuture(null)).flush());
+        CompletableFuture<Void> flushed = channel(source, submitted, CompletableFuture.completedFuture(null)).flush();
+
+        assertNotNull(flushed);
+        assertTrue(submitted.isEmpty());
+    }
+
+    @Test
+    void drainFailureIsReportedAsAFailedFutureInsteadOfThrown() {
+        List<List<ChatLogEntry>> submitted = new ArrayList<>();
+        BufferedLogChannel<ChatLogEntry> channel = new BufferedLogChannel<>("chat",
+                () -> {
+                    throw new IllegalStateException("buffer unavailable");
+                },
+                ChatLogEntry::getUsername, ChatLogEntry::getMessage,
+                entries -> {
+                    submitted.add(new ArrayList<>(entries));
+                    return CompletableFuture.completedFuture(null);
+                }, SILENT_LOGGER, 5000, 500);
+
+        CompletableFuture<Void> flushed = channel.flush();
+
+        assertTrue(flushed.isCompletedExceptionally());
         assertTrue(submitted.isEmpty());
     }
 

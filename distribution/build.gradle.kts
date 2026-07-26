@@ -145,6 +145,8 @@ dependencies {
 }
 
 tasks.shadowJar {
+    dependsOn(":platforms:velocity:check")
+
     archiveBaseName.set("modl")
     archiveClassifier.set("")
 

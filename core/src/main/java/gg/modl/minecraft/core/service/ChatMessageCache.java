@@ -1,7 +1,6 @@
 package gg.modl.minecraft.core.service;
 
 import gg.modl.minecraft.core.util.StringUtil;
-import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 import java.time.Instant;
@@ -12,10 +11,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.stream.Collectors;
 
-@RequiredArgsConstructor
 public class ChatMessageCache {
     private static final DateTimeFormatter REPORT_TIME_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneOffset.UTC);
@@ -23,7 +21,7 @@ public class ChatMessageCache {
     private static final int REPORT_WINDOW_SECONDS = 120;
     private static final long DEFAULT_MAX_AGE_MS = 600_000, CLEANUP_INTERVAL_MS = 30_000;
 
-    private final Map<String, ConcurrentLinkedQueue<ChatMessage>> serverMessages = new ConcurrentHashMap<>();
+    private final Map<String, LinkedBlockingDeque<ChatMessage>> serverMessages = new ConcurrentHashMap<>();
     private final Map<String, String> playerToServer = new ConcurrentHashMap<>();
     private final int maxMessagesPerServer;
     private final long maxMessageAge;
@@ -33,14 +31,22 @@ public class ChatMessageCache {
         this(DEFAULT_MAX_MESSAGES, DEFAULT_MAX_AGE_MS);
     }
 
+    public ChatMessageCache(int maxMessagesPerServer, long maxMessageAge) {
+        if (maxMessagesPerServer < 1) {
+            throw new IllegalArgumentException(
+                    "maxMessagesPerServer must be at least 1 but was " + maxMessagesPerServer);
+        }
+        this.maxMessagesPerServer = maxMessagesPerServer;
+        this.maxMessageAge = maxMessageAge;
+    }
+
     public void addMessage(String serverName, String playerUuid, String playerName, String message) {
         playerToServer.put(playerUuid, serverName);
         if (StringUtil.isBlank(message)) return;
-        ConcurrentLinkedQueue<ChatMessage> queue = serverMessages.computeIfAbsent(serverName, k -> new ConcurrentLinkedQueue<>());
-        queue.offer(new ChatMessage(playerUuid, playerName, message, serverName, Instant.now()));
-
-        while (queue.size() > maxMessagesPerServer && queue.poll() != null) {
-        }
+        LinkedBlockingDeque<ChatMessage> queue =
+                serverMessages.computeIfAbsent(serverName, k -> new LinkedBlockingDeque<>(maxMessagesPerServer));
+        ChatMessage entry = new ChatMessage(playerUuid, playerName, message, serverName, Instant.now());
+        while (!queue.offerLast(entry)) queue.pollFirst();
 
         long now = System.currentTimeMillis();
         if (now - lastCleanupTime > CLEANUP_INTERVAL_MS) {
@@ -82,7 +88,7 @@ public class ChatMessageCache {
 
     private List<ChatMessage> collectMessagesForReportedPlayer(String reportedPlayerUuid) {
         List<ChatMessage> allMessages = new ArrayList<>();
-        for (ConcurrentLinkedQueue<ChatMessage> queue : serverMessages.values()) {
+        for (LinkedBlockingDeque<ChatMessage> queue : serverMessages.values()) {
             boolean containsReported = queue.stream()
                     .anyMatch(msg -> msg.getPlayerUuid().equals(reportedPlayerUuid));
             if (!containsReported) continue;
@@ -116,7 +122,7 @@ public class ChatMessageCache {
         return a.isAfter(b) ? a : b;
     }
 
-    private void cleanupOldMessages(ConcurrentLinkedQueue<ChatMessage> queue) {
+    private void cleanupOldMessages(LinkedBlockingDeque<ChatMessage> queue) {
         Instant cutoff = Instant.now().minusMillis(maxMessageAge);
         queue.removeIf(message -> message.getTimestamp().isBefore(cutoff));
     }
