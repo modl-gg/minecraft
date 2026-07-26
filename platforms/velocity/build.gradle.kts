@@ -1,7 +1,12 @@
-// Velocity 4 is compiled for, and only runs on, Java 25.
+// One jar serves both Velocity 3 and Velocity 4, so both settings target the *older* proxy.
+// Velocity 4 requires Java 25 and ships velocity-api built for it, but Java 17 bytecode loads
+// fine there, whereas Java 25 bytecode cannot load on a Velocity 3 proxy running Java 17.
+// Compiling against the 3.x API is safe for the same reason: 4.x neither removed nor changed
+// any API member this module uses, so v3-compiled calls resolve on both.
+// VelocityCompatibilityTest pins both halves of this.
 java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 repositories {
