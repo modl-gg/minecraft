@@ -6,8 +6,11 @@ plugins {
 
 val sharedConfigExclusions = setOf("fabric", "platforms")
 
+val defaultJvmRelease = 8
+val defaultToolchainVersion = 21
+
 val jvmReleaseOverrides = mapOf(
-    "velocity" to 17,
+    "velocity" to 25,
     "spigot-sv" to 21,
 )
 
@@ -34,13 +37,13 @@ subprojects {
         maven("https://oss.sonatype.org/content/repositories/snapshots")
     }
 
+    val javaRelease = jvmReleaseOverrides[name] ?: defaultJvmRelease
+
     configure<JavaPluginExtension> {
         toolchain {
-            languageVersion.set(JavaLanguageVersion.of(21))
+            languageVersion.set(JavaLanguageVersion.of(maxOf(defaultToolchainVersion, javaRelease)))
         }
     }
-
-    val javaRelease = jvmReleaseOverrides[name] ?: 8
 
     val libs = rootProject.extensions.getByType<VersionCatalogsExtension>().named("libs")
     fun sharedLibrary(alias: String) = libs.findLibrary(alias).orElseThrow {
