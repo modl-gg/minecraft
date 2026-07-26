@@ -10,7 +10,7 @@ val defaultJvmRelease = 8
 val defaultToolchainVersion = 21
 
 val jvmReleaseOverrides = mapOf(
-    "velocity" to 25,
+    "velocity" to 17,
     "spigot-sv" to 21,
 )
 
