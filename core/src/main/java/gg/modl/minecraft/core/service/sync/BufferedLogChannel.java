@@ -1,7 +1,9 @@
 package gg.modl.minecraft.core.service.sync;
 
+import gg.modl.minecraft.api.http.ApiClientException;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.core.util.PluginLogger;
+import gg.modl.minecraft.core.util.StringUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,28 +15,51 @@ final class BufferedLogChannel<T> {
     private final String kind;
     private final Supplier<List<T>> drainSource;
     private final Function<T, String> usernameAccessor;
+    private final Function<T, String> contentAccessor;
     private final Function<List<T>, CompletableFuture<Void>> submit;
     private final PluginLogger logger;
     private final int maxRebuffered;
+    private final int maxBatchSize;
     private final List<T> pending = new ArrayList<>();
 
     BufferedLogChannel(String kind, Supplier<List<T>> drainSource, Function<T, String> usernameAccessor,
-                       Function<List<T>, CompletableFuture<Void>> submit, PluginLogger logger, int maxRebuffered) {
+                       Function<T, String> contentAccessor, Function<List<T>, CompletableFuture<Void>> submit,
+                       PluginLogger logger, int maxRebuffered, int maxBatchSize) {
         this.kind = kind;
         this.drainSource = drainSource;
         this.usernameAccessor = usernameAccessor;
+        this.contentAccessor = contentAccessor;
         this.submit = submit;
         this.logger = logger;
         this.maxRebuffered = maxRebuffered;
+        this.maxBatchSize = maxBatchSize;
     }
 
     CompletableFuture<Void> flush() {
-        List<T> entries = SyncService.filterByUsername(drain(), usernameAccessor);
+        List<T> entries = sanitize(SyncService.filterByUsername(drain(), usernameAccessor));
         if (entries.isEmpty()) return null;
-        return submit.apply(entries).exceptionally(throwable -> {
-            rebuffer(entries, throwable);
+
+        List<CompletableFuture<Void>> chunkUploads = new ArrayList<>();
+        for (int start = 0; start < entries.size(); start += maxBatchSize) {
+            List<T> chunk = new ArrayList<>(entries.subList(start, Math.min(entries.size(), start + maxBatchSize)));
+            chunkUploads.add(submitChunk(chunk));
+        }
+        return CompletableFuture.allOf(chunkUploads.toArray(new CompletableFuture[0]));
+    }
+
+    private CompletableFuture<Void> submitChunk(List<T> chunk) {
+        return submit.apply(chunk).exceptionally(throwable -> {
+            handleUploadFailure(chunk, throwable);
             return null;
         });
+    }
+
+    private List<T> sanitize(List<T> entries) {
+        List<T> retained = new ArrayList<>(entries.size());
+        for (T entry : entries) {
+            if (!StringUtil.isBlank(contentAccessor.apply(entry))) retained.add(entry);
+        }
+        return retained;
     }
 
     private List<T> drain() {
@@ -48,20 +73,25 @@ final class BufferedLogChannel<T> {
         }
     }
 
-    private void rebuffer(List<T> entries, Throwable throwable) {
-        warnFlushFailure(throwable);
-        synchronized (pending) {
-            pending.addAll(0, entries);
-            dropOldestOnOverflow();
+    private void handleUploadFailure(List<T> entries, Throwable throwable) {
+        Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
+        if (cause instanceof ApiClientException) {
+            logger.warning("Dropped " + entries.size() + " " + kind + " logs rejected by panel (HTTP "
+                    + ((ApiClientException) cause).getStatusCode() + "): " + cause.getMessage());
+            return;
         }
+        rebuffer(entries, cause);
     }
 
-    private void warnFlushFailure(Throwable throwable) {
-        Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
+    private void rebuffer(List<T> entries, Throwable cause) {
         if (cause instanceof PanelUnavailableException) {
             logger.warning("Failed to upload " + kind + " logs: Panel temporarily unavailable; re-buffering");
         } else {
             logger.warning("Failed to upload " + kind + " logs: " + cause.getMessage() + "; re-buffering");
+        }
+        synchronized (pending) {
+            pending.addAll(0, entries);
+            dropOldestOnOverflow();
         }
     }
 

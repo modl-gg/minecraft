@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.service;
 
+import gg.modl.minecraft.core.util.StringUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
@@ -34,6 +35,7 @@ public class ChatMessageCache {
 
     public void addMessage(String serverName, String playerUuid, String playerName, String message) {
         playerToServer.put(playerUuid, serverName);
+        if (StringUtil.isBlank(message)) return;
         ConcurrentLinkedQueue<ChatMessage> queue = serverMessages.computeIfAbsent(serverName, k -> new ConcurrentLinkedQueue<>());
         queue.offer(new ChatMessage(playerUuid, playerName, message, serverName, Instant.now()));
 

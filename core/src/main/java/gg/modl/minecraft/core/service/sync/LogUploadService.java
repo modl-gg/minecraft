@@ -20,6 +20,7 @@ public class LogUploadService {
     private static final long FLUSH_INTERVAL_SECONDS = 3;
     private static final long SHUTDOWN_DRAIN_TIMEOUT_SECONDS = 5;
     private static final int MAX_REBUFFERED_ENTRIES = 5000;
+    private static final int MAX_BATCH_SIZE = 500;
 
     private final PluginLogger logger;
     private final boolean debugMode;
@@ -34,13 +35,13 @@ public class LogUploadService {
         this.logger = logger;
         this.debugMode = debugMode;
         this.chatChannel = new BufferedLogChannel<>("chat", chatCommandLogService::drainChatBuffer,
-                ChatLogEntry::getUsername,
+                ChatLogEntry::getUsername, ChatLogEntry::getMessage,
                 entries -> httpClientHolder.getClient().submitChatLogs(new ChatLogBatchRequest(entries)),
-                logger, MAX_REBUFFERED_ENTRIES);
+                logger, MAX_REBUFFERED_ENTRIES, MAX_BATCH_SIZE);
         this.commandChannel = new BufferedLogChannel<>("command", chatCommandLogService::drainCommandBuffer,
-                CommandLogEntry::getUsername,
+                CommandLogEntry::getUsername, CommandLogEntry::getCommand,
                 entries -> httpClientHolder.getClient().submitCommandLogs(new CommandLogBatchRequest(entries)),
-                logger, MAX_REBUFFERED_ENTRIES);
+                logger, MAX_REBUFFERED_ENTRIES, MAX_BATCH_SIZE);
     }
 
     public synchronized void start() {
