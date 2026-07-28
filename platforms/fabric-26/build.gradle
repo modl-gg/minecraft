@@ -28,7 +28,7 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${property('minecraft_version')}"
-    // No mappings — 26.1.x is unobfuscated
+    // No mappings; 26.1.x is unobfuscated
     implementation "net.fabricmc:fabric-loader:${property('loader_version')}"
     implementation "net.fabricmc.fabric-api:fabric-api:${property('fabric_version')}"
 

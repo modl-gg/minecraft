@@ -51,9 +51,9 @@ public final class QueuedData implements AutoCloseable {
         if (closed) {
             return;
         }
-        // Satisfy EVERY pending non-advancing (peek) waiter and EXACTLY ONE advancing (consume) waiter,
+        // Satisfy every pending non-advancing (peek) waiter and 1 advancing (consume) waiter,
         // since a single proxy result consumes exactly one message. Store the result only if no advancing
-        // waiter consumed it (peekers/nobody were waiting), preserving the single-message decorate->chat flow.
+        // waiter consumed it (peekers/nobody were waiting), preserving the single-message decorate -> chat flow.
         boolean consumedByAdvancing = false;
         PendingResult pending;
         while ((pending = unSyncronizedQueue.poll()) != null) {
@@ -119,18 +119,15 @@ public final class QueuedData implements AutoCloseable {
             }
             return future;
         }
-        // Symmetric `results` recheck to close the complete()-vs-register TOCTOU lost-wakeup: a result may
-        // have raced into `results` between our results poll/peek and the enqueue above.
+
         final SignedResult raced = results.poll();
         if (raced != null) {
             if (unSyncronizedQueue.remove(pending)) {
                 pending.complete(raced);
                 if (!advance) {
-                    // Peek: re-add so the following advancing read still observes the same result.
                     results.add(raced);
                 }
             } else {
-                // Producer already completed our pending; the polled result belongs elsewhere -> put it back.
                 results.add(raced);
             }
             return future;
