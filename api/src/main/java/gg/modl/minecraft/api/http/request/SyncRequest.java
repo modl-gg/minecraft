@@ -1,49 +1,36 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import gg.modl.minecraft.api.http.ChatLogEntry;
+import gg.modl.minecraft.api.http.CommandLogEntry;
+import lombok.Value;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+@Value
 public class SyncRequest {
-    private @NotNull String lastSyncTimestamp;
-    private @NotNull List<OnlinePlayer> onlinePlayers;
-    private @Nullable String serverName;
-    private @Nullable String serverInstanceId;
-    private @Nullable List<ChatLogEntry> chatLogs;
-    private @Nullable List<CommandLogEntry> commandLogs;
-    private @Nullable ServerStatus serverStatus;
+    @NotNull String lastSyncTimestamp;
+    @NotNull List<OnlinePlayer> onlinePlayers;
+    @Nullable String serverName;
+    @Nullable String serverInstanceId;
+    @Nullable List<ChatLogEntry> chatLogs;
+    @Nullable List<CommandLogEntry> commandLogs;
+    @Nullable ServerStatus serverStatus;
 
-    @Data @NoArgsConstructor @AllArgsConstructor
+    @Value
     public static class ServerStatus {
-        private int onlinePlayerCount;
-        private int maxPlayers;
-        private @Nullable String serverVersion;
-        private @Nullable String platformType;
-        private @Nullable String pluginVersion;
-        private long timestamp;
+        int onlinePlayerCount;
+        int maxPlayers;
+        @Nullable String serverVersion;
+        @Nullable String platformType;
+        @Nullable String pluginVersion;
+        long timestamp;
     }
 
-    @Data @NoArgsConstructor @AllArgsConstructor
+    @Value
     public static class OnlinePlayer {
-        private @NotNull String uuid, username, ipAddress;
-
-        private long sessionDurationMs;
-    }
-
-    @Data @NoArgsConstructor @AllArgsConstructor
-    public static class ChatLogEntry {
-        private String uuid, username, message, server;
-        private long timestamp;
-    }
-
-    @Data @NoArgsConstructor @AllArgsConstructor
-    public static class CommandLogEntry {
-        private String uuid, username, command, server;
-        private long timestamp;
+        @NotNull String uuid, username, ipAddress;
+        long sessionDurationMs;
     }
 }

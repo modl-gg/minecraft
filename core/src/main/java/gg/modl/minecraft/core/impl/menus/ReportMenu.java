@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -52,10 +53,8 @@ public class ReportMenu extends SimpleMenu {
                 locale.getMessage("messages.report_gui_title", mapOf("player", target.getUsername())),
                 listOf()
         );
-        if (platform.getCache() != null) {
-            String texture = platform.getCache().getSkinTexture(target.getUuid());
-            if (texture != null) headItem = headItem.texture(texture);
-        }
+        String texture = PluginServices.cache().getSkinTexture(target.getUuid());
+        if (texture != null) headItem = headItem.texture(texture);
         set(headItem.slot(4));
 
         for (int configSlot = 1; configSlot <= 14; configSlot++) {

@@ -67,7 +67,6 @@ class PaginatedDataSourceTest {
         assertTrue(callbackCompleted.await(1, TimeUnit.SECONDS));
 
         assertEquals(Arrays.asList(5, 6, 7, 8), dataSource.getAllLoadedItems());
-        // The stale completion is from an older generation and is ignored, so the count stays fresh.
         assertEquals(8, dataSource.getTotalCount());
         assertEquals(4, dataSource.getTotalMenuPages());
     }
@@ -79,12 +78,27 @@ class PaginatedDataSourceTest {
         dataSource.initialize(Arrays.asList(1, 2), 6);
 
         assertTrue(dataSource.fetchPage(2, null));
-        // A failed fetch completes normally with success=false; it must not clobber the known-good count.
-        pendingFetch.complete(new FetchResult<>(Collections.emptyList(), 0, false));
+        pendingFetch.complete(failedFetchResult());
 
         assertEquals(Arrays.asList(1, 2), dataSource.getAllLoadedItems());
         assertEquals(6, dataSource.getTotalCount());
         assertEquals(3, dataSource.getTotalMenuPages());
+    }
+
+    @Test
+    void failedFetchStillRunsRefreshCallback() throws InterruptedException {
+        CompletableFuture<FetchResult<Integer>> pendingFetch = new CompletableFuture<>();
+        PaginatedDataSource<Integer> dataSource = new PaginatedDataSource<>(2, (page, limit) -> pendingFetch);
+        dataSource.initialize(Arrays.asList(1, 2), 6);
+
+        CountDownLatch callbackCompleted = new CountDownLatch(1);
+        assertTrue(dataSource.fetchPage(2, callbackCompleted::countDown));
+
+        pendingFetch.completeExceptionally(new RuntimeException("network down"));
+
+        assertTrue(callbackCompleted.await(1, TimeUnit.SECONDS));
+        assertFalse(dataSource.isFetching());
+        assertEquals(6, dataSource.getTotalCount());
     }
 
     @Test
@@ -98,5 +112,9 @@ class PaginatedDataSourceTest {
 
         List<Integer> loadedItems = dataSource.getAllLoadedItems();
         assertEquals(Arrays.asList(1, 2, 3, 4), loadedItems);
+    }
+
+    private static FetchResult<Integer> failedFetchResult() {
+        return new FetchResult<>(Collections.emptyList(), 0, false);
     }
 }

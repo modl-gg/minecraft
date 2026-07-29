@@ -7,7 +7,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 @Getter
-public class ViolationRecord {
+public final class ViolationRecord {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss")
             .withZone(ZoneId.systemDefault());
 
@@ -17,10 +17,14 @@ public class ViolationRecord {
     private final long timestamp;
 
     public ViolationRecord(DetectionSource source, String checkName, String verbose) {
+        this(source, checkName, verbose, System.currentTimeMillis());
+    }
+
+    ViolationRecord(DetectionSource source, String checkName, String verbose, long timestamp) {
         this.source = source;
         this.checkName = checkName;
         this.verbose = verbose;
-        this.timestamp = System.currentTimeMillis();
+        this.timestamp = timestamp;
     }
 
     public String getFormattedTimestamp() {

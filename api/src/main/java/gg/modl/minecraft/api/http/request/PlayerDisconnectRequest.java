@@ -1,11 +1,12 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.Data;
+import lombok.Value;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-@Data
+@Value
 public class PlayerDisconnectRequest {
-    private @NotNull final String minecraftUuid;
-    private final long sessionDurationMs;
-    private String serverInstanceId;
+    @NotNull String minecraftUuid;
+    long sessionDurationMs;
+    @Nullable String serverInstanceId;
 }

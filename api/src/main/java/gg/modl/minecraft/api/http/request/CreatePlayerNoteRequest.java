@@ -1,12 +1,12 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.Data;
+import lombok.Value;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-@Data
+@Value
 public class CreatePlayerNoteRequest {
-    private transient @NotNull final String targetUuid;
-    private @Nullable final String issuerName, issuerId;
-    private @NotNull final String text;
+    transient @NotNull String targetUuid;
+    @Nullable String issuerName, issuerId;
+    @NotNull String text;
 }

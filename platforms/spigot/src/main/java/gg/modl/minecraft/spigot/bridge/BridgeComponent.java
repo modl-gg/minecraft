@@ -57,18 +57,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
 import gg.modl.minecraft.bridge.BridgeTask;
 import java.util.concurrent.TimeUnit;
-import top.polar.api.loader.LoaderApi;
 
 public class BridgeComponent extends AbstractBridgeComponent implements Listener {
+    private static final long MILLIS_PER_MINUTE = 60_000L;
+    private static final long REPLAY_CLEANUP_INTERVAL_MINUTES = 5L;
+
     private final JavaPlugin plugin;
+    private final boolean polarLoaderAvailable;
     @Getter private FreezeHandler freezeHandler;
     @Getter private StaffModeHandler staffModeHandler;
-
-    private boolean polarAvailable;
+    @Getter private SpigotBridgeActions bridgeActions;
 
     private RecordingManager recordingManager;
     private PacketRecorder packetRecorder;
@@ -76,21 +79,11 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
     private BridgeTask replayCleanupTask;
     private final Map<UUID, Integer> worldChangeGeneration = new ConcurrentHashMap<>();
 
-    public BridgeComponent(JavaPlugin plugin, String apiKey, String backendUrl, String panelUrl, PluginLogger logger) {
+    public BridgeComponent(JavaPlugin plugin, String apiKey, String backendUrl, String panelUrl,
+                           PluginLogger logger, boolean polarLoaderAvailable) {
         super(new SpigotBridgePluginContext(plugin), apiKey, backendUrl, panelUrl, logger);
         this.plugin = plugin;
-    }
-
-    public void onLoad() {
-        try {
-            Class.forName("top.polar.api.loader.LoaderApi");
-            polarAvailable = true;
-            LoaderApi.registerEnableCallback(() -> {
-                if (plugin.isEnabled()) {
-                    hookPolar();
-                }
-            });
-        } catch (ClassNotFoundException ignored) {}
+        this.polarLoaderAvailable = polarLoaderAvailable;
     }
 
     @Override
@@ -106,11 +99,12 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         staffModeHandler = new StaffModeHandler(plugin, bridgeConfig, freezeHandler, localeManager, staffModeConfig, context.getScheduler());
         staffModeHandler.register();
         freezeHandler.setStaffModeHandler(staffModeHandler);
+        bridgeActions = new SpigotBridgeActions(staffModeHandler, freezeHandler);
     }
 
     @Override
     protected BridgeMessageHandler createMessageHandler() {
-        return new SpigotBridgeMessageHandler(plugin, freezeHandler, staffModeHandler,
+        return new SpigotBridgeMessageHandler(plugin, bridgeActions,
                 statWipeHandler, this, context.getScheduler());
     }
 
@@ -134,7 +128,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
             hooks.add(vulcanHook);
         }
 
-        if (!polarAvailable) {
+        if (!polarLoaderAvailable) {
             PolarHook polarHook = new PolarHook(plugin, bridgeConfig, violationTracker, autoReporter);
             if (polarHook.isAvailable()) {
                 polarHook.register();
@@ -142,20 +136,29 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
             }
         }
 
-        if (hooks.isEmpty() && !polarAvailable) {
+        if (hooks.isEmpty() && !polarLoaderAvailable) {
             pluginLogger.warning("[bridge] No anticheat plugins detected. Install GrimAC, Vulcan, or Polar for anticheat reporting.");
         }
     }
 
-    private void hookPolar() {
+    public void hookPolar() {
+        context.getScheduler().runOnMainThread(this::hookPolarOnMainThread);
+    }
+
+    private void hookPolarOnMainThread() {
         if (violationTracker == null || autoReporter == null) {
             pluginLogger.warning("Polar enable callback fired but bridge is not fully initialized");
             return;
         }
+        for (AntiCheatHook hook : hooks) {
+            if (hook instanceof PolarHook) return;
+        }
 
         PolarHook polarHook = new PolarHook(plugin, bridgeConfig, violationTracker, autoReporter);
         polarHook.register();
-        hooks.add(polarHook);
+        if (polarHook.isRegistered()) {
+            hooks.add(polarHook);
+        }
     }
 
     @Override
@@ -246,7 +249,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
         }
 
         if (config.isReplaySaveLocal()) {
-            long ttlMs = config.getReplayLocalTtl() * 60_000L;
+            long ttlMs = config.getReplayLocalTtl() * MILLIS_PER_MINUTE;
             replayCleanupTask = context.getScheduler().runTimerAsync(() -> {
                 File[] files = replaysDir.listFiles();
                 if (files == null) return;
@@ -256,7 +259,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
                         f.delete();
                     }
                 }
-            }, 5, 5, TimeUnit.MINUTES);
+            }, REPLAY_CLEANUP_INTERVAL_MINUTES, REPLAY_CLEANUP_INTERVAL_MINUTES, TimeUnit.MINUTES);
         }
     }
 
@@ -329,35 +332,30 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
         ItemStack[] contents = inv.getContents();
         for (int i = 0; i < contents.length && i <= 40; i++) {
+            int protocolSlot = toProtocolSlot(i);
+            if (protocolSlot < 0) continue;
+
             ItemStack item = contents[i];
-            String name = (item != null && item.getType() != Material.AIR)
-                    ? item.getType().name().toLowerCase() : "air";
-            int amount = (item != null && item.getType() != Material.AIR)
-                    ? item.getAmount() : 0;
-            int protocolSlot;
-            if (i <= 8) {
-                protocolSlot = 36 + i;
-            } else if (i <= 35) {
-                protocolSlot = i;
-            } else if (i == 36) {
-                protocolSlot = 8;
-            } else if (i == 37) {
-                protocolSlot = 7;
-            } else if (i == 38) {
-                protocolSlot = 6;
-            } else if (i == 39) {
-                protocolSlot = 5;
-            } else if (i == 40) {
-                protocolSlot = 45;
-            } else {
-                continue;
-            }
-            protocolSlots.put(protocolSlot, name);
-            protocolCounts.put(protocolSlot, amount);
+            boolean present = item != null && item.getType() != Material.AIR;
+            protocolSlots.put(protocolSlot, present ? item.getType().name().toLowerCase() : "air");
+            protocolCounts.put(protocolSlot, present ? item.getAmount() : 0);
         }
 
         packetRecorder.seedInventoryCache(player.getUniqueId(), protocolSlots, protocolCounts);
         packetRecorder.seedHeldSlot(player.getUniqueId(), inv.getHeldItemSlot());
+    }
+
+    static int toProtocolSlot(int bukkitSlot) {
+        if (bukkitSlot <= 8) return 36 + bukkitSlot;
+        if (bukkitSlot <= 35) return bukkitSlot;
+        switch (bukkitSlot) {
+            case 36: return 8;
+            case 37: return 7;
+            case 38: return 6;
+            case 39: return 5;
+            case 40: return 45;
+            default: return -1;
+        }
     }
 
     @EventHandler
@@ -437,7 +435,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
                         if (ex != null) {
                             pluginLogger.warning("[bridge] Replay upload failed for " + playerName + ": " + ex.getMessage());
                         }
-                        cleanupReplayFileAfterUpload(replayFile, bridgeConfig.isReplaySaveLocal(), result, ex);
+                        cleanupReplayFileAfterUpload(replayFile, bridgeConfig.isReplaySaveLocal(), result, ex, plugin.getLogger());
                     });
         } catch (RejectedExecutionException e) {
             pluginLogger.warning("[bridge] Replay uploader closed; keeping local replay file for " + playerName);
@@ -446,14 +444,14 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
     }
 
     static void cleanupReplayFileAfterUpload(File replayFile, boolean saveLocal,
-                                             ReplayCaptureResult uploadResult, Throwable uploadFailure) {
+                                             ReplayCaptureResult uploadResult, Throwable uploadFailure,
+                                             Logger logger) {
         if (saveLocal || uploadFailure != null || uploadResult == null
                 || uploadResult.getStatus() != ReplayCaptureStatus.OK) {
             return;
         }
         if (!replayFile.delete()) {
-            java.util.logging.Logger.getLogger("modl-bridge")
-                    .warning("[bridge] Failed to delete replay file " + replayFile.getAbsolutePath());
+            logger.warning("[bridge] Failed to delete replay file " + replayFile.getAbsolutePath());
         }
     }
 

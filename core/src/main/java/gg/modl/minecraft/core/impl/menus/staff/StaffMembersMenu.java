@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -14,11 +15,11 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.SkinTextureCache;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.Getter;
+import lombok.Value;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,39 +36,24 @@ import java.util.stream.Collectors;
 import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMemberEntry> {
-    @Getter
+    @Value
     public static class StaffMemberEntry {
-        private final String id, panelName, role;
-        private final UUID minecraftUuid;
-        private final String minecraftUsername, lastServer;
-        private final Date lastSeen;
-        private final Long totalPlaytimeMs;
-        private final int punishmentsIssuedCount;
-        private final boolean online;
-        private final long sessionDuration;
-
-        public StaffMemberEntry(String id, String panelName, String role, UUID minecraftUuid, String minecraftUsername,
-                                String lastServer, Date lastSeen, Long totalPlaytimeMs, int punishmentsIssuedCount,
-                                boolean online, long sessionDuration) {
-            this.id = id;
-            this.panelName = panelName;
-            this.role = role;
-            this.minecraftUuid = minecraftUuid;
-            this.minecraftUsername = minecraftUsername;
-            this.lastServer = lastServer;
-            this.lastSeen = lastSeen;
-            this.totalPlaytimeMs = totalPlaytimeMs;
-            this.punishmentsIssuedCount = punishmentsIssuedCount;
-            this.online = online;
-            this.sessionDuration = sessionDuration;
-        }
-
+        String id;
+        String panelName;
+        String role;
+        UUID minecraftUuid;
+        String minecraftUsername;
+        String lastServer;
+        Date lastSeen;
+        Long totalPlaytimeMs;
+        int punishmentsIssuedCount;
+        boolean online;
+        long sessionDuration;
     }
 
     private List<StaffMemberEntry> staffMembers = new ArrayList<>();
     private String currentFilter;
     private final List<String> filterOptions = Arrays.asList("Online", "Offline", "All");
-    private final String panelUrl;
     @Getter private CompletableFuture<Void> dataFuture;
 
     public StaffMembersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -78,8 +64,7 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
     public StaffMembersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                             boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction,
                             String filter, List<StaffMemberEntry> existingMembers) {
-        super("Staff Members", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
-        this.panelUrl = panelUrl;
+        super("Staff Members", platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         this.currentFilter = filter;
         activeTab = StaffTab.SETTINGS;
 
@@ -91,7 +76,7 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
     }
 
     private CompletableFuture<Void> fetchStaffMembers() {
-        Cache cache = platform.getCache();
+        Cache cache = PluginServices.cache();
         return httpClient.getStaffList().thenAccept(response -> {
             if (response == null || !response.isSuccess() || response.getStaff() == null) {
                 throw new IllegalStateException("Failed to load staff members");
@@ -124,20 +109,13 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
                         sessionDuration
                 ));
 
-                if (uuid != null && cache != null && cache.getSkinTexture(uuid) == null) {
-                    final UUID staffUuid = uuid;
-                    WebPlayer.get(staffUuid).thenAccept(wp -> {
-                        if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
-                            cache.cacheSkinTexture(staffUuid, wp.getTextureValue());
-                        }
-                    });
-                }
+                SkinTextureCache.ensureCached(uuid);
             }
         });
     }
 
     private List<String> buildLore(StaffMemberEntry entry) {
-        LocaleManager localeManager = platform.getLocaleManager();
+        LocaleManager localeManager = PluginServices.locale();
         Map<String, String> placeholders = buildLorePlaceholders(entry);
 
         return localeManager.getMessageList("menus.staff_members.lore", placeholders);
@@ -213,7 +191,7 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
 
         List<String> lore = buildLore(entry);
 
-        LocaleManager localeManager = platform.getLocaleManager();
+        LocaleManager localeManager = PluginServices.locale();
         String title = localeManager.getMessage("menus.staff_members.title", mapOf(
                 "panel_name", entry.getPanelName() != null ? entry.getPanelName() : "Unknown"
         ));
@@ -224,11 +202,7 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
                 MenuItems.lore(lore)
         );
 
-        if (entry.getMinecraftUuid() != null && platform.getCache() != null) {
-            String cachedTexture = platform.getCache().getSkinTexture(entry.getMinecraftUuid());
-            if (cachedTexture != null)
-                headItem = headItem.texture(cachedTexture);
-        }
+        headItem = SkinTextureCache.applyCached(headItem, entry.getMinecraftUuid());
 
         return headItem;
     }
@@ -242,10 +216,6 @@ public class StaffMembersMenu extends BaseStaffListMenu<StaffMembersMenu.StaffMe
         super.registerActionHandlers();
 
         registerActionHandler("filter", this::handleFilter);
-
-        StaffNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 
     private void handleFilter(Click click) {

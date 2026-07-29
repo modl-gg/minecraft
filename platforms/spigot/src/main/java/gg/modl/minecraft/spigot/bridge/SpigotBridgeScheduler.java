@@ -2,7 +2,7 @@ package gg.modl.minecraft.spigot.bridge;
 
 import gg.modl.minecraft.bridge.BridgeScheduler;
 import gg.modl.minecraft.bridge.BridgeTask;
-import gg.modl.minecraft.spigot.bridge.folia.FoliaSchedulerHelper;
+import gg.modl.minecraft.spigot.bridge.folia.FoliaScheduler;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -17,16 +17,22 @@ import org.bukkit.scheduler.BukkitTask;
 public class SpigotBridgeScheduler implements BridgeScheduler {
     private final JavaPlugin plugin;
     @Getter private final boolean folia;
+    private final FoliaScheduler foliaScheduler;
     private final ScheduledExecutorService delayExecutor;
 
     public SpigotBridgeScheduler(JavaPlugin plugin) {
-        this(plugin, FoliaSchedulerHelper.isFolia(), null);
+        this(plugin, FoliaScheduler.isFolia(), null);
     }
 
     SpigotBridgeScheduler(JavaPlugin plugin, boolean folia, ScheduledExecutorService delayExecutor) {
         this.plugin = plugin;
         this.folia = folia;
-        this.delayExecutor = folia ? delayExecutor != null ? delayExecutor : createDelayExecutor() : null;
+        this.foliaScheduler = new FoliaScheduler(plugin);
+        if (!folia) {
+            this.delayExecutor = null;
+        } else {
+            this.delayExecutor = delayExecutor != null ? delayExecutor : createDelayExecutor();
+        }
     }
 
     private static ScheduledExecutorService createDelayExecutor() {
@@ -38,9 +44,9 @@ public class SpigotBridgeScheduler implements BridgeScheduler {
     }
 
     @Override
-    public void runSync(Runnable task) {
+    public void runOnMainThread(Runnable task) {
         if (folia) {
-            FoliaSchedulerHelper.runGlobal(plugin, task);
+            foliaScheduler.runGlobal(task);
         } else {
             if (Bukkit.isPrimaryThread()) {
                 task.run();
@@ -55,10 +61,10 @@ public class SpigotBridgeScheduler implements BridgeScheduler {
         if (folia) {
             Player player = Bukkit.getPlayer(playerUuid);
             if (player != null && player.isOnline()) {
-                FoliaSchedulerHelper.runForEntity(plugin, player, task);
+                foliaScheduler.runForEntity(player, task);
             }
         } else {
-            runSync(task);
+            runOnMainThread(task);
         }
     }
 
@@ -66,7 +72,7 @@ public class SpigotBridgeScheduler implements BridgeScheduler {
     public void runLater(Runnable task, long delayTicks) {
         if (folia) {
             long delayMs = delayTicks * 50L;
-            delayExecutor.schedule(() -> FoliaSchedulerHelper.runGlobal(plugin, task),
+            delayExecutor.schedule(() -> foliaScheduler.runGlobal(task),
                     delayMs, TimeUnit.MILLISECONDS);
         } else {
             Bukkit.getScheduler().runTaskLater(plugin, task, delayTicks);
@@ -78,7 +84,7 @@ public class SpigotBridgeScheduler implements BridgeScheduler {
         if (folia) {
             Player player = Bukkit.getPlayer(playerUuid);
             if (player != null && player.isOnline()) {
-                FoliaSchedulerHelper.runForEntityLater(plugin, player, task, delayTicks);
+                foliaScheduler.runForEntityLater(player, task, delayTicks);
             }
         } else {
             Bukkit.getScheduler().runTaskLater(plugin, task, delayTicks);
@@ -88,8 +94,8 @@ public class SpigotBridgeScheduler implements BridgeScheduler {
     @Override
     public BridgeTask runTimerAsync(Runnable task, long delay, long period, TimeUnit unit) {
         if (folia) {
-            Object foliaTask = FoliaSchedulerHelper.runAsyncTimer(plugin, task, delay, period, unit);
-            return () -> FoliaSchedulerHelper.cancelFoliaTask(foliaTask);
+            Object foliaTask = foliaScheduler.runAsyncTimer(task, delay, period, unit);
+            return () -> foliaScheduler.cancelFoliaTask(foliaTask);
         } else {
             long delayTicks = unit.toSeconds(delay) * 20L;
             long periodTicks = unit.toSeconds(period) * 20L;

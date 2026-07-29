@@ -10,17 +10,10 @@ import gg.modl.proto.modl.v1.MinecraftTicketListItem;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Maps ticket-domain DTOs to/from their proto V3 counterparts. Inverse of the backend
- * {@code MinecraftTicketProtoMapper} (domain&rarr;proto requests, proto&rarr;domain responses).
- * Report responses reuse {@link PlayerProtoMapper#toReportsResponse}.
- */
 public final class TicketProtoMapper {
 
     private TicketProtoMapper() {
     }
-
-    // ---- Requests (domain -> proto) ----
 
     public static gg.modl.proto.modl.v1.MinecraftCreateTicketRequest toProto(CreateTicketRequest request) {
         gg.modl.proto.modl.v1.MinecraftCreateTicketRequest.Builder builder =
@@ -73,14 +66,9 @@ public final class TicketProtoMapper {
         return builder.build();
     }
 
-    // ---- Responses (proto -> domain) ----
-
     public static CreateTicketResponse toCreateTicketResponse(gg.modl.proto.modl.v1.MinecraftCreateTicketResponse proto) {
-        CreateTicketResponse response = new CreateTicketResponse();
-        response.setTicketId(ProtoConversions.emptyToNull(proto.getTicketId()));
-        response.setMessage(proto.getMessage());
-        response.setSuccess(proto.getSuccess());
-        return response;
+        return new CreateTicketResponse(ProtoConversions.emptyToNull(proto.getTicketId()),
+            proto.getMessage(), null, proto.getSuccess());
     }
 
     public static ClaimTicketResponse toClaimTicketResponse(gg.modl.proto.modl.v1.ClaimTicketResponse proto) {
@@ -99,22 +87,22 @@ public final class TicketProtoMapper {
     }
 
     private static TicketsResponse.Ticket toTicket(MinecraftTicketListItem proto) {
-        TicketsResponse.Ticket ticket = new TicketsResponse.Ticket();
-        ticket.setId(proto.getId());
-        ticket.setType(proto.getType());
-        ticket.setCategory(proto.getCategory());
-        ticket.setSubject(proto.getSubject());
-        ticket.setStatus(proto.getStatus());
-        ticket.setPlayerName(proto.getPlayerName());
-        ticket.setPlayerUuid(proto.getPlayerUuid());
-        ticket.setPriority(proto.getPriority());
-        ticket.setFirstReplyContent(proto.hasFirstReplyContent() ? proto.getFirstReplyContent() : null);
-        ticket.setAssignedTo(new ArrayList<>(proto.getAssignedToList()));
-        ticket.setCreatedAt(ProtoConversions.dateFromMillis(proto.getCreatedAt()));
-        ticket.setUpdatedAt(proto.hasUpdatedAt() ? ProtoConversions.dateFromMillis(proto.getUpdatedAt()) : null);
-        ticket.setHasStaffResponse(proto.getHasStaffResponse());
-        ticket.setLocked(proto.getLocked());
-        ticket.setReplyCount(proto.getReplyCount());
-        return ticket;
+        return TicketsResponse.Ticket.builder()
+            .id(proto.getId())
+            .type(proto.getType())
+            .category(proto.getCategory())
+            .subject(proto.getSubject())
+            .status(proto.getStatus())
+            .playerName(proto.getPlayerName())
+            .playerUuid(proto.getPlayerUuid())
+            .priority(proto.getPriority())
+            .firstReplyContent(proto.hasFirstReplyContent() ? proto.getFirstReplyContent() : null)
+            .assignedTo(new ArrayList<>(proto.getAssignedToList()))
+            .createdAt(ProtoConversions.dateFromMillis(proto.getCreatedAt()))
+            .updatedAt(proto.hasUpdatedAt() ? ProtoConversions.dateFromMillis(proto.getUpdatedAt()) : null)
+            .hasStaffResponse(proto.getHasStaffResponse())
+            .locked(proto.getLocked())
+            .replyCount(proto.getReplyCount())
+            .build();
     }
 }

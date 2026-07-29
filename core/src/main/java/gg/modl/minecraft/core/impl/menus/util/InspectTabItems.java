@@ -6,6 +6,7 @@ import dev.simplix.cirrus.text.CirrusChatElement;
 import gg.modl.minecraft.api.Account;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public final class InspectTabItems {
@@ -20,51 +21,7 @@ public final class InspectTabItems {
     }
 
     public static Map<Integer, CirrusItem> createItems(Account targetAccount, String targetName, int punishmentCount, int noteCount) {
-        Map<Integer, CirrusItem> items = new HashMap<>();
-
-        items.put(MenuSlots.INSPECT_NOTES, CirrusItem.of(
-                CirrusItemType.PAPER,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Notes"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "View and edit " + targetName + "'s staff notes",
-                        MenuItems.COLOR_GRAY + "(" + noteCount + " notes)"
-                )
-        ).actionHandler("openNotes"));
-
-        items.put(MenuSlots.INSPECT_ALTS, CirrusItem.of(
-                CirrusItemType.VINE,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Alts"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "View " + targetName + "'s known alternate accounts"
-                )
-        ).actionHandler("openAlts"));
-
-        items.put(MenuSlots.INSPECT_HISTORY, CirrusItem.of(
-                CirrusItemType.WRITABLE_BOOK,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "History"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "View " + targetName + "'s past punishments",
-                        MenuItems.COLOR_GRAY + "(" + punishmentCount + " punishments)"
-                )
-        ).actionHandler("openHistory"));
-
-        items.put(MenuSlots.INSPECT_REPORTS, CirrusItem.of(
-                CirrusItemType.ENDER_EYE,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Reports"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "View and handle reports against " + targetName
-                )
-        ).actionHandler("openReports"));
-
-        items.put(MenuSlots.INSPECT_PUNISH, CirrusItem.of(
-                CirrusItemType.BOW,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + "Punish"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Issue a new punishment against " + targetName
-                )
-        ).actionHandler("openPunish"));
-
-        return items;
+        return buildTabs(false, targetName, punishmentCount, noteCount);
     }
 
     public static Map<Integer, CirrusItem> createCompactItems(Account targetAccount, String targetName) {
@@ -72,48 +29,51 @@ public final class InspectTabItems {
     }
 
     public static Map<Integer, CirrusItem> createCompactItems(Account targetAccount, String targetName, int punishmentCount, int noteCount) {
+        return buildTabs(true, targetName, punishmentCount, noteCount);
+    }
+
+    private static Map<Integer, CirrusItem> buildTabs(boolean compact, String targetName, int punishmentCount, int noteCount) {
         Map<Integer, CirrusItem> items = new HashMap<>();
 
-        items.put(MenuSlots.COMPACT_INSPECT_NOTES, CirrusItem.of(
-                CirrusItemType.PAPER,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Notes"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Staff notes (" + noteCount + ")"
-                )
-        ).actionHandler("openNotes"));
+        put(items, compact ? MenuSlots.COMPACT_INSPECT_NOTES : MenuSlots.INSPECT_NOTES,
+                CirrusItemType.PAPER, MenuItems.COLOR_GOLD + "Notes", "openNotes",
+                compact
+                        ? MenuItems.lore(MenuItems.COLOR_GRAY + "Staff notes (" + noteCount + ")")
+                        : MenuItems.lore(
+                                MenuItems.COLOR_GRAY + "View and edit " + targetName + "'s staff notes",
+                                MenuItems.COLOR_GRAY + "(" + noteCount + " notes)"));
 
-        items.put(MenuSlots.COMPACT_INSPECT_ALTS, CirrusItem.of(
-                CirrusItemType.VINE,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Alts"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Known alternate accounts"
-                )
-        ).actionHandler("openAlts"));
+        put(items, compact ? MenuSlots.COMPACT_INSPECT_ALTS : MenuSlots.INSPECT_ALTS,
+                CirrusItemType.VINE, MenuItems.COLOR_GOLD + "Alts", "openAlts",
+                compact
+                        ? MenuItems.lore(MenuItems.COLOR_GRAY + "Known alternate accounts")
+                        : MenuItems.lore(MenuItems.COLOR_GRAY + "View " + targetName + "'s known alternate accounts"));
 
-        items.put(MenuSlots.COMPACT_INSPECT_HISTORY, CirrusItem.of(
-                CirrusItemType.WRITABLE_BOOK,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "History"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Punishments (" + punishmentCount + ")"
-                )
-        ).actionHandler("openHistory"));
+        put(items, compact ? MenuSlots.COMPACT_INSPECT_HISTORY : MenuSlots.INSPECT_HISTORY,
+                CirrusItemType.WRITABLE_BOOK, MenuItems.COLOR_GOLD + "History", "openHistory",
+                compact
+                        ? MenuItems.lore(MenuItems.COLOR_GRAY + "Punishments (" + punishmentCount + ")")
+                        : MenuItems.lore(
+                                MenuItems.COLOR_GRAY + "View " + targetName + "'s past punishments",
+                                MenuItems.COLOR_GRAY + "(" + punishmentCount + " punishments)"));
 
-        items.put(MenuSlots.COMPACT_INSPECT_REPORTS, CirrusItem.of(
-                CirrusItemType.ENDER_EYE,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_GOLD + "Reports"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Reports against " + targetName
-                )
-        ).actionHandler("openReports"));
+        put(items, compact ? MenuSlots.COMPACT_INSPECT_REPORTS : MenuSlots.INSPECT_REPORTS,
+                CirrusItemType.ENDER_EYE, MenuItems.COLOR_GOLD + "Reports", "openReports",
+                compact
+                        ? MenuItems.lore(MenuItems.COLOR_GRAY + "Reports against " + targetName)
+                        : MenuItems.lore(MenuItems.COLOR_GRAY + "View and handle reports against " + targetName));
 
-        items.put(MenuSlots.COMPACT_INSPECT_PUNISH, CirrusItem.of(
-                CirrusItemType.BOW,
-                CirrusChatElement.ofLegacyText(MenuItems.COLOR_RED + "Punish"),
-                MenuItems.lore(
-                        MenuItems.COLOR_GRAY + "Issue a new punishment"
-                )
-        ).actionHandler("openPunish"));
+        put(items, compact ? MenuSlots.COMPACT_INSPECT_PUNISH : MenuSlots.INSPECT_PUNISH,
+                CirrusItemType.BOW, MenuItems.COLOR_RED + "Punish", "openPunish",
+                compact
+                        ? MenuItems.lore(MenuItems.COLOR_GRAY + "Issue a new punishment")
+                        : MenuItems.lore(MenuItems.COLOR_GRAY + "Issue a new punishment against " + targetName));
 
         return items;
+    }
+
+    private static void put(Map<Integer, CirrusItem> items, int slot, CirrusItemType type, String title,
+                            String actionHandler, List<CirrusChatElement> lore) {
+        items.put(slot, CirrusItem.of(type, CirrusChatElement.ofLegacyText(title), lore).actionHandler(actionHandler));
     }
 }

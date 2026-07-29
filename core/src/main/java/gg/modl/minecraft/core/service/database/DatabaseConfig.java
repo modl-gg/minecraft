@@ -1,18 +1,16 @@
 package gg.modl.minecraft.core.service.database;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import lombok.Value;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+@Value
 public class DatabaseConfig {
-    private String host;
-    private String database, username, password;
-    private DatabaseType type;
-    private String tablePrefix;
-    private int port;
+    String host;
+    String database, username, password;
+    DatabaseType type;
+    String tablePrefix;
+    int port;
 
     @RequiredArgsConstructor
     public enum DatabaseType {
@@ -21,7 +19,7 @@ public class DatabaseConfig {
         POSTGRESQL("postgresql", "org.postgresql.Driver", "jdbc:postgresql://%s:%d/%s"),
         H2("h2", "org.h2.Driver", "jdbc:h2:file:./%s");
 
-        private final String name;
+        private final String configKey;
         @Getter private final String driverClass;
         private final String urlFormat;
 
@@ -32,7 +30,7 @@ public class DatabaseConfig {
 
         public static DatabaseType fromString(String type) {
             for (DatabaseType dbType : values()) {
-                if (dbType.name.equalsIgnoreCase(type)) return dbType;
+                if (dbType.configKey.equalsIgnoreCase(type)) return dbType;
             }
             throw new IllegalArgumentException("Unknown database type: " + type);
         }

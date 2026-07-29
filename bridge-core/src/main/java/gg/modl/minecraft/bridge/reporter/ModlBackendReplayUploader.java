@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -138,7 +139,7 @@ public class ModlBackendReplayUploader implements AutoCloseable {
         }
     }
 
-    private InitResponse initUpload(File file, String mcVersion, UUID targetUuid, String targetName) throws Exception {
+    private InitResponse initUpload(File file, String mcVersion, UUID targetUuid, String targetName) throws IOException {
         JsonObject body = new JsonObject();
         body.addProperty("mcVersion", mcVersion);
         body.addProperty("fileSize", file.length());
@@ -182,13 +183,7 @@ public class ModlBackendReplayUploader implements AutoCloseable {
             Map<String, String> requiredHeaders = new LinkedHashMap<>();
             if (json.has("requiredHeaders") && json.get("requiredHeaders").isJsonObject()) {
                 for (Map.Entry<String, JsonElement> entry : json.getAsJsonObject("requiredHeaders").entrySet()) {
-                    try {
-                        if (entry.getValue() != null && entry.getValue().isJsonPrimitive()) {
-                            requiredHeaders.put(entry.getKey(), entry.getValue().getAsString());
-                        }
-                    } catch (RuntimeException ignored) {
-                        // Skip malformed header entries rather than aborting upload-init.
-                    }
+                    putHeaderIfPrimitive(requiredHeaders, entry);
                 }
             }
 
@@ -203,7 +198,7 @@ public class ModlBackendReplayUploader implements AutoCloseable {
         }
     }
 
-    private void uploadToStorage(File file, InitResponse init) throws Exception {
+    private void uploadToStorage(File file, InitResponse init) throws IOException {
         URL uploadUrl = parseTrustedHttpUri(init.uploadUrl, "presigned upload URL", true).toURL();
         HttpURLConnection connection = (HttpURLConnection) uploadUrl.openConnection();
         try {
@@ -215,20 +210,7 @@ public class ModlBackendReplayUploader implements AutoCloseable {
             connection.setFixedLengthStreamingMode(file.length());
             connection.setDoOutput(true);
 
-            // Apply backend-signed headers verbatim so they match the presigned signature.
-            boolean contentTypeSupplied = false;
-            if (init.requiredHeaders != null) {
-                for (Map.Entry<String, String> header : init.requiredHeaders.entrySet()) {
-                    String name = header.getKey();
-                    String value = header.getValue();
-                    if (name == null || value == null || value.trim().isEmpty()) continue;
-                    // Content-Length is owned by setFixedLengthStreamingMode; never override it.
-                    if ("Content-Length".equalsIgnoreCase(name)) continue;
-                    if ("Content-Type".equalsIgnoreCase(name)) contentTypeSupplied = true;
-                    connection.setRequestProperty(name, value);
-                }
-            }
-            if (!contentTypeSupplied) {
+            if (!applySignedHeaders(connection, init.requiredHeaders)) {
                 connection.setRequestProperty("Content-Type", "application/octet-stream");
             }
             connection.setRequestProperty("User-Agent", USER_AGENT);
@@ -247,7 +229,7 @@ public class ModlBackendReplayUploader implements AutoCloseable {
         }
     }
 
-    private void confirmUpload(String replayId) throws Exception {
+    private void confirmUpload(String replayId) throws IOException {
         HttpURLConnection connection = openBackendConnection("/v1/minecraft/replays/confirm/" + replayId);
         try {
             connection.setRequestMethod("POST");
@@ -291,9 +273,45 @@ public class ModlBackendReplayUploader implements AutoCloseable {
         }
     }
 
-    private HttpURLConnection openBackendConnection(String path) throws Exception {
+    private HttpURLConnection openBackendConnection(String path) throws IOException {
         URL url = URI.create(backendUrl + path).toURL();
         return (HttpURLConnection) url.openConnection();
+    }
+
+    private static void putHeaderIfPrimitive(Map<String, String> headers, Map.Entry<String, JsonElement> entry) {
+        JsonElement value = entry.getValue();
+        if (value == null || !value.isJsonPrimitive()) {
+            return;
+        }
+        try {
+            headers.put(entry.getKey(), value.getAsString());
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    private static boolean applySignedHeaders(HttpURLConnection connection, Map<String, String> signedHeaders) {
+        boolean contentTypeSupplied = false;
+        if (signedHeaders != null) {
+            for (Map.Entry<String, String> header : signedHeaders.entrySet()) {
+                String name = header.getKey();
+                String value = header.getValue();
+                if (name == null || value == null || value.trim().isEmpty()) {
+                    continue;
+                }
+                if (isFixedLengthOwnedHeader(name)) {
+                    continue;
+                }
+                if ("Content-Type".equalsIgnoreCase(name)) {
+                    contentTypeSupplied = true;
+                }
+                connection.setRequestProperty(name, value);
+            }
+        }
+        return contentTypeSupplied;
+    }
+
+    private static boolean isFixedLengthOwnedHeader(String name) {
+        return "Content-Length".equalsIgnoreCase(name);
     }
 
     private static URI parseTrustedHttpUri(String rawUrl, String label, boolean allowQuery) {

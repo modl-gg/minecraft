@@ -38,13 +38,12 @@ public final class CircuitBreaker {
 
         if (currentState == State.OPEN) {
             if (currentTime >= nextRetryTime.get() && state.compareAndSet(State.OPEN, State.HALF_OPEN)) {
-                probeInFlight.set(true);
-                return probeInFlight.compareAndSet(true, false);
+                return probeInFlight.compareAndSet(false, true);
             }
             return false;
         }
         if (currentState == State.HALF_OPEN) {
-            return probeInFlight.compareAndSet(true, false);
+            return probeInFlight.compareAndSet(false, true);
         }
         return true;
     }
@@ -74,6 +73,13 @@ public final class CircuitBreaker {
         } else if (currentState == State.CLOSED && failures >= failureThreshold) {
             if (state.compareAndSet(State.CLOSED, State.OPEN)) nextRetryTime.set(currentTime + timeoutMillis);
         }
+    }
+
+    public void releaseProbe() {
+        if (state.compareAndSet(State.HALF_OPEN, State.OPEN)) {
+            nextRetryTime.set(System.currentTimeMillis() + retryTimeoutMillis);
+        }
+        probeInFlight.set(false);
     }
 
     public void reset() {

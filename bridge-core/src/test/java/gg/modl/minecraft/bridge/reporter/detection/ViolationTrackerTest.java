@@ -23,7 +23,7 @@ class ViolationTrackerTest {
         UUID playerUuid = UUID.randomUUID();
         ConcurrentHashMap<UUID, Deque<ViolationRecord>> records = getRecords(tracker);
         Deque<ViolationRecord> expiredRecords = new ArrayDeque<>();
-        expiredRecords.add(new ExpiredViolationRecord());
+        expiredRecords.add(expiredViolation());
         records.put(playerUuid, expiredRecords);
 
         invokeCleanup(tracker);
@@ -33,11 +33,18 @@ class ViolationTrackerTest {
 
     @Test
     void cleanupDoesNotDropViolationAddedToPlayerWithExpiredRecords() throws Exception {
-        PausingViolationTracker tracker = new PausingViolationTracker();
+        ViolationTracker tracker = new ViolationTracker();
+        CountDownLatch addPaused = new CountDownLatch(1);
+        CountDownLatch continueAdd = new CountDownLatch(1);
+        tracker.setBeforeAddHook((uuid, playerRecords) -> {
+            addPaused.countDown();
+            await(continueAdd);
+        });
+
         UUID playerUuid = UUID.randomUUID();
         ConcurrentHashMap<UUID, Deque<ViolationRecord>> records = getRecords(tracker);
         Deque<ViolationRecord> expiredRecords = new ArrayDeque<>();
-        expiredRecords.add(new ExpiredViolationRecord());
+        expiredRecords.add(expiredViolation());
         records.put(playerUuid, expiredRecords);
 
         Thread addViolation = new Thread(
@@ -45,13 +52,13 @@ class ViolationTrackerTest {
                 "add-violation");
 
         addViolation.start();
-        tracker.waitUntilAddPaused();
+        await(addPaused);
 
         Thread cleanup = new Thread(() -> invokeCleanupUnchecked(tracker), "cleanup-violations");
         cleanup.start();
         waitUntilCleanupCompletedOrBlocked(cleanup);
 
-        tracker.continueAdd();
+        continueAdd.countDown();
 
         addViolation.join(TimeUnit.SECONDS.toMillis(1));
         cleanup.join(TimeUnit.SECONDS.toMillis(1));
@@ -61,6 +68,10 @@ class ViolationTrackerTest {
         List<ViolationRecord> remainingRecords = tracker.getRecords(playerUuid);
         assertEquals(1, remainingRecords.size());
         assertEquals("fresh", remainingRecords.get(0).getVerbose());
+    }
+
+    private static ViolationRecord expiredViolation() {
+        return new ViolationRecord(DetectionSource.GRIM, "Speed", "expired", 0L);
     }
 
     @SuppressWarnings("unchecked")
@@ -94,44 +105,14 @@ class ViolationTrackerTest {
         }
     }
 
-    private static class PausingViolationTracker extends ViolationTracker {
-        private final CountDownLatch addPaused = new CountDownLatch(1);
-        private final CountDownLatch continueAdd = new CountDownLatch(1);
-
-        @Override
-        void beforeViolationRecordAddedForTest(UUID uuid, Deque<ViolationRecord> playerRecords) {
-            addPaused.countDown();
-            await(continueAdd);
-        }
-
-        private void waitUntilAddPaused() {
-            await(addPaused);
-        }
-
-        private void continueAdd() {
-            continueAdd.countDown();
-        }
-
-        private void await(CountDownLatch latch) {
-            try {
-                if (!latch.await(1, TimeUnit.SECONDS)) {
-                    throw new AssertionError("Timed out waiting for concurrency checkpoint");
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new AssertionError("Interrupted while waiting for concurrency checkpoint", e);
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(1, TimeUnit.SECONDS)) {
+                throw new AssertionError("Timed out waiting for concurrency checkpoint");
             }
-        }
-    }
-
-    private static class ExpiredViolationRecord extends ViolationRecord {
-        private ExpiredViolationRecord() {
-            super(DetectionSource.GRIM, "Speed", "expired");
-        }
-
-        @Override
-        public long getTimestamp() {
-            return 0L;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("Interrupted while waiting for concurrency checkpoint", e);
         }
     }
 }

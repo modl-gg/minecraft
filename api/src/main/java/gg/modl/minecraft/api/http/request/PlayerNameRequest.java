@@ -1,8 +1,8 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.Data;
+import lombok.Value;
 
-@Data
+@Value
 public class PlayerNameRequest {
-    private final String minecraftUsername;
+    String minecraftUsername;
 }

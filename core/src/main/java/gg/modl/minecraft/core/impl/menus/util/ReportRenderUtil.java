@@ -10,6 +10,7 @@ import gg.modl.minecraft.api.http.response.ReportsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.StringUtil;
+import lombok.Value;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
@@ -28,61 +30,37 @@ public final class ReportRenderUtil {
 
     private ReportRenderUtil() {}
 
-    public static final class LinkableReport {
-        private final String id;
-        private final String type;
-        private final String reporterName;
-        private final String content;
-        private final Date date;
-
-        public LinkableReport(String id, String type, String reporterName, String content, Date date) {
-            this.id = id;
-            this.type = type;
-            this.reporterName = reporterName;
-            this.content = content;
-            this.date = date;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public String getType() {
-            return type;
-        }
-
-        public String getReporterName() {
-            return reporterName;
-        }
-
-        public String getContent() {
-            return content;
-        }
-
-        public Date getDate() {
-            return date;
-        }
+    @Value
+    public static class LinkableReport {
+        String id;
+        String type;
+        String reporterName;
+        String content;
+        Date date;
     }
 
-    public static List<LinkableReport> loadLinkableReports(ModlHttpClient httpClient, UUID targetUuid) {
-        List<LinkableReport> reports = new ArrayList<>();
-        try {
-            httpClient.getPlayerReports(targetUuid, "Open").thenAccept(response -> {
-                if (response.isSuccess() && response.getReports() != null) {
-                    for (ReportsResponse.Report report : response.getReports()) {
-                        reports.add(new LinkableReport(
-                                report.getId(),
-                                normalizeReportType(report),
-                                report.getReporterName(),
-                                getReportContent(report),
-                                report.getCreatedAt()
-                        ));
-                    }
+    public static boolean matchesStatusFilter(String statusFilter, String status) {
+        boolean wantOpen = "open".equalsIgnoreCase(statusFilter);
+        boolean isClosed = "closed".equalsIgnoreCase(status);
+        return wantOpen != isClosed;
+    }
+
+    public static CompletableFuture<List<LinkableReport>> loadLinkableReports(ModlHttpClient httpClient, UUID targetUuid) {
+        return httpClient.getPlayerReports(targetUuid, "Open").thenApply(response -> {
+            List<LinkableReport> reports = new ArrayList<>();
+            if (response.isSuccess() && response.getReports() != null) {
+                for (ReportsResponse.Report report : response.getReports()) {
+                    reports.add(new LinkableReport(
+                            report.getId(),
+                            normalizeReportType(report),
+                            report.getReporterName(),
+                            getReportContent(report),
+                            report.getCreatedAt()
+                    ));
                 }
-            }).join();
-        } catch (Exception ignored) {
-        }
-        return reports;
+            }
+            return reports;
+        }).exceptionally(e -> new ArrayList<>());
     }
 
     public static Collection<LinkableReport> elementsOrEmptyReports(List<LinkableReport> reports, String currentFilter) {
@@ -216,11 +194,7 @@ public final class ReportRenderUtil {
                 skullLines.get(0),
                 skullLines.subList(1, skullLines.size())
         );
-        if (platform.getCache() != null) {
-            String texture = platform.getCache().getSkinTexture(target.getUuid());
-            if (texture != null) head = head.texture(texture);
-        }
-        return head;
+        return SkinTextureCache.applyCached(head, target.getUuid());
     }
 
     public static String getPlayerName(Account account) {
@@ -251,5 +225,30 @@ public final class ReportRenderUtil {
             }
         }
         return "Unknown";
+    }
+
+    public static String extractReportDetails(String content, String subject) {
+        String first = cleanReportLine(content != null ? content : subject);
+        if ("Automated anticheat report.".equals(first) && content != null) {
+            String third = nthReportLine(content, 3);
+            if (third != null) return third;
+        }
+        return first;
+    }
+
+    private static String nthReportLine(String text, int n) {
+        String[] lines = text.split("\n");
+        for (int i = 0, found = 0; i < lines.length; i++) {
+            String trimmed = lines[i].trim();
+            if (!trimmed.isEmpty() && ++found == n) return cleanReportLine(trimmed);
+        }
+        return null;
+    }
+
+    private static String cleanReportLine(String text) {
+        if (text == null || text.isEmpty()) return "";
+        int idx = text.indexOf('\n');
+        String line = idx >= 0 ? text.substring(0, idx).trim() : text.trim();
+        return line.replace("**", "").replace("__", "").replace("~~", "");
     }
 }

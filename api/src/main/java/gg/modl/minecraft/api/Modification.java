@@ -13,13 +13,8 @@ public final class Modification {
     private @SerializedName("type") Type type;
     private @SerializedName("issuerName") String issuer;
     private @SerializedName("date") Date issued;
-    private @SerializedName("effectiveDuration") Long effectiveDuration;
+    private @Nullable @SerializedName("effectiveDuration") Long effectiveDuration;
 
-    public @Nullable Long getEffectiveDuration() {
-        return effectiveDuration;
-    }
-
-    // Mirrors the backend authority PunishmentModificationType (name() is the wire encoding); must stay in sync.
     public enum Type {
         MANUAL_PARDON,
         APPEAL_ACCEPT,

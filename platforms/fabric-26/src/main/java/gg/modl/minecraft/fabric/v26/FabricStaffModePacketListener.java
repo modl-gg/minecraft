@@ -9,22 +9,17 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientIn
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerDigging;
 import gg.modl.minecraft.fabric.v26.handler.FabricFreezeHandler;
 import gg.modl.minecraft.fabric.v26.handler.FabricStaffModeHandler;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
+@RequiredArgsConstructor
 public class FabricStaffModePacketListener extends PacketListenerAbstract {
-    private static final Logger log = LoggerFactory.getLogger(FabricStaffModePacketListener.class);
-
     private final FabricStaffModeHandler staffModeHandler;
     private final FabricFreezeHandler freezeHandler;
-
-    public FabricStaffModePacketListener(FabricStaffModeHandler staffModeHandler, FabricFreezeHandler freezeHandler) {
-        this.staffModeHandler = staffModeHandler;
-        this.freezeHandler = freezeHandler;
-    }
 
     @Override
     public void onPacketReceive(PacketReceiveEvent event) {

@@ -2,9 +2,9 @@ package gg.modl.minecraft.api;
 
 import com.google.gson.annotations.SerializedName;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -12,7 +12,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter @Builder @NoArgsConstructor @AllArgsConstructor
 public class Punishment {
     private static final String UNKNOWN = "Unknown", DEFAULT_REASON = "No reason provided",
             STATUS_UNSTARTED = "Unstarted", DATA_KEY_ACTIVE = "active", DATA_KEY_STATUS = "status",
@@ -58,21 +58,23 @@ public class Punishment {
     }
 
     public boolean isBanType() {
-        if (PunishmentTypeRegistry.isInitialized()) return PunishmentTypeRegistry.isBan(getTypeOrdinal());
+        PunishmentTypeClassifier classifier = PunishmentTypeClassifiers.active();
+        if (classifier.isPopulated()) return classifier.isBan(getTypeOrdinal());
         int o = getTypeOrdinal();
-        if (o >= PunishmentTypeRegistry.ORDINAL_BAN && o <= PunishmentTypeRegistry.ORDINAL_BLACKLIST) return true;
+        if (o >= PunishmentTypeClassifier.ORDINAL_BAN && o <= PunishmentTypeClassifier.ORDINAL_BLACKLIST) return true;
         return typeNameContains("ban") || type == Type.BAN || type == Type.SECURITY_BAN
                 || type == Type.LINKED_BAN || type == Type.BLACKLIST;
     }
 
     public boolean isMuteType() {
-        if (PunishmentTypeRegistry.isInitialized()) return PunishmentTypeRegistry.isMute(getTypeOrdinal());
-        if (getTypeOrdinal() == PunishmentTypeRegistry.ORDINAL_MUTE) return true;
+        PunishmentTypeClassifier classifier = PunishmentTypeClassifiers.active();
+        if (classifier.isPopulated()) return classifier.isMute(getTypeOrdinal());
+        if (getTypeOrdinal() == PunishmentTypeClassifier.ORDINAL_MUTE) return true;
         return typeNameContains("mute") || type == Type.MUTE;
     }
 
     public boolean isKickType() {
-        return PunishmentTypeRegistry.isKick(getTypeOrdinal()) || type == Type.KICK;
+        return PunishmentTypeClassifiers.active().isKick(getTypeOrdinal()) || type == Type.KICK;
     }
 
     public String getTypeCategory() {

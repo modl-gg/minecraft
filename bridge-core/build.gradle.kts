@@ -1,16 +1,17 @@
 dependencies {
     api(project(":core"))
     api(project(":api"))
-    compileOnly("org.yaml:snakeyaml:${property("snakeyaml.version")}")
-    compileOnly("net.kyori:adventure-text-minimessage:${property("adventure.version")}")
-    compileOnly("net.kyori:adventure-text-serializer-legacy:${property("adventure.version")}")
-    compileOnly("io.netty:netty-all:${property("netty.version")}")
+    compileOnly(libs.snakeyaml)
+    compileOnly(libs.adventure.minimessage)
+    compileOnly(libs.adventure.serializer.legacy)
+    compileOnly(libs.netty.all)
 
-    testImplementation(platform("org.junit:junit-bom:${property("junit.bom.version")}"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("com.google.code.gson:gson:${property("gson.version")}")
-    testImplementation("org.yaml:snakeyaml:${property("snakeyaml.version")}")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.gson)
+    testImplementation(libs.snakeyaml)
+    testImplementation(libs.netty.all)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 tasks.withType<Test>().configureEach {

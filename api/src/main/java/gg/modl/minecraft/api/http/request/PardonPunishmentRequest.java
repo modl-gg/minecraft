@@ -1,12 +1,12 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.Data;
+import lombok.Value;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-@Data
+@Value
 public class PardonPunishmentRequest {
-    private transient @NotNull final String punishmentId;
-    private @Nullable final String issuerName, issuerId;
-    private @Nullable final String reason, expectedType;
+    transient @NotNull String punishmentId;
+    @Nullable String issuerName, issuerId;
+    @Nullable String reason, expectedType;
 }

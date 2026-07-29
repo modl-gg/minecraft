@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core;
 
 import gg.modl.minecraft.core.service.database.DatabaseConfig;
+import gg.modl.minecraft.core.support.RecordingPluginLogger;
 import gg.modl.minecraft.core.util.PluginLogger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -19,26 +20,22 @@ class PluginLoaderDatabaseConfigTest {
     @TempDir
     Path tempDir;
 
-    private final PluginLogger logger = new PluginLogger() {
-        @Override public void info(String message) {}
-        @Override public void warning(String message) {}
-        @Override public void severe(String message) {}
-    };
+    private final PluginLogger logger = new RecordingPluginLogger();
 
     @Test
     void loadDatabaseConfig_rejectsSentinelPlaceholders() {
         Map<String, Object> database = new LinkedHashMap<>();
-        database.put("host", PluginLoader.LITEBANS_HOST_PLACEHOLDER);
-        database.put("username", PluginLoader.LITEBANS_USERNAME_PLACEHOLDER);
-        database.put("password", PluginLoader.LITEBANS_PASSWORD_PLACEHOLDER);
-        database.put("database", PluginLoader.LITEBANS_DATABASE_PLACEHOLDER);
+        database.put("host", PluginConfiguration.LITEBANS_HOST_PLACEHOLDER);
+        database.put("username", PluginConfiguration.LITEBANS_USERNAME_PLACEHOLDER);
+        database.put("password", PluginConfiguration.LITEBANS_PASSWORD_PLACEHOLDER);
+        database.put("database", PluginConfiguration.LITEBANS_DATABASE_PLACEHOLDER);
 
-        assertNull(PluginLoader.loadDatabaseConfig(buildConfig(database), tempDir, logger));
+        assertNull(PluginConfiguration.loadDatabaseConfig(buildConfig(database), tempDir, logger));
     }
 
     @Test
     void loadDatabaseConfig_rejectsMissingMigrationBlock() {
-        assertNull(PluginLoader.loadDatabaseConfig(new HashMap<>(), tempDir, logger));
+        assertNull(PluginConfiguration.loadDatabaseConfig(new HashMap<>(), tempDir, logger));
     }
 
     @Test
@@ -46,17 +43,17 @@ class PluginLoaderDatabaseConfigTest {
         Map<String, Object> withoutHost = new LinkedHashMap<>();
         withoutHost.put("username", "real-user");
         withoutHost.put("password", "real-pass");
-        assertNull(PluginLoader.loadDatabaseConfig(buildConfig(withoutHost), tempDir, logger));
+        assertNull(PluginConfiguration.loadDatabaseConfig(buildConfig(withoutHost), tempDir, logger));
 
         Map<String, Object> withoutUsername = new LinkedHashMap<>();
         withoutUsername.put("host", "db.example.com");
         withoutUsername.put("password", "real-pass");
-        assertNull(PluginLoader.loadDatabaseConfig(buildConfig(withoutUsername), tempDir, logger));
+        assertNull(PluginConfiguration.loadDatabaseConfig(buildConfig(withoutUsername), tempDir, logger));
 
         Map<String, Object> withoutPassword = new LinkedHashMap<>();
         withoutPassword.put("host", "db.example.com");
         withoutPassword.put("username", "real-user");
-        assertNull(PluginLoader.loadDatabaseConfig(buildConfig(withoutPassword), tempDir, logger));
+        assertNull(PluginConfiguration.loadDatabaseConfig(buildConfig(withoutPassword), tempDir, logger));
     }
 
     @Test
@@ -70,7 +67,7 @@ class PluginLoaderDatabaseConfigTest {
         database.put("port", 3307);
         database.put("table_prefix", "lb_");
 
-        DatabaseConfig config = PluginLoader.loadDatabaseConfig(buildConfig(database), tempDir, logger);
+        DatabaseConfig config = PluginConfiguration.loadDatabaseConfig(buildConfig(database), tempDir, logger);
 
         assertNotNull(config);
         assertEquals("db.example.com", config.getHost());

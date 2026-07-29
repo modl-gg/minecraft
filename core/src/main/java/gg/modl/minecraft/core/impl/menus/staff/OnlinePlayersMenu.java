@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.CirrusClickType;
@@ -14,15 +15,16 @@ import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.inspect.InspectMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
+import gg.modl.minecraft.core.impl.menus.util.SkinTextureCache;
+import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.util.Permissions;
-import gg.modl.minecraft.core.util.StaffCommandUtil;
-import gg.modl.minecraft.core.util.StaffCommandUtil.StaffDisplay;
-import gg.modl.minecraft.core.util.WebPlayer;
+import gg.modl.minecraft.core.staff.StaffCommandUtil;
+import gg.modl.minecraft.core.staff.StaffCommandUtil.StaffDisplay;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -52,13 +54,14 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
         }
     }
 
+    @Getter
     public static class OnlinePlayer {
-        @Getter private final UUID uuid;
-        @Getter private final String name;
+        private final UUID uuid;
+        private final String name;
         private final long sessionStartTime;
-        @Getter private final long totalPlaytime;
-        @Getter private final int punishmentCount;
-        @Getter private List<ReportSummary> recentReports = new ArrayList<>();
+        private final long totalPlaytime;
+        private final int punishmentCount;
+        private List<ReportSummary> recentReports = new ArrayList<>();
 
         public OnlinePlayer(UUID uuid, String name, long sessionStartTime, long totalPlaytime, int punishmentCount) {
             this.uuid = uuid;
@@ -75,7 +78,6 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
     private List<OnlinePlayer> onlinePlayers = new ArrayList<>();
     private String currentSort;
     private final List<String> sortOptions = Arrays.asList("Least Playtime", "Recent Gameplay Reports", "Longest Session");
-    private final String panelUrl;
     @Getter private CompletableFuture<Void> dataFuture;
 
     public OnlinePlayersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
@@ -86,8 +88,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
     public OnlinePlayersMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                              boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction,
                              String sortOption, List<OnlinePlayer> existingPlayers) {
-        super("Online Players", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
-        this.panelUrl = panelUrl;
+        super("Online Players", platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         this.currentSort = sortOption;
         activeTab = StaffTab.ONLINE_PLAYERS;
 
@@ -130,7 +131,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                 String uuid = report.getReportedPlayerUuid();
                 if (uuid == null) continue;
 
-                String details = extractDetails(report.getContent(), report.getSubject());
+                String details = ReportRenderUtil.extractReportDetails(report.getContent(), report.getSubject());
                 String reporter = report.getReporterName() != null ? report.getReporterName() : "Unknown";
                 reportsByPlayer.computeIfAbsent(uuid, k -> new ArrayList<>())
                         .add(new ReportSummary(details, reporter, report.getCreatedAt()));
@@ -190,7 +191,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
         if (player.getName() == null)
             return createEmptyPlaceholder("No online players");
 
-        LocaleManager localeManager = platform.getLocaleManager();
+        LocaleManager localeManager = PluginServices.locale();
 
         String punishments = player.getPunishmentCount() > 0
                 ? "&c" + player.getPunishmentCount()
@@ -238,19 +239,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                 MenuItems.lore(lore)
         );
 
-        if (player.getUuid() != null && platform.getCache() != null) {
-            String cachedTexture = platform.getCache().getSkinTexture(player.getUuid());
-            if (cachedTexture != null) {
-                headItem = headItem.texture(cachedTexture);
-            } else {
-                final UUID uuid = player.getUuid();
-                WebPlayer.get(uuid).thenAccept(wp -> {
-                    if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
-                        platform.getCache().cacheSkinTexture(uuid, wp.getTextureValue());
-                    }
-                });
-            }
-        }
+        headItem = SkinTextureCache.applyCachedOrFetch(headItem, player.getUuid());
 
         return headItem;
     }
@@ -259,10 +248,10 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
     protected void handleClick(Click click, OnlinePlayer player) {
         if (player.getName() == null) return;
 
-        StaffModeService staffModeService = platform.getStaffModeService();
+        StaffModeService staffModeService = PluginServices.staffMode();
         if (staffModeService != null && click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
-            if (platform.getCache() == null || !platform.getCache().hasPermission(viewerUuid, Permissions.MOD_ACTIONS)) {
-                sendMessage(platform.getLocaleManager().getMessage("general.no_permission"));
+            if (PluginServices.cache() == null || !PluginServices.cache().hasPermission(viewerUuid, Permissions.MOD_ACTIONS)) {
+                sendMessage(PluginServices.locale().getMessage("general.no_permission"));
                 return;
             }
 
@@ -274,14 +263,14 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
             click.clickedMenu().close();
 
             if (!staffModeService.isInStaffMode(viewerUuid)) {
-                BridgeService bridgeService = platform.getBridgeService();
-                StaffDisplay display = StaffCommandUtil.resolvePlayerDisplay(viewerUuid, platform, platform.getCache(), "Staff");
+                BridgeService bridgeService = PluginServices.bridge();
+                StaffDisplay display = StaffCommandUtil.resolvePlayerDisplay(viewerUuid, platform, PluginServices.cache(), "Staff");
                 StaffCommandUtil.enableStaffModeForPlayer(platform, viewerUuid, staffModeService, bridgeService,
-                        platform.getLocaleManager(), display);
+                        PluginServices.locale(), display);
             }
 
             staffModeService.setTarget(viewerUuid, player.getUuid());
-            BridgeService bridgeService = platform.getBridgeService();
+            BridgeService bridgeService = PluginServices.bridge();
             if (bridgeService != null) {
                 bridgeService.sendTargetRequest(viewerUuid.toString(), player.getUuid().toString());
             }
@@ -300,7 +289,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
                     p -> {
                         OnlinePlayersMenu m = new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, null,
                                 sortState, playerState);
-                        StaffNavigationHandlers.displayWhenLoaded(platform, m.getDataFuture(), p, m::display);
+                        MenuAsync.displayWhenLoaded(platform, m.getDataFuture(), p, m::display);
                     })
                     .display(click.player());
             } else {
@@ -318,36 +307,7 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
         registerActionHandler("sort", this::handleSort);
 
-        StaffNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
-
         registerActionHandler("openOnlinePlayers", click -> {});
-    }
-
-    private static String extractDetails(String content, String subject) {
-        String first = cleanLine(content != null ? content : subject);
-        if ("Automated anticheat report.".equals(first) && content != null) {
-            String third = nthLine(content, 3);
-            if (third != null) return third;
-        }
-        return first;
-    }
-
-    private static String nthLine(String text, int n) {
-        String[] lines = text.split("\n");
-        for (int i = 0, found = 0; i < lines.length; i++) {
-            String trimmed = lines[i].trim();
-            if (!trimmed.isEmpty() && ++found == n) return cleanLine(trimmed);
-        }
-        return null;
-    }
-
-    private static String cleanLine(String text) {
-        if (text == null || text.isEmpty()) return "";
-        int idx = text.indexOf('\n');
-        String line = idx >= 0 ? text.substring(0, idx).trim() : text.trim();
-        return line.replace("**", "").replace("__", "").replace("~~", "");
     }
 
     private void handleSort(Click click) {
@@ -357,6 +317,6 @@ public class OnlinePlayersMenu extends BaseStaffListMenu<OnlinePlayersMenu.Onlin
 
         OnlinePlayersMenu menu = new OnlinePlayersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction,
                 nextSort, onlinePlayers);
-        StaffNavigationHandlers.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
+        MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
     }
 }

@@ -6,4 +6,8 @@ public final class StringUtil {
         if (str == null) return null;
         return str.replace("\\\\n", "\n").replace("\\n", "\n");
     }
+
+    public static boolean isBlank(String str) {
+        return str == null || str.trim().isEmpty();
+    }
 }

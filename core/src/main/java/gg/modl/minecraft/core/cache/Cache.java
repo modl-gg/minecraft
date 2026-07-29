@@ -35,9 +35,19 @@ public class Cache {
     @Getter private volatile PunishmentTypesResponse cachedPunishmentTypes;
     @Getter private volatile PunishGuiConfig cachedPunishGuiConfig;
     @Getter private volatile ReportGuiConfig cachedReportGuiConfig;
-    @Getter @Setter private volatile Map<Integer, String> punishmentTypeItems;
+    private volatile Map<Integer, String> punishmentTypeItems = Collections.emptyMap();
 
     @Getter @Setter private boolean queryMojang;
+
+    public Map<Integer, String> getPunishmentTypeItems() {
+        return punishmentTypeItems;
+    }
+
+    public void setPunishmentTypeItems(Map<Integer, String> items) {
+        this.punishmentTypeItems = items == null
+                ? Collections.emptyMap()
+                : Collections.unmodifiableMap(new LinkedHashMap<>(items));
+    }
 
     public CachedProfile getPlayerProfile(UUID uuid) {
         return registry.getProfile(uuid);
@@ -78,27 +88,33 @@ public class Cache {
         }
     }
 
-    public String getStaffDisplayName(UUID playerUuid) {
+    private StaffPermissions profileStaffPermissions(UUID playerUuid) {
         CachedProfile profile = registry.getProfile(playerUuid);
-        if (profile != null) {
-            SyncResponse.ActiveStaffMember staff = profile.getStaffMember();
-            if (staff != null && !staff.getStaffUsername().isEmpty()) return staff.getStaffUsername();
-        }
+        if (profile == null) return null;
+        SyncResponse.ActiveStaffMember staff = profile.getStaffMember();
+        if (staff == null) return null;
+        return new StaffPermissions(staff.getStaffUsername(), staff.getStaffId(), staff.getStaffRole(), staff.getPermissions());
+    }
 
-        StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
-        if (staffPerms != null && staffPerms.getStaffUsername() != null && !staffPerms.getStaffUsername().isEmpty()) return staffPerms.getStaffUsername();
+    private StaffPermissions cachedStaffPermissions(UUID playerUuid) {
+        return staffPermissionsCache.get(playerUuid);
+    }
+
+    public String getStaffDisplayName(UUID playerUuid) {
+        StaffPermissions profileView = profileStaffPermissions(playerUuid);
+        if (profileView != null && !profileView.getStaffUsername().isEmpty()) return profileView.getStaffUsername();
+
+        StaffPermissions cachedView = cachedStaffPermissions(playerUuid);
+        if (cachedView != null && cachedView.getStaffUsername() != null && !cachedView.getStaffUsername().isEmpty()) return cachedView.getStaffUsername();
         return null;
     }
 
     public String getStaffId(UUID playerUuid) {
-        CachedProfile profile = registry.getProfile(playerUuid);
-        if (profile != null) {
-            SyncResponse.ActiveStaffMember staff = profile.getStaffMember();
-            if (staff != null) return staff.getStaffId();
-        }
+        StaffPermissions profileView = profileStaffPermissions(playerUuid);
+        if (profileView != null) return profileView.getStaffId();
 
-        StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
-        if (staffPerms != null && staffPerms.getStaffId() != null) return staffPerms.getStaffId();
+        StaffPermissions cachedView = cachedStaffPermissions(playerUuid);
+        if (cachedView != null && cachedView.getStaffId() != null) return cachedView.getStaffId();
         return null;
     }
 
@@ -108,14 +124,11 @@ public class Cache {
     }
 
     public boolean hasPermission(UUID playerUuid, String permission) {
-        StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
-        if (staffPerms != null) return checkRoleAndPermissions(staffPerms.getStaffRole(), staffPerms.getPermissions(), permission);
+        StaffPermissions cachedView = cachedStaffPermissions(playerUuid);
+        if (cachedView != null) return checkRoleAndPermissions(cachedView.getStaffRole(), cachedView.getPermissions(), permission);
 
-        CachedProfile profile = registry.getProfile(playerUuid);
-        if (profile != null) {
-            SyncResponse.ActiveStaffMember staffMember = profile.getStaffMember();
-            if (staffMember != null) return checkRoleAndPermissions(staffMember.getStaffRole(), staffMember.getPermissions(), permission);
-        }
+        StaffPermissions profileView = profileStaffPermissions(playerUuid);
+        if (profileView != null) return checkRoleAndPermissions(profileView.getStaffRole(), profileView.getPermissions(), permission);
 
         return false;
     }
@@ -149,8 +162,8 @@ public class Cache {
     }
 
     public String getStaffRole(UUID playerUuid) {
-        StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
-        return staffPerms != null ? staffPerms.getStaffRole() : null;
+        StaffPermissions cachedView = cachedStaffPermissions(playerUuid);
+        return cachedView != null ? cachedView.getStaffRole() : null;
     }
 
     public void clear() {

@@ -13,8 +13,6 @@ public class FabricDirectStatWipeExecutor implements StatWipeExecutor {
     public void executeStatWipe(String username, String uuid, String punishmentId, StatWipeCallback callback) {
         final StatWipeHandler handler = bridgeComponent.getStatWipeHandler();
         if (handler == null) return;
-        // Stat-wipe dispatches console commands; hop to the server thread so they never
-        // run from the async login/sync/realtime threads.
         bridgeComponent.getServer().execute(() -> {
             boolean success = handler.execute(username, uuid, punishmentId);
             callback.onComplete(success, serverName);

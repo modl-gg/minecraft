@@ -109,6 +109,10 @@ public class ConfigManager {
                     String itemId = entry.getValue().toString();
                     String[] parts = itemId.split(":");
                     if (parts.length > 2) itemId = parts[0] + ":" + parts[1];
+                    if (isMalformedMaterialId(itemId)) {
+                        logger.warning("Skipping malformed punishment type item id '" + entry.getValue() + "' for ordinal " + ordinal + "; keeping default.");
+                        continue;
+                    }
                     items.put(ordinal, itemId);
                 } catch (NumberFormatException ignored) {
                 }
@@ -116,6 +120,14 @@ public class ConfigManager {
         } catch (Exception e) { logger.warning("Failed to load punishment type items: " + e.getMessage()); }
 
         return items;
+    }
+
+    private static boolean isMalformedMaterialId(String itemId) {
+        if (itemId == null || itemId.trim().isEmpty()) return true;
+        for (String part : itemId.split(":", -1)) {
+            if (part.trim().isEmpty()) return true;
+        }
+        return false;
     }
 
     private StaffChatConfig loadStaffChatConfig() {

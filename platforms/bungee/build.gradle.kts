@@ -5,24 +5,24 @@ repositories {
 }
 
 dependencies {
-    compileOnly("net.md-5:bungeecord-api:${property("bungeecord.version")}")
+    compileOnly(libs.bungeecord.api)
 
     implementation(project(":core"))
     implementation(project(":api"))
 
-    compileOnly("io.github.revxrsal:lamp.common:${property("lamp.version")}")
-    compileOnly("io.github.revxrsal:lamp.bungee:${property("lamp.version")}")
-    compileOnly("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
-    compileOnly("gg.modl.minecraft.cirrus:cirrus-bungeecord:${property("cirrus.version")}")
+    compileOnly(libs.lamp.common)
+    compileOnly(libs.lamp.bungee)
+    compileOnly(libs.cirrus.api)
+    compileOnly(libs.cirrus.bungeecord)
 
-    implementation("com.alessiodp.libby:libby-core:${property("libby.version")}")
-    implementation("com.alessiodp.libby:libby-bungee:${property("libby.version")}")
+    implementation(libs.libby.core)
+    implementation(libs.libby.bungee)
 
-    compileOnly("gg.modl.minecraft.packetevents:packetevents-api:${property("packetevents.version")}")
-    compileOnly("gg.modl.minecraft.packetevents:packetevents-bungeecord:${property("packetevents.version")}")
+    compileOnly(libs.packetevents.api)
+    compileOnly(libs.packetevents.bungeecord)
 
-    compileOnly("net.kyori:adventure-api:${property("adventure.version")}")
-    compileOnly("net.kyori:adventure-text-serializer-gson:${property("adventure.version")}")
+    compileOnly(libs.adventure.api)
+    compileOnly(libs.adventure.serializer.gson)
 }
 
 tasks.processResources {

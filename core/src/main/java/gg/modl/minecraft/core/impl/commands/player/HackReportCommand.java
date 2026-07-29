@@ -1,16 +1,17 @@
 package gg.modl.minecraft.core.impl.commands.player;
 
+import gg.modl.minecraft.core.PluginServices;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
 import revxrsal.commands.annotation.Named;
 import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.command.CommandActor;
 import gg.modl.minecraft.api.AbstractPlayer;
-import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.command.ConsumeRemaining;
 import gg.modl.minecraft.core.command.PlayerOnly;
+import gg.modl.minecraft.core.service.TicketService;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ReplayService;
 import lombok.RequiredArgsConstructor;
@@ -21,16 +22,14 @@ import static gg.modl.minecraft.core.util.Java8Collections.listOf;
 @RequiredArgsConstructor
 public class HackReportCommand {
     private final Platform platform;
-    private final ModlHttpClient httpClient;
-    private final String panelUrl;
     private final LocaleManager localeManager;
-    private final TicketCommandUtil ticketUtil;
+    private final TicketService ticketUtil;
 
     @Command("hackreport")
     @Description("Report a player for cheating/hacking")
     @PlayerOnly
     public void hackReport(CommandActor actor, @Named("player") String targetName, @Optional @ConsumeRemaining String details) {
-        if (ticketUtil.checkCooldown(actor, "player", localeManager)) return;
+        if (ticketUtil.checkCooldown(actor, "player")) return;
 
         AbstractPlayer reporter = platform.getAbstractPlayer(actor.uniqueId(), false);
         AbstractPlayer targetPlayer = platform.getAbstractPlayer(targetName, false);
@@ -45,12 +44,12 @@ public class HackReportCommand {
             return;
         }
 
-        if (ticketUtil.denySelfReport(actor, reporter, targetPlayer, localeManager)) return;
+        if (ticketUtil.denySelfReport(actor, reporter, targetPlayer)) return;
 
         String description = details != null && !details.isEmpty() ? details : null;
         String createdServer = platform.getPlayerServer(actor.uniqueId());
 
-        ReplayService replayService = platform.getReplayService();
+        ReplayService replayService = PluginServices.replay();
         CompletableFuture<String> replayFuture;
         if (replayService != null && replayService.shouldAttemptCapture(targetPlayer.getUuid())) {
             replayFuture = replayService.captureReplay(targetPlayer.getUuid(), targetPlayer.getUsername());
@@ -61,22 +60,21 @@ public class HackReportCommand {
         replayFuture.whenComplete((replayUrl, replayEx) -> {
             if (replayEx != null) replayUrl = null;
 
-            CreateTicketRequest request = new CreateTicketRequest(
-                reporter.getUuid().toString(),
-                "player",
-                reporter.getUsername(),
-                "Cheating: " + targetPlayer.getUsername(),
-                description,
-                targetPlayer.getUuid().toString(),
-                targetPlayer.getUsername(),
-                "normal",
-                createdServer,
-                null,
-                listOf("report", "cheating"),
-                replayUrl
-            );
+            CreateTicketRequest request = CreateTicketRequest.builder()
+                .creatorUuid(reporter.getUuid().toString())
+                .type("player")
+                .creatorName(reporter.getUsername())
+                .subject("Cheating: " + targetPlayer.getUsername())
+                .description(description)
+                .reportedPlayerUuid(targetPlayer.getUuid().toString())
+                .reportedPlayerName(targetPlayer.getUsername())
+                .priority("normal")
+                .createdServer(createdServer)
+                .tags(listOf("report", "cheating"))
+                .replayUrl(replayUrl)
+                .build();
 
-            ticketUtil.submitFinishedTicket(actor, httpClient, platform, localeManager, panelUrl, request, "Report", "player");
+            ticketUtil.submitFinishedTicket(actor, request, "Report", "player");
         });
     }
 }

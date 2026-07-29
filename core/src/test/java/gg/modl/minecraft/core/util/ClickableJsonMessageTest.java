@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ClickableJsonMessageTest {
     @Test
-    void builds_open_url_message_with_structured_escaping() {
+    void buildsOpenUrlMessageWithStructuredEscaping() {
         String url = "https://panel.modl.gg/ticket/id\"\\line\nnext?query=one two";
         String hover = "Open ticket \"id\"\\line\nnext";
 
@@ -34,7 +34,7 @@ class ClickableJsonMessageTest {
     }
 
     @Test
-    void builds_run_command_message_without_pre_escaping_command_value() {
+    void buildsRunCommandMessageWithoutPreEscapingCommandValue() {
         String command = "/target Player\"\\Name\nNext";
 
         String json = ClickableJsonMessage.empty()
@@ -52,7 +52,7 @@ class ClickableJsonMessageTest {
     }
 
     @Test
-    void supports_hover_contents_for_existing_verify_message_shape() {
+    void supportsHoverContentsForExistingVerifyMessageShape() {
         String json = ClickableJsonMessage.text("Verify")
                 .color("green")
                 .bold(true)

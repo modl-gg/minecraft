@@ -5,22 +5,15 @@ import dev.simplix.cirrus.spigot.wrapper.SpigotPlayerWrapper;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.DatabaseProvider;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.StaffAudience;
 import revxrsal.commands.Lamp;
 import revxrsal.commands.command.CommandActor;
 import revxrsal.commands.bukkit.BukkitLamp;
 import revxrsal.commands.bukkit.BukkitLampConfig;
 import revxrsal.commands.bukkit.actor.BukkitCommandActor;
-import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
-import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.service.BridgeService;
-import gg.modl.minecraft.core.service.ReplayService;
-import gg.modl.minecraft.core.service.Staff2faService;
-import gg.modl.minecraft.core.service.StaffModeService;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
-import gg.modl.minecraft.spigot.bridge.folia.FoliaSchedulerHelper;
+import gg.modl.minecraft.spigot.bridge.folia.FoliaScheduler;
 import lombok.Setter;
 import net.md_5.bungee.chat.ComponentSerializer;
 import org.bukkit.Bukkit;
@@ -33,6 +26,7 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.UUID;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import gg.modl.minecraft.core.util.PluginLogger;
@@ -44,19 +38,14 @@ public class SpigotPlatform implements Platform {
     private final JavaPlugin plugin;
     private final boolean lateBootstrap;
     private final PluginLogger pluginLogger;
-    private @Setter Cache cache;
-    private @Setter LocaleManager localeManager;
-    private @Setter StaffModeService staffModeService;
-    private @Setter BridgeService bridgeService;
-    private @Setter Staff2faService staff2faService;
-    private @Setter ChatInputManager chatInputManager;
-    private @Setter ReplayService replayService;
+    private final FoliaScheduler foliaScheduler;
+    private @Setter StaffAudience staffAudience;
 
-    private static volatile boolean skinMethodsResolved = false;
-    private static volatile Method getPlayerProfileMethod;
-    private static volatile Method getPropertiesMethod;
-    private static volatile Method getNameMethod;
-    private static volatile Method getValueMethod;
+    private volatile boolean skinMethodsResolved = false;
+    private volatile Method getPlayerProfileMethod;
+    private volatile Method getPropertiesMethod;
+    private volatile Method getNameMethod;
+    private volatile Method getValueMethod;
 
     public SpigotPlatform(JavaPlugin plugin, Logger logger, File dataFolder, String configServerName) {
         this(plugin, logger, dataFolder, configServerName, false);
@@ -69,6 +58,7 @@ public class SpigotPlatform implements Platform {
         this.configServerName = configServerName;
         this.lateBootstrap = lateBootstrap;
         this.pluginLogger = PluginLogger.fromJul(logger);
+        this.foliaScheduler = new FoliaScheduler(plugin);
     }
 
     @Override
@@ -80,16 +70,14 @@ public class SpigotPlatform implements Platform {
     public void staffBroadcast(String string) {
         String message = ChatColor.translateAlternateColorCodes('&', string);
         runOnMainThread(() -> Bukkit.getOnlinePlayers().stream()
-            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
-            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
+            .filter(player -> staffAudience != null && staffAudience.includes(player.getUniqueId()))
             .forEach(player -> player.sendMessage(message)));
     }
 
     @Override
     public void staffJsonBroadcast(String jsonMessage) {
         runOnMainThread(() -> Bukkit.getOnlinePlayers().stream()
-            .filter(player -> PermissionUtil.isStaff(player.getUniqueId(), cache))
-            .filter(player -> staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()))
+            .filter(player -> staffAudience != null && staffAudience.includes(player.getUniqueId()))
             .forEach(player -> player.spigot().sendMessage(ComponentSerializer.parse(jsonMessage))));
     }
 
@@ -185,8 +173,8 @@ public class SpigotPlatform implements Platform {
 
     @Override
     public void runOnMainThread(Runnable task) {
-        if (FoliaSchedulerHelper.isFolia()) {
-            FoliaSchedulerHelper.runGlobal(plugin, task);
+        if (FoliaScheduler.isFolia()) {
+            foliaScheduler.runGlobal(task);
             return;
         }
         if (Bukkit.isPrimaryThread()) {
@@ -194,11 +182,6 @@ public class SpigotPlatform implements Platform {
             return;
         }
         Bukkit.getScheduler().runTask(plugin, task);
-    }
-
-    @Override
-    public void runOnGameThread(Runnable task) {
-        runOnMainThread(task);
     }
 
     @Override
@@ -245,8 +228,8 @@ public class SpigotPlatform implements Platform {
     public void dispatchPlayerCommand(UUID uuid, String command) {
         Player player = Bukkit.getPlayer(uuid);
         if (player == null) return;
-        if (FoliaSchedulerHelper.isFolia()) {
-            FoliaSchedulerHelper.runForEntity(plugin, player, () -> player.performCommand(command));
+        if (FoliaScheduler.isFolia()) {
+            foliaScheduler.runForEntity(player, () -> player.performCommand(command));
         } else {
             Bukkit.getScheduler().runTask(plugin, () -> player.performCommand(command));
         }
@@ -268,11 +251,13 @@ public class SpigotPlatform implements Platform {
                 String name = (String) getNameMethod.invoke(prop);
                 if ("textures".equals(name)) return (String) getValueMethod.invoke(prop);
             }
-        } catch (Exception ignored) {}
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            logger.log(Level.FINE, "Failed to read native skin texture for " + uuid, e);
+        }
         return null;
     }
 
-    private static synchronized void resolveSkinMethods(Player player) {
+    private synchronized void resolveSkinMethods(Player player) {
         if (skinMethodsResolved) return;
         try {
             getPlayerProfileMethod = player.getClass().getMethod("getPlayerProfile");
@@ -284,8 +269,9 @@ public class SpigotPlatform implements Platform {
                 getValueMethod = prop.getClass().getMethod("getValue");
                 break;
             }
-        } catch (Exception e) {
+        } catch (ReflectiveOperationException | ClassCastException e) {
             getPlayerProfileMethod = null;
+            logger.log(Level.FINE, "Native skin texture API unavailable on this server", e);
         }
         skinMethodsResolved = true;
     }
@@ -293,35 +279,5 @@ public class SpigotPlatform implements Platform {
     @Override
     public void log(String msg) {
         logger.info(msg);
-    }
-
-    @Override
-    public Cache getCache() {
-        return cache;
-    }
-
-    @Override
-    public LocaleManager getLocaleManager() {
-        return localeManager;
-    }
-
-    @Override
-    public StaffModeService getStaffModeService() {
-        return staffModeService;
-    }
-
-    @Override
-    public BridgeService getBridgeService() {
-        return bridgeService;
-    }
-
-    @Override
-    public ChatInputManager getChatInputManager() {
-        return chatInputManager;
-    }
-
-    @Override
-    public ReplayService getReplayService() {
-        return replayService;
     }
 }

@@ -28,7 +28,7 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${property('minecraft_version')}"
-    // No mappings — 26.1.x is unobfuscated
+    // No mappings; 26.1.x is unobfuscated
     implementation "net.fabricmc:fabric-loader:${property('loader_version')}"
     implementation "net.fabricmc.fabric-api:fabric-api:${property('fabric_version')}"
 
@@ -38,28 +38,28 @@ dependencies {
     implementation files("../../api/build/libs/api-${version}.jar")
 
     // Libby runtime library loading
-    implementation "com.alessiodp.libby:libby-core:${rootProject.property('libby.version')}"
-    implementation "com.alessiodp.libby:libby-fabric:${rootProject.property('libby.version')}"
+    implementation libs.libby.core
+    implementation libs.libby.fabric
 
     // Compile-only deps (loaded at runtime via Libby)
-    compileOnly "gg.modl.minecraft.cirrus:cirrus-fabric:${rootProject.property('cirrus.version')}"
-    compileOnly "gg.modl.minecraft.cirrus:cirrus-api:${rootProject.property('cirrus.version')}"
-    compileOnly "gg.modl.minecraft.cirrus:cirrus-common:${rootProject.property('cirrus.version')}"
-    compileOnly "gg.modl.minecraft.packetevents:packetevents-api:${rootProject.property('packetevents.version')}"
+    compileOnly libs.cirrus.fabric
+    compileOnly libs.cirrus.api
+    compileOnly libs.cirrus.common
+    compileOnly libs.packetevents.api
 
     // Provided by server
-    compileOnly "io.github.revxrsal:lamp.common:${rootProject.property('lamp.version')}"
-    compileOnly "io.github.revxrsal:lamp.brigadier:${rootProject.property('lamp.version')}"
-    compileOnly "io.github.revxrsal:lamp.fabric:${rootProject.property('lamp.version')}"
-    compileOnly "io.netty:netty-all:${rootProject.property('netty.version')}"
-    compileOnly "net.kyori:adventure-text-minimessage:${rootProject.property('adventure.version')}"
-    compileOnly "net.kyori:adventure-text-serializer-legacy:${rootProject.property('adventure.version')}"
-    compileOnly "net.kyori:adventure-api:${rootProject.property('adventure.version')}"
-    compileOnly "org.yaml:snakeyaml:${rootProject.property('snakeyaml.version')}"
+    compileOnly libs.lamp.common
+    compileOnly libs.lamp.brigadier
+    compileOnly libs.lamp.fabric
+    compileOnly libs.netty.all
+    compileOnly libs.adventure.minimessage
+    compileOnly libs.adventure.serializer.legacy
+    compileOnly libs.adventure.api
+    compileOnly libs.snakeyaml
 
     // Lombok
-    compileOnly "org.projectlombok:lombok:${rootProject.property('lombok.version.fabric26')}"
-    annotationProcessor "org.projectlombok:lombok:${rootProject.property('lombok.version.fabric26')}"
+    compileOnly libs.lombokFabric26
+    annotationProcessor libs.lombokFabric26
 }
 
 java {
@@ -74,6 +74,12 @@ processResources {
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
         expand "version": project.version
+    }
+}
+
+jar {
+    from("../../LICENSE.txt") {
+        rename { "LICENSE_modl.txt" }
     }
 }
 

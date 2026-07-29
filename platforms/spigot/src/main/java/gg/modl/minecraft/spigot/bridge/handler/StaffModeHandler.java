@@ -5,11 +5,8 @@ import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import gg.modl.minecraft.bridge.staffmode.StaffModeCore;
 import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -27,472 +24,64 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scoreboard.DisplaySlot;
-import org.bukkit.scoreboard.Objective;
-import org.bukkit.scoreboard.Scoreboard;
-
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import org.bukkit.event.Cancellable;
 import org.bukkit.event.player.PlayerPickupItemEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.Cancellable;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.java.JavaPlugin;
 
-@RequiredArgsConstructor
+import java.util.UUID;
+
 public class StaffModeHandler implements Listener {
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MM/dd/yyyy");
-    private static final String SCOREBOARD_OBJECTIVE_NAME = "staffmode";
-    private static final String SILENT_CONTAINER_PREFIX = "\u00a78Viewing: ";
-    private static final int HOTBAR_MIN_SLOT = 0;
-    private static final int HOTBAR_MAX_SLOT = 8;
-    private static final int SCOREBOARD_MAX_LINE_LENGTH = 40;
-    private static final String ACTION_TARGET_SELECTOR = "target_selector";
-    private static final String ACTION_VANISH_TOGGLE = "vanish_toggle";
-    private static final String ACTION_STAFF_MENU = "staff_menu";
-    private static final String ACTION_RANDOM_TELEPORT = "random_teleport";
-    private static final String ACTION_FREEZE_TARGET = "freeze_target";
-    private static final String ACTION_STOP_TARGET = "stop_target";
-    private static final String ACTION_INSPECT_TARGET = "inspect_target";
-    private static final String ACTION_OPEN_INVENTORY = "open_inventory";
-    private static final String ACTION_TELEPORT_TO_TARGET = "teleport_to_target";
-    private static final String ACTION_HACKREPORT_TARGET = "hackreport_target";
-    private static final String PLACEHOLDER_NA = "N/A";
+    static final String SILENT_CONTAINER_PREFIX = "§8Viewing: ";
 
     private final JavaPlugin plugin;
-    private final BridgeConfig bridgeConfig;
-    private final FreezeHandler freezeHandler;
-    private final BridgeLocaleManager localeManager;
-    private final StaffModeConfig staffModeConfig;
-    private final BridgeScheduler scheduler;
-    @Setter private BridgeQueryClient bridgeClient;
+    private final StaffModeCore core;
 
-    private final Set<UUID> staffModeActive = ConcurrentHashMap.newKeySet();
-    private final Map<UUID, UUID> targetMap = new ConcurrentHashMap<>();
-    private final Set<UUID> vanished = ConcurrentHashMap.newKeySet();
-    private final Map<UUID, PlayerSnapshot> snapshots = new ConcurrentHashMap<>();
-    private final Map<UUID, Scoreboard> activeScoreboards = new ConcurrentHashMap<>();
-    private final Set<String> warnedMaterials = ConcurrentHashMap.newKeySet();
-    private ScheduledExecutorService scoreboardExecutor;
+    public StaffModeHandler(JavaPlugin plugin, BridgeConfig bridgeConfig, FreezeHandler freezeHandler,
+                            BridgeLocaleManager localeManager, StaffModeConfig staffModeConfig, BridgeScheduler scheduler) {
+        this.plugin = plugin;
+        this.core = new StaffModeCore(bridgeConfig, staffModeConfig, localeManager, scheduler,
+                freezeHandler.getFreezeCore(), new SpigotStaffModeOps(plugin.getLogger()));
+    }
 
     public void register() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
-        startScoreboardUpdater();
+        core.start();
     }
 
     public void shutdown() {
-        if (scoreboardExecutor != null) {
-            scoreboardExecutor.shutdownNow();
-        }
-        staffModeActive.stream()
-                .map(Bukkit::getPlayer)
-                .filter(p -> p != null && p.isOnline())
-                .forEach(p -> {
-                    restoreSnapshot(p);
-                    removeScoreboard(p);
-                });
-        vanished.stream()
-                .map(Bukkit::getPlayer)
-                .filter(p -> p != null && p.isOnline())
-                .forEach(this::unvanish);
-        activeScoreboards.clear();
-        staffModeActive.clear();
-        vanished.clear();
-        targetMap.clear();
-        snapshots.clear();
+        core.shutdown();
     }
 
-    private void runOnMainOrGlobal(Runnable task) {
-        scheduler.runSync(task);
-    }
-
-    private void runForPlayer(UUID uuid, Runnable task) {
-        scheduler.runForPlayer(uuid, task);
-    }
-
-    private void startScoreboardUpdater() {
-        scoreboardExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "modl-bridge-scoreboard");
-            t.setDaemon(true);
-            return t;
-        });
-        scoreboardExecutor.scheduleAtFixedRate(() -> runOnMainOrGlobal(this::updateAllScoreboards), 1, 1, TimeUnit.SECONDS);
-    }
-
-    private void createScoreboard(Player player) {
-        StaffModeConfig.ScoreboardConfig config = getScoreboardConfig(player.getUniqueId());
-        if (!config.isEnabled()) return;
-
-        Scoreboard sb = Bukkit.getScoreboardManager().getNewScoreboard();
-        String title = replacePlaceholders(config.getTitle(), player);
-        @SuppressWarnings("deprecation")
-        Objective obj = sb.registerNewObjective(SCOREBOARD_OBJECTIVE_NAME, "dummy");
-        obj.setDisplayName(localeManager.colorize(title));
-        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
-        activeScoreboards.put(player.getUniqueId(), sb);
-        updateScoreboard(player, sb);
-        player.setScoreboard(sb);
-    }
-
-    private void removeScoreboard(Player player) {
-        activeScoreboards.remove(player.getUniqueId());
-        if (player.isOnline()) {
-            player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
-        }
-    }
-
-    private void updateAllScoreboards() {
-        activeScoreboards.entrySet().removeIf(entry -> {
-            Player p = Bukkit.getPlayer(entry.getKey());
-            if (p != null && p.isOnline()) {
-                updateScoreboard(p, entry.getValue());
-                return false;
-            }
-            return true;
-        });
-    }
-
-    private void updateScoreboard(Player player, Scoreboard sb) {
-        sb.getEntries().forEach(sb::resetScores);
-        Objective obj = sb.getObjective(SCOREBOARD_OBJECTIVE_NAME);
-        if (obj == null) return;
-
-        StaffModeConfig.ScoreboardConfig config = getScoreboardConfig(player.getUniqueId());
-        obj.setDisplayName(localeManager.colorize(replacePlaceholders(config.getTitle(), player)));
-
-        List<String> lines = config.getLines();
-        int score = lines.size();
-        Set<String> usedEntries = new HashSet<>();
-
-        for (String line : lines) {
-            // Truncate (color-code-safe) FIRST, then de-dup in the truncated domain so two
-            // identical >=40-char lines don't collapse to the same scoreboard entry.
-            String resolved = localeManager.colorize(replacePlaceholders(line, player));
-            resolved = truncateColorSafe(resolved, SCOREBOARD_MAX_LINE_LENGTH);
-            while (usedEntries.contains(resolved)) {
-                resolved = truncateColorSafe(
-                        truncateColorSafe(resolved, SCOREBOARD_MAX_LINE_LENGTH - 2) + "\u00a7r",
-                        SCOREBOARD_MAX_LINE_LENGTH);
-            }
-            usedEntries.add(resolved);
-            obj.getScore(resolved).setScore(score--);
-        }
-    }
-
-    private String replacePlaceholders(String line, Player player) {
-        UUID uuid = player.getUniqueId();
-        boolean isVanished = vanished.contains(uuid);
-        StaffModeConfig.ScoreboardConfig config = getScoreboardConfig(uuid);
-
-        String result = line
-                .replace("{player_name}", player.getName())
-                .replace("{server}", bridgeConfig.getServerName())
-                .replace("{online}", String.valueOf(Bukkit.getOnlinePlayers().size()))
-                .replace("{max_players}", String.valueOf(Bukkit.getMaxPlayers()))
-                .replace("{date}", LocalDateTime.now().format(DATE_FORMAT))
-                .replace("{vanish}", isVanished ? config.getVanish() : "")
-                .replace("{vanish_status}", isVanished ? localeManager.colorize("&aON") : localeManager.colorize("&cOFF"))
-                .replace("{vanished}", isVanished ? "Vanished" : "Visible")
-                .replace("{staff_online}", String.valueOf(staffModeActive.size()));
-        return replaceTargetPlaceholders(result, uuid);
-    }
-
-    private String replaceTargetPlaceholders(String result, UUID staffUuid) {
-        UUID targetUuid = targetMap.get(staffUuid);
-        Player target = targetUuid != null ? Bukkit.getPlayer(targetUuid) : null;
-
-        if (target != null && target.isOnline()) {
-            return result
-                    .replace("{target_name}", target.getName())
-                    .replace("{target_health}", String.format("%.1f", target.getHealth()))
-                    .replace("{target_ping}", String.valueOf(getPlayerPing(target)))
-                    .replace("{freeze_status}", freezeHandler.isFrozen(targetUuid) ? localeManager.colorize("&cYes") : localeManager.colorize("&aNo"));
-        }
-
-        String nameValue = targetUuid != null ? "Offline" : "None";
-        return result
-                .replace("{target_name}", nameValue)
-                .replace("{target_health}", PLACEHOLDER_NA)
-                .replace("{target_ping}", PLACEHOLDER_NA)
-                .replace("{freeze_status}", PLACEHOLDER_NA);
+    public void setBridgeClient(BridgeQueryClient bridgeClient) {
+        core.setBridgeClient(bridgeClient);
     }
 
     public boolean isInStaffMode(UUID uuid) {
-        return staffModeActive.contains(uuid);
-    }
-
-    private static String truncateColorSafe(String s, int n) {
-        if (s == null || s.length() <= n) return s;
-        if (n > 0 && s.charAt(n - 1) == '§') return s.substring(0, n - 1);
-        return s.substring(0, n);
-    }
-
-    private StaffModeConfig.ScoreboardConfig getScoreboardConfig(UUID uuid) {
-        return targetMap.containsKey(uuid) ? staffModeConfig.getTargetScoreboard() : staffModeConfig.getStaffScoreboard();
-    }
-
-    private Map<Integer, StaffModeConfig.HotbarItem> getActiveHotbar(UUID uuid) {
-        return targetMap.containsKey(uuid) ? staffModeConfig.getTargetHotbar() : staffModeConfig.getStaffHotbar();
-    }
-
-    private Player resolveTarget(UUID staffUuid) {
-        UUID targetUuid = targetMap.get(staffUuid);
-        if (targetUuid == null) return null;
-        Player target = Bukkit.getPlayer(targetUuid);
-        return (target != null && target.isOnline()) ? target : null;
-    }
-
-    private void runForOnlinePlayer(UUID uuid, Consumer<Player> action) {
-        runForPlayer(uuid, () -> {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null && player.isOnline()) {
-                action.accept(player);
-            }
-        });
-    }
-
-    private void refreshScoreboard(Player player) {
-        removeScoreboard(player);
-        createScoreboard(player);
+        return core.isInStaffMode(uuid);
     }
 
     public void enterStaffMode(String staffUuid) {
-        UUID uuid = UUID.fromString(staffUuid);
-        if (staffModeActive.contains(uuid)) return;
-
-        runForOnlinePlayer(uuid, player -> {
-            // Idempotent: only run setup on a genuine OFF->STAFF transition for an online player.
-            if (!staffModeActive.add(player.getUniqueId())) return;
-            saveSnapshot(player);
-            player.getInventory().clear();
-            player.getInventory().setArmorContents(new ItemStack[4]);
-            player.setGameMode(GameMode.CREATIVE);
-
-            if (staffModeConfig.isVanishOnEnable()) {
-                vanish(player);
-            }
-
-            setupHotbar(player, staffModeConfig.getStaffHotbar());
-            createScoreboard(player);
-        });
+        core.enterStaffMode(staffUuid);
     }
 
     public void exitStaffMode(String staffUuid) {
-        UUID uuid = UUID.fromString(staffUuid);
-        staffModeActive.remove(uuid);
-        targetMap.remove(uuid);
-
-        runForPlayer(uuid, () -> {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player == null || !player.isOnline()) {
-                // Keep the snapshot so the real inventory is restored on rejoin (see onPlayerJoin).
-                vanished.remove(uuid);
-                return;
-            }
-
-            removeScoreboard(player);
-            unvanish(player);
-            restoreSnapshot(player);
-
-            // This player is now a normal (non-staff) observer; re-hide every vanished player from them.
-            for (UUID vanishedUuid : vanished) {
-                if (vanishedUuid.equals(uuid)) continue;
-                Player vanishedPlayer = Bukkit.getPlayer(vanishedUuid);
-                if (vanishedPlayer != null && vanishedPlayer.isOnline()) {
-                    player.hidePlayer(vanishedPlayer);
-                }
-            }
-        });
+        core.exitStaffMode(staffUuid);
     }
 
     public void setTarget(String staffUuid, String targetUuid) {
-        UUID staff = UUID.fromString(staffUuid);
-        UUID target = UUID.fromString(targetUuid);
-        targetMap.put(staff, target);
-
-        runForOnlinePlayer(staff, staffPlayer -> {
-            setupHotbar(staffPlayer, staffModeConfig.getTargetHotbar());
-            refreshScoreboard(staffPlayer);
-
-            Player targetPlayer = Bukkit.getPlayer(target);
-            if (targetPlayer != null && targetPlayer.isOnline()) {
-                staffPlayer.teleport(targetPlayer.getLocation());
-            }
-        });
-    }
-
-    public void clearTarget(UUID staffUuid) {
-        targetMap.remove(staffUuid);
-
-        runForOnlinePlayer(staffUuid, player -> {
-            setupHotbar(player, staffModeConfig.getStaffHotbar());
-            refreshScoreboard(player);
-        });
+        core.setTarget(staffUuid, targetUuid);
     }
 
     public void vanishFromBridge(String staffUuid) {
-        UUID uuid = UUID.fromString(staffUuid);
-        runForOnlinePlayer(uuid, player -> {
-            vanish(player);
-            if (staffModeActive.contains(uuid)) {
-                updateVanishHotbarItem(player, true);
-            }
-        });
+        core.vanishFromBridge(staffUuid);
     }
 
     public void unvanishFromBridge(String staffUuid) {
-        UUID uuid = UUID.fromString(staffUuid);
-        runForOnlinePlayer(uuid, player -> {
-            unvanish(player);
-            if (staffModeActive.contains(uuid)) {
-                updateVanishHotbarItem(player, false);
-            }
-        });
-    }
-
-    private void setupHotbar(Player player, Map<Integer, StaffModeConfig.HotbarItem> hotbar) {
-        player.getInventory().clear();
-        boolean isVanished = vanished.contains(player.getUniqueId());
-
-        hotbar.forEach((slot, hotbarItem) -> {
-            boolean useToggle = ACTION_VANISH_TOGGLE.equals(hotbarItem.getAction())
-                    && !isVanished && hotbarItem.getToggleItem() != null;
-            ItemStack itemStack = buildItemStack(hotbarItem, useToggle);
-            if (itemStack != null && slot >= HOTBAR_MIN_SLOT && slot <= HOTBAR_MAX_SLOT) {
-                player.getInventory().setItem(slot, itemStack);
-            }
-        });
-    }
-
-    private void updateVanishHotbarItem(Player player, boolean nowVanished) {
-        getActiveHotbar(player.getUniqueId()).entrySet().stream()
-                .filter(e -> ACTION_VANISH_TOGGLE.equals(e.getValue().getAction()))
-                .findFirst()
-                .ifPresent(entry -> {
-                    boolean useToggle = !nowVanished && entry.getValue().getToggleItem() != null;
-                    player.getInventory().setItem(entry.getKey(), buildItemStack(entry.getValue(), useToggle));
-                });
-    }
-
-    private ItemStack buildItemStack(StaffModeConfig.HotbarItem hotbarItem, boolean useToggle) {
-        String materialName = useToggle && hotbarItem.getToggleItem() != null ? hotbarItem.getToggleItem() : hotbarItem.getItem();
-        String displayName = useToggle && hotbarItem.getToggleName() != null ? hotbarItem.getToggleName() : hotbarItem.getName();
-        List<String> lore = useToggle && hotbarItem.getToggleLore() != null && !hotbarItem.getToggleLore().isEmpty()
-                ? hotbarItem.getToggleLore() : hotbarItem.getLore();
-
-        Material material = parseMaterial(materialName);
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(localeManager.colorize(displayName));
-            if (lore != null && !lore.isEmpty()) {
-                meta.setLore(lore.stream().map(localeManager::colorize).collect(Collectors.toList()));
-            }
-            item.setItemMeta(meta);
-        }
-        return item;
-    }
-
-    private static int getPlayerPing(Player player) {
-        try {
-            // Try modern API first (1.17+)
-            return (int) Player.class.getMethod("getPing").invoke(player);
-        } catch (Exception e) {
-            try {
-                // Fallback: CraftPlayer.getHandle().ping (NMS)
-                Object handle = player.getClass().getMethod("getHandle").invoke(player);
-                return handle.getClass().getField("ping").getInt(handle);
-            } catch (Exception ex) {
-                return -1;
-            }
-        }
-    }
-
-    private Material parseMaterial(String name) {
-        try {
-            return Material.valueOf(name.replace("minecraft:", "").toUpperCase());
-        } catch (IllegalArgumentException e) {
-            if (warnedMaterials.add(name)) {
-                plugin.getLogger().warning("[staff-mode] Unknown hotbar material '" + name + "', using STONE");
-            }
-            return Material.STONE;
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    private void vanish(Player staff) {
-        vanished.add(staff.getUniqueId());
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            if (!online.equals(staff) && !staffModeActive.contains(online.getUniqueId())) {
-                online.hidePlayer(staff);
-            }
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    private void unvanish(Player staff) {
-        vanished.remove(staff.getUniqueId());
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            if (!online.equals(staff)) {
-                online.showPlayer(staff);
-            }
-        }
-    }
-
-    private void saveSnapshot(Player player) {
-        // Never clobber a live snapshot of the player's real inventory.
-        if (snapshots.containsKey(player.getUniqueId())) return;
-        snapshots.put(player.getUniqueId(), new PlayerSnapshot(
-                cloneItemArray(player.getInventory().getContents()),
-                cloneItemArray(player.getInventory().getArmorContents()),
-                player.getLocation().clone(),
-                player.getGameMode(),
-                player.getHealth(),
-                player.getFoodLevel(),
-                player.getExp(),
-                player.getLevel()
-        ));
-    }
-
-    private static ItemStack[] cloneItemArray(ItemStack[] source) {
-        return Arrays.stream(source)
-                .map(item -> item != null ? item.clone() : null)
-                .toArray(ItemStack[]::new);
-    }
-
-    private void restoreSnapshot(Player player) {
-        PlayerSnapshot snapshot = snapshots.remove(player.getUniqueId());
-        if (snapshot != null) {
-            player.getInventory().setContents(snapshot.getInventoryContents());
-            player.getInventory().setArmorContents(snapshot.getArmorContents());
-            player.setGameMode(snapshot.getGameMode());
-            player.setHealth(Math.min(snapshot.getHealth(), player.getMaxHealth()));
-            player.setFoodLevel(snapshot.getFoodLevel());
-            player.setExp(snapshot.getExp());
-            player.setLevel(snapshot.getLevel());
-            player.teleport(snapshot.getLocation());
-        } else {
-            player.getInventory().clear();
-            player.setGameMode(GameMode.SURVIVAL);
-        }
+        core.unvanishFromBridge(staffUuid);
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -501,28 +90,24 @@ public class StaffModeHandler implements Listener {
         UUID uuid = player.getUniqueId();
 
         if (event.getAction() == Action.PHYSICAL) {
-            if (vanished.contains(uuid)) {
+            if (core.isVanished(uuid)) {
                 event.setCancelled(true);
             }
             return;
         }
 
-        if (!staffModeActive.contains(uuid)) return;
+        if (!core.isInStaffMode(uuid)) return;
 
         ItemStack item = event.getItem();
         if (item != null && item.hasItemMeta()) {
             event.setCancelled(true);
-            StaffModeConfig.HotbarItem hotbarItem = getActiveHotbar(uuid).get(player.getInventory().getHeldItemSlot());
-
-            if (hotbarItem != null && hotbarItem.getAction() != null && !hotbarItem.getAction().isEmpty()) {
-                if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-                    executeAction(player, hotbarItem);
-                }
+            if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                core.handleHotbarAction(uuid, player.getInventory().getHeldItemSlot());
             }
             return;
         }
 
-        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && vanished.contains(uuid)) {
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && core.isVanished(uuid)) {
             Block block = event.getClickedBlock();
             if (block != null && block.getState() instanceof InventoryHolder) {
                 InventoryHolder holder = (InventoryHolder) block.getState();
@@ -539,127 +124,17 @@ public class StaffModeHandler implements Listener {
         event.setCancelled(true);
     }
 
-    private void executeAction(Player player, StaffModeConfig.HotbarItem hotbarItem) {
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onEntityInteract(PlayerInteractEntityEvent event) {
+        Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
-        String action = hotbarItem.getAction();
-        if (ACTION_TARGET_SELECTOR.equals(action)) {
-            // handled via entity interact
-        } else if (ACTION_VANISH_TOGGLE.equals(action)) {
-            toggleVanish(player);
-        } else if (ACTION_STAFF_MENU.equals(action)) {
-            if (bridgeClient != null && bridgeClient.isConnected()) {
-                bridgeClient.sendMessage("OPEN_STAFF_MENU", uuid.toString());
-            } else {
-                runForPlayer(uuid, () -> player.performCommand("staffmenu"));
-            }
-        } else if (ACTION_RANDOM_TELEPORT.equals(action)) {
-            handleRandomTeleport(player);
-        } else if (ACTION_FREEZE_TARGET.equals(action)) {
-            handleFreezeTarget(player);
-        } else if (ACTION_STOP_TARGET.equals(action)) {
-            handleStopTarget(player);
-        } else if (ACTION_INSPECT_TARGET.equals(action)) {
-            handleInspectTarget(player);
-        } else if (ACTION_OPEN_INVENTORY.equals(action)) {
-            handleOpenInventory(player);
-        } else if (ACTION_TELEPORT_TO_TARGET.equals(action)) {
-            handleTeleportToTarget(player);
-        } else if (ACTION_HACKREPORT_TARGET.equals(action)) {
-            handleHackreportTarget(player);
-        }
-    }
 
-    private void handleStopTarget(Player player) {
-        UUID uuid = player.getUniqueId();
-        Player target = resolveTarget(uuid);
-        String targetName = target != null ? target.getName() : "Unknown";
-        clearTarget(uuid);
-        player.sendMessage(localeManager.getMessage("staff_mode.target.cleared", mapOf("player", targetName)));
-    }
+        if (!core.isInStaffMode(uuid)) return;
+        event.setCancelled(true);
 
-    private void toggleVanish(Player player) {
-        if (vanished.contains(player.getUniqueId())) {
-            unvanish(player);
-            player.sendMessage(localeManager.getMessage("staff_mode.vanish.off"));
-            updateVanishHotbarItem(player, false);
-        } else {
-            vanish(player);
-            player.sendMessage(localeManager.getMessage("staff_mode.vanish.on"));
-            updateVanishHotbarItem(player, true);
-        }
-    }
-
-    private void handleRandomTeleport(Player player) {
-        List<Player> candidates = Bukkit.getOnlinePlayers().stream()
-                .filter(p -> !p.equals(player) && !staffModeActive.contains(p.getUniqueId()))
-                .collect(Collectors.toList());
-
-        if (candidates.isEmpty()) {
-            player.sendMessage(localeManager.getMessage("staff_mode.random_teleport.no_players"));
-            return;
-        }
-
-        Player target = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
-        player.teleport(target.getLocation());
-        player.sendMessage(localeManager.getMessage("staff_mode.random_teleport.teleported", mapOf("player", target.getName())));
-    }
-
-    private void handleFreezeTarget(Player player) {
-        UUID targetUuid = targetMap.get(player.getUniqueId());
-        if (targetUuid == null) return;
-
-        Player target = Bukkit.getPlayer(targetUuid);
-        String targetName = target != null ? target.getName() : "Unknown";
-
-        if (freezeHandler.isFrozen(targetUuid)) {
-            freezeHandler.unfreeze(targetUuid.toString());
-            player.sendMessage(localeManager.getMessage("staff_mode.freeze.unfrozen", mapOf("player", targetName)));
-        } else {
-            freezeHandler.freeze(targetUuid.toString(), player.getUniqueId().toString());
-            player.sendMessage(localeManager.getMessage("staff_mode.freeze.frozen", mapOf("player", targetName)));
-        }
-    }
-
-    private void handleInspectTarget(Player player) {
-        Player target = resolveTarget(player.getUniqueId());
-        if (target == null) return;
-
-        if (bridgeClient != null && bridgeClient.isConnected()) {
-            bridgeClient.sendMessage("OPEN_INSPECT_MENU", player.getUniqueId().toString(), target.getName());
-        } else {
-            runForPlayer(player.getUniqueId(), () -> player.performCommand("inspect " + target.getName()));
-        }
-    }
-
-    private void handleOpenInventory(Player player) {
-        Player target = resolveTarget(player.getUniqueId());
-        if (target != null) {
-            // Read-only point-in-time copy so clicks can never write through to the target's
-            // live inventory. SILENT_CONTAINER_PREFIX makes onInventoryClick treat it as read-only.
-            Inventory copy = Bukkit.createInventory(null, 54,
-                    SILENT_CONTAINER_PREFIX + target.getName() + "'s Inventory");
-            ItemStack[] contents = target.getInventory().getContents();
-            for (int i = 0; i < contents.length && i < 54; i++) {
-                copy.setItem(i, contents[i] == null ? null : contents[i].clone());
-            }
-            player.openInventory(copy);
-        }
-    }
-
-    private void handleHackreportTarget(Player player) {
-        Player target = resolveTarget(player.getUniqueId());
-        if (target != null) {
-            runForPlayer(player.getUniqueId(), () -> player.performCommand("hackreport " + target.getName()));
-        }
-    }
-
-    private void handleTeleportToTarget(Player player) {
-        Player target = resolveTarget(player.getUniqueId());
-        if (target != null) {
-            player.teleport(target.getLocation());
-            player.sendMessage(localeManager.getMessage("staff_mode.teleport.teleported", mapOf("player", target.getName())));
-        } else {
-            player.sendMessage(localeManager.getMessage("staff_mode.teleport.target_offline"));
+        if (event.getRightClicked() instanceof Player) {
+            Player clicked = (Player) event.getRightClicked();
+            core.handleTargetSelect(uuid, player.getInventory().getHeldItemSlot(), clicked.getUniqueId());
         }
     }
 
@@ -677,7 +152,7 @@ public class StaffModeHandler implements Listener {
     public void onDamage(EntityDamageEvent event) {
         if (event.getEntity() instanceof Player) {
             Player player = (Player) event.getEntity();
-            if (staffModeActive.contains(player.getUniqueId())) {
+            if (core.isInStaffMode(player.getUniqueId())) {
                 event.setCancelled(true);
             }
         }
@@ -687,7 +162,7 @@ public class StaffModeHandler implements Listener {
     public void onDamageOther(EntityDamageByEntityEvent event) {
         if (event.getDamager() instanceof Player) {
             Player player = (Player) event.getDamager();
-            if (staffModeActive.contains(player.getUniqueId())) {
+            if (core.isInStaffMode(player.getUniqueId())) {
                 event.setCancelled(true);
             }
         }
@@ -696,7 +171,7 @@ public class StaffModeHandler implements Listener {
     @SuppressWarnings("deprecation")
     @EventHandler(priority = EventPriority.HIGH)
     public void onPickup(PlayerPickupItemEvent event) {
-        if (staffModeActive.contains(event.getPlayer().getUniqueId())) {
+        if (core.isInStaffMode(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
         }
     }
@@ -710,7 +185,7 @@ public class StaffModeHandler implements Listener {
     public void onFoodChange(FoodLevelChangeEvent event) {
         if (event.getEntity() instanceof Player) {
             Player player = (Player) event.getEntity();
-            if (staffModeActive.contains(player.getUniqueId())) {
+            if (core.isInStaffMode(player.getUniqueId())) {
                 event.setCancelled(true);
             }
         }
@@ -720,7 +195,7 @@ public class StaffModeHandler implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
-        if (!staffModeActive.contains(player.getUniqueId())) return;
+        if (!core.isInStaffMode(player.getUniqueId())) return;
 
         if (event.getView().getTitle().startsWith(SILENT_CONTAINER_PREFIX)) {
             return;
@@ -728,105 +203,29 @@ public class StaffModeHandler implements Listener {
         event.setCancelled(true);
     }
 
-    private void cancelIfInStaffMode(Player player, Cancellable event) {
-        if (staffModeActive.contains(player.getUniqueId())) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onEntityInteract(PlayerInteractEntityEvent event) {
-        Player player = event.getPlayer();
-        UUID uuid = player.getUniqueId();
-
-        if (!staffModeActive.contains(uuid)) return;
-        event.setCancelled(true);
-
-        if (event.getRightClicked() instanceof Player) {
-            Player clicked = (Player) event.getRightClicked();
-            StaffModeConfig.HotbarItem hotbarItem = getActiveHotbar(uuid).get(player.getInventory().getHeldItemSlot());
-
-            if (hotbarItem != null && ACTION_TARGET_SELECTOR.equals(hotbarItem.getAction())) {
-                setTarget(uuid.toString(), clicked.getUniqueId().toString());
-                player.sendMessage(localeManager.getMessage("staff_mode.target.now_targeting", mapOf("player", clicked.getName())));
-            }
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        Player joining = event.getPlayer();
-        UUID joiningId = joining.getUniqueId();
-
-        // Staff member exited staff mode while offline: restore + consume their real inventory.
-        if (!staffModeActive.contains(joiningId) && snapshots.containsKey(joiningId)) {
-            runForPlayer(joiningId, () -> {
-                Player p = Bukkit.getPlayer(joiningId);
-                if (p != null && p.isOnline()) restoreSnapshot(p);
-            });
-        }
-        // Cross-server /target: replay the teleport/hotbar now that the staff member is present.
-        UUID targetUuid = targetMap.get(joiningId);
-        if (targetUuid != null) {
-            setTarget(joiningId.toString(), targetUuid.toString());
-        }
-
-        if (!staffModeActive.contains(joining.getUniqueId())) {
-            for (UUID vanishedUuid : vanished) {
-                Player vanishedPlayer = Bukkit.getPlayer(vanishedUuid);
-                if (vanishedPlayer != null && vanishedPlayer.isOnline()) {
-                    joining.hidePlayer(vanishedPlayer);
-                }
-            }
-        }
-        if (vanished.contains(joining.getUniqueId())) {
-            for (Player online : Bukkit.getOnlinePlayers()) {
-                if (!online.equals(joining) && !staffModeActive.contains(online.getUniqueId())) {
-                    online.hidePlayer(joining);
-                }
-            }
-        }
-    }
-
     @EventHandler(priority = EventPriority.HIGH)
     public void onEntityTarget(EntityTargetLivingEntityEvent event) {
         if (event.getTarget() instanceof Player) {
             Player player = (Player) event.getTarget();
-            if (vanished.contains(player.getUniqueId())) {
+            if (core.isVanished(player.getUniqueId())) {
                 event.setCancelled(true);
             }
         }
     }
 
     @EventHandler
-    public void onQuit(PlayerQuitEvent event) {
-        Player player = event.getPlayer();
-        UUID uuid = player.getUniqueId();
-
-        targetMap.entrySet().stream()
-                .filter(entry -> entry.getValue().equals(uuid))
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toList())
-                .forEach(staffUuid -> {
-                    targetMap.remove(staffUuid);
-                    Player staffPlayer = Bukkit.getPlayer(staffUuid);
-                    if (staffPlayer != null && staffPlayer.isOnline() && staffModeActive.contains(staffUuid)) {
-                        staffPlayer.sendMessage(localeManager.getMessage("staff_mode.target.disconnected", mapOf("player", player.getName())));
-                        setupHotbar(staffPlayer, staffModeConfig.getStaffHotbar());
-                        refreshScoreboard(staffPlayer);
-                    }
-                });
-
-        if (staffModeActive.remove(uuid)) {
-            removeScoreboard(player);
-            unvanish(player);
-            restoreSnapshot(player);
-        }
-        targetMap.remove(uuid);
-        vanished.remove(uuid);
-        snapshots.remove(uuid);
-        activeScoreboards.remove(uuid);
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        core.handlePlayerJoin(event.getPlayer().getUniqueId());
     }
 
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        core.handlePlayerQuit(event.getPlayer().getUniqueId());
+    }
+
+    private void cancelIfInStaffMode(Player player, Cancellable event) {
+        if (core.isInStaffMode(player.getUniqueId())) {
+            event.setCancelled(true);
+        }
+    }
 }

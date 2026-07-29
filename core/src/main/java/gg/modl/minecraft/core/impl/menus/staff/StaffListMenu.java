@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -14,10 +15,9 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffListMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.SkinTextureCache;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.util.Permissions;
-import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -51,7 +51,6 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
     private List<StaffMember> staffMembers = new ArrayList<>();
     private List<String> availableRoles = new ArrayList<>();
     private Map<String, Integer> roleOrders = new HashMap<>();
-    private final String panelUrl;
     private String viewerRole;
     private final Map<String, String> selectedRoles = new HashMap<>();
     private final boolean hasPermission;
@@ -59,11 +58,10 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
 
     public StaffListMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                          boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
-        super("Manage Staff", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
-        this.panelUrl = panelUrl;
+        super("Manage Staff", platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         activeTab = StaffTab.SETTINGS;
 
-        Cache cache = platform.getCache();
+        Cache cache = PluginServices.cache();
         this.hasPermission = cache != null && cache.hasPermission(viewerUuid, Permissions.STAFF_MANAGE);
 
         if (hasPermission)
@@ -77,11 +75,10 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
                           List<StaffMember> existingStaff, List<String> existingRoles,
                           Map<String, Integer> existingRoleOrders, String viewerRole,
                           Map<String, String> existingSelections) {
-        super("Manage Staff", platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
-        this.panelUrl = panelUrl;
+        super("Manage Staff", platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
         activeTab = StaffTab.SETTINGS;
 
-        Cache cache = platform.getCache();
+        Cache cache = PluginServices.cache();
         this.hasPermission = cache != null && cache.hasPermission(viewerUuid, Permissions.STAFF_MANAGE);
 
         if (existingStaff != null) this.staffMembers = new ArrayList<>(existingStaff);
@@ -128,17 +125,8 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
                 }
             }
 
-            if (platform.getCache() != null) {
-                for (StaffMember staff : staffMembers) {
-                    if (staff.getUuid() != null && platform.getCache().getSkinTexture(staff.getUuid()) == null) {
-                        final UUID staffUuid = staff.getUuid();
-                        WebPlayer.get(staffUuid).thenAccept(wp -> {
-                            if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
-                                platform.getCache().cacheSkinTexture(staffUuid, wp.getTextureValue());
-                            }
-                        });
-                    }
-                }
+            for (StaffMember staff : staffMembers) {
+                SkinTextureCache.ensureCached(staff.getUuid());
             }
         });
 
@@ -161,11 +149,8 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         if (isSuperAdmin(staff)) return false;
         if (isViewerSelf(staff)) return false;
 
-        // A super-admin viewer (admin flag, or their cached MC role) is top authority even if their uuid
-        // is not linked in the staff list (viewerRole stays null). Backend still enforces, so a wrong
-        // client-side flag cannot escalate.
         boolean viewerIsSuperAdmin = isAdmin
-                || (platform.getCache() != null && SUPER_ADMIN_ROLE.equalsIgnoreCase(platform.getCache().getStaffRole(viewerUuid)));
+                || (PluginServices.cache() != null && SUPER_ADMIN_ROLE.equalsIgnoreCase(PluginServices.cache().getStaffRole(viewerUuid)));
         if (!viewerIsSuperAdmin && viewerRole == null) return false;
 
         int viewerOrder = viewerIsSuperAdmin ? Integer.MIN_VALUE : getRoleOrder(viewerRole);
@@ -207,19 +192,7 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
                 MenuItems.lore(lore)
         );
 
-        if (staff.getUuid() != null && platform.getCache() != null) {
-            String cachedTexture = platform.getCache().getSkinTexture(staff.getUuid());
-            if (cachedTexture != null) {
-                headItem = headItem.texture(cachedTexture);
-            } else {
-                final UUID uuid = staff.getUuid();
-                WebPlayer.get(uuid).thenAccept(wp -> {
-                    if (wp != null && wp.isValid() && wp.getTextureValue() != null) {
-                        platform.getCache().cacheSkinTexture(uuid, wp.getTextureValue());
-                    }
-                });
-            }
-        }
+        headItem = SkinTextureCache.applyCachedOrFetch(headItem, staff.getUuid());
 
         return headItem;
     }
@@ -306,7 +279,7 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
         sendMessage(MenuItems.COLOR_YELLOW + "Applying role " + MenuItems.COLOR_GREEN + selectedRole +
                 MenuItems.COLOR_YELLOW + " to " + staff.getUsername() + "...");
 
-        String actingStaffId = platform.getCache() != null ? platform.getCache().getStaffId(viewerUuid) : null;
+        String actingStaffId = PluginServices.cache() != null ? PluginServices.cache().getStaffId(viewerUuid) : null;
         httpClient.updateStaffRole(staff.getId(), selectedRole, actingStaffId).thenAccept(v -> {
             sendMessage(MenuItems.COLOR_GREEN + "Role updated successfully!");
             selectedRoles.remove(staff.getId());
@@ -319,14 +292,5 @@ public class StaffListMenu extends BaseStaffListMenu<StaffListMenu.StaffMember> 
             sendMessage(MenuItems.COLOR_RED + "Failed to update role: " + e.getMessage());
             return null;
         });
-    }
-
-    @Override
-    protected void registerActionHandlers() {
-        super.registerActionHandlers();
-
-        StaffNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
     }
 }

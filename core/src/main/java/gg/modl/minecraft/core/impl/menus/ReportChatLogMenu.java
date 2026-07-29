@@ -75,7 +75,6 @@ public class ReportChatLogMenu extends SimpleMenu {
     private void buildCombinedMenu() {
         set(buildTargetHead("messages.report_skull_chat_log").slot(4));
 
-        // Chat toggle
         CirrusItem chatItem = CirrusItem.of(
                 CirrusItemType.of(chatToggled ? "minecraft:lime_terracotta" : "minecraft:orange_terracotta"),
                 CirrusChatElement.ofLegacyText(locale.getMessage("messages.report_attach_chat")),
@@ -88,7 +87,6 @@ public class ReportChatLogMenu extends SimpleMenu {
         if (chatToggled) chatItem.glow();
         set(chatItem);
 
-        // Replay toggle
         CirrusItem replayItem = CirrusItem.of(
                 CirrusItemType.of("minecraft:ender_eye"),
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_YELLOW + "Capture Replay"),
@@ -103,14 +101,12 @@ public class ReportChatLogMenu extends SimpleMenu {
         if (replayToggled) replayItem.glow();
         set(replayItem);
 
-        // Continue button
         set(CirrusItem.of(
                 CirrusItemType.of("minecraft:lime_terracotta"),
                 CirrusChatElement.ofLegacyText(MenuItems.COLOR_GREEN + "Continue"),
                 MenuItems.lore(listOf(MenuItems.COLOR_GRAY + "Proceed to add details"))
         ).slot(22).actionHandler("continue"));
 
-        // Back button
         set(MenuItems.backButton().slot(26));
     }
 
@@ -169,10 +165,7 @@ public class ReportChatLogMenu extends SimpleMenu {
     @Override
     protected void registerActionHandlers() {
         registerActionHandler("attachChat", click -> {
-            String chatLog = chatMessageCache.getChatLogForReport(
-                    target.getUuid().toString(),
-                    reporter.getUuid().toString()
-            );
+            String chatLog = chatMessageCache.getChatLogForReport(target.getUuid().toString());
 
             if (chatLog.isEmpty()) {
                 platform.sendMessage(reporter.getUuid(),
@@ -204,10 +197,7 @@ public class ReportChatLogMenu extends SimpleMenu {
         registerActionHandler("toggleChat", click -> {
             chatToggled = !chatToggled;
             if (chatToggled) {
-                String chatLog = chatMessageCache.getChatLogForReport(
-                        target.getUuid().toString(),
-                        reporter.getUuid().toString()
-                );
+                String chatLog = chatMessageCache.getChatLogForReport(target.getUuid().toString());
                 if (chatLog.isEmpty()) {
                     platform.sendMessage(reporter.getUuid(),
                             locale.getMessage("messages.no_chat_logs_available", mapOf("player", target.getUsername())));

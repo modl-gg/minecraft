@@ -1,12 +1,12 @@
 package gg.modl.minecraft.core.config;
 
+import gg.modl.minecraft.core.support.RecordingPluginLogger;
+import gg.modl.minecraft.core.support.TempConfigs;
 import gg.modl.minecraft.core.util.PluginLogger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -19,15 +19,11 @@ class RuntimeConfigSourceTest {
     @TempDir
     Path tempDir;
 
-    private final PluginLogger logger = new PluginLogger() {
-        @Override public void info(String message) {}
-        @Override public void warning(String message) {}
-        @Override public void severe(String message) {}
-    };
+    private final PluginLogger logger = new RecordingPluginLogger();
 
     @Test
     void loadsRootValuesAndReturnsDefensiveMaps() throws IOException {
-        write(tempDir.resolve("config.yml"),
+        TempConfigs.write(tempDir.resolve("config.yml"),
                 "locale: de",
                 "commands:",
                 "  replay: replay|record",
@@ -47,12 +43,12 @@ class RuntimeConfigSourceTest {
 
     @Test
     void sectionFileTakesPrecedenceOverConfigYmlFallback() throws IOException {
-        write(tempDir.resolve("config.yml"),
+        TempConfigs.write(tempDir.resolve("config.yml"),
                 "staff_chat:",
                 "  enabled: false",
                 "  prefix: \"!\""
         );
-        write(tempDir.resolve("staff_chat.yml"),
+        TempConfigs.write(tempDir.resolve("staff_chat.yml"),
                 "enabled: true",
                 "prefix: \"#\""
         );
@@ -66,7 +62,7 @@ class RuntimeConfigSourceTest {
 
     @Test
     void sectionFallsBackToConfigYmlWhenDedicatedFileIsAbsent() throws IOException {
-        write(tempDir.resolve("config.yml"),
+        TempConfigs.write(tempDir.resolve("config.yml"),
                 "chat_management:",
                 "  clear_lines: 250"
         );
@@ -78,17 +74,13 @@ class RuntimeConfigSourceTest {
 
     @Test
     void loadReflectsCurrentConfigFileContents() throws IOException {
-        write(tempDir.resolve("config.yml"), "locale: en_US");
+        TempConfigs.write(tempDir.resolve("config.yml"), "locale: en_US");
         RuntimeConfigSource first = RuntimeConfigSource.load(tempDir, logger);
 
-        write(tempDir.resolve("config.yml"), "locale: es");
+        TempConfigs.write(tempDir.resolve("config.yml"), "locale: es");
         RuntimeConfigSource second = RuntimeConfigSource.load(tempDir, logger);
 
         assertEquals("en_US", first.root().get("locale"));
         assertEquals("es", second.root().get("locale"));
-    }
-
-    private void write(Path path, String... lines) throws IOException {
-        Files.write(path, String.join(System.lineSeparator(), lines).getBytes(StandardCharsets.UTF_8));
     }
 }

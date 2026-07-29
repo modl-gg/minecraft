@@ -14,44 +14,30 @@ val rootGradlew = rootProject.file("gradlew")
 val packetEventsDir = rootProject.file("../minecraft-packetevents")
 val packetEventsGradlew = packetEventsDir.resolve("gradlew")
 val nestedPacketEventsFileName = "packetevents-modl.jar"
-val nestedFabricImplementationFileNames = listOf(
-    "modl-fabric-121.jar",
-    "modl-fabric-1214.jar",
-    "modl-fabric-1218.jar",
-    "modl-fabric-12111.jar",
-    "modl-fabric-26.jar"
-)
-val fabric12111Dir = rootProject.file("platforms/fabric-12111")
-val fabric12111Jar = fabric12111Dir.resolve("build/libs/modl-fabric-12111-${project.version}.jar")
-val fabric26Dir = rootProject.file("platforms/fabric-26")
-val fabric26Jar = fabric26Dir.resolve("build/libs/modl-fabric-26-${project.version}.jar")
-val fabric121Dir = rootProject.file("platforms/fabric-121")
-val fabric121Jar = fabric121Dir.resolve("build/libs/modl-fabric-121-${project.version}.jar")
-val fabric1214Dir = rootProject.file("platforms/fabric-1214")
-val fabric1214Jar = fabric1214Dir.resolve("build/libs/modl-fabric-1214-${project.version}.jar")
-val fabric1218Dir = rootProject.file("platforms/fabric-1218")
-val fabric1218Jar = fabric1218Dir.resolve("build/libs/modl-fabric-1218-${project.version}.jar")
-val sharedDependencyProperties = listOf(
-    "version",
-    "libby.version",
-    "lamp.version",
-    "cirrus.version",
-    "lombok.version",
-    "lombok.version.fabric26",
-    "netty.version",
-    "packetevents.version",
-    "adventure.version",
-    "snakeyaml.version"
+
+data class FabricModule(
+    val key: String,
+    val mcLabel: String,
+) {
+    val directory: String get() = "platforms/fabric-$key"
+    val nestedJarFileName: String get() = "modl-fabric-$key.jar"
+    val buildTaskName: String get() = "buildFabric$key"
+}
+
+val fabricModules = listOf(
+    FabricModule("121", "1.21.1"),
+    FabricModule("1214", "1.21.4"),
+    FabricModule("1218", "1.21.8"),
+    FabricModule("12111", "1.21.11"),
+    FabricModule("26", "26.1.2"),
 )
 
-fun commandWithSharedProperties(baseArgs: MutableList<String>): MutableList<String> {
-    sharedDependencyProperties.forEach { propertyName ->
-        rootProject.findProperty(propertyName)?.let { value ->
-            baseArgs.add("-P$propertyName=$value")
-        }
-    }
-    return baseArgs
-}
+val nestedFabricImplementationFileNames = fabricModules.map { it.nestedJarFileName }
+
+fun FabricModule.projectDir(): java.io.File = rootProject.file(directory)
+
+fun FabricModule.remappedJar(): java.io.File =
+    projectDir().resolve("build/libs/modl-fabric-$key-${project.version}.jar")
 
 fun packetEventsVersion(): String {
     val properties = Properties()
@@ -73,74 +59,18 @@ val fabricRuntimeSupport by configurations.creating {
     isCanBeResolved = true
 }
 
-val buildFabric12111 by tasks.registering(Exec::class) {
-    description = "Builds the Fabric 1.21.11 module (separate Gradle build for older Loom)"
-    dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
-    workingDir = rootProject.projectDir
-    commandLine(
-        commandWithSharedProperties(mutableListOf(
-        rootGradlew.absolutePath,
-        "-p", fabric12111Dir.absolutePath,
-        "build", "-x", "test"
-        ))
-    )
-    onlyIf { fabric12111Dir.resolve("build.gradle").exists() }
-}
-
-val buildFabric26 by tasks.registering(Exec::class) {
-    description = "Builds the Fabric 26.1.2 module (separate Gradle build due to Loom version conflict)"
-    dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
-    workingDir = rootProject.projectDir
-    commandLine(
-        commandWithSharedProperties(mutableListOf(
-        rootGradlew.absolutePath,
-        "-p", fabric26Dir.absolutePath,
-        "build", "-x", "test"
-        ))
-    )
-    onlyIf { fabric26Dir.resolve("build.gradle").exists() }
-}
-
-val buildFabric121 by tasks.registering(Exec::class) {
-    description = "Builds the Fabric 1.21.1 module (separate Gradle build for older Loom)"
-    dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
-    workingDir = rootProject.projectDir
-    commandLine(
-        commandWithSharedProperties(mutableListOf(
-        rootGradlew.absolutePath,
-        "-p", fabric121Dir.absolutePath,
-        "build", "-x", "test"
-        ))
-    )
-    onlyIf { fabric121Dir.resolve("build.gradle").exists() }
-}
-
-val buildFabric1214 by tasks.registering(Exec::class) {
-    description = "Builds the Fabric 1.21.4 module (separate Gradle build for older Loom)"
-    dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
-    workingDir = rootProject.projectDir
-    commandLine(
-        commandWithSharedProperties(mutableListOf(
-        rootGradlew.absolutePath,
-        "-p", fabric1214Dir.absolutePath,
-        "build", "-x", "test"
-        ))
-    )
-    onlyIf { fabric1214Dir.resolve("build.gradle").exists() }
-}
-
-val buildFabric1218 by tasks.registering(Exec::class) {
-    description = "Builds the Fabric 1.21.8 module (separate Gradle build for older Loom)"
-    dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
-    workingDir = rootProject.projectDir
-    commandLine(
-        commandWithSharedProperties(mutableListOf(
-        rootGradlew.absolutePath,
-        "-p", fabric1218Dir.absolutePath,
-        "build", "-x", "test"
-        ))
-    )
-    onlyIf { fabric1218Dir.resolve("build.gradle").exists() }
+val fabricModuleBuildTasks = fabricModules.map { module ->
+    tasks.register<Exec>(module.buildTaskName) {
+        description = "Builds the Fabric ${module.mcLabel} module (separate Gradle build for its Loom version)"
+        dependsOn(":core:jar", ":bridge-core:jar", ":api:jar")
+        workingDir = rootProject.projectDir
+        commandLine(
+            rootGradlew.absolutePath,
+            "-p", module.projectDir().absolutePath,
+            "build", "-x", "test"
+        )
+        onlyIf { module.projectDir().resolve("build.gradle").exists() }
+    }
 }
 
 val buildPacketEventsFabric by tasks.registering(Exec::class) {
@@ -201,20 +131,22 @@ dependencies {
     implementation(project(":platforms:spigot-sv"))
     implementation(project(":platforms:velocity"))
     implementation(project(":platforms:bungee"))
-    implementation("net.kyori:adventure-api:${property("adventure.version")}")
-    implementation("net.kyori:adventure-nbt:${property("adventure.version")}")
-    implementation("net.kyori:adventure-text-minimessage:${property("adventure.version")}")
-    implementation("net.kyori:adventure-text-serializer-legacy:${property("adventure.version")}")
-    implementation("net.kyori:adventure-text-serializer-gson:${property("adventure.version")}")
+    implementation(libs.adventure.api)
+    implementation(libs.adventure.nbt)
+    implementation(libs.adventure.minimessage)
+    implementation(libs.adventure.serializer.legacy)
+    implementation(libs.adventure.serializer.gson)
 
     fabricRuntimeSupport(project(":api"))
     fabricRuntimeSupport(project(":core"))
     fabricRuntimeSupport(project(":bridge-core"))
-    fabricRuntimeSupport("com.alessiodp.libby:libby-core:${property("libby.version")}")
-    fabricRuntimeSupport("com.alessiodp.libby:libby-fabric:${property("libby.version")}")
+    fabricRuntimeSupport(libs.libby.core)
+    fabricRuntimeSupport(libs.libby.fabric)
 }
 
 tasks.shadowJar {
+    dependsOn(":platforms:velocity:check")
+
     archiveBaseName.set("modl")
     archiveClassifier.set("")
 
@@ -246,11 +178,7 @@ tasks.shadowJar {
 
 val fabricJar by tasks.registering(Jar::class) {
     dependsOn(":platforms:fabric:remapJar")
-    dependsOn(buildFabric12111)
-    dependsOn(buildFabric121)
-    dependsOn(buildFabric1214)
-    dependsOn(buildFabric1218)
-    dependsOn(buildFabric26)
+    dependsOn(fabricModuleBuildTasks)
     dependsOn(buildPacketEventsFabric)
     dependsOn(generateFabricDistributionMetadata)
 
@@ -275,25 +203,11 @@ val fabricJar by tasks.registering(Jar::class) {
         exclude("**/module-info.class")
     }
 
-    from(fabric121Jar) {
-        into("META-INF/jars")
-        rename { nestedFabricImplementationFileNames[0] }
-    }
-    from(fabric1214Jar) {
-        into("META-INF/jars")
-        rename { nestedFabricImplementationFileNames[1] }
-    }
-    from(fabric1218Jar) {
-        into("META-INF/jars")
-        rename { nestedFabricImplementationFileNames[2] }
-    }
-    from(fabric12111Jar) {
-        into("META-INF/jars")
-        rename { nestedFabricImplementationFileNames[3] }
-    }
-    from(fabric26Jar) {
-        into("META-INF/jars")
-        rename { nestedFabricImplementationFileNames[4] }
+    fabricModules.forEach { module ->
+        from(module.remappedJar()) {
+            into("META-INF/jars")
+            rename { module.nestedJarFileName }
+        }
     }
 
     from(packetEventsFabricJar) {

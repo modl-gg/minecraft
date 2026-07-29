@@ -5,48 +5,26 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.command.CommandExecuteEvent;
 import com.velocitypowered.api.event.player.PlayerChatEvent;
 import com.velocitypowered.api.proxy.Player;
-import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
-import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.service.ChatCommandLogService;
-import gg.modl.minecraft.core.service.ChatManagementService;
-import gg.modl.minecraft.core.service.ChatMessageCache;
-import gg.modl.minecraft.core.service.FreezeService;
-import gg.modl.minecraft.core.service.NetworkChatInterceptService;
-import gg.modl.minecraft.core.service.StaffChatService;
-import gg.modl.minecraft.core.util.ChatEventHandler;
-import gg.modl.minecraft.core.util.CommandInterceptHandler;
+import gg.modl.minecraft.core.chat.ChatService;
+import gg.modl.minecraft.core.chat.CommandInterceptService;
 import gg.modl.minecraft.core.util.StringUtil;
 import lombok.RequiredArgsConstructor;
 
-import java.util.List;
 import java.util.Objects;
 
 @RequiredArgsConstructor
 public class ChatListener {
-    private final VelocityPlatform platform;
-    private final Cache cache;
-    private final ChatMessageCache chatMessageCache;
-    private final LocaleManager localeManager;
-    private final List<String> mutedCommands;
-    private final StaffChatService staffChatService;
-    private final ChatManagementService chatManagementService;
-    private final FreezeService freezeService;
-    private final NetworkChatInterceptService networkChatInterceptService;
-    private final ChatCommandLogService chatCommandLogService;
-    private final StaffChatConfig staffChatConfig;
+    private final ChatService chatService;
+    private final CommandInterceptService commandInterceptService;
 
     @Subscribe(order = PostOrder.LATE)
     public void onPlayerChat(PlayerChatEvent event) {
         String serverName = getPlayerServerName(event.getPlayer());
 
-        ChatEventHandler.Result result = ChatEventHandler.handleChat(
+        ChatService.Result result = chatService.handleChat(
                 event.getPlayer().getUniqueId(), event.getPlayer().getUsername(), event.getMessage(), serverName,
-                msg -> event.getPlayer().sendMessage(Colors.get(StringUtil.unescapeNewlines(msg))),
-                platform, cache, localeManager, chatMessageCache,
-                staffChatService, staffChatConfig, chatManagementService,
-                freezeService, chatCommandLogService, networkChatInterceptService);
-        if (result == ChatEventHandler.Result.CANCELLED) event.setResult(PlayerChatEvent.ChatResult.denied());
+                msg -> event.getPlayer().sendMessage(Colors.get(StringUtil.unescapeNewlines(msg))));
+        if (result == ChatService.Result.CANCELLED) event.setResult(PlayerChatEvent.ChatResult.denied());
     }
 
     @Subscribe(order = PostOrder.LATE)
@@ -54,18 +32,15 @@ public class ChatListener {
         if (!(event.getCommandSource() instanceof Player)) return;
         Player player = (Player) event.getCommandSource();
 
-        CommandInterceptHandler.CommandResult result = CommandInterceptHandler.handleCommand(
+        CommandInterceptService.CommandResult result = commandInterceptService.handleCommand(
                 player.getUniqueId(), player.getUsername(),
-                "/" + event.getCommand(), getPlayerServerName(player),
-                mutedCommands, cache, freezeService, chatCommandLogService);
+                "/" + event.getCommand(), getPlayerServerName(player));
 
-        if (result != CommandInterceptHandler.CommandResult.ALLOWED) {
+        if (result != CommandInterceptService.CommandResult.ALLOWED) {
             event.setResult(CommandExecuteEvent.CommandResult.denied());
-            player.sendMessage(
-                    Colors.get(
-                    Objects.requireNonNull(
-                    StringUtil.unescapeNewlines(
-                    CommandInterceptHandler.getBlockMessage(result, player.getUniqueId(), cache, localeManager)))));
+            String blockMessage = StringUtil.unescapeNewlines(
+                    commandInterceptService.getBlockMessage(result, player.getUniqueId()));
+            player.sendMessage(Colors.get(Objects.requireNonNull(blockMessage)));
         }
     }
 

@@ -105,6 +105,5 @@ public class FabricBridgeMessageHandler implements BridgeMessageHandler {
 
     @Override
     public void onPanelUrl(String panelUrl) {
-        // Handled by BridgeQueryClient
     }
 }

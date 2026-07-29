@@ -37,7 +37,7 @@ public class IAmMutedCommand {
             actor.reply(localeManager.getMessage("iammuted.not_muted"));
             return;
         }
-        if (!checkAndNotifyCooldown(actor, senderUuid)) return;
+        if (!checkAndNotifyCooldown(actor, senderProfile)) return;
         if (targetPlayer == null) {
             actor.reply(localeManager.getMessage("general.player_not_found"));
             return;
@@ -62,10 +62,7 @@ public class IAmMutedCommand {
         senderProfile.getCooldowns().set(COOLDOWN_KEY);
     }
 
-    private boolean checkAndNotifyCooldown(CommandActor actor, UUID senderUuid) {
-        CachedProfile profile = cache.getPlayerProfile(senderUuid);
-        if (profile == null) return true;
-
+    private boolean checkAndNotifyCooldown(CommandActor actor, CachedProfile profile) {
         if (!profile.getCooldowns().isOnCooldown(COOLDOWN_KEY, COOLDOWN_DURATION)) return true;
 
         long remaining = profile.getCooldowns().getRemainingMs(COOLDOWN_KEY, COOLDOWN_DURATION);

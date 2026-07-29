@@ -21,7 +21,7 @@ final class StaffProfileLookup {
     static CompletableFuture<PlayerProfileResponse> lookupPlayerProfile(ModlHttpClient httpClient, Platform platform, String playerQuery) {
         return lookupPlayerProfile(
                 playerQuery,
-                () -> httpClient.lookupPlayerProfile(new PlayerLookupRequest(playerQuery)),
+                () -> httpClient.lookupPlayerProfile(PlayerLookupRequest.builder().query(playerQuery).build()),
                 httpClient::getPlayerProfile,
                 query -> platform.getAbstractPlayer(query, false)
         );

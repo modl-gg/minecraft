@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -159,8 +160,18 @@ class BootConfigTest {
     private String readResource(String resourceName) throws IOException {
         try (InputStream inputStream = BootConfigTest.class.getResourceAsStream(resourceName)) {
             assertTrue(inputStream != null, "Missing resource " + resourceName);
-            return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            return new String(readFully(inputStream), StandardCharsets.UTF_8);
         }
+    }
+
+    private static byte[] readFully(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] chunk = new byte[4096];
+        int read;
+        while ((read = inputStream.read(chunk)) != -1) {
+            buffer.write(chunk, 0, read);
+        }
+        return buffer.toByteArray();
     }
 
     private static String normalizeLineEndings(String content) {

@@ -1,13 +1,11 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Value;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+@Value
 public class StartupRequest {
-    private String pluginVersion;
-    private String platformType;
-    private String serverVersion;
-    private int maxPlayers;
+    String pluginVersion;
+    String platformType;
+    String serverVersion;
+    int maxPlayers;
 }

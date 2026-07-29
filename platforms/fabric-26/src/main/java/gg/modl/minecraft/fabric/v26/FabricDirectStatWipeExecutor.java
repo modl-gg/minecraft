@@ -2,14 +2,12 @@ package gg.modl.minecraft.fabric.v26;
 
 import gg.modl.minecraft.bridge.statwipe.StatWipeHandler;
 import gg.modl.minecraft.core.service.sync.StatWipeExecutor;
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
 public class FabricDirectStatWipeExecutor implements StatWipeExecutor {
     private final FabricBridgeComponent bridgeComponent;
     private final String serverName;
-
-    public FabricDirectStatWipeExecutor(FabricBridgeComponent bridgeComponent, String serverName) {
-        this.bridgeComponent = bridgeComponent;
-        this.serverName = serverName;
-    }
 
     @Override
     public void executeStatWipe(String username, String uuid, String punishmentId, StatWipeCallback callback) {
@@ -17,8 +15,6 @@ public class FabricDirectStatWipeExecutor implements StatWipeExecutor {
         if (handler == null) {
             return;
         }
-        // Stat-wipe dispatches console commands; hop to the server thread so they never
-        // run from the async login/sync/realtime threads.
         bridgeComponent.getServer().execute(() -> {
             boolean success = handler.execute(username, uuid, punishmentId);
             callback.onComplete(success, serverName);

@@ -1,5 +1,7 @@
 package gg.modl.minecraft.core.query;
 
+import gg.modl.minecraft.core.bridge.protocol.BridgeAction;
+import gg.modl.minecraft.core.bridge.protocol.BridgeProtocol;
 import gg.modl.minecraft.core.service.sync.StatWipeExecutor;
 import gg.modl.minecraft.core.util.PluginLogger;
 import io.netty.bootstrap.ServerBootstrap;
@@ -13,16 +15,10 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import io.netty.handler.codec.LengthFieldPrepender;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -30,10 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
-    private static final byte[] MAGIC = "modl".getBytes(StandardCharsets.US_ASCII);
-    private static final String ACTION_CAPTURE_REPLAY = "CAPTURE_REPLAY";
-    private static final int MAX_FRAME_LENGTH = 65536;
-    private static final int LENGTH_FIELD_LENGTH = 4;
     private static final byte AUTH_SUCCESS = 0x01;
     private static final byte AUTH_FAILURE = 0x00;
 
@@ -74,8 +66,6 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
-                        // No frame codecs yet — handshake uses raw bytes.
-                        // Frame codecs are added after auth succeeds.
                         ch.pipeline().addLast("handler", new BridgeServerHandler());
                     }
                 });
@@ -127,7 +117,7 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
     }
 
     private boolean isImmediateOnlyAction(String action) {
-        return ACTION_CAPTURE_REPLAY.equals(action);
+        return BridgeAction.CAPTURE_REPLAY.wire().equals(action);
     }
 
     @Override
@@ -137,14 +127,12 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
 
     @Override
     public void executeStatWipe(String username, String uuid, String punishmentId, StatWipeCallback callback) {
-        byte[] data = buildMessage("STAT_WIPE", username, uuid, punishmentId);
+        byte[] data = buildMessage(BridgeAction.STAT_WIPE.wire(), username, uuid, punishmentId);
         if (data == null) {
             callback.onComplete(false, null);
             return;
         }
 
-        // Dispatch over the same set used by availability/broadcast (authenticatedChannels), and always
-        // invoke a terminal callback so SyncService.handleStatWipeResult runs on every path.
         Channel delivered = null;
         for (Channel ch : authenticatedChannels) {
             if (!ch.isActive()) continue;
@@ -168,9 +156,9 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
         return String.valueOf(ch.remoteAddress());
     }
 
-    private void broadcastToOthers(byte[] data, Channel except) {
+    private void rebroadcastToOtherBackends(byte[] data, Channel origin) {
         for (Channel ch : authenticatedChannels) {
-            if (ch.isActive() && !ch.equals(except)) {
+            if (ch.isActive() && !ch.equals(origin)) {
                 sendRaw(ch, data);
             }
         }
@@ -194,14 +182,7 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
 
     byte[] buildMessage(String action, String... args) {
         try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            DataOutputStream dos = new DataOutputStream(baos);
-            dos.writeUTF(action);
-            for (String arg : args) {
-                dos.writeUTF(arg != null ? arg : "");
-            }
-            dos.flush();
-            return baos.toByteArray();
+            return BridgeProtocol.encode(action, args);
         } catch (IOException e) {
             logger.warning("[bridge] Failed to build message for " + action + ": " + e.getMessage());
             return null;
@@ -216,7 +197,7 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
 
     private void sendPanelUrl(Channel channel) {
         if (panelUrl.isEmpty()) return;
-        byte[] data = buildMessage("PANEL_URL", panelUrl);
+        byte[] data = buildMessage(BridgeAction.PANEL_URL.wire(), panelUrl);
         if (data != null) {
             sendRaw(channel, data);
         }
@@ -246,16 +227,16 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
         }
 
         private void handleHandshake(ChannelHandlerContext ctx, ByteBuf buf) {
-            if (buf.readableBytes() < MAGIC.length + 2) {
+            if (buf.readableBytes() < BridgeProtocol.magicLength() + 2) {
                 logger.warning("[bridge] Handshake too short from " + ctx.channel().remoteAddress());
                 ctx.close();
                 return;
             }
 
-            byte[] magic = new byte[MAGIC.length];
+            byte[] magic = new byte[BridgeProtocol.magicLength()];
             buf.readBytes(magic);
 
-            if (!Arrays.equals(magic, MAGIC)) {
+            if (!BridgeProtocol.matchesMagic(magic)) {
                 logger.warning("[bridge] Invalid magic bytes from " + ctx.channel().remoteAddress());
                 ctx.close();
                 return;
@@ -277,11 +258,7 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
                 authenticated = true;
                 authenticatedChannels.add(ctx.channel());
                 sendResponse(ctx, AUTH_SUCCESS);
-                // Now that auth is done, add frame codecs for length-prefixed messages
-                ctx.pipeline().addBefore("handler", "frameDecoder",
-                        new LengthFieldBasedFrameDecoder(MAX_FRAME_LENGTH, 0, LENGTH_FIELD_LENGTH, 0, LENGTH_FIELD_LENGTH));
-                ctx.pipeline().addBefore("handler", "framePrepender",
-                        new LengthFieldPrepender(LENGTH_FIELD_LENGTH));
+                installFrameCodecs(ctx);
                 logger.info("[bridge] Backend authenticated from " + ctx.channel().remoteAddress());
                 sendPanelUrl(ctx.channel());
                 flushPendingMessages();
@@ -289,6 +266,11 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
                 logger.warning("[bridge] Handshake error: " + e.getMessage());
                 ctx.close();
             }
+        }
+
+        private void installFrameCodecs(ChannelHandlerContext ctx) {
+            ctx.pipeline().addBefore("handler", "frameDecoder", BridgeProtocol.newFrameDecoder());
+            ctx.pipeline().addBefore("handler", "framePrepender", BridgeProtocol.newFramePrepender());
         }
 
         private void sendResponse(ChannelHandlerContext ctx, byte status) {
@@ -305,27 +287,31 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
                 DataInputStream in = new DataInputStream(new ByteArrayInputStream(data));
                 String action = in.readUTF();
 
-                if ("BRIDGE_HELLO".equals(action)) {
-                    String serverName = in.readUTF();
-                    Channel previous = connectedServers.put(serverName, ctx.channel());
-                    if (previous != null && previous != ctx.channel()) {
-                        logger.warning("[bridge] Backend name '" + serverName + "' re-registered on a new channel ("
-                                + ctx.channel().remoteAddress() + "); replacing previous mapping (" + previous.remoteAddress() + ")");
-                    }
-                    logger.info("[bridge] Backend registered: " + serverName + " (" + ctx.channel().remoteAddress() + ")");
+                if (BridgeAction.BRIDGE_HELLO.wire().equals(action)) {
+                    registerBackend(ctx, in.readUTF());
                     return;
                 }
 
-                // Dispatch locally on proxy
-                DataInputStream dispatchIn = new DataInputStream(new ByteArrayInputStream(data));
-                dispatchIn.readUTF(); // skip action
-                dispatcher.dispatch(action, dispatchIn);
-
-                // Re-broadcast to all other connected backends
-                broadcastToOthers(data, ctx.channel());
+                dispatchLocally(action, data);
+                rebroadcastToOtherBackends(data, ctx.channel());
             } catch (IOException e) {
                 logger.warning("[bridge] Failed to read message: " + e.getMessage());
             }
+        }
+
+        private void registerBackend(ChannelHandlerContext ctx, String serverName) {
+            Channel previous = connectedServers.put(serverName, ctx.channel());
+            if (previous != null && previous != ctx.channel()) {
+                logger.warning("[bridge] Backend name '" + serverName + "' re-registered on a new channel ("
+                        + ctx.channel().remoteAddress() + "); replacing previous mapping (" + previous.remoteAddress() + ")");
+            }
+            logger.info("[bridge] Backend registered: " + serverName + " (" + ctx.channel().remoteAddress() + ")");
+        }
+
+        private void dispatchLocally(String action, byte[] data) throws IOException {
+            DataInputStream payload = new DataInputStream(new ByteArrayInputStream(data));
+            payload.readUTF();
+            dispatcher.dispatch(action, payload);
         }
 
         @Override
@@ -346,7 +332,8 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            logger.warning("[bridge] Connection error: " + cause.getMessage());
+            logger.warning("[bridge] Connection error: "
+                    + cause.getClass().getSimpleName() + ": " + cause.getMessage());
             ctx.close();
         }
     }

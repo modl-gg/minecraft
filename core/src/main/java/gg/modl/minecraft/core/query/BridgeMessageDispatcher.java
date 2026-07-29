@@ -3,6 +3,7 @@ package gg.modl.minecraft.core.query;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.bridge.protocol.BridgeAction;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.FreezeService;
 import gg.modl.minecraft.core.service.ReplayCaptureStatus;
@@ -42,38 +43,62 @@ public class BridgeMessageDispatcher {
     }
 
     public void dispatch(String action, DataInputStream data) {
+        BridgeAction bridgeAction = BridgeAction.fromWire(action);
+        if (bridgeAction == null) {
+            logger.debug("[bridge] Unknown action: " + action);
+            return;
+        }
         try {
-            if ("FREEZE_PLAYER".equals(action)) {
-                handleFreezePlayer(data);
-            } else if ("UNFREEZE_PLAYER".equals(action)) {
-                handleUnfreezePlayer(data);
-            } else if ("FREEZE_LOGOUT".equals(action)) {
-                handleFreezeLogout(data);
-            } else if ("STAFF_MODE_ENTER".equals(action)) {
-                handleStaffModeEnter(data);
-            } else if ("STAFF_MODE_EXIT".equals(action)) {
-                handleStaffModeExit(data);
-            } else if ("VANISH_ENTER".equals(action)) {
-                handleVanishEnter(data);
-            } else if ("VANISH_EXIT".equals(action)) {
-                handleVanishExit(data);
-            } else if ("TARGET_RESPONSE".equals(action)) {
-                handleTargetResponse(data);
-            } else if ("OPEN_STAFF_MENU".equals(action)) {
-                handleOpenStaffMenu(data);
-            } else if ("OPEN_INSPECT_MENU".equals(action)) {
-                handleOpenInspectMenu(data);
-            } else if ("PROXY_CMD".equals(action)) {
-                handleProxyCmd(data);
-            } else if ("CREATE_REPORT".equals(action)) {
-                handleCreateReport(data);
-            } else if ("CAPTURE_REPLAY_RESPONSE".equals(action)) {
-                handleCaptureReplayResponse(data);
-            } else {
-                logger.debug("[bridge] Unknown action: " + action);
-            }
+            handle(bridgeAction, data);
         } catch (Exception e) {
-            logger.warning("[bridge] Error handling " + action + ": " + e.getMessage());
+            logger.warning("[bridge] Error handling " + action + ": "
+                    + e.getClass().getSimpleName() + ": " + e.getMessage());
+        }
+    }
+
+    private void handle(BridgeAction action, DataInputStream data) throws Exception {
+        switch (action) {
+            case FREEZE_PLAYER:
+                handleFreezePlayer(data);
+                break;
+            case UNFREEZE_PLAYER:
+                handleUnfreezePlayer(data);
+                break;
+            case FREEZE_LOGOUT:
+                handleFreezeLogout(data);
+                break;
+            case STAFF_MODE_ENTER:
+                handleStaffModeEnter(data);
+                break;
+            case STAFF_MODE_EXIT:
+                handleStaffModeExit(data);
+                break;
+            case VANISH_ENTER:
+                handleVanishEnter(data);
+                break;
+            case VANISH_EXIT:
+                handleVanishExit(data);
+                break;
+            case TARGET_RESPONSE:
+                handleTargetResponse(data);
+                break;
+            case OPEN_STAFF_MENU:
+                handleOpenStaffMenu(data);
+                break;
+            case OPEN_INSPECT_MENU:
+                handleOpenInspectMenu(data);
+                break;
+            case PROXY_CMD:
+                handleProxyCmd(data);
+                break;
+            case CREATE_REPORT:
+                handleCreateReport(data);
+                break;
+            case CAPTURE_REPLAY_RESPONSE:
+                handleCaptureReplayResponse(data);
+                break;
+            default:
+                logger.debug("[bridge] Unhandled action: " + action.wire());
         }
     }
 
@@ -91,7 +116,7 @@ public class BridgeMessageDispatcher {
     }
 
     private void handleFreezeLogout(DataInputStream data) throws Exception {
-        data.readUTF(); // uuid (unused — name is sufficient for the notification)
+        String ignoredFrozenUuid = data.readUTF();
         String playerName = data.readUTF();
         platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification", mapOf(
                 "player", playerName
@@ -198,11 +223,19 @@ public class BridgeMessageDispatcher {
 
         List<String> tags = tagsJoined.isEmpty() ? listOf() : Arrays.asList(tagsJoined.split(","));
 
-        CreateTicketRequest request = new CreateTicketRequest(
-                creatorUuid, type, creatorName, subject, description,
-                reportedPlayerUuid, reportedPlayerName, priority, createdServer,
-                null, tags, replayUrl
-        );
+        CreateTicketRequest request = CreateTicketRequest.builder()
+                .creatorUuid(creatorUuid)
+                .type(type)
+                .creatorName(creatorName)
+                .subject(subject)
+                .description(description)
+                .reportedPlayerUuid(reportedPlayerUuid)
+                .reportedPlayerName(reportedPlayerName)
+                .priority(priority)
+                .createdServer(createdServer)
+                .tags(tags)
+                .replayUrl(replayUrl)
+                .build();
 
         logger.info("[bridge] Creating report ticket for " + reportedPlayerName + ": " + subject
                 + (replayUrl != null ? " (replay: " + replayUrl + ")" : ""));

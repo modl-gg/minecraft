@@ -3,7 +3,6 @@ package gg.modl.minecraft.core.service.database;
 import gg.modl.minecraft.api.DatabaseProvider;
 
 import java.lang.reflect.Method;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
@@ -29,17 +28,6 @@ public class LiteBansDatabaseProvider implements DatabaseProvider {
     }
 
     @Override
-    public Connection getConnection() {
-        throw new UnsupportedOperationException("LiteBans does not expose raw connections");
-    }
-
-    @Override
     public void close() {
-        // LiteBans manages its own connection pool
-    }
-
-    @Override
-    public boolean isUsingLiteBansApi() {
-        return true;
     }
 }

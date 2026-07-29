@@ -33,7 +33,6 @@ class PacketEventsAdventureCompatibilityTest {
     void adventureNbtUtilNeverInvokesBinaryTagTypeAsAClass() throws IOException {
         ConstantPool constantPool = ConstantPool.read(ADVENTURE_NBT_UTIL);
 
-        // Guards against the assertion below going vacuous if PacketEvents ever renames the type.
         assertTrue(
                 constantPool.referencedClasses.contains(BINARY_TAG_TYPE),
                 ADVENTURE_NBT_UTIL + " no longer references " + BINARY_TAG_TYPE + "; this test needs updating"

@@ -47,21 +47,21 @@ val verifyVulcanApiJar by tasks.registering {
 }
 
 dependencies {
-    compileOnly("org.spigotmc:spigot-api:${property("spigot.version")}")
+    compileOnly(libs.spigot.api)
 
     // Anticheat APIs
-    compileOnly("ac.grim.grimac:GrimAPI:${property("grim.api.version")}")
-    compileOnly("top.polar:api:${property("polar.api.version")}")
+    compileOnly(libs.grim.api)
+    compileOnly(libs.polar.api)
     compileOnly(files("libs/VulcanAPI.jar"))
 
     // Netty (provided by Minecraft server)
-    compileOnly("io.netty:netty-all:${property("netty.version")}")
+    compileOnly(libs.netty.all)
 
     // Adventure (loaded via Libby at runtime)
-    compileOnly("net.kyori:adventure-text-minimessage:${property("adventure.version")}")
-    compileOnly("net.kyori:adventure-text-serializer-legacy:${property("adventure.version")}")
-    compileOnly("net.kyori:adventure-api:${property("adventure.version")}")
-    compileOnly("net.kyori:adventure-text-serializer-gson:${property("adventure.version")}")
+    compileOnly(libs.adventure.minimessage)
+    compileOnly(libs.adventure.serializer.legacy)
+    compileOnly(libs.adventure.api)
+    compileOnly(libs.adventure.serializer.gson)
 
     // Internal modules
     implementation(project(":core"))
@@ -69,38 +69,38 @@ dependencies {
     implementation(project(":bridge-core"))
 
     // Command framework
-    compileOnly("io.github.revxrsal:lamp.common:${property("lamp.version")}")
-    compileOnly("io.github.revxrsal:lamp.bukkit:${property("lamp.version")}")
-    compileOnly("io.github.revxrsal:lamp.brigadier:${property("lamp.version")}")
-    compileOnly("com.mojang:brigadier:1.2.9")
+    compileOnly(libs.lamp.common)
+    compileOnly(libs.lamp.bukkit)
+    compileOnly(libs.lamp.brigadier)
+    compileOnly(libs.brigadier)
 
     // Cirrus menu system
-    compileOnly("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
-    compileOnly("gg.modl.minecraft.cirrus:cirrus-spigot:${property("cirrus.version")}")
+    compileOnly(libs.cirrus.api)
+    compileOnly(libs.cirrus.spigot)
 
     // Libby runtime library loading
-    implementation("com.alessiodp.libby:libby-core:${property("libby.version")}")
-    implementation("com.alessiodp.libby:libby-bukkit:${property("libby.version")}")
+    implementation(libs.libby.core)
+    implementation(libs.libby.bukkit)
 
     // PacketEvents
-    compileOnly("gg.modl.minecraft.packetevents:packetevents-api:${property("packetevents.version")}")
-    compileOnly("gg.modl.minecraft.packetevents:packetevents-spigot:${property("packetevents.version")}")
+    compileOnly(libs.packetevents.api)
+    compileOnly(libs.packetevents.spigot)
 
     // Replay recording
-    implementation("gg.modl.minecraft.replay:replay-format:${property("replay.format.version")}")
-    implementation("gg.modl.minecraft.replay:modl-replay-recording:${property("replay.recording.version")}")
+    implementation(libs.replay.format)
+    implementation(libs.replay.recording)
 
-    testImplementation(platform("org.junit:junit-bom:${property("junit.bom.version")}"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("org.mockito:mockito-inline:${property("mockito.inline.version")}")
-    testImplementation("org.mockito:mockito-junit-jupiter:${property("mockito.junit.jupiter.version")}")
-    testImplementation("io.github.revxrsal:lamp.common:${property("lamp.version")}")
-    testImplementation("io.github.revxrsal:lamp.bukkit:${property("lamp.version")}")
-    testImplementation("gg.modl.minecraft.cirrus:cirrus-api:${property("cirrus.version")}")
-    testImplementation("gg.modl.minecraft.cirrus:cirrus-spigot:${property("cirrus.version")}")
-    testImplementation("org.spigotmc:spigot-api:${property("spigot.version")}")
-    testImplementation("gg.modl.minecraft.packetevents:packetevents-spigot:${property("packetevents.version")}")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testImplementation(libs.mockito.inline)
+    testImplementation(libs.mockito.junit.jupiter)
+    testImplementation(libs.lamp.common)
+    testImplementation(libs.lamp.bukkit)
+    testImplementation(libs.cirrus.api)
+    testImplementation(libs.cirrus.spigot)
+    testImplementation(libs.spigot.api)
+    testImplementation(libs.packetevents.spigot)
 }
 
 tasks.processResources {

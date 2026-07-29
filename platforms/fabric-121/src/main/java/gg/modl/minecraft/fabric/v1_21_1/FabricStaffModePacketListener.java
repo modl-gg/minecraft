@@ -51,8 +51,6 @@ public class FabricStaffModePacketListener extends PacketListenerAbstract {
 
         WrapperPlayClientClickWindow wrapper = new WrapperPlayClientClickWindow(event);
         if (wrapper.getWindowId() == 0) {
-            // Block clicks in the player's own inventory only.
-            // Allow clicks in opened screens (windowId > 0): Cirrus menus, target inventory, silent containers.
             event.setCancelled(true);
         }
     }

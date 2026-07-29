@@ -56,4 +56,8 @@ public class Staff2faService {
         CachedProfile profile = registry.getProfile(uuid);
         return profile != null ? profile.getAuthState() : null;
     }
+
+    public boolean isAwaitingVerification(UUID uuid) {
+        return getAuthState(uuid) == AuthState.PENDING;
+    }
 }

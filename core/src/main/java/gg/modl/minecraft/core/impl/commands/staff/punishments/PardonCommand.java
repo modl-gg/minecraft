@@ -20,7 +20,6 @@ import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.CommandUtil;
 import lombok.RequiredArgsConstructor;
 
-import java.util.Map;
 import java.util.regex.Pattern;
 import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
@@ -38,34 +37,28 @@ public class PardonCommand {
     @Description("Pardon all of a player's active and unstarted punishments")
     @RequiresPermission("punishment.modify")
     public void pardon(CommandActor actor, @Named("target") String target, @Optional @ConsumeRemaining String reason) {
-        reason = normalizeReason(reason);
-        final String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
-        final String issuerId = CommandUtil.resolveActorId(actor, cache);
-
-        if (isPunishmentId(target)) tryPunishmentIdWithFallback(actor, target, issuerName, issuerId, reason, null);
-        else pardonByPlayerName(actor, target, issuerName, issuerId, reason, null);
+        dispatch(actor, target, reason, null);
     }
 
     @Description("Unban a player by name or punishment ID")
     @RequiresPermission("punishment.modify")
     public void unban(CommandActor actor, @Named("target") String target, @Optional @ConsumeRemaining String reason) {
-        reason = normalizeReason(reason);
-        final String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
-        final String issuerId = CommandUtil.resolveActorId(actor, cache);
-
-        if (isPunishmentId(target)) tryPunishmentIdWithFallback(actor, target, issuerName, issuerId, reason, "ban");
-        else pardonByPlayerName(actor, target, issuerName, issuerId, reason, "ban");
+        dispatch(actor, target, reason, "ban");
     }
 
     @Description("Unmute a player by name or punishment ID")
     @RequiresPermission("punishment.modify")
     public void unmute(CommandActor actor, @Named("target") String target, @Optional @ConsumeRemaining String reason) {
-        reason = normalizeReason(reason);
-        final String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
-        final String issuerId = CommandUtil.resolveActorId(actor, cache);
+        dispatch(actor, target, reason, "mute");
+    }
 
-        if (isPunishmentId(target)) tryPunishmentIdWithFallback(actor, target, issuerName, issuerId, reason, "mute");
-        else pardonByPlayerName(actor, target, issuerName, issuerId, reason, "mute");
+    private void dispatch(CommandActor actor, String target, String rawReason, String type) {
+        String reason = normalizeReason(rawReason);
+        String issuerName = CommandUtil.resolveActorName(actor, cache, platform);
+        String issuerId = CommandUtil.resolveActorId(actor, cache);
+
+        if (isPunishmentId(target)) tryPunishmentIdWithFallback(actor, target, issuerName, issuerId, reason, type);
+        else pardonByPlayerName(actor, target, issuerName, issuerId, reason, type);
     }
 
     private void pardonByPlayerName(CommandActor actor, String playerName, String issuerName, String issuerId, String reason, String type) {
@@ -114,20 +107,20 @@ public class PardonCommand {
             }
 
             String errorMessage = cause.getMessage();
-
-            if (errorMessage != null && (errorMessage.contains("not found") || errorMessage.contains("404")))
-                pardonByPlayerName(actor, target, issuerName, issuerId, reason, expectedType);
-            else if (errorMessage != null && errorMessage.toLowerCase().contains("type")) {
-                if ("ban".equals(expectedType)) actor.reply(localeManager.getMessage("pardon.error_wrong_type_ban",
-                        mapOf("id", target)));
-                else if ("mute".equals(expectedType)) actor.reply(localeManager.getMessage("pardon.error_wrong_type_mute",
-                        mapOf("id", target)));
-                else actor.reply(localeManager.getMessage("pardon.error",
-                        mapOf("error", localeManager.sanitizeErrorMessage(errorMessage))));
-            } else actor.reply(localeManager.getMessage("pardon.error",
+            if (errorMessage != null && errorMessage.toLowerCase().contains("type")) replyWrongType(actor, target, expectedType, errorMessage);
+            else actor.reply(localeManager.getMessage("pardon.error",
                     mapOf("error", localeManager.sanitizeErrorMessage(errorMessage != null ? errorMessage : "Unknown error"))));
             return null;
         });
+    }
+
+    private void replyWrongType(CommandActor actor, String target, String expectedType, String errorMessage) {
+        if ("ban".equals(expectedType)) actor.reply(localeManager.getMessage("pardon.error_wrong_type_ban",
+                mapOf("id", target)));
+        else if ("mute".equals(expectedType)) actor.reply(localeManager.getMessage("pardon.error_wrong_type_mute",
+                mapOf("id", target)));
+        else actor.reply(localeManager.getMessage("pardon.error",
+                mapOf("error", localeManager.sanitizeErrorMessage(errorMessage))));
     }
 
     private boolean isPunishmentId(String target) {
@@ -141,18 +134,19 @@ public class PardonCommand {
     private void invalidatePlayerCache(String playerName, String type) {
         try {
             AbstractPlayer player = platform.getAbstractPlayer(playerName, false);
-            if (player != null) {
-                CachedProfile profile = cache.getPlayerProfile(player.getUuid());
-                if (profile != null) {
-                    if ("ban".equals(type)) profile.setActiveBan(null);
-                    else if ("mute".equals(type)) profile.setActiveMute(null);
-                    else {
-                        profile.setActiveBan(null);
-                        profile.setActiveMute(null);
-                    }
-                }
+            if (player == null) return;
+
+            CachedProfile profile = cache.getPlayerProfile(player.getUuid());
+            if (profile == null) return;
+
+            if ("ban".equals(type)) profile.setActiveBan(null);
+            else if ("mute".equals(type)) profile.setActiveMute(null);
+            else {
+                profile.setActiveBan(null);
+                profile.setActiveMute(null);
             }
-        } catch (Exception ignored) {
+        } catch (RuntimeException exception) {
+            platform.getLogger().warning("Failed to invalidate cached punishment state for " + playerName + ": " + exception.getMessage());
         }
     }
 

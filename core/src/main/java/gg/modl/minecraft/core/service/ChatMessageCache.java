@@ -1,7 +1,7 @@
 package gg.modl.minecraft.core.service;
 
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
+import gg.modl.minecraft.core.util.StringUtil;
+import lombok.Value;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -11,11 +11,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.stream.Collectors;
 
-@RequiredArgsConstructor
 public class ChatMessageCache {
     private static final DateTimeFormatter REPORT_TIME_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneOffset.UTC);
@@ -23,8 +21,7 @@ public class ChatMessageCache {
     private static final int REPORT_WINDOW_SECONDS = 120;
     private static final long DEFAULT_MAX_AGE_MS = 600_000, CLEANUP_INTERVAL_MS = 30_000;
 
-    private final Map<String, ConcurrentLinkedQueue<ChatMessage>> serverMessages = new ConcurrentHashMap<>();
-    private final Map<String, AtomicInteger> serverMessageCounts = new ConcurrentHashMap<>();
+    private final Map<String, LinkedBlockingDeque<ChatMessage>> serverMessages = new ConcurrentHashMap<>();
     private final Map<String, String> playerToServer = new ConcurrentHashMap<>();
     private final int maxMessagesPerServer;
     private final long maxMessageAge;
@@ -34,47 +31,32 @@ public class ChatMessageCache {
         this(DEFAULT_MAX_MESSAGES, DEFAULT_MAX_AGE_MS);
     }
 
+    public ChatMessageCache(int maxMessagesPerServer, long maxMessageAge) {
+        if (maxMessagesPerServer < 1) {
+            throw new IllegalArgumentException(
+                    "maxMessagesPerServer must be at least 1 but was " + maxMessagesPerServer);
+        }
+        this.maxMessagesPerServer = maxMessagesPerServer;
+        this.maxMessageAge = maxMessageAge;
+    }
+
     public void addMessage(String serverName, String playerUuid, String playerName, String message) {
         playerToServer.put(playerUuid, serverName);
-        ConcurrentLinkedQueue<ChatMessage> queue = serverMessages.computeIfAbsent(serverName, k -> new ConcurrentLinkedQueue<>());
-        AtomicInteger count = serverMessageCounts.computeIfAbsent(serverName, k -> new AtomicInteger(0));
-        queue.offer(new ChatMessage(playerUuid, playerName, message, serverName, Instant.now()));
-        count.incrementAndGet();
-
-        while (count.get() > maxMessagesPerServer) {
-            if (queue.poll() != null) {
-                count.decrementAndGet();
-            } else {
-                break;
-            }
-        }
+        if (StringUtil.isBlank(message)) return;
+        LinkedBlockingDeque<ChatMessage> queue =
+                serverMessages.computeIfAbsent(serverName, k -> new LinkedBlockingDeque<>(maxMessagesPerServer));
+        ChatMessage entry = new ChatMessage(playerUuid, playerName, message, serverName, Instant.now());
+        while (!queue.offerLast(entry)) queue.pollFirst();
 
         long now = System.currentTimeMillis();
         if (now - lastCleanupTime > CLEANUP_INTERVAL_MS) {
             lastCleanupTime = now;
-            serverMessages.forEach((name, q) -> {
-                AtomicInteger c = serverMessageCounts.get(name);
-                if (c != null) cleanupOldMessages(q, c);
-            });
+            serverMessages.values().forEach(this::cleanupOldMessages);
         }
     }
 
-    public String getChatLogForReport(String reportedPlayerUuid, String reporterUuid) {
-        // Aggregate the REPORTED player's messages across every server queue that contains at least one
-        // of their messages (handles cross-server reports on a proxy network where reporter and reported
-        // are on different backends). The reporterUuid parameter is retained for API stability but unused.
-        List<ChatMessage> allMessages = new ArrayList<>();
-        for (Map.Entry<String, ConcurrentLinkedQueue<ChatMessage>> entry : serverMessages.entrySet()) {
-            ConcurrentLinkedQueue<ChatMessage> queue = entry.getValue();
-            boolean containsReported = queue.stream()
-                    .anyMatch(msg -> msg.getPlayerUuid().equals(reportedPlayerUuid));
-            if (!containsReported) continue;
-
-            AtomicInteger count = serverMessageCounts.get(entry.getKey());
-            if (count != null) cleanupOldMessages(queue, count);
-            allMessages.addAll(queue);
-        }
-
+    public String getChatLogForReport(String reportedPlayerUuid) {
+        List<ChatMessage> allMessages = collectMessagesForReportedPlayer(reportedPlayerUuid);
         if (allMessages.isEmpty()) return "";
 
         Instant startTimestamp = determineReportStartTimestamp(allMessages, reportedPlayerUuid);
@@ -104,6 +86,19 @@ public class ChatMessageCache {
         playerToServer.remove(playerUuid);
     }
 
+    private List<ChatMessage> collectMessagesForReportedPlayer(String reportedPlayerUuid) {
+        List<ChatMessage> allMessages = new ArrayList<>();
+        for (LinkedBlockingDeque<ChatMessage> queue : serverMessages.values()) {
+            boolean containsReported = queue.stream()
+                    .anyMatch(msg -> msg.getPlayerUuid().equals(reportedPlayerUuid));
+            if (!containsReported) continue;
+
+            cleanupOldMessages(queue);
+            allMessages.addAll(queue);
+        }
+        return allMessages;
+    }
+
     private Instant determineReportStartTimestamp(List<ChatMessage> allMessages, String reportedPlayerUuid) {
         List<ChatMessage> reportedMessages = allMessages.stream()
                 .filter(msg -> msg.getPlayerUuid().equals(reportedPlayerUuid))
@@ -120,24 +115,21 @@ public class ChatMessageCache {
         int startIndex = Math.max(0, reportedMessages.size() - REPORT_LOOKBACK_MESSAGES);
         Instant countFloor = reportedMessages.get(startIndex).getTimestamp();
 
-        // Take the LATER of the time-based and count-based floors so both the span and the count are bounded.
-        return timeFloor.isAfter(countFloor) ? timeFloor : countFloor;
+        return laterOf(timeFloor, countFloor);
     }
 
-    private void cleanupOldMessages(ConcurrentLinkedQueue<ChatMessage> queue, AtomicInteger count) {
+    private static Instant laterOf(Instant a, Instant b) {
+        return a.isAfter(b) ? a : b;
+    }
+
+    private void cleanupOldMessages(LinkedBlockingDeque<ChatMessage> queue) {
         Instant cutoff = Instant.now().minusMillis(maxMessageAge);
-        queue.removeIf(message -> {
-            if (message.getTimestamp().isBefore(cutoff)) {
-                count.decrementAndGet();
-                return true;
-            }
-            return false;
-        });
+        queue.removeIf(message -> message.getTimestamp().isBefore(cutoff));
     }
 
-    @Data
+    @Value
     public static class ChatMessage {
-        private final String playerUuid, playerName, message, serverName;
-        private final Instant timestamp;
+        String playerUuid, playerName, message, serverName;
+        Instant timestamp;
     }
 }

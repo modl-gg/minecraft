@@ -1,17 +1,24 @@
 package gg.modl.minecraft.api.http.response;
 
 import gg.modl.minecraft.api.Note;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Getter;
 
 import java.util.List;
 
-@Data
-@NoArgsConstructor
-public class PaginatedNotesResponse {
+@Getter
+public class PaginatedNotesResponse extends PaginatedResponse<Note> {
     private List<Note> notes;
-    private int totalCount;
-    private int page;
-    private boolean hasMore;
-    private int status;
+
+    public PaginatedNotesResponse() {
+    }
+
+    public PaginatedNotesResponse(List<Note> notes, int totalCount, int page, boolean hasMore, int status) {
+        super(totalCount, page, hasMore, status);
+        this.notes = notes;
+    }
+
+    @Override
+    public List<Note> getItems() {
+        return notes;
+    }
 }

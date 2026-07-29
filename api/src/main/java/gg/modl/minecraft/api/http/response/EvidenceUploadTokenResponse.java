@@ -1,13 +1,16 @@
 package gg.modl.minecraft.api.http.response;
 
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-@Data
-public class EvidenceUploadTokenResponse {
+@Getter @NoArgsConstructor @AllArgsConstructor
+public class EvidenceUploadTokenResponse extends StatusResponse {
     private String token;
     private int status;
 
+    @Override
     public boolean isSuccess() {
-        return status >= 200 && status < 300 && token != null;
+        return super.isSuccess() && token != null;
     }
 }

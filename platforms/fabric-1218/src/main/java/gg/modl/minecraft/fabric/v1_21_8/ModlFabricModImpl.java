@@ -10,7 +10,6 @@ import gg.modl.minecraft.api.http.request.StartupRequest;
 import gg.modl.minecraft.bridge.config.BridgeWizardConfigWriter;
 import gg.modl.minecraft.bridge.reporter.ProxyReportForwarder;
 import gg.modl.minecraft.bridge.reporter.TicketCreator;
-import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.boot.BackendHost;
 import gg.modl.minecraft.core.boot.BootConfig;
 import gg.modl.minecraft.core.boot.BootConfigMigrator;
@@ -23,6 +22,8 @@ import java.util.Collection;
 import java.util.Map;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.core.PluginServices;
+import gg.modl.minecraft.core.chat.CommandInterceptService;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
@@ -43,7 +44,6 @@ import java.nio.file.Path;
 import java.util.Optional;
 import com.github.retrooper.packetevents.PacketEvents;
 import java.util.List;
-import org.yaml.snakeyaml.Yaml;
 import revxrsal.commands.Lamp;
 
 public class ModlFabricModImpl implements DedicatedServerModInitializer {
@@ -54,6 +54,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         @Override public void info(String msg) { LOGGER.info(msg); }
         @Override public void warning(String msg) { LOGGER.warn(msg); }
         @Override public void severe(String msg) { LOGGER.error(msg); }
+        @Override public void warning(String msg, Throwable throwable) { LOGGER.warn(msg, throwable); }
     };
 
     private FabricBridgeComponent bridgeComponent;
@@ -150,53 +151,35 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
 
                 saveDefaultResources(dataFolder);
 
-                boolean debugMode = false;
-                boolean queryMojang = false;
-                int syncPollingRate = 2;
-                List<String> mutedCommands = List.of();
-                Path configPath = dataFolder.resolve("config.yml");
-                if (configPath.toFile().exists()) {
-                    try {
-                        Yaml yaml = new Yaml();
-                        Map<String, Object> config = yaml.load(Files.newInputStream(configPath));
-                        if (config != null) {
-                            debugMode = Boolean.TRUE.equals(config.get("debug"));
-                            Object serverObj = config.get("server");
-                            if (serverObj instanceof Map<?, ?> serverMap) {
-                                queryMojang = Boolean.TRUE.equals(serverMap.get("query_mojang"));
-                            }
-                            Object syncObj = config.get("sync");
-                            if (syncObj instanceof Map<?, ?> syncMap) {
-                                Object rate = syncMap.get("polling_rate");
-                                if (rate instanceof Number n) syncPollingRate = Math.max(1, n.intValue());
-                            }
-                            Object mutedObj = config.get("muted_commands");
-                            if (mutedObj instanceof List<?> list) {
-                                mutedCommands = list.stream().map(Object::toString).toList();
-                            }
-                        }
-                    } catch (Exception e) {
-                        LOGGER.warn("Failed to read config.yml: {}", e.getMessage());
-                    }
-                }
+                StandaloneConfig standaloneConfig = StandaloneConfig.read(dataFolder.resolve("config.yml"), LOGGER);
 
                 FabricPlatform fabricPlatform = new FabricPlatform(server, dataFolder, PLUGIN_LOGGER);
                 HttpManager httpManager = new HttpManager(
                         bootConfig.getApiKey(), panelUrl,
-                        debugMode, bootConfig.isTestingApi(), queryMojang
+                        standaloneConfig.isDebugMode(), bootConfig.isTestingApi(), standaloneConfig.isQueryMojang()
                 );
                 ChatMessageCache chatMessageCache = new ChatMessageCache();
-                pluginLoader = new PluginLoader(fabricPlatform, dataFolder, chatMessageCache, httpManager, syncPollingRate);
+                pluginLoader = new PluginLoader(fabricPlatform, dataFolder, chatMessageCache, httpManager,
+                        standaloneConfig.getSyncPollingRate());
 
                 syncLampCommandsToServer(server, pluginLoader.getLamp());
 
-                TicketCreator ticketCreator = (creatorUuid, creatorName, type, subject, description,
-                                               reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer, replayUrl) -> {
+                TicketCreator ticketCreator = report -> {
+                    String tagsJoined = report.getTagsJoined();
                     List<String> tags = tagsJoined == null || tagsJoined.isEmpty() ? List.of() : Arrays.asList(tagsJoined.split(","));
-                    CreateTicketRequest request = new CreateTicketRequest(
-                            creatorUuid, type, creatorName, subject, description,
-                            reportedPlayerUuid, reportedPlayerName, priority, createdServer,
-                            null, tags, replayUrl);
+                    CreateTicketRequest request = CreateTicketRequest.builder()
+                            .creatorUuid(report.getCreatorUuid())
+                            .type(report.getType())
+                            .creatorName(report.getCreatorName())
+                            .subject(report.getSubject())
+                            .description(report.getDescription())
+                            .reportedPlayerUuid(report.getReportedPlayerUuid())
+                            .reportedPlayerName(report.getReportedPlayerName())
+                            .priority(report.getPriority())
+                            .createdServer(report.getCreatedServer())
+                            .tags(tags)
+                            .replayUrl(report.getReplayUrl())
+                            .build();
                     pluginLoader.getHttpClient().createTicket(request).thenAccept(response -> {
                         if (response.isSuccess()) {
                             LOGGER.info("[bridge] Report ticket created: {}", response.getTicketId());
@@ -210,8 +193,8 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
                 };
 
                 standaloneTicketCreator = ticketCreator;
-                standaloneDebugMode = debugMode;
-                standaloneMutedCommands = mutedCommands;
+                standaloneDebugMode = standaloneConfig.isDebugMode();
+                standaloneMutedCommands = standaloneConfig.getMutedCommands();
                 standaloneFabricPlatform = fabricPlatform;
             }
 
@@ -226,7 +209,11 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
             TicketCreator ticketCreatorToUse = bridgeOnly
                     ? ProxyReportForwarder.create(bridgeRef::getBridgeClient)
                     : standaloneTicketCreator;
-            bridgeComponent.enable(ticketCreatorToUse, bridgeOnly);
+            if (bridgeOnly) {
+                bridgeComponent.enableBridgeOnly(ticketCreatorToUse);
+            } else {
+                bridgeComponent.enableStandalone(ticketCreatorToUse);
+            }
 
             if (pluginLoader != null && standaloneFabricPlatform != null) {
                 String serverName = bridgeComponent.getBridgeConfig() != null
@@ -234,7 +221,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
                 standaloneFabricPlatform.setServerName(serverName);
 
                 if (bridgeComponent.getReplayService() != null) {
-                    standaloneFabricPlatform.setReplayService(bridgeComponent.getReplayService());
+                    PluginServices.get().setReplayService(bridgeComponent.getReplayService());
                 }
 
                 FabricDirectStatWipeExecutor statWipeExecutor = new FabricDirectStatWipeExecutor(bridgeComponent, serverName);
@@ -242,42 +229,20 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
             }
 
             if (pluginLoader != null) {
-                FabricBridgeComponent bridge = bridgeComponent;
-                pluginLoader.getBridgeService().setLocalHandler(new BridgeService.LocalBridgeHandler() {
-                    @Override public void onStaffModeEnter(String staffUuid) {
-                        server.execute(() -> bridge.getFabricStaffModeHandler().enterStaffMode(staffUuid));
-                    }
-                    @Override public void onStaffModeExit(String staffUuid) {
-                        server.execute(() -> bridge.getFabricStaffModeHandler().exitStaffMode(staffUuid));
-                    }
-                    @Override public void onVanishEnter(String staffUuid) {
-                        server.execute(() -> bridge.getFabricStaffModeHandler().vanishFromBridge(staffUuid));
-                    }
-                    @Override public void onVanishExit(String staffUuid) {
-                        server.execute(() -> bridge.getFabricStaffModeHandler().unvanishFromBridge(staffUuid));
-                    }
-                    @Override public void onFreezePlayer(String targetUuid, String staffUuid) {
-                        server.execute(() -> bridge.getFabricFreezeHandler().freeze(targetUuid, staffUuid));
-                    }
-                    @Override public void onUnfreezePlayer(String targetUuid) {
-                        server.execute(() -> bridge.getFabricFreezeHandler().unfreeze(targetUuid));
-                    }
-                    @Override public void onTargetRequest(String staffUuid, String targetUuid) {
-                        server.execute(() -> bridge.getFabricStaffModeHandler().setTarget(staffUuid, targetUuid));
-                    }
-                });
+                pluginLoader.getBridgeService().setLocalHandler(new FabricLocalBridgeHandler(
+                        server, bridgeComponent.getFabricStaffModeHandler(), bridgeComponent.getFabricFreezeHandler()));
+
+                CommandInterceptService commandInterceptService = new CommandInterceptService(
+                        pluginLoader.getCache(), pluginLoader.getFreezeService(),
+                        pluginLoader.getChatCommandLogService(), pluginLoader.getLocaleManager(),
+                        pluginLoader.getPunishmentMessageService(), standaloneMutedCommands);
 
                 fabricListener = new FabricListener(
                         standaloneFabricPlatform, pluginLoader.getCache(), pluginLoader.getHttpClientHolder(),
-                        pluginLoader.getChatMessageCache(), pluginLoader.getSyncService(),
-                        pluginLoader.getLocaleManager(), pluginLoader.getLoginCache(),
-                        standaloneMutedCommands, pluginLoader.getStaffChatService(),
-                        pluginLoader.getChatManagementService(), pluginLoader.getMaintenanceService(),
-                        pluginLoader.getFreezeService(), pluginLoader.getNetworkChatInterceptService(),
-                        pluginLoader.getChatCommandLogService(), pluginLoader.getStaff2faService(),
-                        pluginLoader.getConfigManager().getStaffChatConfig(),
-                        pluginLoader.getBridgeService(), pluginLoader.getCachedProfileRegistry(),
-                        standaloneDebugMode, server);
+                        pluginLoader.getChatMessageCache(), pluginLoader.getLoginCache(),
+                        pluginLoader.getChatService(), pluginLoader.getLoginService(),
+                        pluginLoader.getPlayerSessionService(), pluginLoader.getIpEnrichmentService(),
+                        pluginLoader.getPendingIpLookupService(), server);
                 fabricListener.register();
 
                 PacketEventsAPI<?> packetEventsApi = requirePacketEventsApi();
@@ -287,13 +252,10 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
                                 bridgeComponent.getFabricFreezeHandler()));
                 packetEventsApi.getEventManager().registerListener(
                         new FabricCommandPacketListener(
-                                pluginLoader.getCache(),
-                                pluginLoader.getFreezeService(),
-                                pluginLoader.getChatCommandLogService(),
-                                pluginLoader.getLocaleManager(),
-                                standaloneMutedCommands,
+                                commandInterceptService,
                                 standaloneFabricPlatform.getServerName(),
-                                server));
+                                server,
+                                new FabricTextSerializer(PLUGIN_LOGGER)));
             }
 
             LOGGER.info("Successfully booted modl.gg platform plugin!");

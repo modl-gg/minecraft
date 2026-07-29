@@ -1,12 +1,14 @@
 package gg.modl.minecraft.api.http.response;
 
 import gg.modl.minecraft.api.Account;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-@Data
+@Getter @NoArgsConstructor @AllArgsConstructor
 public class LinkedAccountsResponse {
     private @NotNull List<Account> linkedAccounts;
     private int status;
@@ -15,6 +17,7 @@ public class LinkedAccountsResponse {
     private boolean hasMore;
 
     public int getTotalCount() {
-        return totalCount >= 0 ? totalCount : linkedAccounts.size();
+        if (totalCount >= 0) return totalCount;
+        return linkedAccounts != null ? linkedAccounts.size() : 0;
     }
 }

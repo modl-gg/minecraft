@@ -7,12 +7,19 @@ import gg.modl.minecraft.core.service.sync.SyncService;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.proto.modl.v1.Ack;
 import gg.modl.proto.modl.v1.AckKind;
+import gg.modl.proto.modl.v1.ActiveStaffPushEvent;
 import gg.modl.proto.modl.v1.ClientHello;
 import gg.modl.proto.modl.v1.ClientKind;
 import gg.modl.proto.modl.v1.ErrorCode;
 import gg.modl.proto.modl.v1.Heartbeat;
+import gg.modl.proto.modl.v1.MigrationTaskPushEvent;
+import gg.modl.proto.modl.v1.PlayerNotificationPushEvent;
+import gg.modl.proto.modl.v1.PunishmentPushEvent;
 import gg.modl.proto.modl.v1.RealtimeEnvelope;
 import gg.modl.proto.modl.v1.ReconnectAction;
+import gg.modl.proto.modl.v1.Staff2faPushEvent;
+import gg.modl.proto.modl.v1.StaffNotificationPushEvent;
+import gg.modl.proto.modl.v1.StatWipePushEvent;
 import gg.modl.proto.modl.v1.Subscribe;
 import gg.modl.proto.modl.v1.Topic;
 import org.java_websocket.client.WebSocketClient;
@@ -27,21 +34,24 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.nio.ByteBuffer;
 
 public class MinecraftRealtimeClient {
     private static final String API_KEY_HEADER = "X-API-Key";
     private static final long HEARTBEAT_INTERVAL_SECONDS = 25;
+    private static final long INBOUND_LIVENESS_TIMEOUT_MILLIS = HEARTBEAT_INTERVAL_SECONDS * 3 * 1000;
     private static final long INITIAL_RECONNECT_DELAY_MS = 1000;
     private static final long MAX_RECONNECT_DELAY_MS = 30000;
     private static final long MAX_ADVISED_RECONNECT_DELAY_MS = 60000;
     private static final int RECENT_EVENT_ID_CAPACITY = 256;
     private static final Set<Topic> ALLOWED_STARTUP_TOPICS = allowedStartupTopics();
+
+    private enum State { DISCONNECTED, CONNECTING, CONNECTED, TERMINAL }
 
     private final String apiKey;
     private final String realtimeUrl;
@@ -54,17 +64,19 @@ public class MinecraftRealtimeClient {
     private final boolean debugMode;
     private final ScheduledExecutorService executor;
     private final AtomicLong heartbeatSequence = new AtomicLong(0);
-    private final AtomicBoolean reconnectScheduled = new AtomicBoolean(false);
     private final RecentRealtimeEventIds recentEventIds = new RecentRealtimeEventIds(RECENT_EVENT_ID_CAPACITY);
     private final Random random = new Random();
 
-    private volatile WebSocketClient client;
-    private volatile boolean running = false;
-    private volatile boolean connectedOnce = false;
-    private volatile boolean terminallyRejected = false;
-    private volatile int reconnectAttempt = 0;
-    private volatile ScheduledFuture<?> heartbeatTask;
-    private volatile Long reconnectDelayOverrideMs;
+    private final Object stateLock = new Object();
+    private volatile State state = State.DISCONNECTED;
+    private boolean started;
+    private WebSocketClient client;
+    private ScheduledFuture<?> heartbeatTask;
+    private boolean connectedOnce;
+    private int reconnectAttempt;
+    private boolean reconnectScheduled;
+    private Long reconnectDelayOverrideMs;
+    private volatile long lastInboundFrameMillis;
 
     public MinecraftRealtimeClient(String apiKey, StartupResponse startupResponse, Platform platform,
                                    SyncService syncService, PluginLogger logger, boolean debugMode) {
@@ -95,28 +107,36 @@ public class MinecraftRealtimeClient {
     }
 
     public void start() {
-        if (running) return;
-        running = true;
+        synchronized (stateLock) {
+            if (started || state != State.DISCONNECTED) return;
+            started = true;
+            state = State.CONNECTING;
+        }
         executor.execute(this::connectOnce);
     }
 
     public void stop() {
-        running = false;
-        syncService.setRealtimeConnected(false);
-        WebSocketClient current = client;
-        if (current != null) {
-            try {
-                current.close();
-            } catch (Exception ignored) {
-            }
-        }
-        cancelHeartbeat();
+        terminate();
         executor.shutdownNow();
     }
 
+    private boolean isTerminated() {
+        return state == State.TERMINAL;
+    }
+
+    private boolean isCurrent(WebSocketClient source) {
+        synchronized (stateLock) {
+            return source == client;
+        }
+    }
+
     private void connectOnce() {
-        if (!running) return;
-        reconnectScheduled.set(false);
+        WebSocketClient nextClient;
+        synchronized (stateLock) {
+            if (state == State.TERMINAL) return;
+            state = State.CONNECTING;
+            reconnectScheduled = false;
+        }
 
         try {
             URI uri = URI.create(realtimeUrl);
@@ -124,7 +144,7 @@ public class MinecraftRealtimeClient {
             headers.put(API_KEY_HEADER, apiKey);
             headers.put("User-Agent", "modl-minecraft");
 
-            WebSocketClient nextClient = new WebSocketClient(uri, headers) {
+            nextClient = new WebSocketClient(uri, headers) {
                 @Override
                 public void onOpen(ServerHandshake handshake) {
                     handleOpen(this);
@@ -142,35 +162,46 @@ public class MinecraftRealtimeClient {
 
                 @Override
                 public void onClose(int code, String reason, boolean remote) {
-                    handleClose(code, reason);
+                    handleClose(this, code, reason);
                 }
 
                 @Override
                 public void onError(Exception exception) {
-                    if (running) logger.warning("[Realtime] WebSocket error: " + exception.getMessage());
-                    if (!terminallyRejected) {
-                        scheduleReconnect();
-                    }
+                    handleError(this, exception);
                 }
             };
 
-            client = nextClient;
+            synchronized (stateLock) {
+                if (state == State.TERMINAL) {
+                    safeClose(nextClient);
+                    return;
+                }
+                this.client = nextClient;
+            }
             nextClient.connect();
         } catch (Exception e) {
             logger.warning("[Realtime] Failed to start WebSocket: " + e.getMessage());
+            teardown();
             scheduleReconnect();
         }
     }
 
     private void handleOpen(WebSocketClient openedClient) {
+        if (!isCurrent(openedClient)) return;
         if (debugMode) logger.info("[Realtime] WebSocket connected, sending ClientHello");
         send(openedClient, buildClientHello());
-        cancelHeartbeat();
-        heartbeatTask = executor.scheduleAtFixedRate(() -> sendHeartbeat(openedClient),
-            HEARTBEAT_INTERVAL_SECONDS, HEARTBEAT_INTERVAL_SECONDS, TimeUnit.SECONDS);
+        synchronized (stateLock) {
+            if (state == State.TERMINAL || openedClient != client) return;
+            lastInboundFrameMillis = System.currentTimeMillis();
+            cancelHeartbeatLocked();
+            heartbeatTask = executor.scheduleAtFixedRate(() -> heartbeatTick(openedClient),
+                HEARTBEAT_INTERVAL_SECONDS, HEARTBEAT_INTERVAL_SECONDS, TimeUnit.SECONDS);
+        }
     }
 
     private void handleBinaryMessage(WebSocketClient source, ByteBuffer bytes) {
+        if (!isCurrent(source)) return;
+        lastInboundFrameMillis = System.currentTimeMillis();
         try {
             RealtimeEnvelope envelope = RealtimeEnvelope.parseFrom(bytes);
             if (!envelope.getEventId().isEmpty()) {
@@ -179,15 +210,7 @@ public class MinecraftRealtimeClient {
 
             switch (envelope.getPayloadCase()) {
                 case SERVER_HELLO:
-                    reconnectAttempt = 0;
-                    send(source, buildSubscribe());
-                    // Baseline on every accept, including the first: the periodic poll that previously
-                    // established the initial baseline is gone, and reconnect must reconcile anything
-                    // missed while disconnected (against lastSyncTimestamp).
-                    syncService.setRealtimeConnected(true);
-                    syncService.runBaselineFetch(connectedOnce ? "realtime reconnect" : "realtime connect");
-                    connectedOnce = true;
-                    if (debugMode) logger.info("[Realtime] ServerHello accepted " + envelope.getServerHello().getAcceptedTopicsCount() + " topics");
+                    onServerHello(source, envelope);
                     break;
                 case HEARTBEAT:
                     if (debugMode) logger.info("[Realtime] Backend heartbeat received");
@@ -230,7 +253,7 @@ public class MinecraftRealtimeClient {
                 case ERROR:
                     logger.warning("[Realtime] Backend error: " + envelope.getError().getMessage());
                     if (isTerminalBackendError(envelope.getError().getCode())) {
-                        terminallyRejected = true;
+                        stop();
                     }
                     break;
                 default:
@@ -242,18 +265,21 @@ public class MinecraftRealtimeClient {
         }
     }
 
-    /**
-     * Runs a domain-event apply on {@code SyncService}'s single-thread sync executor so it serializes
-     * with the on-connect/resync baseline fetch (which does a full-set staff reconciliation that
-     * evicts), preventing interleave/reorder against an in-flight baseline (M3). Never runs on the
-     * websocket read thread, keeping the read callback non-blocking.
-     *
-     * <p>Dedup and mark-seen both happen on that single executor thread, after a successful apply: a
-     * redelivered event is suppressed only once it has actually been applied, so a transient apply
-     * failure leaves the {@code event_id} unmarked. The backend does not replay individual events, so
-     * a failed apply is reconciled by the next on-(re)connect baseline fetch rather than per-event
-     * redelivery (m10).</p>
-     */
+    private void onServerHello(WebSocketClient source, RealtimeEnvelope envelope) {
+        boolean firstConnect;
+        synchronized (stateLock) {
+            if (state == State.TERMINAL || source != client) return;
+            state = State.CONNECTED;
+            reconnectAttempt = 0;
+            firstConnect = !connectedOnce;
+            connectedOnce = true;
+        }
+        send(source, buildSubscribe());
+        syncService.setRealtimeConnected(true);
+        syncService.runBaselineFetch(firstConnect ? "realtime connect" : "realtime reconnect");
+        if (debugMode) logger.info("[Realtime] ServerHello accepted " + envelope.getServerHello().getAcceptedTopicsCount() + " topics");
+    }
+
     private void applyDomainEvent(RealtimeEnvelope envelope, Runnable apply) {
         String eventId = envelope.getEventId();
         boolean accepted = syncService.submitRealtimeApply(() -> {
@@ -269,12 +295,12 @@ public class MinecraftRealtimeClient {
                     + " (reconciled on next baseline sync): " + e.getMessage());
             }
         });
-        if (!accepted && running && debugMode) {
+        if (!accepted && !isTerminated() && debugMode) {
             logger.info("[Realtime] Dropped " + envelope.getPayloadCase() + "; sync service unavailable");
         }
     }
 
-    private void applyPunishmentPush(gg.modl.proto.modl.v1.PunishmentPushEvent event) {
+    private void applyPunishmentPush(PunishmentPushEvent event) {
         SyncResponse.SyncData data = RealtimeEventMappers.fromPunishmentPush(event);
         for (SyncResponse.ModifiedPunishment modified : data.getRecentlyModifiedPunishments()) {
             syncService.applyModifiedPunishment(modified);
@@ -284,11 +310,9 @@ public class MinecraftRealtimeClient {
         }
     }
 
-    private void applyPlayerNotificationPush(gg.modl.proto.modl.v1.PlayerNotificationPushEvent event) {
+    private void applyPlayerNotificationPush(PlayerNotificationPushEvent event) {
         SyncResponse.SyncData data = RealtimeEventMappers.fromPlayerNotificationPush(event);
         for (SyncResponse.PlayerNotification notification : data.getPlayerNotifications()) {
-            // Player-scoped push notifications must carry a target; an empty target would fan out as a
-            // broadcast in NotificationService. The backend always populates it, so drop the anomaly.
             String target = notification.getTargetPlayerUuid();
             if (target == null || target.isEmpty()) {
                 if (debugMode) logger.info("[Realtime] Dropping player notification " + notification.getId() + " with empty target");
@@ -298,33 +322,33 @@ public class MinecraftRealtimeClient {
         }
     }
 
-    private void applyStaffNotificationPush(gg.modl.proto.modl.v1.StaffNotificationPushEvent event) {
+    private void applyStaffNotificationPush(StaffNotificationPushEvent event) {
         SyncResponse.SyncData data = RealtimeEventMappers.fromStaffNotificationPush(event);
         for (SyncResponse.StaffNotification notification : data.getStaffNotifications()) {
             syncService.applyStaffNotification(notification);
         }
     }
 
-    private void applyStatWipePush(gg.modl.proto.modl.v1.StatWipePushEvent event) {
+    private void applyStatWipePush(StatWipePushEvent event) {
         SyncResponse.SyncData data = RealtimeEventMappers.fromStatWipePush(event);
         for (SyncResponse.PendingStatWipe statWipe : data.getPendingStatWipes()) {
             syncService.applyStatWipe(statWipe);
         }
     }
 
-    private void applyStaff2faPush(gg.modl.proto.modl.v1.Staff2faPushEvent event) {
+    private void applyStaff2faPush(Staff2faPushEvent event) {
         SyncResponse.SyncData data = RealtimeEventMappers.fromStaff2faPush(event);
         for (SyncResponse.Staff2faVerification verification : data.getStaff2faVerifications()) {
             syncService.applyStaff2faVerification(verification);
         }
     }
 
-    private void applyMigrationTaskPush(gg.modl.proto.modl.v1.MigrationTaskPushEvent event) {
+    private void applyMigrationTaskPush(MigrationTaskPushEvent event) {
         SyncResponse.MigrationTask task = RealtimeEventMappers.fromMigrationTaskPush(event);
         if (task != null) syncService.applyMigrationTask(task);
     }
 
-    private void applyActiveStaffPush(gg.modl.proto.modl.v1.ActiveStaffPushEvent event) {
+    private void applyActiveStaffPush(ActiveStaffPushEvent event) {
         SyncResponse.SyncData data = RealtimeEventMappers.fromActiveStaffPush(event);
         for (SyncResponse.ActiveStaffMember staffMember : data.getActiveStaffMembers()) {
             syncService.applyActiveStaffMember(staffMember);
@@ -339,42 +363,127 @@ public class MinecraftRealtimeClient {
         }
         if (envelope.getReconnectAdvice().getAction() == ReconnectAction.RECONNECT_ACTION_RECONNECT
                 && envelope.getReconnectAdvice().hasRetryAfterMs()) {
-            reconnectDelayOverrideMs = (long) envelope.getReconnectAdvice().getRetryAfterMs();
+            synchronized (stateLock) {
+                reconnectDelayOverrideMs = (long) envelope.getReconnectAdvice().getRetryAfterMs();
+            }
         }
         if (envelope.getReconnectAdvice().getAction() == ReconnectAction.RECONNECT_ACTION_RESYNC) {
-            // Explicit "you missed events" signal: rebaseline against lastSyncTimestamp.
             syncService.runBaselineFetch("realtime resync advice");
         }
     }
 
-    private void handleClose(int code, String reason) {
-        cancelHeartbeat();
-        // Live channel is down; let the slow fallback fetch resume until we reconnect.
-        syncService.setRealtimeConnected(false);
-        if (debugMode && running) logger.info("[Realtime] WebSocket closed (" + code + "): " + reason);
-        if (!shouldReconnectAfterClose(code) || terminallyRejected) {
-            running = false;
-            return;
+    private void handleClose(WebSocketClient source, int code, String reason) {
+        boolean reconnect = shouldReconnectAfterClose(code);
+        boolean wasCurrent;
+        synchronized (stateLock) {
+            if (source != client || state == State.TERMINAL) {
+                wasCurrent = false;
+            } else {
+                wasCurrent = true;
+                cancelHeartbeatLocked();
+                closeClientLocked();
+                state = reconnect ? State.DISCONNECTED : State.TERMINAL;
+            }
         }
+        if (!wasCurrent) return;
+        syncService.setRealtimeConnected(false);
+        if (debugMode) logger.info("[Realtime] WebSocket closed (" + code + "): " + reason);
+        if (reconnect) scheduleReconnect();
+    }
+
+    private void handleError(WebSocketClient source, Exception exception) {
+        boolean wasCurrent;
+        synchronized (stateLock) {
+            if (source != client || state == State.TERMINAL) {
+                wasCurrent = false;
+            } else {
+                wasCurrent = true;
+                cancelHeartbeatLocked();
+                closeClientLocked();
+                state = State.DISCONNECTED;
+            }
+        }
+        if (!wasCurrent) return;
+        logger.warning("[Realtime] WebSocket error: " + exception.getMessage());
+        syncService.setRealtimeConnected(false);
         scheduleReconnect();
     }
 
-    private void cancelHeartbeat() {
-        ScheduledFuture<?> task = heartbeatTask;
-        if (task != null) {
-            task.cancel(false);
+    private void heartbeatTick(WebSocketClient target) {
+        if (!isCurrent(target)) return;
+        if (System.currentTimeMillis() - lastInboundFrameMillis > INBOUND_LIVENESS_TIMEOUT_MILLIS) {
+            logger.warning("[Realtime] No frames received within "
+                + (INBOUND_LIVENESS_TIMEOUT_MILLIS / 1000) + "s; forcing reconnect");
+            teardown();
+            scheduleReconnect();
+            return;
+        }
+        sendHeartbeat(target);
+    }
+
+    private void teardown() {
+        synchronized (stateLock) {
+            if (state == State.TERMINAL) return;
+            cancelHeartbeatLocked();
+            closeClientLocked();
+            state = State.DISCONNECTED;
+        }
+        syncService.setRealtimeConnected(false);
+    }
+
+    private void terminate() {
+        synchronized (stateLock) {
+            state = State.TERMINAL;
+            cancelHeartbeatLocked();
+            closeClientLocked();
+        }
+        syncService.setRealtimeConnected(false);
+    }
+
+    private void cancelHeartbeatLocked() {
+        if (heartbeatTask != null) {
+            heartbeatTask.cancel(false);
             heartbeatTask = null;
         }
     }
 
-    private void scheduleReconnect() {
-        if (!running || !reconnectScheduled.compareAndSet(false, true)) return;
-        long delayMs = reconnectDelayOverrideMs != null ? advisedReconnectDelayMs(reconnectDelayOverrideMs) : reconnectDelayMs();
-        reconnectDelayOverrideMs = null;
-        executor.schedule(this::connectOnce, delayMs, TimeUnit.MILLISECONDS);
+    private void closeClientLocked() {
+        if (client != null) {
+            safeClose(client);
+            client = null;
+        }
     }
 
-    private long reconnectDelayMs() {
+    private static void safeClose(WebSocketClient target) {
+        try {
+            target.close();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void scheduleReconnect() {
+        long delayMs;
+        synchronized (stateLock) {
+            if (state == State.TERMINAL || reconnectScheduled) return;
+            reconnectScheduled = true;
+            delayMs = nextReconnectDelayLocked();
+        }
+        try {
+            executor.schedule(this::connectOnce, delayMs, TimeUnit.MILLISECONDS);
+        } catch (RejectedExecutionException e) {
+            synchronized (stateLock) {
+                reconnectScheduled = false;
+            }
+            if (debugMode) logger.warning("[Realtime] Reconnect rejected: " + e.getMessage());
+        }
+    }
+
+    private long nextReconnectDelayLocked() {
+        if (reconnectDelayOverrideMs != null) {
+            long override = reconnectDelayOverrideMs;
+            reconnectDelayOverrideMs = null;
+            return advisedReconnectDelayMs(override);
+        }
         int attempt = Math.min(reconnectAttempt++, 5);
         long baseDelay = Math.min(MAX_RECONNECT_DELAY_MS, INITIAL_RECONNECT_DELAY_MS << attempt);
         long jitter = random.nextInt((int) Math.min(baseDelay, 1000L) + 1);
@@ -445,7 +554,7 @@ public class MinecraftRealtimeClient {
     }
 
     private void send(WebSocketClient target, RealtimeEnvelope envelope) {
-        if (!running || target == null || !target.isOpen()) return;
+        if (isTerminated() || target == null || !target.isOpen()) return;
         try {
             target.send(envelope.toByteArray());
         } catch (Exception e) {

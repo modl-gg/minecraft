@@ -46,7 +46,7 @@ public final class PlayerChatListener implements EventListener<AsyncChatEvent>, 
 
         data.acceptNextResult(result -> {
             // Always advance the queue once per event; if the event was already cancelled by
-            // another plugin, consume and discard this verdict instead of leaking it.
+            // another plugin, consume and discard this verdict instead of leaking
             if (event.isCancelled()) {
                 debugLogger.debug(() -> "[CHAT] Event already cancelled; discarding consumed result");
                 return;

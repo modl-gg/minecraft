@@ -475,8 +475,7 @@ class ModlBackendReplayUploaderTest {
 
             assertThrows(ExecutionException.class, () -> upload.get(5, TimeUnit.SECONDS));
 
-            // Wait for the upload task to finish on the single-threaded executor.
-            uploadExecutor.submit(() -> {}).get(5, TimeUnit.SECONDS);
+            awaitExecutorDrained(uploadExecutor);
 
             assertEquals(0, storageHits.get(), "storage should not be hit after close");
             assertEquals(0, confirmHits.get(), "confirm should not be hit after close");
@@ -504,5 +503,9 @@ class ModlBackendReplayUploaderTest {
             executor.shutdownNow();
             executor.awaitTermination(5, TimeUnit.SECONDS);
         }
+    }
+
+    private static void awaitExecutorDrained(ExecutorService executor) throws Exception {
+        executor.submit(() -> {}).get(5, TimeUnit.SECONDS);
     }
 }

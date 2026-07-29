@@ -3,22 +3,20 @@ package gg.modl.minecraft.core.service.sync;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import gg.modl.minecraft.api.http.response.SyncResponse;
-import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.support.FakePlatform;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class NotificationServiceJsonTest {
     @Test
-    void staff_ticket_report_notification_builds_valid_run_command_json_without_manual_escaping() {
-        AtomicReference<String> broadcastJson = new AtomicReference<>();
+    void staffTicketReportNotificationBuildsValidRunCommandJsonWithoutManualEscaping() {
+        FakePlatform platform = new FakePlatform();
         NotificationService service = new NotificationService(
-                platformCapturingStaffJson(broadcastJson),
+                platform,
                 null,
                 null,
                 null,
@@ -43,7 +41,7 @@ class NotificationServiceJsonTest {
 
         service.processStaffNotification(notification);
 
-        JsonObject link = JsonParser.parseString(broadcastJson.get())
+        JsonObject link = JsonParser.parseString(platform.lastStaffJsonBroadcast())
                 .getAsJsonObject()
                 .getAsJsonArray("extra")
                 .get(0)
@@ -53,20 +51,5 @@ class NotificationServiceJsonTest {
         assertEquals("/target Target\"\\Name\nNext", link.getAsJsonObject("clickEvent").get("value").getAsString());
         assertEquals("Report \"subject\"\\line\nnext\n\nFirst reply \"quoted\"\\line\nnext\n\nClick to target Target\"\\Name\nNext",
                 link.getAsJsonObject("hoverEvent").get("value").getAsString());
-    }
-
-    private static Platform platformCapturingStaffJson(AtomicReference<String> broadcastJson) {
-        return (Platform) Proxy.newProxyInstance(
-                Platform.class.getClassLoader(),
-                new Class<?>[] {Platform.class},
-                (proxy, method, args) -> {
-                    if ("staffJsonBroadcast".equals(method.getName())) {
-                        broadcastJson.set((String) args[0]);
-                        return null;
-                    }
-                    if ("staffBroadcast".equals(method.getName())) return null;
-                    throw new UnsupportedOperationException(method.getName());
-                }
-        );
     }
 }

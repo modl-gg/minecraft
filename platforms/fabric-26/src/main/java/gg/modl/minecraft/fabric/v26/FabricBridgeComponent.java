@@ -12,6 +12,7 @@ import gg.modl.minecraft.core.service.DisabledReplayService;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.fabric.v26.handler.FabricFreezeHandler;
 import gg.modl.minecraft.fabric.v26.handler.FabricStaffModeHandler;
+import lombok.Getter;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
@@ -30,10 +31,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
-import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.Commands;
 import net.minecraft.world.Container;
@@ -41,8 +40,8 @@ import net.minecraft.world.Container;
 public class FabricBridgeComponent extends AbstractBridgeComponent {
     private final MinecraftServer server;
     private final FabricBridgePluginContext fabricContext;
-    private FabricFreezeHandler fabricFreezeHandler;
-    private FabricStaffModeHandler fabricStaffModeHandler;
+    @Getter private FabricFreezeHandler fabricFreezeHandler;
+    @Getter private FabricStaffModeHandler fabricStaffModeHandler;
 
 
     public FabricBridgeComponent(FabricBridgePluginContext context, MinecraftServer server,
@@ -62,8 +61,8 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
                                         BridgeLocaleManager localeManager,
                                         StaffModeConfig staffModeConfig) {
         fabricStaffModeHandler = new FabricStaffModeHandler(
-                server, bridgeConfig, fabricFreezeHandler, localeManager, staffModeConfig);
-        fabricStaffModeHandler.startScoreboardUpdater();
+                server, bridgeConfig, fabricFreezeHandler, localeManager, staffModeConfig, context.getScheduler());
+        fabricStaffModeHandler.start();
     }
 
     @Override
@@ -161,13 +160,11 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
             }
 
             int slot = staff.getInventory().getSelectedSlot();
-            Map<Integer, StaffModeConfig.HotbarItem> hotbar = fabricStaffModeHandler.getActiveHotbar(staff.getUUID());
-            StaffModeConfig.HotbarItem item = hotbar != null ? hotbar.get(slot) : null;
-            if (item != null && item.getAction() != null && !item.getAction().isEmpty()) {
-                fabricStaffModeHandler.executeAction(staff, item);
-                return InteractionResult.SUCCESS;
+            if (staff.getInventory().getItem(slot).isEmpty()) {
+                return InteractionResult.PASS;
             }
-            return InteractionResult.PASS;
+            fabricStaffModeHandler.handleHotbarAction(staff.getUUID(), slot);
+            return InteractionResult.SUCCESS;
         });
 
         UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
@@ -180,14 +177,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
 
             if (hand == InteractionHand.MAIN_HAND && entity instanceof ServerPlayer targetPlayer) {
                 int slot = staff.getInventory().getSelectedSlot();
-                Map<Integer, StaffModeConfig.HotbarItem> hotbar = fabricStaffModeHandler.getActiveHotbar(staff.getUUID());
-                StaffModeConfig.HotbarItem item = hotbar != null ? hotbar.get(slot) : null;
-                if (item != null && "target_selector".equals(item.getAction())) {
-                    fabricStaffModeHandler.setTarget(staff.getUUID().toString(), targetPlayer.getUUID().toString());
-                    staff.sendSystemMessage(Component.literal(localeManager.getMessage(
-                            "staff_mode.target.now_targeting",
-                            mapOf("player", targetPlayer.getName().getString()))), false);
-                }
+                fabricStaffModeHandler.handleTargetSelect(staff.getUUID(), slot, targetPlayer.getUUID());
             }
             return InteractionResult.FAIL;
         });
@@ -231,14 +221,6 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
     protected void onDisable() {
         if (fabricStaffModeHandler != null) fabricStaffModeHandler.shutdown();
         ((FabricBridgeScheduler) fabricContext.getScheduler()).shutdown();
-    }
-
-    public FabricFreezeHandler getFabricFreezeHandler() {
-        return fabricFreezeHandler;
-    }
-
-    public FabricStaffModeHandler getFabricStaffModeHandler() {
-        return fabricStaffModeHandler;
     }
 
     public MinecraftServer getServer() {

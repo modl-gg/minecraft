@@ -1,16 +1,16 @@
 package gg.modl.minecraft.api.http.request;
 
 import com.google.gson.annotations.SerializedName;
-import lombok.Data;
+import lombok.Value;
 
 import java.util.List;
 import java.util.Map;
 
-@Data
+@Value
 public class PunishmentCreateRequest {
-    private final String targetUuid, issuerName, issuerId, reason, severity, status;
-    private @SerializedName("type_ordinal") final int typeOrdinal;
-    private final Long duration;
-    private final Map<String, Object> data;
-    private final List<String> notes, attachedTicketIds;
+    String targetUuid, issuerName, issuerId, reason, severity, status;
+    @SerializedName("type_ordinal") int typeOrdinal;
+    Long duration;
+    Map<String, Object> data;
+    List<String> notes, attachedTicketIds;
 }

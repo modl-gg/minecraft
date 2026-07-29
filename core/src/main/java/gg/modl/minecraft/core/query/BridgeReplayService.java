@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.query;
 
+import gg.modl.minecraft.core.bridge.protocol.BridgeAction;
 import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.service.ReplayCaptureResult;
 import gg.modl.minecraft.core.service.ReplayCaptureStatus;
@@ -39,12 +40,6 @@ public class BridgeReplayService implements ReplayService {
         this.broadcaster = broadcaster;
         this.logger = logger;
         this.beforeDispatchHook = beforeDispatchHook;
-    }
-
-    @Override
-    public CompletableFuture<String> captureReplay(UUID targetUuid, String targetName) {
-        return captureReplayResult(targetUuid, targetName).thenApply(result ->
-                result.getStatus() == ReplayCaptureStatus.OK ? result.getReplayId() : null);
     }
 
     @Override
@@ -104,11 +99,6 @@ public class BridgeReplayService implements ReplayService {
         }
 
         return capture.future;
-    }
-
-    @Override
-    public boolean isReplayAvailable(UUID playerUuid) {
-        return getReplayStatus(playerUuid) == ReplayCaptureStatus.OK;
     }
 
     @Override
@@ -200,7 +190,7 @@ public class BridgeReplayService implements ReplayService {
                 capture.future.complete(ReplayCaptureResult.error());
                 return -1;
             }
-            return broadcaster.sendToAllBridges("CAPTURE_REPLAY", targetUuid.toString(), targetName);
+            return broadcaster.sendToAllBridges(BridgeAction.CAPTURE_REPLAY.wire(), targetUuid.toString(), targetName);
         } finally {
             lifecycleLock.readLock().unlock();
         }
@@ -248,7 +238,6 @@ public class BridgeReplayService implements ReplayService {
 
             if (error) return ReplayCaptureResult.error();
             if (fabricDisabled) return ReplayCaptureResult.fabricDisabled();
-            if (noActiveRecording || notLocal) return ReplayCaptureResult.noActiveRecording();
             return ReplayCaptureResult.noActiveRecording();
         }
     }

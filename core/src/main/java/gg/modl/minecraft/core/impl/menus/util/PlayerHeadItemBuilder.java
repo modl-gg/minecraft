@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.util;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.text.CirrusChatElement;
@@ -9,7 +10,8 @@ import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.CachedProfile;
 import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.util.WebPlayer;
+import gg.modl.minecraft.core.integration.mojang.MojangProfiles;
+import gg.modl.minecraft.core.integration.mojang.WebPlayer;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -34,13 +36,18 @@ public final class PlayerHeadItemBuilder {
         thread.setDaemon(true);
         return thread;
     });
-    private static final Function<UUID, CompletableFuture<WebPlayer>> DEFAULT_TEXTURE_LOOKUP = WebPlayer::get;
-    private static volatile Function<UUID, CompletableFuture<WebPlayer>> textureLookup = DEFAULT_TEXTURE_LOOKUP;
+    private final Function<UUID, CompletableFuture<WebPlayer>> textureLookup;
 
-    private PlayerHeadItemBuilder() {}
+    public PlayerHeadItemBuilder() {
+        this(uuid -> MojangProfiles.client().get(uuid));
+    }
 
-    public static CirrusItem create(Platform platform, Account targetAccount, String targetName, UUID targetUuid) {
-        LocaleManager locale = platform.getLocaleManager();
+    public PlayerHeadItemBuilder(Function<UUID, CompletableFuture<WebPlayer>> textureLookup) {
+        this.textureLookup = textureLookup;
+    }
+
+    public CirrusItem create(Platform platform, Account targetAccount, String targetName, UUID targetUuid) {
+        LocaleManager locale = PluginServices.locale();
         List<String> lore = new ArrayList<>();
 
         String firstLogin = UNKNOWN;
@@ -53,7 +60,7 @@ public final class PlayerHeadItemBuilder {
             if (earliest != null) firstLogin = MenuItems.formatDate(earliest);
         }
 
-        CachedProfile targetProfile = platform.getCache() != null ? platform.getCache().getPlayerProfile(targetUuid) : null;
+        CachedProfile targetProfile = PluginServices.cache() != null ? PluginServices.cache().getPlayerProfile(targetUuid) : null;
         boolean isOnline = targetProfile != null;
         boolean isBanned = targetAccount.getPunishments().stream()
                 .anyMatch(p -> p.isActive() && p.isBanType());
@@ -129,8 +136,8 @@ public final class PlayerHeadItemBuilder {
                 MenuItems.lore(lore)
         );
 
-        if (platform.getCache() != null) {
-            Cache cache = platform.getCache();
+        if (PluginServices.cache() != null) {
+            Cache cache = PluginServices.cache();
             String cachedTexture = cache.getSkinTexture(targetUuid);
             if (cachedTexture == null) {
                 requestTextureLookup(cache, targetUuid);
@@ -141,7 +148,7 @@ public final class PlayerHeadItemBuilder {
         return headItem;
     }
 
-    private static void requestTextureLookup(Cache cache, UUID targetUuid) {
+    private void requestTextureLookup(Cache cache, UUID targetUuid) {
         if (!PENDING_TEXTURE_LOOKUPS.add(targetUuid)) return;
         try {
             CompletableFuture.supplyAsync(() -> textureLookup.apply(targetUuid), TEXTURE_LOOKUP_SCHEDULER)
@@ -165,11 +172,6 @@ public final class PlayerHeadItemBuilder {
 
     public static void shutdown() {
         if (!TEXTURE_LOOKUP_SCHEDULER.isShutdown()) TEXTURE_LOOKUP_SCHEDULER.shutdownNow();
-    }
-
-    static void setTextureLookupForTesting(Function<UUID, CompletableFuture<WebPlayer>> lookup) {
-        textureLookup = lookup != null ? lookup : DEFAULT_TEXTURE_LOOKUP;
-        PENDING_TEXTURE_LOOKUPS.clear();
     }
 
     private static String displayValue(String value, String fallback) {

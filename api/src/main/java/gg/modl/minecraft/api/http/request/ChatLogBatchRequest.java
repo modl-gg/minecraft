@@ -1,18 +1,11 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import gg.modl.minecraft.api.http.ChatLogEntry;
+import lombok.Value;
 
 import java.util.List;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+@Value
 public class ChatLogBatchRequest {
-    private List<ChatLogEntry> entries;
-
-    @Data @NoArgsConstructor @AllArgsConstructor
-    public static class ChatLogEntry {
-        private String uuid, username, message, server;
-        private long timestamp;
-    }
+    List<ChatLogEntry> entries;
 }

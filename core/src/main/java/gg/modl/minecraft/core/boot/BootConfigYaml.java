@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.boot;
 
+import gg.modl.minecraft.core.util.YamlValues;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
@@ -38,12 +39,12 @@ final class BootConfigYaml {
     static BootConfig fromMap(Map<String, Object> data) {
         BootConfig config = new BootConfig();
         config.setMode(BootConfig.Mode.fromString((String) data.get(KEY_MODE)));
-        config.setApiKey(getStr(data, KEY_API_KEY, ""));
-        config.setTestingApi(getBool(data, KEY_TESTING_API, false));
-        config.setProxyType(getStr(data, KEY_PROXY_TYPE, null));
-        config.setBridgePort(getInt(data, KEY_BRIDGE_PORT, DEFAULT_BRIDGE_PORT));
-        config.setWizardProxyHost(getStr(data, KEY_PROXY_HOST, null));
-        config.setWizardProxyPort(getInt(data, KEY_PROXY_PORT, DEFAULT_PROXY_PORT));
+        config.setApiKey(YamlValues.asString(data.get(KEY_API_KEY), ""));
+        config.setTestingApi(YamlValues.asBoolean(data.get(KEY_TESTING_API), false));
+        config.setProxyType(YamlValues.asString(data.get(KEY_PROXY_TYPE), null));
+        config.setBridgePort(YamlValues.asInt(data.get(KEY_BRIDGE_PORT), DEFAULT_BRIDGE_PORT));
+        config.setWizardProxyHost(YamlValues.asString(data.get(KEY_PROXY_HOST), null));
+        config.setWizardProxyPort(YamlValues.asInt(data.get(KEY_PROXY_PORT), DEFAULT_PROXY_PORT));
         return config;
     }
 
@@ -86,20 +87,5 @@ final class BootConfigYaml {
                 + "\n"
                 + "# Bridge listen port (proxy mode only - backends connect to this port)\n"
                 + "# bridge-port: 25590\n";
-    }
-
-    private static String getStr(Map<String, Object> map, String key, String def) {
-        Object val = map.get(key);
-        return val instanceof String ? (String) val : def;
-    }
-
-    private static int getInt(Map<String, Object> map, String key, int def) {
-        Object val = map.get(key);
-        return val instanceof Number ? ((Number) val).intValue() : def;
-    }
-
-    private static boolean getBool(Map<String, Object> map, String key, boolean def) {
-        Object val = map.get(key);
-        return val instanceof Boolean ? (Boolean) val : def;
     }
 }

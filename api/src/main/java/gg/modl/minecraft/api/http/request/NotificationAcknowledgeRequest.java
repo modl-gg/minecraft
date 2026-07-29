@@ -1,14 +1,12 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Value;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+@Value
 public class NotificationAcknowledgeRequest {
-    private @NotNull String playerUuid, acknowledgedAt;
-    private @NotNull List<String> notificationIds;
+    @NotNull String playerUuid, acknowledgedAt;
+    @NotNull List<String> notificationIds;
 }

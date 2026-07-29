@@ -7,13 +7,14 @@ import gg.modl.minecraft.api.Modification;
 import gg.modl.minecraft.api.Note;
 import gg.modl.minecraft.api.Punishment;
 import gg.modl.minecraft.api.SimplePunishment;
+import gg.modl.minecraft.api.http.request.ChatLogBatchRequest;
+import gg.modl.minecraft.api.http.request.CommandLogBatchRequest;
 import gg.modl.minecraft.api.http.request.CreatePlayerNoteRequest;
 import gg.modl.minecraft.api.http.request.NotificationAcknowledgeRequest;
 import gg.modl.minecraft.api.http.request.PardonPlayerRequest;
 import gg.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
 import gg.modl.minecraft.api.http.request.PlayerLookupRequest;
-import gg.modl.minecraft.api.http.request.PlayerNoteCreateRequest;
 import gg.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import gg.modl.minecraft.api.http.response.LinkedAccountsResponse;
 import gg.modl.minecraft.api.http.response.OnlinePlayersResponse;
@@ -46,18 +47,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
 
-/**
- * Maps player-domain DTOs to/from their proto V3 counterparts. The inverse of the backend
- * {@code MinecraftPlayerProtoMapper}: domain&rarr;proto for requests, proto&rarr;domain for responses.
- */
 public final class PlayerProtoMapper {
 
     private static final Logger LOGGER = Logger.getLogger(PlayerProtoMapper.class.getName());
 
     private PlayerProtoMapper() {
     }
-
-    // ---- Requests (domain -> proto) ----
 
     public static gg.modl.proto.modl.v1.PlayerLoginRequest toProto(PlayerLoginRequest request) {
         gg.modl.proto.modl.v1.PlayerLoginRequest.Builder builder = gg.modl.proto.modl.v1.PlayerLoginRequest.newBuilder()
@@ -114,15 +109,6 @@ public final class PlayerProtoMapper {
         return builder.build();
     }
 
-    public static gg.modl.proto.modl.v1.CreatePlayerNoteRequest toProto(PlayerNoteCreateRequest request) {
-        gg.modl.proto.modl.v1.CreatePlayerNoteRequest.Builder builder =
-            gg.modl.proto.modl.v1.CreatePlayerNoteRequest.newBuilder()
-                .setText(request.getText());
-        if (request.getIssuerName() != null) builder.setIssuerName(request.getIssuerName());
-        if (request.getIssuerId() != null) builder.setIssuerId(request.getIssuerId());
-        return builder.build();
-    }
-
     public static gg.modl.proto.modl.v1.PardonPlayerRequest toProto(PardonPlayerRequest request) {
         gg.modl.proto.modl.v1.PardonPlayerRequest.Builder builder =
             gg.modl.proto.modl.v1.PardonPlayerRequest.newBuilder()
@@ -160,7 +146,34 @@ public final class PlayerProtoMapper {
             .build();
     }
 
-    // ---- Responses (proto -> domain) ----
+    public static gg.modl.proto.modl.v1.ChatLogBatchRequest toProto(ChatLogBatchRequest request) {
+        gg.modl.proto.modl.v1.ChatLogBatchRequest.Builder builder = gg.modl.proto.modl.v1.ChatLogBatchRequest.newBuilder();
+        if (request.getEntries() != null) {
+            request.getEntries().forEach(entry -> builder.addEntries(gg.modl.proto.modl.v1.ChatLogEntry.newBuilder()
+                .setUuid(ProtoConversions.nullToEmpty(entry.getUuid()))
+                .setUsername(ProtoConversions.nullToEmpty(entry.getUsername()))
+                .setMessage(ProtoConversions.nullToEmpty(entry.getMessage()))
+                .setServer(ProtoConversions.nullToEmpty(entry.getServer()))
+                .setTimestamp(entry.getTimestamp())
+                .build()));
+        }
+        return builder.build();
+    }
+
+    public static gg.modl.proto.modl.v1.CommandLogBatchRequest toProto(CommandLogBatchRequest request) {
+        gg.modl.proto.modl.v1.CommandLogBatchRequest.Builder builder =
+            gg.modl.proto.modl.v1.CommandLogBatchRequest.newBuilder();
+        if (request.getEntries() != null) {
+            request.getEntries().forEach(entry -> builder.addEntries(gg.modl.proto.modl.v1.CommandLogEntry.newBuilder()
+                .setUuid(ProtoConversions.nullToEmpty(entry.getUuid()))
+                .setUsername(ProtoConversions.nullToEmpty(entry.getUsername()))
+                .setCommand(ProtoConversions.nullToEmpty(entry.getCommand()))
+                .setServer(ProtoConversions.nullToEmpty(entry.getServer()))
+                .setTimestamp(entry.getTimestamp())
+                .build()));
+        }
+        return builder.build();
+    }
 
     public static PlayerLoginResponse toLoginResponse(gg.modl.proto.modl.v1.PlayerLoginResponse proto) {
         List<SimplePunishment> punishments = new ArrayList<>();
@@ -212,11 +225,9 @@ public final class PlayerProtoMapper {
     }
 
     public static PlayerProfileResponse toPlayerProfileResponse(gg.modl.proto.modl.v1.PlayerProfileResponse proto) {
-        PlayerProfileResponse response = new PlayerProfileResponse(toAccount(proto.getProfile()));
-        response.setStatus(proto.getStatus());
-        if (proto.hasPunishmentCount()) response.setPunishmentCount(proto.getPunishmentCount());
-        if (proto.hasNoteCount()) response.setNoteCount(proto.getNoteCount());
-        return response;
+        return new PlayerProfileResponse(toAccount(proto.getProfile()), proto.getStatus(),
+            proto.hasPunishmentCount() ? proto.getPunishmentCount() : -1,
+            proto.hasNoteCount() ? proto.getNoteCount() : -1);
     }
 
     public static PlayerGetResponse toPlayerGetResponse(gg.modl.proto.modl.v1.PlayerGetResponse proto) {
@@ -238,37 +249,23 @@ public final class PlayerProtoMapper {
     public static LinkedAccountsResponse toLinkedAccountsResponse(gg.modl.proto.modl.v1.LinkedAccountsResponse proto) {
         List<Account> accounts = new ArrayList<>();
         proto.getLinkedAccountsList().forEach(a -> accounts.add(toAccount(a)));
-        LinkedAccountsResponse response = new LinkedAccountsResponse(accounts);
-        response.setStatus(proto.getStatus());
-        response.setPage(proto.getPage());
-        response.setHasMore(proto.getHasMore());
-        if (proto.hasTotalCount()) response.setTotalCount(proto.getTotalCount());
-        return response;
+        return new LinkedAccountsResponse(accounts, proto.getStatus(),
+            proto.hasTotalCount() ? proto.getTotalCount() : -1, proto.getPage(), proto.getHasMore());
     }
 
     public static PaginatedPunishmentsResponse toPaginatedPunishmentsResponse(
         gg.modl.proto.modl.v1.PaginatedPunishmentsResponse proto) {
-        PaginatedPunishmentsResponse response = new PaginatedPunishmentsResponse();
         List<Punishment> punishments = new ArrayList<>();
-        proto.getPunishmentsList().forEach(p -> punishments.add(toPunishment(p)));
-        response.setPunishments(punishments);
-        response.setTotalCount(proto.getTotalCount());
-        response.setPage(proto.getPage());
-        response.setHasMore(proto.getHasMore());
-        response.setStatus(proto.getStatus());
-        return response;
+        proto.getPunishmentsList().forEach(p -> punishments.add(toPunishmentFromListEntry(p)));
+        return new PaginatedPunishmentsResponse(punishments, proto.getTotalCount(), proto.getPage(),
+            proto.getHasMore(), proto.getStatus());
     }
 
     public static PaginatedNotesResponse toPaginatedNotesResponse(gg.modl.proto.modl.v1.PaginatedNotesResponse proto) {
-        PaginatedNotesResponse response = new PaginatedNotesResponse();
         List<Note> notes = new ArrayList<>();
         proto.getNotesList().forEach(n -> notes.add(toNote(n)));
-        response.setNotes(notes);
-        response.setTotalCount(proto.getTotalCount());
-        response.setPage(proto.getPage());
-        response.setHasMore(proto.getHasMore());
-        response.setStatus(proto.getStatus());
-        return response;
+        return new PaginatedNotesResponse(notes, proto.getTotalCount(), proto.getPage(),
+            proto.getHasMore(), proto.getStatus());
     }
 
     public static ReportsResponse toReportsResponse(gg.modl.proto.modl.v1.ReportsResponse proto) {
@@ -280,8 +277,6 @@ public final class PlayerProtoMapper {
     public static PardonResponse toPardonResponse(gg.modl.proto.modl.v1.PardonResponse proto) {
         return new PardonResponse(proto.getMessage(), proto.getStatus(), proto.getPardonedCount(), proto.getSuccess());
     }
-
-    // ---- Account graph ----
 
     private static Account toAccount(gg.modl.proto.modl.v1.Account proto) {
         List<Account.Username> usernames = new ArrayList<>();
@@ -295,7 +290,7 @@ public final class PlayerProtoMapper {
         proto.getIpAddressesList().forEach(ip -> ipList.add(toIpAddress(ip)));
 
         List<Punishment> punishments = new ArrayList<>();
-        proto.getPunishmentsList().forEach(p -> punishments.add(toPunishment(p)));
+        proto.getPunishmentsList().forEach(p -> punishments.add(toPunishmentFromFlatResponse(p)));
 
         List<Map<String, Object>> notifications = new ArrayList<>();
         proto.getPendingNotificationsList().forEach(s -> notifications.add(ProtoConversions.structToMap(s)));
@@ -338,21 +333,7 @@ public final class PlayerProtoMapper {
             ProtoConversions.emptyToNull(proto.getIssuerId()));
     }
 
-    /**
-     * Reconstructs the legacy {@link Punishment} shape from the proto {@code PunishmentResponse}.
-     * The domain {@code Punishment} reads {@code active}/{@code status}/{@code expires}/{@code reason}
-     * from its {@code dataMap}, so the flat proto fields are folded back into that map to preserve
-     * the behaviour the V2 JSON client produced.
-     */
-    private static Punishment toPunishment(PunishmentResponse proto) {
-        Punishment punishment = new Punishment();
-        punishment.setId(proto.getId());
-        punishment.setIssuerName(proto.getIssuerName());
-        punishment.setIssued(ProtoConversions.dateFromMillis(proto.getIssued()));
-        if (proto.hasStarted()) punishment.setStarted(ProtoConversions.dateFromMillis(proto.getStarted()));
-        punishment.setTypeOrdinal(proto.getTypeOrdinal());
-        punishment.setAttachedTicketIds(new ArrayList<>(proto.getAttachedTicketIdsList()));
-
+    private static Punishment toPunishmentFromFlatResponse(PunishmentResponse proto) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("active", proto.getActive());
         data.put("isAppealable", proto.getIsAppealable());
@@ -366,44 +347,45 @@ public final class PlayerProtoMapper {
         if (proto.hasPlayerUuid()) data.put("playerUuid", proto.getPlayerUuid());
         if (proto.hasPlayerUsername()) data.put("playerUsername", proto.getPlayerUsername());
         if (!proto.getType().isEmpty()) data.put("typeName", proto.getType());
-        punishment.setDataMap(data);
 
-        return punishment;
+        return Punishment.builder()
+            .id(proto.getId())
+            .issuerName(proto.getIssuerName())
+            .issued(ProtoConversions.dateFromMillis(proto.getIssued()))
+            .started(proto.hasStarted() ? ProtoConversions.dateFromMillis(proto.getStarted()) : null)
+            .typeOrdinal(proto.getTypeOrdinal())
+            .attachedTicketIds(new ArrayList<>(proto.getAttachedTicketIdsList()))
+            .dataMap(data)
+            .build();
     }
 
-    /**
-     * Maps the paginated {@code PunishmentListEntry} (which carries explicit modifications/notes/evidence
-     * lists and a {@code data} struct) into the legacy {@link Punishment} domain shape.
-     */
-    private static Punishment toPunishment(PunishmentListEntry proto) {
-        Punishment punishment = new Punishment();
-        punishment.setId(proto.getId());
-        punishment.setIssuerName(proto.getIssuerName());
-        punishment.setIssued(ProtoConversions.dateFromMillis(proto.getIssued()));
-        if (proto.hasStarted()) punishment.setStarted(ProtoConversions.dateFromMillis(proto.getStarted()));
-        if (proto.hasTypeOrdinal()) punishment.setTypeOrdinal(proto.getTypeOrdinal());
-
+    private static Punishment toPunishmentFromListEntry(PunishmentListEntry proto) {
         List<Modification> modifications = new ArrayList<>();
         proto.getModificationsList().forEach(m -> modifications.add(toModification(m)));
-        punishment.setModifications(modifications);
 
         List<Note> notes = new ArrayList<>();
         proto.getNotesList().forEach(n -> notes.add(toNote(n)));
-        punishment.setNotes(notes);
 
         List<Evidence> evidence = new ArrayList<>();
         proto.getEvidenceList().forEach(e -> evidence.add(toEvidence(e)));
-        punishment.setEvidence(evidence);
-
-        punishment.setAttachedTicketIds(new ArrayList<>(proto.getAttachedTicketIdsList()));
 
         Map<String, Object> data = proto.hasData()
             ? new LinkedHashMap<>(ProtoConversions.structToMap(proto.getData()))
             : new LinkedHashMap<>();
         if (!proto.getType().isEmpty()) data.putIfAbsent("typeName", proto.getType());
-        punishment.setDataMap(data);
 
-        return punishment;
+        return Punishment.builder()
+            .id(proto.getId())
+            .issuerName(proto.getIssuerName())
+            .issued(ProtoConversions.dateFromMillis(proto.getIssued()))
+            .started(proto.hasStarted() ? ProtoConversions.dateFromMillis(proto.getStarted()) : null)
+            .typeOrdinal(proto.hasTypeOrdinal() ? proto.getTypeOrdinal() : null)
+            .modifications(modifications)
+            .notes(notes)
+            .evidence(evidence)
+            .attachedTicketIds(new ArrayList<>(proto.getAttachedTicketIdsList()))
+            .dataMap(data)
+            .build();
     }
 
     public static Modification toModification(PunishmentModification proto) {

@@ -3,7 +3,7 @@ package gg.modl.minecraft.core.service;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.staff.PermissionUtil;
 
 import java.util.UUID;
 
@@ -15,7 +15,7 @@ public class MaintenanceService {
         for (AbstractPlayer player : platform.getOnlinePlayers()) {
             UUID uuid = player.getUuid();
             if (!PermissionUtil.isStaff(uuid, cache)) {
-                platform.runOnGameThread(() -> platform.kickPlayer(player, kickMessage));
+                platform.runOnMainThread(() -> platform.kickPlayer(player, kickMessage));
             }
         }
     }

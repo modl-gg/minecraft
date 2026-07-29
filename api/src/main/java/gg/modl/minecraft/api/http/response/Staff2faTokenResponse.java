@@ -1,9 +1,10 @@
 package gg.modl.minecraft.api.http.response;
 
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Data @NoArgsConstructor
+@Getter @NoArgsConstructor @AllArgsConstructor
 public class Staff2faTokenResponse {
     private String token, verifyUrl;
 }

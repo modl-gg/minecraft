@@ -26,7 +26,7 @@ public final class CommandUtil {
     }
 
     public static String resolveActorName(CommandActor actor, Cache cache, Platform platform) {
-        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor))
+        if (isConsole(actor))
             return "Console";
         String panelName = cache.getStaffDisplayName(actor.uniqueId());
         if (panelName != null)
@@ -36,7 +36,7 @@ public final class CommandUtil {
     }
 
     public static String resolveActorId(CommandActor actor, Cache cache) {
-        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor))
+        if (isConsole(actor))
             return null;
         return cache.getStaffId(actor.uniqueId());
     }

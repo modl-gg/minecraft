@@ -1,6 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.inspect;
 
-import dev.simplix.cirrus.actionhandler.ActionHandlers;
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
 import dev.simplix.cirrus.model.CirrusClickType;
@@ -12,14 +12,13 @@ import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.api.http.response.ReportsResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.impl.menus.base.BaseInspectListMenu;
-import gg.modl.minecraft.core.impl.menus.util.InspectNavigationHandlers;
 import gg.modl.minecraft.core.impl.menus.util.InspectTabItems.InspectTab;
+import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import lombok.Getter;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -29,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
@@ -52,32 +52,32 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
     private String currentFilter = "all", currentStatusFilter = "open";
     private final List<String> filterOptions = Arrays.asList("all", "gameplay", "chat");
 
+    @Getter private final CompletableFuture<Void> dataFuture;
+
     public ReportsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                        Account targetAccount, Consumer<CirrusPlayerWrapper> backAction) {
         super("Reports: " + ReportRenderUtil.getPlayerName(targetAccount), platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
         activeTab = InspectTab.REPORTS;
 
-        fetchReports();
+        this.dataFuture = fetchReports();
     }
 
-    private void fetchReports() {
-        try {
-            httpClient.getPlayerReports(targetAccount.getMinecraftUuid(), "all").thenAccept(response -> {
-                if (response.isSuccess() && response.getReports() != null) {
-                    reports.clear();
-                    for (ReportsResponse.Report report : response.getReports()) {
-                        reports.add(new Report(
-                                report.getId(),
-                                ReportRenderUtil.normalizeReportType(report),
-                                report.getReporterName(),
-                                ReportRenderUtil.getReportContent(report),
-                                report.getStatus(),
-                                report.getCreatedAt()
-                        ));
-                    }
+    private CompletableFuture<Void> fetchReports() {
+        return httpClient.getPlayerReports(targetAccount.getMinecraftUuid(), "all").thenAccept(response -> {
+            if (response.isSuccess() && response.getReports() != null) {
+                reports.clear();
+                for (ReportsResponse.Report report : response.getReports()) {
+                    reports.add(new Report(
+                            report.getId(),
+                            ReportRenderUtil.normalizeReportType(report),
+                            report.getReporterName(),
+                            ReportRenderUtil.getReportContent(report),
+                            report.getStatus(),
+                            report.getCreatedAt()
+                    ));
                 }
-            }).join();
-        } catch (Exception ignored) {}
+            }
+        }).exceptionally(e -> null);
     }
 
     public ReportsMenu withFilter(String filter) {
@@ -107,7 +107,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         List<Report> filtered = new ArrayList<>();
         for (Report report : reports) {
             boolean typeMatch = currentFilter.equals("all") || (report.getType() != null && report.getType().equalsIgnoreCase(currentFilter));
-            boolean statusMatch = "open".equalsIgnoreCase(currentStatusFilter) != "closed".equalsIgnoreCase(report.getStatus());
+            boolean statusMatch = ReportRenderUtil.matchesStatusFilter(currentStatusFilter, report.getStatus());
             if (typeMatch && statusMatch)
                 filtered.add(report);
         }
@@ -127,7 +127,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
 
     @Override
     protected CirrusItem map(Report report) {
-        LocaleManager locale = platform.getLocaleManager();
+        LocaleManager locale = PluginServices.locale();
 
         if (report.getId() == null) return createEmptyPlaceholder(locale.getMessage("menus.empty.reports"));
 
@@ -168,7 +168,7 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
 
             ReportsMenu refreshed = new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
                     .withFilter(currentFilter).withStatusFilter(currentStatusFilter);
-            ActionHandlers.openMenu(refreshed).handle(click);
+            MenuAsync.displayWhenLoaded(platform, refreshed.getDataFuture(), click.player(), refreshed::display);
         }).exceptionally(e -> {
             sendMessage(MenuItems.COLOR_RED + "Failed to dismiss report: " + e.getMessage());
             return null;
@@ -180,30 +180,25 @@ public class ReportsMenu extends BaseInspectListMenu<ReportsMenu.Report> {
         super.registerActionHandlers();
 
         registerActionHandler("filter", this::handleFilter);
-        InspectNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, targetAccount, backAction);
         registerActionHandler("openReports", click -> {});
     }
 
     private void handleFilter(Click click) {
         if (click.clickType().equals(CirrusClickType.RIGHT_CLICK)) {
             String newStatus = "open".equalsIgnoreCase(currentStatusFilter) ? "closed" : "open";
-            ActionHandlers.openMenu(
-                    new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                            .withFilter(currentFilter)
-                            .withStatusFilter(newStatus))
-                    .handle(click);
+            ReportsMenu refreshed = new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
+                    .withFilter(currentFilter)
+                    .withStatusFilter(newStatus);
+            MenuAsync.displayWhenLoaded(platform, refreshed.getDataFuture(), click.player(), refreshed::display);
         } else {
             int currentIndex = filterOptions.indexOf(currentFilter);
             int nextIndex = (currentIndex + 1) % filterOptions.size();
             String newFilter = filterOptions.get(nextIndex);
 
-            ActionHandlers.openMenu(
-                    new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
-                            .withFilter(newFilter)
-                            .withStatusFilter(currentStatusFilter))
-                    .handle(click);
+            ReportsMenu refreshed = new ReportsMenu(platform, httpClient, viewerUuid, viewerName, targetAccount, backAction)
+                    .withFilter(newFilter)
+                    .withStatusFilter(currentStatusFilter);
+            MenuAsync.displayWhenLoaded(platform, refreshed.getDataFuture(), click.player(), refreshed::display);
         }
     }
 }

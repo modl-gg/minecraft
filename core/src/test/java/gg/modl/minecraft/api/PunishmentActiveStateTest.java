@@ -75,24 +75,23 @@ class PunishmentActiveStateTest {
     }
 
     private static Punishment ban(Date started, Long durationMillis) {
-        return punishment(PunishmentTypeRegistry.ORDINAL_BAN, started, durationMillis);
+        return punishment(PunishmentTypeClassifier.ORDINAL_BAN, started, durationMillis);
     }
 
     private static Punishment mute(Date started, Long durationMillis) {
-        return punishment(PunishmentTypeRegistry.ORDINAL_MUTE, started, durationMillis);
+        return punishment(PunishmentTypeClassifier.ORDINAL_MUTE, started, durationMillis);
     }
 
     private static Punishment punishment(int typeOrdinal, Date started, Long durationMillis) {
-        Punishment punishment = new Punishment();
-        punishment.setTypeOrdinal(typeOrdinal);
-        punishment.setStarted(started);
-
         Map<String, Object> data = new HashMap<>();
         if (durationMillis != null) {
             data.put("duration", durationMillis);
         }
-        punishment.setDataMap(data);
 
-        return punishment;
+        return Punishment.builder()
+                .typeOrdinal(typeOrdinal)
+                .started(started)
+                .dataMap(data)
+                .build();
     }
 }

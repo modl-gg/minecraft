@@ -12,23 +12,17 @@ import revxrsal.commands.command.CommandActor;
 import revxrsal.commands.velocity.VelocityLamp;
 import revxrsal.commands.velocity.VelocityVisitors;
 import revxrsal.commands.velocity.actor.VelocityCommandActor;
-import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.impl.menus.util.ChatInputManager;
-import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.service.BridgeService;
-import gg.modl.minecraft.core.service.ReplayService;
-import gg.modl.minecraft.core.service.Staff2faService;
-import gg.modl.minecraft.core.service.StaffModeService;
+import gg.modl.minecraft.core.StaffAudience;
 import gg.modl.minecraft.core.service.database.LiteBansDatabaseProvider;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.StringUtil;
-import gg.modl.minecraft.core.util.WebPlayer;
+import gg.modl.minecraft.core.integration.mojang.MojangProfiles;
+import gg.modl.minecraft.core.integration.mojang.WebPlayer;
 import lombok.Setter;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.slf4j.Logger;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.io.File;
 import java.util.Collection;
 import java.util.UUID;
@@ -43,13 +37,7 @@ public class VelocityPlatform implements Platform {
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
-    private @Setter Cache cache;
-    private @Setter LocaleManager localeManager;
-    private @Setter StaffModeService staffModeService;
-    private @Setter BridgeService bridgeService;
-    private @Setter Staff2faService staff2faService;
-    private @Setter ChatInputManager chatInputManager;
-    private @Setter ReplayService replayService;
+    private @Setter StaffAudience staffAudience;
 
     private final PluginLogger pluginLogger;
 
@@ -64,12 +52,11 @@ public class VelocityPlatform implements Platform {
     }
 
     private static Component colorize(String string) {
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(string);
+        return Colors.legacy(string);
     }
 
     private boolean isAuthenticatedStaff(Player player) {
-        return PermissionUtil.isStaff(player.getUniqueId(), cache)
-                && (staff2faService == null || !staff2faService.isEnabled() || staff2faService.isAuthenticated(player.getUniqueId()));
+        return staffAudience != null && staffAudience.includes(player.getUniqueId());
     }
 
     @Override
@@ -134,9 +121,6 @@ public class VelocityPlatform implements Platform {
     @Override
     @SuppressWarnings("unchecked")
     public void finalizeLampRegistration(Lamp<? extends CommandActor> lamp) {
-        // Velocity's Brigadier bridge only registers the commands present in Lamp's
-        // registry at visit time, so it must run after PluginLoader finishes registering
-        // every command object.
         Lamp<VelocityCommandActor> velocityLamp = (Lamp<VelocityCommandActor>) lamp;
         velocityLamp.accept(VelocityVisitors.brigadier(server));
     }
@@ -152,31 +136,28 @@ public class VelocityPlatform implements Platform {
     @Override
     public AbstractPlayer getAbstractPlayer(UUID uuid, boolean queryMojang) {
         Player player = getOnlinePlayer(uuid);
-
-        if (player != null) return new AbstractPlayer(player.getUniqueId(), player.getUsername(), player.getRemoteAddress().getAddress().getHostAddress(), true);
-        if (!queryMojang) return null;
-
-        WebPlayer webPlayer;
-        try {
-            webPlayer = WebPlayer.getSync(uuid);
-        } catch (Exception ignored) {
-            return null;
-        }
-
-        if (webPlayer == null) return null;
-        return new AbstractPlayer(webPlayer.getUuid(), webPlayer.getName(), null, false);
+        if (player != null) return toOnlineAbstractPlayer(player);
+        return resolveOfflineAbstractPlayer(queryMojang, () -> MojangProfiles.client().getSync(uuid));
     }
 
     @Override
     public AbstractPlayer getAbstractPlayer(String username, boolean queryMojang) {
         Player player = getOnlinePlayer(username);
+        if (player != null) return toOnlineAbstractPlayer(player);
+        return resolveOfflineAbstractPlayer(queryMojang, () -> MojangProfiles.client().getSync(username));
+    }
 
-        if (player != null) return new AbstractPlayer(player.getUniqueId(), player.getUsername(), player.getRemoteAddress().getAddress().getHostAddress(), true);
+    private AbstractPlayer toOnlineAbstractPlayer(Player player) {
+        return new AbstractPlayer(player.getUniqueId(), player.getUsername(),
+                player.getRemoteAddress().getAddress().getHostAddress(), true);
+    }
+
+    private AbstractPlayer resolveOfflineAbstractPlayer(boolean queryMojang, Supplier<WebPlayer> lookup) {
         if (!queryMojang) return null;
 
         WebPlayer webPlayer;
         try {
-            webPlayer = WebPlayer.getSync(username);
+            webPlayer = lookup.get();
         } catch (Exception ignored) {
             return null;
         }
@@ -304,33 +285,4 @@ public class VelocityPlatform implements Platform {
         logger.info(msg);
     }
 
-    @Override
-    public Cache getCache() {
-        return cache;
-    }
-
-    @Override
-    public LocaleManager getLocaleManager() {
-        return localeManager;
-    }
-
-    @Override
-    public StaffModeService getStaffModeService() {
-        return staffModeService;
-    }
-
-    @Override
-    public BridgeService getBridgeService() {
-        return bridgeService;
-    }
-
-    @Override
-    public ChatInputManager getChatInputManager() {
-        return chatInputManager;
-    }
-
-    @Override
-    public ReplayService getReplayService() {
-        return replayService;
-    }
 }

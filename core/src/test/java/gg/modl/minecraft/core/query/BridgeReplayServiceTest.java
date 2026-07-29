@@ -1,12 +1,11 @@
 package gg.modl.minecraft.core.query;
 
-import gg.modl.minecraft.core.util.PluginLogger;
+import gg.modl.minecraft.core.support.RecordingBridgeBroadcaster;
+import gg.modl.minecraft.core.support.RecordingPluginLogger;
 import gg.modl.minecraft.core.service.ReplayCaptureResult;
 import gg.modl.minecraft.core.service.ReplayCaptureStatus;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -24,31 +23,31 @@ class BridgeReplayServiceTest {
 
     @Test
     void captureReplayFailsImmediatelyWhenNoBackendIsConnected() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(false);
-        RecordingLogger logger = new RecordingLogger();
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(false);
+        RecordingPluginLogger logger = new RecordingPluginLogger();
         BridgeReplayService service = new BridgeReplayService(broadcaster, logger);
 
         CompletableFuture<ReplayCaptureResult> result = service.captureReplayResult(UUID.randomUUID(), "byteful");
 
         assertTrue(result.isDone());
         assertEquals(ReplayCaptureStatus.NO_BRIDGE_CONNECTED, result.get(100, TimeUnit.MILLISECONDS).getStatus());
-        assertEquals(0, broadcaster.sentActions.size());
-        assertTrue(logger.warnings.stream().anyMatch(message -> message.contains("No connected backends")));
+        assertEquals(0, broadcaster.sentActions().size());
+        assertTrue(logger.warnings().stream().anyMatch(message -> message.contains("No connected backends")));
 
         service.shutdown();
     }
 
     @Test
     void captureReplayDispatchesAndCompletesFromBackendResponse() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        RecordingLogger logger = new RecordingLogger();
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        RecordingPluginLogger logger = new RecordingPluginLogger();
         BridgeReplayService service = new BridgeReplayService(broadcaster, logger);
         UUID targetUuid = UUID.randomUUID();
 
         CompletableFuture<ReplayCaptureResult> result = service.captureReplayResult(targetUuid, "byteful");
         service.handleCaptureResponse(targetUuid, "replay-123", ReplayCaptureStatus.OK);
 
-        assertEquals("CAPTURE_REPLAY", broadcaster.sentActions.get(0));
+        assertEquals("CAPTURE_REPLAY", broadcaster.sentActions().get(0));
         ReplayCaptureResult captureResult = result.get(100, TimeUnit.MILLISECONDS);
         assertEquals(ReplayCaptureStatus.OK, captureResult.getStatus());
         assertEquals("replay-123", captureResult.getReplayId());
@@ -58,24 +57,24 @@ class BridgeReplayServiceTest {
 
     @Test
     void captureReplayFailsImmediatelyWhenDispatchFails() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true, 0);
-        RecordingLogger logger = new RecordingLogger();
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true, 0);
+        RecordingPluginLogger logger = new RecordingPluginLogger();
         BridgeReplayService service = new BridgeReplayService(broadcaster, logger);
 
         CompletableFuture<ReplayCaptureResult> result = service.captureReplayResult(UUID.randomUUID(), "byteful");
 
         assertTrue(result.isDone());
         assertEquals(ReplayCaptureStatus.NO_BRIDGE_CONNECTED, result.get(100, TimeUnit.MILLISECONDS).getStatus());
-        assertEquals(1, broadcaster.sentActions.size());
-        assertTrue(logger.warnings.stream().anyMatch(message -> message.contains("Failed to dispatch")));
+        assertEquals(1, broadcaster.sentActions().size());
+        assertTrue(logger.warnings().stream().anyMatch(message -> message.contains("Failed to dispatch")));
 
         service.shutdown();
     }
 
     @Test
     void captureReplayJoinsExistingPendingCaptureForSamePlayer() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        RecordingLogger logger = new RecordingLogger();
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        RecordingPluginLogger logger = new RecordingPluginLogger();
         BridgeReplayService service = new BridgeReplayService(broadcaster, logger);
         UUID targetUuid = UUID.randomUUID();
 
@@ -84,7 +83,7 @@ class BridgeReplayServiceTest {
         service.handleCaptureResponse(targetUuid, "replay-123", ReplayCaptureStatus.OK);
 
         assertEquals(firstResult, secondResult);
-        assertEquals(1, broadcaster.sentActions.size());
+        assertEquals(1, broadcaster.sentActions().size());
         assertEquals("replay-123", firstResult.get(100, TimeUnit.MILLISECONDS).getReplayId());
         assertEquals("replay-123", secondResult.get(100, TimeUnit.MILLISECONDS).getReplayId());
 
@@ -93,8 +92,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void captureReplayWaitsForAllNotLocalBackendResponses() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true, 2);
-        RecordingLogger logger = new RecordingLogger();
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true, 2);
+        RecordingPluginLogger logger = new RecordingPluginLogger();
         BridgeReplayService service = new BridgeReplayService(broadcaster, logger);
         UUID targetUuid = UUID.randomUUID();
 
@@ -113,8 +112,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void captureReplayPrioritizesFabricDisabledOverNotLocal() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true, 2);
-        RecordingLogger logger = new RecordingLogger();
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true, 2);
+        RecordingPluginLogger logger = new RecordingPluginLogger();
         BridgeReplayService service = new BridgeReplayService(broadcaster, logger);
         UUID targetUuid = UUID.randomUUID();
 
@@ -132,8 +131,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void captureReplayPrioritizesErrorOverNotLocal() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true, 2);
-        RecordingLogger logger = new RecordingLogger();
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true, 2);
+        RecordingPluginLogger logger = new RecordingPluginLogger();
         BridgeReplayService service = new BridgeReplayService(broadcaster, logger);
         UUID targetUuid = UUID.randomUUID();
 
@@ -151,8 +150,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void captureReplayPrioritizesErrorOverFabricDisabled() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true, 2);
-        RecordingLogger logger = new RecordingLogger();
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true, 2);
+        RecordingPluginLogger logger = new RecordingPluginLogger();
         BridgeReplayService service = new BridgeReplayService(broadcaster, logger);
         UUID targetUuid = UUID.randomUUID();
 
@@ -171,8 +170,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void captureReplayKeepsErrorStatusWhenFabricDisabledArrivesAfterError() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true, 2);
-        RecordingLogger logger = new RecordingLogger();
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true, 2);
+        RecordingPluginLogger logger = new RecordingPluginLogger();
         BridgeReplayService service = new BridgeReplayService(broadcaster, logger);
         UUID targetUuid = UUID.randomUUID();
 
@@ -192,9 +191,9 @@ class BridgeReplayServiceTest {
     @Test
     void captureReplayCompletesWhenNonOkResponseArrivesBeforeDispatchCountIsSet() throws Exception {
         UUID targetUuid = UUID.randomUUID();
-        RecordingLogger logger = new RecordingLogger();
+        RecordingPluginLogger logger = new RecordingPluginLogger();
         final BridgeReplayService[] serviceRef = new BridgeReplayService[1];
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true) {
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true) {
             @Override
             public int sendToAllBridges(String action, String... args) {
                 int dispatched = super.sendToAllBridges(action, args);
@@ -214,8 +213,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void captureReplayKeepsWaitingWhenNotLocalResponseArrivesBeforeReplayId() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true, 2);
-        RecordingLogger logger = new RecordingLogger();
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true, 2);
+        RecordingPluginLogger logger = new RecordingPluginLogger();
         BridgeReplayService service = new BridgeReplayService(broadcaster, logger);
         UUID targetUuid = UUID.randomUUID();
 
@@ -232,8 +231,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void captureReplayPreservesOldTwoFieldResponseCompatibility() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        RecordingLogger logger = new RecordingLogger();
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        RecordingPluginLogger logger = new RecordingPluginLogger();
         BridgeReplayService service = new BridgeReplayService(broadcaster, logger);
         UUID targetUuid = UUID.randomUUID();
 
@@ -249,8 +248,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void shutdownCompletesPendingCaptureWithError() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true, 2);
-        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingLogger());
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true, 2);
+        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingPluginLogger());
         UUID targetUuid = UUID.randomUUID();
 
         CompletableFuture<ReplayCaptureResult> result = service.captureReplayResult(targetUuid, "byteful");
@@ -267,8 +266,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void captureReplayAfterShutdownCompletesWithoutDispatching() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingLogger());
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingPluginLogger());
         service.shutdown();
 
         CompletableFuture<ReplayCaptureResult> result = assertDoesNotThrow(() ->
@@ -276,15 +275,15 @@ class BridgeReplayServiceTest {
 
         assertTrue(result.isDone());
         assertEquals(ReplayCaptureStatus.ERROR, result.get(100, TimeUnit.MILLISECONDS).getStatus());
-        assertEquals(0, broadcaster.sentActions.size());
+        assertEquals(0, broadcaster.sentActions().size());
     }
 
     @Test
     void shutdownDuringPreDispatchWindowCompletesWithoutDispatching() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
         CountDownLatch beforeDispatch = new CountDownLatch(1);
         CountDownLatch releaseDispatch = new CountDownLatch(1);
-        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingLogger(), () -> {
+        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingPluginLogger(), () -> {
             beforeDispatch.countDown();
             try {
                 assertTrue(releaseDispatch.await(1, TimeUnit.SECONDS));
@@ -302,13 +301,13 @@ class BridgeReplayServiceTest {
         releaseDispatch.countDown();
 
         assertEquals(ReplayCaptureStatus.ERROR, result.get(1, TimeUnit.SECONDS).getStatus());
-        assertEquals(0, broadcaster.sentActions.size());
+        assertEquals(0, broadcaster.sentActions().size());
         executor.shutdownNow();
     }
 
     @Test
     void getReplayStatusReturnsNoBridgeWhenNoBackendIsConnected() {
-        BridgeReplayService service = new BridgeReplayService(new RecordingBroadcaster(false), new RecordingLogger());
+        BridgeReplayService service = new BridgeReplayService(new RecordingBridgeBroadcaster(false), new RecordingPluginLogger());
 
         assertEquals(ReplayCaptureStatus.NO_BRIDGE_CONNECTED, service.getReplayStatus(UUID.randomUUID()));
 
@@ -317,7 +316,7 @@ class BridgeReplayServiceTest {
 
     @Test
     void getReplayStatusDoesNotAssumeUnknownTargetIsRecording() {
-        BridgeReplayService service = new BridgeReplayService(new RecordingBroadcaster(true), new RecordingLogger());
+        BridgeReplayService service = new BridgeReplayService(new RecordingBridgeBroadcaster(true), new RecordingPluginLogger());
 
         assertEquals(ReplayCaptureStatus.NO_ACTIVE_RECORDING, service.getReplayStatus(UUID.randomUUID()));
 
@@ -326,8 +325,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void getReplayStatusReturnsNotLocalAfterBridgeReportsTargetNotLocal() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingLogger());
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingPluginLogger());
         UUID targetUuid = UUID.randomUUID();
 
         CompletableFuture<ReplayCaptureResult> result = service.captureReplayResult(targetUuid, "byteful");
@@ -341,8 +340,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void getReplayStatusReturnsFabricDisabledAfterBridgeReportsFabricDisabled() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingLogger());
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingPluginLogger());
         UUID targetUuid = UUID.randomUUID();
 
         CompletableFuture<ReplayCaptureResult> result = service.captureReplayResult(targetUuid, "byteful");
@@ -356,8 +355,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void getReplayStatusReturnsOkAfterBridgeReportsReplayId() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingLogger());
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingPluginLogger());
         UUID targetUuid = UUID.randomUUID();
 
         CompletableFuture<ReplayCaptureResult> result = service.captureReplayResult(targetUuid, "byteful");
@@ -371,8 +370,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void getReplayStatusDowngradesFromOkToNoActiveRecordingAfterLaterResponse() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingLogger());
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingPluginLogger());
         UUID targetUuid = UUID.randomUUID();
 
         CompletableFuture<ReplayCaptureResult> firstResult = service.captureReplayResult(targetUuid, "byteful");
@@ -392,8 +391,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void getReplayStatusDowngradesFromOkToErrorAfterLaterResponse() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingLogger());
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingPluginLogger());
         UUID targetUuid = UUID.randomUUID();
 
         CompletableFuture<ReplayCaptureResult> firstResult = service.captureReplayResult(targetUuid, "byteful");
@@ -413,8 +412,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void getReplayStatusUpgradesFromErrorToOkAfterLaterResponse() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingLogger());
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingPluginLogger());
         UUID targetUuid = UUID.randomUUID();
 
         CompletableFuture<ReplayCaptureResult> firstResult = service.captureReplayResult(targetUuid, "byteful");
@@ -434,8 +433,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void removeTargetStatusClearsCachedStatusForTarget() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingLogger());
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingPluginLogger());
         UUID targetUuid = UUID.randomUUID();
 
         CompletableFuture<ReplayCaptureResult> result = service.captureReplayResult(targetUuid, "byteful");
@@ -453,8 +452,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void onPlayerDisconnectClearsCachedStatusForTarget() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingLogger());
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingPluginLogger());
         UUID targetUuid = UUID.randomUUID();
 
         CompletableFuture<ReplayCaptureResult> result = service.captureReplayResult(targetUuid, "byteful");
@@ -471,8 +470,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void shutdownClearsCachedTargetStatuses() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingLogger());
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingPluginLogger());
         UUID targetUuid = UUID.randomUUID();
 
         CompletableFuture<ReplayCaptureResult> result = service.captureReplayResult(targetUuid, "byteful");
@@ -488,8 +487,8 @@ class BridgeReplayServiceTest {
 
     @Test
     void getReplayStatusReturnsErrorAfterBridgeReportsError() throws Exception {
-        RecordingBroadcaster broadcaster = new RecordingBroadcaster(true);
-        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingLogger());
+        RecordingBridgeBroadcaster broadcaster = new RecordingBridgeBroadcaster(true);
+        BridgeReplayService service = new BridgeReplayService(broadcaster, new RecordingPluginLogger());
         UUID targetUuid = UUID.randomUUID();
 
         CompletableFuture<ReplayCaptureResult> result = service.captureReplayResult(targetUuid, "byteful");
@@ -499,48 +498,5 @@ class BridgeReplayServiceTest {
         assertEquals(ReplayCaptureStatus.ERROR, service.getReplayStatus(targetUuid));
 
         service.shutdown();
-    }
-
-    private static class RecordingBroadcaster implements BridgeBroadcaster {
-        private final boolean connected;
-        private final int dispatchCount;
-        private final List<String> sentActions = new ArrayList<>();
-
-        private RecordingBroadcaster(boolean connected) {
-            this(connected, connected ? 1 : 0);
-        }
-
-        private RecordingBroadcaster(boolean connected, int dispatchCount) {
-            this.connected = connected;
-            this.dispatchCount = dispatchCount;
-        }
-
-        @Override
-        public int sendToAllBridges(String action, String... args) {
-            sentActions.add(action);
-            return dispatchCount;
-        }
-
-        @Override
-        public boolean hasConnectedClients() {
-            return connected;
-        }
-    }
-
-    private static final class RecordingLogger implements PluginLogger {
-        private final List<String> warnings = new ArrayList<>();
-
-        @Override
-        public void info(String message) {
-        }
-
-        @Override
-        public void warning(String message) {
-            warnings.add(message);
-        }
-
-        @Override
-        public void severe(String message) {
-        }
     }
 }

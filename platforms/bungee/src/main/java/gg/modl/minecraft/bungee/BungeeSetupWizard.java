@@ -28,21 +28,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-/**
- * BungeeCord setup wizard that intercepts all console input directly.
- * <p>
- * Three interception strategies (tried in order):
- * <ol>
- *   <li><b>JLine 3 widget replacement</b> — replaces the {@code accept-line} widget on
- *       BungeeCord's LineReader so input is captured before command dispatch. Cleanest
- *       approach, works on modern BungeeCord with JLine 3.</li>
- *   <li><b>PluginManager commandMap wrapping</b> — replaces the private command map via
- *       reflection so unrecognized commands are routed to a catch-all. Works on any
- *       BungeeCord version.</li>
- *   <li><b>{@code setup <answer>} command</b> — registers a "setup" command as a last
- *       resort if reflection fails entirely.</li>
- * </ol>
- */
 public class BungeeSetupWizard implements Listener {
     private final Plugin plugin;
     private final PluginLogger logger;
@@ -117,8 +102,6 @@ public class BungeeSetupWizard implements Listener {
         logger.info("Edit plugins/" + plugin.getDescription().getName() + "/boot.yml and restart.");
     }
 
-    // ── Strategy 1: JLine 3 widget replacement ──
-
     @SuppressWarnings("unchecked")
     private boolean tryJLineInterceptor() {
         try {
@@ -182,11 +165,10 @@ public class BungeeSetupWizard implements Listener {
             logger.info("Console input interceptor installed (JLine widget)");
             return true;
         } catch (Exception e) {
+            logger.debug("JLine console interceptor unavailable: " + e.getMessage());
             return false;
         }
     }
-
-    // ── Strategy 2: PluginManager commandMap wrapping ──
 
     @SuppressWarnings("unchecked")
     private boolean tryCommandMapInterceptor() {
@@ -207,6 +189,7 @@ public class BungeeSetupWizard implements Listener {
             logger.info("Console input interceptor installed (command map)");
             return true;
         } catch (Exception e) {
+            logger.debug("Command-map console interceptor unavailable: " + e.getMessage());
             return false;
         }
     }
@@ -267,8 +250,6 @@ public class BungeeSetupWizard implements Listener {
         }
     }
 
-    // ── Strategy 3: Fallback "setup" command ──
-
     private void installFallbackCommand() {
         useFallbackCommand = true;
         SetupCommand cmd = new SetupCommand();
@@ -293,8 +274,6 @@ public class BungeeSetupWizard implements Listener {
             inputQueue.offer(String.join(" ", args));
         }
     }
-
-    // ── Console input ──
 
     private class QueuedConsoleInput implements ConsoleInput {
         @Override

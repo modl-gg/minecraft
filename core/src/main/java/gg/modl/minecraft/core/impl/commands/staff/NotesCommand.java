@@ -1,6 +1,5 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
-import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.Account;
 import gg.modl.minecraft.api.Note;
 import gg.modl.minecraft.core.HttpClientHolder;
@@ -30,6 +29,7 @@ public class NotesCommand {
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
+    private final DateFormatter dateFormatter;
 
     @Command("notes")
     @Description("Open the notes menu for a player, or use -p to print to chat")
@@ -39,28 +39,17 @@ public class NotesCommand {
         int page = Pagination.parsePrintFlags(flags);
         boolean printMode = page > 0;
 
-        if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor) || printMode) {
+        if (CommandUtil.isConsole(actor) || printMode) {
             printNotes(actor, playerQuery, Math.max(1, page));
             return;
         }
 
         UUID senderUuid = actor.uniqueId();
-        actor.reply(localeManager.getMessage("player_lookup.looking_up", mapOf("player", playerQuery)));
-
-        StaffProfileLookup.lookupPlayerProfile(httpClientHolder.getClient(), platform, playerQuery).thenAccept(profileResponse -> {
-            if (profileResponse.getStatus() == 200) {
-                String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);
-                NotesMenu menu = new NotesMenu(
+        ProfileMenuOpener.openProfileMenu(actor, httpClientHolder.getClient(), platform, cache, localeManager, playerQuery,
+                (profileResponse, senderName, viewer) -> new NotesMenu(
                     platform, httpClientHolder.getClient(), senderUuid, senderName,
                     profileResponse.getProfile(), null
-                );
-                CirrusPlayerWrapper player = platform.getPlayerWrapper(senderUuid);
-                menu.display(player);
-            } else actor.reply(localeManager.getMessage("general.player_not_found"));
-        }).exceptionally(throwable -> {
-            CommandUtil.handleException(actor, throwable, localeManager);
-            return null;
-        });
+                ).display(viewer));
     }
 
     private void printNotes(CommandActor actor, String playerQuery, int page) {
@@ -86,28 +75,16 @@ public class NotesCommand {
         actor.reply(localeManager.getMessage("print.notes.header", mapOf("player", playerName)));
 
         if (notes.isEmpty()) actor.reply(localeManager.getMessage("print.notes.empty"));
-        else {
-            Pagination.Page pg = Pagination.paginate(notes, ENTRIES_PER_PAGE, page);
-            for (int i = pg.getStart(); i < pg.getEnd(); i++) {
-                int ordinal = i + 1;
-                Note note = notes.get(i);
-                String date = DateFormatter.format(note.getDate());
-                String author = note.getIssuerName();
-                String content = note.getText();
-
-                actor.reply(localeManager.getMessage("print.notes.entry", mapOf(
-                        "ordinal", String.valueOf(ordinal),
-                        "date", date,
-                        "author", author,
-                        "content", content
-                )));
-            }
-            actor.reply(localeManager.getMessage("print.notes.total", mapOf(
-                    "count", String.valueOf(notes.size()),
-                    "page", String.valueOf(pg.getPage()),
-                    "total_pages", String.valueOf(pg.getTotalPages())
-            )));
-        }
+        else PaginatedChatPrinter.printPageWithTotal(actor, localeManager, notes, ENTRIES_PER_PAGE, page,
+                "print.notes.total", (index, ordinal) -> {
+                    Note note = notes.get(index);
+                    actor.reply(localeManager.getMessage("print.notes.entry", mapOf(
+                            "ordinal", String.valueOf(ordinal),
+                            "date", dateFormatter.format(note.getDate()),
+                            "author", note.getIssuerName(),
+                            "content", note.getText()
+                    )));
+                });
 
         actor.reply(localeManager.getMessage("print.notes.footer"));
     }

@@ -6,117 +6,48 @@ import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.player.ServerConnectedEvent;
-import gg.modl.minecraft.api.http.ModlHttpClient;
-import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
-import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
-import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
-import gg.modl.minecraft.core.cache.CachedProfileRegistry;
 import gg.modl.minecraft.core.cache.LoginCache;
-import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.service.BridgeService;
-import gg.modl.minecraft.core.service.ChatMessageCache;
-import gg.modl.minecraft.core.service.MaintenanceService;
-import gg.modl.minecraft.core.service.Staff2faService;
-import gg.modl.minecraft.core.service.sync.SyncService;
-import gg.modl.minecraft.core.util.IpApiClient;
-import gg.modl.minecraft.core.util.ListenerHelper;
-import gg.modl.minecraft.core.util.LoginHandler;
-import gg.modl.minecraft.core.util.ServerSwitchHandler;
-import gg.modl.minecraft.core.util.WebPlayer;
+import gg.modl.minecraft.core.login.LoginPipeline;
+import gg.modl.minecraft.core.login.LoginService;
+import gg.modl.minecraft.core.login.ProxyLoginFlow;
+import gg.modl.minecraft.core.session.ServerSwitchService;
+import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.slf4j.Logger;
 
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
+@RequiredArgsConstructor
 public class JoinListener {
-    private final HttpClientHolder httpClientHolder;
     private final Cache cache;
     private final Logger logger;
-    private final ChatMessageCache chatMessageCache;
     private final Platform platform;
-    private final SyncService syncService;
-    private final LocaleManager localeManager;
-    private final MaintenanceService maintenanceService;
-    private final Staff2faService staff2faService;
-    private final BridgeService bridgeService;
-    private final CachedProfileRegistry registry;
-    private final LoginCache loginCache;
+    private final LoginPipeline loginPipeline;
+    private final ProxyLoginFlow proxyLoginFlow;
+    private final ServerSwitchService serverSwitchService;
     private final boolean debugMode;
-
-    /** Buffers login responses between onLogin and onPostLogin so profile exists before caching. */
-    private final Map<UUID, PlayerLoginResponse> pendingLoginData = new ConcurrentHashMap<>();
-
-    private static final long LOGIN_TIMEOUT_SECONDS = 5;
-
-    public JoinListener(HttpClientHolder httpClientHolder, Cache cache, Logger logger,
-                        ChatMessageCache chatMessageCache, Platform platform, SyncService syncService,
-                        LocaleManager localeManager, MaintenanceService maintenanceService,
-                        Staff2faService staff2faService, BridgeService bridgeService,
-                        CachedProfileRegistry registry, LoginCache loginCache, boolean debugMode) {
-        this.httpClientHolder = httpClientHolder;
-        this.cache = cache;
-        this.logger = logger;
-        this.chatMessageCache = chatMessageCache;
-        this.platform = platform;
-        this.syncService = syncService;
-        this.localeManager = localeManager;
-        this.maintenanceService = maintenanceService;
-        this.staff2faService = staff2faService;
-        this.bridgeService = bridgeService;
-        this.registry = registry;
-        this.loginCache = loginCache;
-        this.debugMode = debugMode;
-    }
-
-    private ModlHttpClient getHttpClient() {
-        return httpClientHolder.getClient();
-    }
 
     @Subscribe
     public void onLogin(LoginEvent event) {
         String ipAddress = event.getPlayer().getRemoteAddress().getAddress().getHostAddress();
-
-        CompletableFuture<Map<String, Object>> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
-        CompletableFuture<String> skinHashFuture = WebPlayer.get(event.getPlayer().getUniqueId())
-                .thenApply(wp -> wp != null && wp.isValid() ? wp.getSkin() : null)
-                .exceptionally(t -> null);
-
-        // Await both async lookups (bounded) before building the request so skinHash/ipInfo
-        // are actually populated instead of always null (getNow returned the fallback).
-        PlayerLoginRequest request = ListenerHelper.buildLoginRequest(
-                event.getPlayer().getUniqueId().toString(),
-                event.getPlayer().getUsername(),
-                ipAddress, platform.getServerName(),
-                ipInfoFuture, skinHashFuture, LOGIN_TIMEOUT_SECONDS, platform.getLogger());
-
         try {
-            PlayerLoginResponse response = getHttpClient().playerLogin(request).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getPlayer().getUniqueId().toString(), ipAddress, ipInfoFuture, platform.getLogger());
-
-            LoginHandler.LoginResult result = LoginHandler.processLoginResponse(
-                    response, event.getPlayer().getUniqueId(),
-                    getHttpClient(), localeManager, syncService, maintenanceService,
-                    cache, debugMode, platform.getLogger());
-
-            if (result instanceof LoginHandler.LoginResult.Denied) {
-                LoginHandler.LoginResult.Denied denied = (LoginHandler.LoginResult.Denied) result;
-                event.setResult(ResultedEvent.ComponentResult.denied(Colors.get(denied.getMessage())));
-            } else {
-                pendingLoginData.put(event.getPlayer().getUniqueId(), response);
-                event.setResult(ResultedEvent.ComponentResult.allowed());
-                if (debugMode) logger.info("Allowed login for {}", event.getPlayer().getUsername());
-            }
+            proxyLoginFlow.execute(
+                    event.getPlayer().getUniqueId(),
+                    event.getPlayer().getUsername(),
+                    ipAddress,
+                    platform.getServerName(),
+                    message -> event.setResult(ResultedEvent.ComponentResult.denied(Colors.get(message))),
+                    () -> {
+                        event.setResult(ResultedEvent.ComponentResult.allowed());
+                        if (debugMode) logger.info("Allowed login for {}", event.getPlayer().getUsername());
+                    });
         } catch (Exception e) {
-            LoginHandler.LoginResult errorResult = LoginHandler.handleLoginError(e);
-            if (errorResult instanceof LoginHandler.LoginResult.Denied) {
-                LoginHandler.LoginResult.Denied denied = (LoginHandler.LoginResult.Denied) errorResult;
+            LoginService.LoginResult errorResult = loginPipeline.getLoginService().handleLoginError(e);
+            if (errorResult instanceof LoginService.LoginResult.Denied) {
+                LoginService.LoginResult.Denied denied = (LoginService.LoginResult.Denied) errorResult;
                 logger.warn("Login blocked for {}: {}", event.getPlayer().getUsername(), denied.getMessage());
                 event.setResult(ResultedEvent.ComponentResult.denied(
                         Component.text(denied.getMessage()).color(NamedTextColor.RED)));
@@ -130,31 +61,26 @@ public class JoinListener {
     @Subscribe
     public void onPostLogin(PostLoginEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        ListenerHelper.handlePlayerJoin(uuid, event.getPlayer().getUsername(),
-                platform, cache, localeManager, staff2faService, syncService);
+        loginPipeline.getPlayerSessionService().handlePlayerJoin(uuid, event.getPlayer().getUsername());
 
         String texture = platform.getPlayerSkinTexture(uuid);
         if (texture != null) cache.cacheSkinTexture(uuid, texture);
 
-        PlayerLoginResponse response = pendingLoginData.remove(uuid);
-        LoginHandler.cacheLoginData(uuid, response, cache, platform.getLogger());
+        LoginCache.CachedLoginResult cachedResult = loginPipeline.getLoginCache().getCachedLoginResult(uuid);
+        loginPipeline.getLoginService().cacheLoginData(uuid, cachedResult != null ? cachedResult.getResponse() : null);
     }
 
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
-        pendingLoginData.remove(event.getPlayer().getUniqueId());
-        ListenerHelper.handlePlayerDisconnect(
-                event.getPlayer().getUniqueId(), event.getPlayer().getUsername(),
-                getHttpClient(), cache, loginCache, platform, localeManager,
-                chatMessageCache, bridgeService, registry);
+        loginPipeline.getPlayerSessionService().handlePlayerDisconnect(
+                event.getPlayer().getUniqueId(), event.getPlayer().getUsername());
     }
 
     @Subscribe
     public void onServerConnected(ServerConnectedEvent event) {
-        ServerSwitchHandler.handleServerSwitch(
+        serverSwitchService.handleServerSwitch(
                 event.getPlayer().getUniqueId(), event.getPlayer().getUsername(),
-                event.getServer().getServerInfo().getName(),
-                getHttpClient(), cache, localeManager, platform);
+                event.getServer().getServerInfo().getName());
     }
 
 }

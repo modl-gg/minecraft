@@ -25,8 +25,7 @@ class MinecraftRealtimeClientTest {
 
     @Test
     void canStartDoesNotAllowPresenceEvenWhenStartupProvidesServerInstanceId() {
-        StartupResponse response = response(Topic.TOPIC_MINECRAFT_PRESENCE.name());
-        response.setServerInstanceId("instance-1");
+        StartupResponse response = responseWithInstance("instance-1", Topic.TOPIC_MINECRAFT_PRESENCE.name());
 
         assertFalse(MinecraftRealtimeClient.canStart(true, response));
     }
@@ -64,11 +63,12 @@ class MinecraftRealtimeClientTest {
     }
 
     private StartupResponse response(String... topics) {
-        StartupResponse response = new StartupResponse();
-        response.setRealtimeEnabled(true);
-        response.setRealtimeUrl("wss://api.modl.gg/v1/realtime/ws");
-        response.setRealtimeProtocolVersion(1);
-        response.setRealtimeTopics(topics == null ? Collections.emptyList() : Arrays.asList(topics));
-        return response;
+        return responseWithInstance(null, topics);
+    }
+
+    private StartupResponse responseWithInstance(String serverInstanceId, String... topics) {
+        return new StartupResponse(null, null, serverInstanceId, true,
+                "wss://api.modl.gg/v1/realtime/ws", 1,
+                topics == null ? Collections.emptyList() : Arrays.asList(topics));
     }
 }

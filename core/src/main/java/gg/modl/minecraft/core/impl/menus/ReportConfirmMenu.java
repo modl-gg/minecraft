@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -14,7 +15,6 @@ import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.api.http.response.CreateTicketResponse;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.config.ReportGuiConfig;
-import gg.modl.minecraft.core.impl.commands.player.TicketCommandUtil;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.ReportRenderUtil;
 import gg.modl.minecraft.core.locale.LocaleManager;
@@ -152,7 +152,7 @@ public class ReportConfirmMenu extends SimpleMenu {
         sendMessage(locale.getMessage("messages.submitting", mapOf("type", "report")));
 
         CompletableFuture<String> replayFuture;
-        ReplayService replayService = platform.getReplayService();
+        ReplayService replayService = PluginServices.replay();
         if (reportData.isAttachReplay() && replayService != null && replayService.shouldAttemptCapture(target.getUuid())) {
             replayFuture = replayService.captureReplay(target.getUuid(), target.getUsername());
         } else {
@@ -163,26 +163,26 @@ public class ReportConfirmMenu extends SimpleMenu {
         replayFuture.whenComplete((replayUrl, replayEx) -> {
             if (replayEx != null) replayUrl = null;
 
-            CreateTicketRequest request = new CreateTicketRequest(
-                    reporter.getUuid().toString(),
-                    ticketType,
-                    reporter.getUsername(),
-                    subject,
-                    description.toString(),
-                    target.getUuid().toString(),
-                    target.getUsername(),
-                    "normal",
-                    createdServer,
-                    finalChatMessages,
-                    listOf("report"),
-                    replayUrl
-            );
+            CreateTicketRequest request = CreateTicketRequest.builder()
+                    .creatorUuid(reporter.getUuid().toString())
+                    .type(ticketType)
+                    .creatorName(reporter.getUsername())
+                    .subject(subject)
+                    .description(description.toString())
+                    .reportedPlayerUuid(target.getUuid().toString())
+                    .reportedPlayerName(target.getUsername())
+                    .priority("normal")
+                    .createdServer(createdServer)
+                    .chatMessages(finalChatMessages)
+                    .tags(listOf("report"))
+                    .replayUrl(replayUrl)
+                    .build();
 
             CompletableFuture<CreateTicketResponse> future = httpClient.createTicket(request);
 
             future.thenAccept(response -> {
                 if (response.isSuccess() && response.getTicketId() != null) {
-                    new TicketCommandUtil(platform.getCache()).setCooldown(reporter.getUuid(),
+                    PluginServices.ticket().setCooldown(reporter.getUuid(),
                             reportData.isChatReport() ? "chat" : "player");
 
                     sendMessage(locale.getMessage("messages.success", mapOf("type", "Report")));

@@ -74,7 +74,7 @@ public class UpdateCheckerService {
 
             if (SemanticVersion.parse(latest.tagName).isNewerThan(SemanticVersion.parse(currentVersion))) {
                 logger.warning("Update available: current=" + currentVersion + ", latest=" + latest.tagName);
-                logger.warning("Download: " + latest.downloadUrl);
+                logger.warning("Download: " + latest.releaseUrl);
             } else if (isFirstRun) {
                 logger.info("You are up to date! (" + currentVersion + ")");
             }
@@ -131,11 +131,11 @@ public class UpdateCheckerService {
     }
 
     private static final class ReleaseInfo {
-        private final String tagName, downloadUrl;
+        private final String tagName, releaseUrl;
 
-        private ReleaseInfo(String tagName, String downloadUrl) {
+        private ReleaseInfo(String tagName, String releaseUrl) {
             this.tagName = tagName;
-            this.downloadUrl = downloadUrl == null || downloadUrl.trim().isEmpty() ? RELEASES_PAGE_URL : downloadUrl;
+            this.releaseUrl = releaseUrl == null || releaseUrl.trim().isEmpty() ? RELEASES_PAGE_URL : releaseUrl;
         }
     }
 }

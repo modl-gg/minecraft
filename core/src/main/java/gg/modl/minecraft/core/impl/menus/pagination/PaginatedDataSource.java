@@ -94,11 +94,11 @@ public class PaginatedDataSource<T> {
         try {
             fetchFuture = fetcher.apply(apiPage, pageSize);
         } catch (Exception e) {
-            clearFetchState();
+            clearFetchStateAndNotify();
             return true;
         }
         if (fetchFuture == null) {
-            clearFetchState();
+            clearFetchStateAndNotify();
             return true;
         }
 
@@ -120,22 +120,21 @@ public class PaginatedDataSource<T> {
                 logger.warning("Page fetch " + apiPage + " failed: " + throwable);
             }
 
-            Runnable callback = clearFetchState();
-            if (throwable == null && callback != null) {
-                callback.run();
-            }
+            clearFetchStateAndNotify();
         });
         return true;
     }
 
-    private Runnable clearFetchState() {
+    private void clearFetchStateAndNotify() {
         Runnable callback;
         synchronized (this) {
             callback = onDataLoaded;
             onDataLoaded = null;
         }
         isFetching.set(false);
-        return callback;
+        if (callback != null) {
+            callback.run();
+        }
     }
 
     public boolean isFetching() {

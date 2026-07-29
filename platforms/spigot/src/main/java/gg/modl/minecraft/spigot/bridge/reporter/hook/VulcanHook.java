@@ -4,28 +4,18 @@ import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.bridge.reporter.AutoReporter;
 import gg.modl.minecraft.bridge.reporter.detection.DetectionSource;
 import gg.modl.minecraft.bridge.reporter.detection.ViolationTracker;
-import gg.modl.minecraft.bridge.reporter.hook.AntiCheatHook;
-import lombok.RequiredArgsConstructor;
 import me.frep.vulcan.api.event.VulcanFlagEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.UUID;
-
-@RequiredArgsConstructor
-public class VulcanHook implements AntiCheatHook, Listener {
+public class VulcanHook extends AbstractAnticheatHook<VulcanFlagEvent> implements Listener {
     private static final String HOOK_NAME = "Vulcan";
 
-    private final JavaPlugin plugin;
-    private final BridgeConfig config;
-    private final ViolationTracker violationTracker;
-    private final AutoReporter autoReporter;
-
-    @Override
-    public String getName() {
-        return HOOK_NAME;
+    public VulcanHook(JavaPlugin plugin, BridgeConfig config, ViolationTracker violationTracker, AutoReporter autoReporter) {
+        super(plugin, config, violationTracker, autoReporter, HOOK_NAME, HOOK_NAME, DetectionSource.VULCAN);
     }
 
     @Override
@@ -36,47 +26,27 @@ public class VulcanHook implements AntiCheatHook, Listener {
     @Override
     public void register() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
-        plugin.getLogger().info("Hooked into " + HOOK_NAME);
+        logHooked();
     }
 
     @Override
     public void unregister() {
+        HandlerList.unregisterAll(this);
     }
 
     @EventHandler
     public void onVulcanFlag(VulcanFlagEvent event) {
-        try {
-            if (event.isCancelled()) {
-                if (config.isDebug()) {
-                    plugin.getLogger().info("[DEBUG] Vulcan FlagEvent cancelled for check: "
-                            + event.getCheck().getName() + " player: " + event.getPlayer().getName());
-                }
-                return;
-            }
-
-            UUID uuid = event.getPlayer().getUniqueId();
-            String playerName = event.getPlayer().getName();
-            // Use the bare check name as the threshold/count key so per-check config overrides
-            // (e.g. `speed: 5`) match, consistent with GrimHook/PolarHook. Folding the check type
-            // into the key broke getReportViolationThreshold(checkName.toLowerCase()) lookups.
-            String checkName = event.getCheck().getName();
-            String verbose = event.getInfo();
-
-            logDebugFlag(playerName, uuid, checkName, verbose);
-            violationTracker.addViolation(uuid, DetectionSource.VULCAN, checkName, verbose);
-            autoReporter.checkAndReport(uuid, playerName, DetectionSource.VULCAN, checkName);
-        } catch (Exception e) {
-            plugin.getLogger().warning("Error processing Vulcan flag event: " + e.getMessage());
-            e.printStackTrace();
-        }
+        handle(event);
     }
 
-    private void logDebugFlag(String playerName, UUID uuid, String checkName, String verbose) {
-        if (!config.isDebug()) return;
-        int currentCount = violationTracker.getViolationCount(uuid, DetectionSource.VULCAN, checkName);
-        plugin.getLogger().info("[DEBUG] Vulcan flag: player=" + playerName
-                + " check=" + checkName + " currentVL=" + (currentCount + 1)
-                + " threshold=" + config.getReportViolationThreshold(checkName)
-                + " verbose=" + verbose);
+    @Override
+    protected AnticheatFlag extractFlag(VulcanFlagEvent event) {
+        if (event.isCancelled()) {
+            logCancelled(event.getCheck().getName(), event.getPlayer().getName());
+            return null;
+        }
+
+        return new AnticheatFlag(event.getPlayer().getUniqueId(), event.getPlayer().getName(),
+                event.getCheck().getName(), event.getInfo());
     }
 }

@@ -1,32 +1,14 @@
 package gg.modl.minecraft.bungee;
 
-import gg.modl.minecraft.api.http.ModlHttpClient;
-import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
-import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
-import gg.modl.minecraft.core.HttpClientHolder;
-import gg.modl.minecraft.core.config.ConfigManager.StaffChatConfig;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.cache.LoginCache;
-import gg.modl.minecraft.core.cache.CachedProfileRegistry;
-import gg.modl.minecraft.core.locale.LocaleManager;
-import gg.modl.minecraft.core.service.BridgeService;
-import gg.modl.minecraft.core.service.ChatCommandLogService;
-import gg.modl.minecraft.core.service.ChatManagementService;
-import gg.modl.minecraft.core.service.ChatMessageCache;
-import gg.modl.minecraft.core.service.FreezeService;
-import gg.modl.minecraft.core.service.MaintenanceService;
-import gg.modl.minecraft.core.service.NetworkChatInterceptService;
-import gg.modl.minecraft.core.service.Staff2faService;
-import gg.modl.minecraft.core.service.StaffChatService;
-import gg.modl.minecraft.core.service.sync.SyncService;
-import gg.modl.minecraft.core.util.ChatEventHandler;
-import gg.modl.minecraft.core.util.CommandInterceptHandler;
-import gg.modl.minecraft.core.util.IpApiClient;
-import gg.modl.minecraft.core.util.ListenerHelper;
-import gg.modl.minecraft.core.util.LoginHandler;
-import gg.modl.minecraft.core.util.ServerSwitchHandler;
+import gg.modl.minecraft.core.chat.ChatService;
+import gg.modl.minecraft.core.chat.CommandInterceptService;
+import gg.modl.minecraft.core.login.LoginPipeline;
+import gg.modl.minecraft.core.login.LoginService;
+import gg.modl.minecraft.core.login.ProxyLoginFlow;
+import gg.modl.minecraft.core.session.ServerSwitchService;
 import gg.modl.minecraft.core.util.StringUtil;
-import gg.modl.minecraft.core.util.WebPlayer;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
@@ -42,8 +24,6 @@ import net.md_5.bungee.event.EventPriority;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -55,7 +35,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @RequiredArgsConstructor
 public class BungeeListener implements Listener {
-    private static final long LOGIN_TIMEOUT_SECONDS = 5;
     private static final int LOGIN_EXECUTOR_MAX_THREADS = 4;
     private static final int LOGIN_EXECUTOR_QUEUE_CAPACITY = 64;
     private static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5;
@@ -63,29 +42,13 @@ public class BungeeListener implements Listener {
 
     private final BungeePlatform platform;
     private final Cache cache;
-    private final HttpClientHolder httpClientHolder;
-    private final ChatMessageCache chatMessageCache;
-    private final SyncService syncService;
-    private final LocaleManager localeManager;
-    private final List<String> mutedCommands;
     private final Plugin plugin;
-    private final StaffChatService staffChatService;
-    private final ChatManagementService chatManagementService;
-    private final MaintenanceService maintenanceService;
-    private final FreezeService freezeService;
-    private final NetworkChatInterceptService networkChatInterceptService;
-    private final ChatCommandLogService chatCommandLogService;
-    private final Staff2faService staff2faService;
-    private final StaffChatConfig staffChatConfig;
-    private final LoginCache loginCache;
-    private final BridgeService bridgeService;
-    private final CachedProfileRegistry registry;
-    private final boolean debugMode;
+    private final LoginPipeline loginPipeline;
+    private final ChatService chatService;
+    private final CommandInterceptService commandInterceptService;
+    private final ProxyLoginFlow proxyLoginFlow;
+    private final ServerSwitchService serverSwitchService;
     private final ThreadPoolExecutor loginExecutor = createLoginExecutor();
-
-    private ModlHttpClient getHttpClient() {
-        return httpClientHolder.getClient();
-    }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(LoginEvent event) {
@@ -144,39 +107,18 @@ public class BungeeListener implements Listener {
 
     private void performLoginCheck(LoginEvent event) throws Exception {
         String ipAddress = extractIpAddress(event.getConnection().getSocketAddress());
-
-        CompletableFuture<Map<String, Object>> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
-        CompletableFuture<String> skinHashFuture = WebPlayer.get(event.getConnection().getUniqueId())
-                .thenApply(wp -> wp != null && wp.isValid() ? wp.getSkin() : null)
-                .exceptionally(t -> null);
-
-        // Await both async lookups (bounded) before building the request so skinHash/ipInfo
-        // are actually populated instead of always null (getNow returned the fallback).
-        PlayerLoginRequest request = ListenerHelper.buildLoginRequest(
-                event.getConnection().getUniqueId().toString(),
+        proxyLoginFlow.execute(
+                event.getConnection().getUniqueId(),
                 event.getConnection().getName(),
                 ipAddress, platform.getServerName(),
-                ipInfoFuture, skinHashFuture, LOGIN_TIMEOUT_SECONDS, platform.getLogger());
-
-        PlayerLoginResponse response = getHttpClient().playerLogin(request).get(LOGIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        loginCache.cacheLoginResult(event.getConnection().getUniqueId(), response, request.getIpInfo(), request.getSkinHash());
-        ListenerHelper.handlePendingIpLookups(getHttpClient(), response, event.getConnection().getUniqueId().toString(), ipAddress, ipInfoFuture, platform.getLogger());
-
-        LoginHandler.LoginResult result = LoginHandler.processLoginResponse(
-                response, event.getConnection().getUniqueId(),
-                getHttpClient(), localeManager, syncService, maintenanceService,
-                cache, debugMode, platform.getLogger());
-
-        if (result instanceof LoginHandler.LoginResult.Denied) {
-            LoginHandler.LoginResult.Denied denied = (LoginHandler.LoginResult.Denied) result;
-            denyLogin(event, denied.getMessage());
-        }
+                message -> denyLogin(event, message),
+                () -> {});
     }
 
     private void handleLoginException(LoginEvent event, Exception e) {
-        LoginHandler.LoginResult result = LoginHandler.handleLoginError(e);
-        if (result instanceof LoginHandler.LoginResult.Denied) {
-            LoginHandler.LoginResult.Denied denied = (LoginHandler.LoginResult.Denied) result;
+        LoginService.LoginResult result = loginPipeline.getLoginService().handleLoginError(e);
+        if (result instanceof LoginService.LoginResult.Denied) {
+            LoginService.LoginResult.Denied denied = (LoginService.LoginResult.Denied) result;
             platform.getLogger().warning("Login blocked for " + event.getConnection().getName() + ": " + denied.getMessage());
             denyLogin(event, denied.getMessage());
         } else platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + e.getMessage());
@@ -191,39 +133,31 @@ public class BungeeListener implements Listener {
     public void onPostLogin(PostLoginEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
 
-        ListenerHelper.handlePlayerJoin(uuid, event.getPlayer().getName(),
-                platform, cache, localeManager, staff2faService, syncService);
+        loginPipeline.getPlayerSessionService().handlePlayerJoin(uuid, event.getPlayer().getName());
 
         String texture = platform.getPlayerSkinTexture(uuid);
         if (texture != null) cache.cacheSkinTexture(uuid, texture);
 
-        LoginCache.CachedLoginResult cachedResult = loginCache.getCachedLoginResult(uuid);
-        LoginHandler.cacheLoginData(uuid,
-                cachedResult != null ? cachedResult.getResponse() : null,
-                cache, platform.getLogger());
+        LoginCache.CachedLoginResult cachedResult = loginPipeline.getLoginCache().getCachedLoginResult(uuid);
+        loginPipeline.getLoginService().cacheLoginData(uuid, cachedResult != null ? cachedResult.getResponse() : null);
     }
 
     @EventHandler
     public void onPlayerDisconnect(PlayerDisconnectEvent event) {
-        ListenerHelper.handlePlayerDisconnect(
-                event.getPlayer().getUniqueId(), event.getPlayer().getName(),
-                getHttpClient(), cache, loginCache, platform, localeManager,
-                chatMessageCache, bridgeService, registry);
+        loginPipeline.getPlayerSessionService().handlePlayerDisconnect(
+                event.getPlayer().getUniqueId(), event.getPlayer().getName());
     }
 
     @EventHandler
     public void onServerSwitch(ServerSwitchEvent event) {
-        ServerSwitchHandler.handleServerSwitch(
+        serverSwitchService.handleServerSwitch(
                 event.getPlayer().getUniqueId(), event.getPlayer().getName(),
-                platform.getPlayerServer(event.getPlayer().getUniqueId()),
-                getHttpClient(), cache, localeManager, platform);
+                platform.getPlayerServer(event.getPlayer().getUniqueId()));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onChat(ChatEvent event) {
-        // Guards both the chat branch and the command branch: getSender() is a ProxiedPlayer
-        // only for upstream player chat; server-originated ChatEvents are skipped (no CCE).
-        if (!(event.getSender() instanceof ProxiedPlayer)) return;
+        if (!isUpstreamPlayerChat(event)) return;
 
         if (event.isCommand()) {
             handleCommand(event);
@@ -233,33 +167,34 @@ public class BungeeListener implements Listener {
         ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
         String serverName = getPlayerServerName(sender);
 
-        ChatEventHandler.Result result = ChatEventHandler.handleChat(
+        ChatService.Result result = chatService.handleChat(
                 sender.getUniqueId(), sender.getName(), event.getMessage(), serverName,
-                msg -> sender.sendMessage(new TextComponent(StringUtil.unescapeNewlines(msg))),
-                platform, cache, localeManager, chatMessageCache,
-                staffChatService, staffChatConfig, chatManagementService,
-                freezeService, chatCommandLogService, networkChatInterceptService);
-        if (result == ChatEventHandler.Result.CANCELLED) event.setCancelled(true);
+                msg -> sender.sendMessage(new TextComponent(StringUtil.unescapeNewlines(msg))));
+        if (result == ChatService.Result.CANCELLED) event.setCancelled(true);
     }
 
     private void handleCommand(ChatEvent event) {
-        if (!(event.getSender() instanceof ProxiedPlayer)) return;
-        // An async-registered command already gated+dispatched by AsyncCommandInterceptor is
-        // cancelled; defer to it so the gate/log runs exactly once.
-        if (event.isCancelled()) return;
+        if (!isUpstreamPlayerChat(event)) return;
+        if (alreadyGatedByAsyncInterceptor(event)) return;
         ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
 
-        CommandInterceptHandler.CommandResult result = CommandInterceptHandler.handleCommand(
+        CommandInterceptService.CommandResult result = commandInterceptService.handleCommand(
                 sender.getUniqueId(), sender.getName(),
-                event.getMessage(), getPlayerServerName(sender),
-                mutedCommands, cache, freezeService, chatCommandLogService);
+                event.getMessage(), getPlayerServerName(sender));
 
-        if (result != CommandInterceptHandler.CommandResult.ALLOWED) {
+        if (result != CommandInterceptService.CommandResult.ALLOWED) {
             event.setCancelled(true);
-            String message = CommandInterceptHandler.getBlockMessage(
-                    result, sender.getUniqueId(), cache, localeManager);
+            String message = commandInterceptService.getBlockMessage(result, sender.getUniqueId());
             sender.sendMessage(new TextComponent(StringUtil.unescapeNewlines(message)));
         }
+    }
+
+    private boolean isUpstreamPlayerChat(ChatEvent event) {
+        return event.getSender() instanceof ProxiedPlayer;
+    }
+
+    private boolean alreadyGatedByAsyncInterceptor(ChatEvent event) {
+        return event.isCancelled();
     }
 
     private String getPlayerServerName(ProxiedPlayer player) {

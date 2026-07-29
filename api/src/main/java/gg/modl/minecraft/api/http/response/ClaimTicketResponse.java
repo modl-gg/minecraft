@@ -1,16 +1,17 @@
 package gg.modl.minecraft.api.http.response;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Data @NoArgsConstructor @AllArgsConstructor
-public class ClaimTicketResponse {
+@Getter @NoArgsConstructor @AllArgsConstructor
+public class ClaimTicketResponse extends StatusResponse {
     private String message, ticketId, subject;
     private int status;
     private boolean success;
 
+    @Override
     public boolean isSuccess() {
-        return success && status >= 200 && status < 300;
+        return success && super.isSuccess();
     }
 }

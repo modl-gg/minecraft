@@ -2,73 +2,67 @@ package gg.modl.minecraft.spigot;
 
 import com.github.retrooper.packetevents.PacketEvents;
 import dev.simplix.cirrus.spigot.CirrusSpigot;
-import gg.modl.minecraft.api.LibraryRecord;
-import gg.modl.minecraft.api.http.request.CreateTicketRequest;
 import gg.modl.minecraft.bridge.config.BridgeWizardConfigWriter;
+import gg.modl.minecraft.bridge.reporter.TicketCreator;
 import gg.modl.minecraft.core.HttpManager;
-import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.core.PluginServices;
+import gg.modl.minecraft.core.chat.CommandInterceptService;
 import gg.modl.minecraft.api.http.request.StartupRequest;
 import gg.modl.minecraft.core.boot.BackendHost;
 import gg.modl.minecraft.core.boot.BootConfig;
 import gg.modl.minecraft.core.boot.BootConfigMigrator;
 import gg.modl.minecraft.core.boot.PlatformType;
 import gg.modl.minecraft.core.boot.StartupClient;
-import static gg.modl.minecraft.core.util.Java8Collections.listOf;
+import gg.modl.minecraft.core.boot.SyncPollingRate;
+import gg.modl.minecraft.core.login.LoginPipeline;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
-
 import gg.modl.minecraft.core.util.YamlMergeUtil;
+import gg.modl.minecraft.spigot.boot.LibraryBootstrap;
+import gg.modl.minecraft.spigot.boot.SignedVelocityBootstrap;
+import gg.modl.minecraft.spigot.boot.TicketCreatorFactory;
 import gg.modl.minecraft.spigot.bridge.BridgeComponent;
 import gg.modl.minecraft.spigot.bridge.SpigotStandaloneLocalBridgeHandler;
-import gg.modl.minecraft.spigot.bridge.folia.FoliaSchedulerHelper;
-import gg.modl.minecraft.bridge.reporter.TicketCreator;
-import org.bukkit.Bukkit;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
-import com.alessiodp.libby.BukkitLibraryManager;
-import com.alessiodp.libby.Library;
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import top.polar.api.loader.LoaderApi;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import com.alessiodp.libby.logging.LogLevel;
-import org.slf4j.Logger;
 
 public class SpigotPlugin extends JavaPlugin {
-    private static final int MIN_SYNC_POLLING_RATE = 1;
-    private static final int DEFAULT_SYNC_POLLING_RATE = 2;
-
     private PluginLoader loader;
     private BridgeComponent bridgeComponent;
     private PluginLogger pluginLogger;
     private BootConfig bootConfig;
     private boolean needsSetup = false;
-    private BukkitLibraryManager libraryManager;
+    private boolean polarLoaderAvailable = false;
+    private volatile boolean polarEnabledBeforeBridgeInit = false;
+    private LibraryBootstrap libraryBootstrap;
+    private SignedVelocityBootstrap signedVelocityBootstrap;
 
     @Override
     public synchronized void onLoad() {
         this.pluginLogger = PluginLogger.fromJul(getLogger());
-        setupLibby();
+        this.libraryBootstrap = new LibraryBootstrap(this);
+        this.signedVelocityBootstrap = new SignedVelocityBootstrap(this);
+        registerPolarLoaderCallback();
 
         bootConfig = loadBootConfig();
         if (bootConfig != null) {
-            loadLibraries();
-
-            bridgeComponent = new BridgeComponent(this, "", "", "", pluginLogger);
-            bridgeComponent.onLoad();
+            libraryBootstrap.loadRuntimeLibraries();
         } else {
             needsSetup = true;
         }
 
-        loadPacketEventsLibraries();
+        libraryBootstrap.loadPacketEventsLibraries();
         loadPacketEvents();
     }
 
@@ -87,12 +81,9 @@ public class SpigotPlugin extends JavaPlugin {
         this.bootConfig = config;
         this.needsSetup = false;
 
-        // Run library loading + startup request on a background thread
-        // to avoid blocking the server tick thread with HTTP retries
         Thread initThread = new Thread(() -> {
-            loadLibraries();
+            libraryBootstrap.loadRuntimeLibraries();
 
-            // Startup request (with retry + sleep) runs here, off main thread
             String panelUrl = "";
             BootConfig.Mode mode = bootConfig.getMode();
             if (mode == BootConfig.Mode.STANDALONE || mode == BootConfig.Mode.PROXY) {
@@ -109,10 +100,7 @@ public class SpigotPlugin extends JavaPlugin {
             }
 
             final String finalPanelUrl = panelUrl;
-            Bukkit.getScheduler().runTask(this, () -> {
-                bridgeComponent = new BridgeComponent(this, "", "", "", pluginLogger);
-                initializePluginWithPanelUrl(finalPanelUrl, true);
-            });
+            Bukkit.getScheduler().runTask(this, () -> initializePluginWithPanelUrl(finalPanelUrl, true));
         }, "modl-init");
         initThread.setDaemon(true);
         initThread.start();
@@ -138,19 +126,16 @@ public class SpigotPlugin extends JavaPlugin {
         initializePluginWithPanelUrl(panelUrl, false);
     }
 
-    private void initializePluginWithPanelUrl(String panelUrl) {
-        initializePluginWithPanelUrl(panelUrl, false);
-    }
-
     private void initializePluginWithPanelUrl(String panelUrl, boolean lateBootstrap) {
         initPacketEvents();
 
         BootConfig.Mode mode = bootConfig.getMode();
 
         String backendUrl = BackendHost.resolve(bootConfig.isTestingApi());
-        bridgeComponent = new BridgeComponent(this, bootConfig.getApiKey(), backendUrl, panelUrl, pluginLogger);
+        bridgeComponent = new BridgeComponent(this, bootConfig.getApiKey(), backendUrl, panelUrl,
+                pluginLogger, polarLoaderAvailable);
 
-        initSignedVelocity();
+        signedVelocityBootstrap.init(bootConfig);
 
         if (mode == BootConfig.Mode.STANDALONE) {
             saveDefaultConfig();
@@ -164,6 +149,11 @@ public class SpigotPlugin extends JavaPlugin {
             getLogger().severe("boot.yml mode is 'proxy' but this is a Spigot server. Use 'standalone' or 'bridge-only'.");
             getServer().getPluginManager().disablePlugin(this);
             return;
+        }
+
+        if (polarEnabledBeforeBridgeInit) {
+            polarEnabledBeforeBridgeInit = false;
+            bridgeComponent.hookPolar();
         }
 
         getLogger().info("Successfully booted modl.gg platform plugin!");
@@ -180,134 +170,71 @@ public class SpigotPlugin extends JavaPlugin {
 
         new CirrusSpigot(this).init();
 
-        TicketCreator ticketCreator = (creatorUuid, creatorName, type, subject, description,
-                                       reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer, replayUrl) -> {
-            List<String> tags = tagsJoined == null || tagsJoined.isEmpty() ? listOf() : Arrays.asList(tagsJoined.split(","));
-            CreateTicketRequest request = new CreateTicketRequest(
-                    creatorUuid, type, creatorName, subject, description,
-                    reportedPlayerUuid, reportedPlayerName, priority, createdServer,
-                    null, tags, replayUrl
-            );
-            loader.getHttpClient().createTicket(request).thenAccept(response -> {
-                if (response.isSuccess()) {
-                    getLogger().info("[bridge] Report ticket created: " + response.getTicketId());
-                } else {
-                    getLogger().warning("[bridge] Failed to create report ticket: " + response.getMessage());
-                }
-            }).exceptionally(throwable -> {
-                getLogger().warning("[bridge] Error creating report ticket: " + throwable.getMessage());
-                return null;
-            });
-        };
+        TicketCreator ticketCreator = TicketCreatorFactory.standalone(this, () -> loader.getHttpClient());
 
-        bridgeComponent.enable(ticketCreator, false);
+        bridgeComponent.enableStandalone(ticketCreator);
         String serverName = bridgeComponent.getBridgeConfig().getServerName();
 
         SpigotPlatform platform = new SpigotPlatform(this, getLogger(), getDataFolder(), serverName, lateBootstrap);
-        if (bridgeComponent.getReplayService() != null) {
-            platform.setReplayService(bridgeComponent.getReplayService());
-        }
         ChatMessageCache chatMessageCache = new ChatMessageCache();
-        int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfig().getInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
+        int syncPollingRate = SyncPollingRate.clamp(getConfig().getInt(SyncPollingRate.CONFIG_KEY, SyncPollingRate.DEFAULT_SECONDS));
         List<String> mutedCommands = getConfig().getStringList("muted_commands");
 
         this.loader = new PluginLoader(platform, getDataFolder().toPath(), chatMessageCache, httpManager, syncPollingRate);
+        if (bridgeComponent.getReplayService() != null) {
+            PluginServices.get().setReplayService(bridgeComponent.getReplayService());
+        }
 
         DirectStatWipeExecutor directExecutor = new DirectStatWipeExecutor(bridgeComponent, serverName);
         loader.getSyncService().setStatWipeExecutor(directExecutor);
 
-        // Standalone: dispatch bridge actions directly to local handlers
-        // instead of routing through TCP
-        loader.getBridgeService().setLocalHandler(new SpigotStandaloneLocalBridgeHandler(
-                bridgeComponent.getStaffModeHandler(),
-                bridgeComponent.getFreezeHandler()));
+        loader.getBridgeService().setLocalHandler(
+                new SpigotStandaloneLocalBridgeHandler(bridgeComponent.getBridgeActions()));
+
+        CommandInterceptService commandInterceptService = new CommandInterceptService(
+                loader.getCache(), loader.getFreezeService(), loader.getChatCommandLogService(),
+                loader.getLocaleManager(), loader.getPunishmentMessageService(), mutedCommands);
+
+        LoginPipeline loginPipeline = new LoginPipeline(
+                loader.getLoginService(), loader.getLoginCache(), loader.getPlayerSessionService());
 
         getServer().getPluginManager().registerEvents(new SpigotListener(
                 platform, loader.getCache(), loader.getHttpClientHolder(), loader.getChatMessageCache(),
-                loader.getSyncService(), loader.getLocaleManager(), loader.getLoginCache(),
-                mutedCommands, loader.getStaffChatService(),
-                loader.getChatManagementService(), loader.getMaintenanceService(),
-                loader.getFreezeService(), loader.getNetworkChatInterceptService(),
-                loader.getChatCommandLogService(), loader.getStaff2faService(),
-                loader.getConfigManager().getStaffChatConfig(),
-                loader.getBridgeService(), loader.getCachedProfileRegistry(),
-                loader.isDebugMode()), this);
+                loader.getLocaleManager(), loginPipeline,
+                loader.getChatService(), commandInterceptService,
+                loader.getIpEnrichmentService(), loader.getPendingIpLookupService()), this);
     }
 
     private void enableBridgeOnlyMode(BootConfig bootConfig) {
         BridgeWizardConfigWriter.writeBridgeOnlyConfig(getDataFolder().toPath(), bootConfig, pluginLogger);
 
-        TicketCreator tcpTicketCreator = (creatorUuid, creatorName, type, subject, description,
-                                          reportedPlayerUuid, reportedPlayerName, tagsJoined, priority, createdServer, replayUrl) -> {
-            if (bridgeComponent.getBridgeClient() != null) {
-                if (replayUrl != null && !replayUrl.isEmpty()) {
-                    bridgeComponent.getBridgeClient().sendMessage("CREATE_REPORT",
-                            creatorUuid, creatorName, type, subject, description,
-                            reportedPlayerUuid, reportedPlayerName,
-                            tagsJoined != null ? tagsJoined : "",
-                            priority, createdServer, replayUrl);
-                } else {
-                    bridgeComponent.getBridgeClient().sendMessage("CREATE_REPORT",
-                            creatorUuid, creatorName, type, subject, description,
-                            reportedPlayerUuid, reportedPlayerName,
-                            tagsJoined != null ? tagsJoined : "",
-                            priority, createdServer);
-                }
-            }
-        };
+        TicketCreator tcpTicketCreator = TicketCreatorFactory.bridgeOnly(bridgeComponent);
 
-        bridgeComponent.enable(tcpTicketCreator, true);
+        bridgeComponent.enableBridgeOnly(tcpTicketCreator);
     }
 
     @Override
     public synchronized void onDisable() {
-        shutdownSignedVelocity();
+        signedVelocityBootstrap.shutdown();
         if (bridgeComponent != null) bridgeComponent.disable();
         if (loader != null) loader.shutdown();
         if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
     }
 
-    private void initSignedVelocity() {
-        if (bootConfig.getMode() != BootConfig.Mode.BRIDGE_ONLY) return;
-        String proxyType = bootConfig.getProxyType();
-        if (proxyType != null && !"velocity".equalsIgnoreCase(proxyType)) return;
-        if (getServer().getPluginManager().getPlugin("SignedVelocity") != null) {
-            getLogger().info("[SignedVelocity] Using standalone SignedVelocity plugin");
-            return;
-        }
-
+    private void registerPolarLoaderCallback() {
         try {
-            Class.forName("io.papermc.paper.event.player.AsyncChatEvent");
-        } catch (ClassNotFoundException e) {
-            getLogger().warning("[SignedVelocity] Paper API not available — signed chat enforcement disabled");
-            return;
-        }
-
-        try {
-            // Use reflection to call spigot-sv module (Java 17) from spigot module (Java 8)
-            Class<?> svClass = Class.forName("io.github._4drian3d.signedvelocity.paper.SignedVelocity");
-            Method initMethod = svClass.getMethod("init", JavaPlugin.class, Logger.class);
-            // getSLF4JLogger() is Paper-only; call via reflection
-            Method getSlf4j = getClass().getMethod("getSLF4JLogger");
-            Object slf4jLogger = getSlf4j.invoke(this);
-            initMethod.invoke(null, this, slf4jLogger);
-            getLogger().info("[SignedVelocity] Embedded listeners registered");
-        } catch (Exception e) {
-            getLogger().warning("[SignedVelocity] Failed to initialize: " + e);
-            e.printStackTrace();
-        }
+            Class.forName("top.polar.api.loader.LoaderApi");
+            polarLoaderAvailable = true;
+            LoaderApi.registerEnableCallback(this::onPolarEnabled);
+        } catch (ClassNotFoundException ignored) {}
     }
 
-    private void shutdownSignedVelocity() {
-        try {
-            Class<?> svClass = Class.forName("io.github._4drian3d.signedvelocity.paper.SignedVelocity");
-            Method shutdownMethod = svClass.getMethod("shutdown");
-            shutdownMethod.invoke(null);
-        } catch (ClassNotFoundException ignored) {
-            // SignedVelocity is optional and only loaded on Paper bridge deployments.
-        } catch (Exception e) {
-            getLogger().warning("[SignedVelocity] Failed to shutdown: " + e);
-            e.printStackTrace();
+    private void onPolarEnabled() {
+        BridgeComponent component = bridgeComponent;
+        if (isEnabled() && component != null) {
+            component.hookPolar();
+        } else {
+            polarEnabledBeforeBridgeInit = true;
         }
     }
 
@@ -353,58 +280,6 @@ public class SpigotPlugin extends JavaPlugin {
 
     private void initPacketEvents() {
         PacketEvents.getAPI().init();
-    }
-
-    private void setupLibby() {
-        libraryManager = new BukkitLibraryManager(this);
-        libraryManager.setLogLevel(LogLevel.WARN);
-        libraryManager.addMavenCentral();
-        libraryManager.addRepository("https://nexus.modl.gg/repository/maven-releases/");
-        libraryManager.addRepository("https://repo.codemc.io/repository/maven-releases/");
-        libraryManager.addRepository("https://jitpack.io");
-    }
-
-    private void loadLibraries() {
-        for (LibraryRecord record : Libraries.PROTO_DEPS_RELOCATED) loadLibrary(libraryManager, record);
-        for (LibraryRecord record : Libraries.COMMON) loadLibrary(libraryManager, record);
-        loadLibrary(libraryManager, Libraries.LAMP_COMMON);
-        loadLibrary(libraryManager, Libraries.LAMP_BRIGADIER);
-        loadLibrary(libraryManager, Libraries.LAMP_BUKKIT);
-        loadLibrary(libraryManager, Libraries.SLF4J_API);
-        loadLibrary(libraryManager, Libraries.SLF4J_SIMPLE);
-        loadLibrary(libraryManager, Libraries.CIRRUS_SPIGOT);
-        loadLibrary(libraryManager, Libraries.EXAMINATION_API);
-        loadLibrary(libraryManager, Libraries.EXAMINATION_STRING);
-        loadLibrary(libraryManager, Libraries.ADVENTURE_KEY);
-        loadLibrary(libraryManager, Libraries.ADVENTURE_API);
-        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_LEGACY);
-        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_JSON);
-        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_SERIALIZER_GSON);
-        loadLibrary(libraryManager, Libraries.ADVENTURE_TEXT_MINIMESSAGE);
-    }
-
-    private void loadPacketEventsLibraries() {
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_API);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_NETTY);
-        loadLibrary(libraryManager, Libraries.PACKETEVENTS_SPIGOT);
-    }
-
-    private void loadLibrary(BukkitLibraryManager libraryManager, LibraryRecord record) {
-        Library.Builder builder = Library.builder()
-                .groupId(record.getGroupId())
-                .artifactId(record.getArtifactId())
-                .version(record.getVersion())
-                ;
-
-        if (record.hasRelocations()) {
-            for (String[] relocation : record.getRelocations()) {
-                builder.relocate(relocation[0], relocation[1]);
-            }
-        }
-        if (record.getUrl() != null) builder.url(record.getUrl());
-        if (record.hasChecksum()) builder.checksumFromBase64(record.getChecksum());
-
-        libraryManager.loadLibrary(builder.build());
     }
 
     private void createLocaleFiles() {

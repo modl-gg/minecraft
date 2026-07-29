@@ -28,14 +28,10 @@ public final class DecorateChatListener implements EventListener<AsyncChatDecora
     @Override
     public void handle(@NotNull AsyncChatDecorateEvent event) {
         final Player player = event.player();
-        if (player == null) {
-            return;
-        }
-        // Skip the queue peek (and its blocking timeout wait) for non-proxied/local/synchronous
-        // decoration, matching the sibling PlayerChatListener fast-path.
-        if (CHECK_FOR_LOCAL_CHAT && (!event.isAsynchronous() || isLocal())) {
-            return;
-        }
+
+        if (player == null) return;
+        if (CHECK_FOR_LOCAL_CHAT && (!event.isAsynchronous() || isLocal())) return;
+
         this.chatQueue.dataFrom(player.getUniqueId())
                 .acceptNextResultWithoutAdvance(result -> {
                     final String modifiedChat = result.toModify();

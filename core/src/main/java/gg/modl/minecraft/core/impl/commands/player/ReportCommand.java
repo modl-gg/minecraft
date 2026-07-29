@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.commands.player;
 
+import gg.modl.minecraft.core.PluginServices;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
 import revxrsal.commands.command.CommandActor;
@@ -8,6 +9,7 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.service.TicketService;
 import gg.modl.minecraft.core.config.ReportGuiConfig;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.command.PlayerOnly;
@@ -26,13 +28,13 @@ public class ReportCommand {
     private final String panelUrl;
     private final LocaleManager localeManager;
     private final ChatMessageCache chatMessageCache;
-    private final TicketCommandUtil ticketUtil;
+    private final TicketService ticketUtil;
 
     @Command("report")
     @Description("Report a player")
     @PlayerOnly
     public void report(CommandActor actor, AbstractPlayer targetPlayer) {
-        if (ticketUtil.checkCooldown(actor, "player", localeManager)) return;
+        if (ticketUtil.checkCooldown(actor, "player")) return;
 
         AbstractPlayer reporter = platform.getAbstractPlayer(actor.uniqueId(), false);
 
@@ -46,7 +48,7 @@ public class ReportCommand {
             return;
         }
 
-        if (ticketUtil.denySelfReport(actor, reporter, targetPlayer, localeManager)) return;
+        if (ticketUtil.denySelfReport(actor, reporter, targetPlayer)) return;
 
         if (!targetPlayer.isOnline()) {
             actor.reply(localeManager.getMessage("messages.player_not_online"));
@@ -67,7 +69,7 @@ public class ReportCommand {
     }
 
     private ReportGuiConfig getOrLoadReportGuiConfig() {
-        Cache cache = platform.getCache();
+        Cache cache = PluginServices.cache();
 
         if (cache != null) {
             ReportGuiConfig cached = cache.getCachedReportGuiConfig();

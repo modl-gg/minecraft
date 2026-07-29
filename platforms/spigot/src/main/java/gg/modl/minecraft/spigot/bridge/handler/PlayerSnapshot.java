@@ -1,14 +1,12 @@
 package gg.modl.minecraft.spigot.bridge.handler;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.inventory.ItemStack;
 
-@Getter
-@AllArgsConstructor
-final class PlayerSnapshot {
+@Value
+class PlayerSnapshot {
     private final ItemStack[] inventoryContents;
     private final ItemStack[] armorContents;
     private final Location location;

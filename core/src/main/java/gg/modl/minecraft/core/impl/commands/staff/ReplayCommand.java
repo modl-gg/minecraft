@@ -1,13 +1,14 @@
 package gg.modl.minecraft.core.impl.commands.staff;
 
+import gg.modl.minecraft.core.PluginServices;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.RequiresPermission;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.ReplayCaptureStatus;
 import gg.modl.minecraft.core.service.ReplayService;
-import gg.modl.minecraft.core.util.PermissionUtil;
+import gg.modl.minecraft.core.util.CommandUtil;
 import gg.modl.minecraft.core.util.Permissions;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
@@ -25,7 +26,6 @@ import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 @RequiredArgsConstructor
 public class ReplayCommand {
     private final Platform platform;
-    private final Cache cache;
     private final LocaleManager localeManager;
     private final String panelUrl;
 
@@ -37,14 +37,10 @@ public class ReplayCommand {
 
     @Subcommand("status")
     @Description("Check replay recording status for a player")
+    @RequiresPermission(Permissions.MOD_ACTIONS)
     public void status(CommandActor actor, @Optional @Named("player") String targetName) {
         if (targetName == null) targetName = "";
-        if (!PermissionUtil.hasPermission(actor, cache, Permissions.MOD_ACTIONS)) {
-            actor.reply(localeManager.getMessage("general.no_permission"));
-            return;
-        }
-
-        ReplayService replayService = platform.getReplayService();
+        ReplayService replayService = PluginServices.replay();
         if (replayService == null) {
             actor.reply(localeManager.getMessage("replay.not_available"));
             return;
@@ -61,14 +57,10 @@ public class ReplayCommand {
 
     @Subcommand("capture")
     @Description("Capture and upload a replay for a player")
+    @RequiresPermission(Permissions.MOD_ACTIONS)
     public void capture(CommandActor actor, @Optional @Named("player") String targetName) {
         if (targetName == null) targetName = "";
-        if (!PermissionUtil.hasPermission(actor, cache, Permissions.MOD_ACTIONS)) {
-            actor.reply(localeManager.getMessage("general.no_permission"));
-            return;
-        }
-
-        ReplayService replayService = platform.getReplayService();
+        ReplayService replayService = PluginServices.replay();
         if (replayService == null) {
             actor.reply(localeManager.getMessage("replay.not_available"));
             return;
@@ -120,7 +112,7 @@ public class ReplayCommand {
 
     private UUID resolveTargetUuid(CommandActor actor, String targetName) {
         if (targetName == null || targetName.isEmpty()) {
-            if (gg.modl.minecraft.core.util.CommandUtil.isConsole(actor)) {
+            if (CommandUtil.isConsole(actor)) {
                 actor.reply(localeManager.getMessage("replay.console_specify_player"));
                 return null;
             }

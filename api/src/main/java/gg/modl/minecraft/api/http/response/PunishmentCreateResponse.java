@@ -1,15 +1,11 @@
 package gg.modl.minecraft.api.http.response;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Data @NoArgsConstructor @AllArgsConstructor
-public class PunishmentCreateResponse {
+@Getter @NoArgsConstructor @AllArgsConstructor
+public class PunishmentCreateResponse extends StatusResponse {
     private String message, punishmentId;
     private int status;
-
-    public boolean isSuccess() {
-        return status >= 200 && status < 300;
-    }
 }

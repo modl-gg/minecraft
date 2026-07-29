@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.impl.menus.staff;
 
+import gg.modl.minecraft.core.PluginServices;
 import dev.simplix.cirrus.actionhandler.ActionHandlers;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.item.CirrusItemType;
@@ -12,7 +13,7 @@ import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.impl.menus.base.BaseStaffMenu;
 import gg.modl.minecraft.core.impl.menus.util.MenuItems;
 import gg.modl.minecraft.core.impl.menus.util.MenuSlots;
-import gg.modl.minecraft.core.impl.menus.util.StaffNavigationHandlers;
+import gg.modl.minecraft.core.impl.menus.util.MenuAsync;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.util.Permissions;
@@ -20,19 +21,16 @@ import gg.modl.minecraft.core.util.Permissions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class SettingsMenu extends BaseStaffMenu {
-    private final String panelUrl;
     private final boolean canModifySettings, canManageStaff;
 
     public SettingsMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
                         boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
-        super(platform, httpClient, viewerUuid, viewerName, isAdmin, backAction);
-        this.panelUrl = panelUrl;
+        super(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, backAction);
 
-        Cache cache = platform.getCache();
+        Cache cache = PluginServices.cache();
         if (cache != null) {
             this.canModifySettings = cache.hasPermission(viewerUuid, Permissions.SETTINGS_MODIFY);
             this.canManageStaff = cache.hasPermission(viewerUuid, Permissions.STAFF_MANAGE);
@@ -78,7 +76,7 @@ public class SettingsMenu extends BaseStaffMenu {
                         MenuItems.COLOR_GRAY + "View all staff members",
                         MenuItems.COLOR_GRAY + "and their online status"
                 )
-        ).slot(MenuSlots.SETTINGS_TICKETS).actionHandler("staffMembers"));
+        ).slot(MenuSlots.SETTINGS_STAFF_LIST).actionHandler("staffMembers"));
 
         if (canManageStaff) {
             set(CirrusItem.of(
@@ -121,13 +119,13 @@ public class SettingsMenu extends BaseStaffMenu {
         registerActionHandler("staffMembers", click -> {
             StaffMembersMenu menu = new StaffMembersMenu(platform, httpClient, viewerUuid, viewerName, isAdmin,
                     panelUrl, returnToSettings);
-            displayWhenLoaded(menu.getDataFuture(), click.player(), menu::display);
+            MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
         });
 
         if (canModifySettings) {
             registerActionHandler("editRoles", click -> {
                 RoleListMenu menu = new RoleListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl, returnToSettings);
-                displayWhenLoaded(menu.getDataFuture(), click.player(), menu::display);
+                MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
             });
 
             registerActionHandler("reloadModl", this::handleReloadModl);
@@ -137,34 +135,20 @@ public class SettingsMenu extends BaseStaffMenu {
             registerActionHandler("manageStaff", click -> {
                 StaffListMenu menu = new StaffListMenu(platform, httpClient, viewerUuid, viewerName, isAdmin,
                         panelUrl, returnToSettings);
-                displayWhenLoaded(menu.getDataFuture(), click.player(), menu::display);
+                MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(), click.player(), menu::display);
             });
         }
 
-        StaffNavigationHandlers.registerAll(
-                this::registerActionHandler,
-                platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl);
-
         registerActionHandler("openSettings", click -> {});
-    }
-
-    void displayWhenLoaded(CompletableFuture<Void> dataFuture, CirrusPlayerWrapper player,
-                           Consumer<CirrusPlayerWrapper> displayAction) {
-        displayWhenLoaded(platform, dataFuture, player, displayAction);
-    }
-
-    static void displayWhenLoaded(Platform platform, CompletableFuture<Void> dataFuture, CirrusPlayerWrapper player,
-                                  Consumer<CirrusPlayerWrapper> displayAction) {
-        StaffNavigationHandlers.displayWhenLoaded(platform, dataFuture, player, displayAction);
     }
 
     private void handleReloadModl(Click click) {
         sendMessage(MenuItems.COLOR_GREEN + "Reloading modl.gg configuration...");
         try {
-            LocaleManager localeManager = platform.getLocaleManager();
+            LocaleManager localeManager = PluginServices.locale();
             if (localeManager != null) {
                 localeManager.reloadLocale();
-                Cache cache = platform.getCache();
+                Cache cache = PluginServices.cache();
                 if (cache != null) {
                     cache.clearPunishmentTypes();
                     cache.clearPunishGuiConfig();

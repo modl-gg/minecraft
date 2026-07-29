@@ -21,16 +21,10 @@ import gg.modl.proto.modl.v1.SyncStaffNotification;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Maps the sync request/response between domain DTOs and proto V3. Inverse of the backend
- * {@code MinecraftSyncProtoMapper}.
- */
 public final class SyncProtoMapper {
 
     private SyncProtoMapper() {
     }
-
-    // ---- Request (domain -> proto) ----
 
     public static gg.modl.proto.modl.v1.SyncRequest toProto(SyncRequest request) {
         gg.modl.proto.modl.v1.SyncRequest.Builder builder = gg.modl.proto.modl.v1.SyncRequest.newBuilder()
@@ -62,20 +56,20 @@ public final class SyncProtoMapper {
 
         if (request.getChatLogs() != null) {
             request.getChatLogs().forEach(log -> builder.addChatLogs(SyncChatLogEntry.newBuilder()
-                .setUuid(nullToEmpty(log.getUuid()))
-                .setUsername(nullToEmpty(log.getUsername()))
-                .setMessage(nullToEmpty(log.getMessage()))
-                .setServer(nullToEmpty(log.getServer()))
+                .setUuid(ProtoConversions.nullToEmpty(log.getUuid()))
+                .setUsername(ProtoConversions.nullToEmpty(log.getUsername()))
+                .setMessage(ProtoConversions.nullToEmpty(log.getMessage()))
+                .setServer(ProtoConversions.nullToEmpty(log.getServer()))
                 .setTimestamp(log.getTimestamp())
                 .build()));
         }
 
         if (request.getCommandLogs() != null) {
             request.getCommandLogs().forEach(log -> builder.addCommandLogs(SyncCommandLogEntry.newBuilder()
-                .setUuid(nullToEmpty(log.getUuid()))
-                .setUsername(nullToEmpty(log.getUsername()))
-                .setCommand(nullToEmpty(log.getCommand()))
-                .setServer(nullToEmpty(log.getServer()))
+                .setUuid(ProtoConversions.nullToEmpty(log.getUuid()))
+                .setUsername(ProtoConversions.nullToEmpty(log.getUsername()))
+                .setCommand(ProtoConversions.nullToEmpty(log.getCommand()))
+                .setServer(ProtoConversions.nullToEmpty(log.getServer()))
                 .setTimestamp(log.getTimestamp())
                 .build()));
         }
@@ -83,51 +77,48 @@ public final class SyncProtoMapper {
         return builder.build();
     }
 
-    // ---- Response (proto -> domain) ----
-
     public static SyncResponse toSyncResponse(gg.modl.proto.modl.v1.SyncResponse proto) {
         return new SyncResponse(proto.getTimestamp(), toSyncData(proto.getData()));
     }
 
     private static SyncResponse.SyncData toSyncData(SyncData proto) {
-        SyncResponse.SyncData data = new SyncResponse.SyncData();
-
         List<SyncResponse.PendingPunishment> pending = new ArrayList<>();
         proto.getPendingPunishmentsList().forEach(p -> pending.add(toPendingPunishment(p)));
-        data.setPendingPunishments(pending);
 
         List<SyncResponse.PendingPunishment> recentlyStarted = new ArrayList<>();
         proto.getRecentlyStartedPunishmentsList().forEach(p -> recentlyStarted.add(toPendingPunishment(p)));
-        data.setRecentlyStartedPunishments(recentlyStarted);
 
         List<SyncResponse.ModifiedPunishment> recentlyModified = new ArrayList<>();
         proto.getRecentlyModifiedPunishmentsList().forEach(p -> recentlyModified.add(toModifiedPunishment(p)));
-        data.setRecentlyModifiedPunishments(recentlyModified);
 
         List<SyncResponse.PlayerNotification> playerNotifications = new ArrayList<>();
         proto.getPlayerNotificationsList().forEach(n -> playerNotifications.add(toPlayerNotification(n)));
-        data.setPlayerNotifications(playerNotifications);
 
         List<SyncResponse.ActiveStaffMember> activeStaff = new ArrayList<>();
         proto.getActiveStaffMembersList().forEach(s -> activeStaff.add(toActiveStaffMember(s)));
-        data.setActiveStaffMembers(activeStaff);
 
         List<SyncResponse.StaffNotification> staffNotifications = new ArrayList<>();
         proto.getStaffNotificationsList().forEach(n -> staffNotifications.add(toStaffNotification(n)));
-        data.setStaffNotifications(staffNotifications);
 
         List<SyncResponse.PendingStatWipe> statWipes = new ArrayList<>();
         proto.getPendingStatWipesList().forEach(w -> statWipes.add(toPendingStatWipe(w)));
-        data.setPendingStatWipes(statWipes);
 
         List<SyncResponse.Staff2faVerification> verifications = new ArrayList<>();
         proto.getStaff2FaVerificationsList().forEach(v -> verifications.add(toStaff2faVerification(v)));
-        data.setStaff2faVerifications(verifications);
 
-        if (proto.hasMigrationTask()) data.setMigrationTask(toMigrationTask(proto.getMigrationTask()));
-        if (proto.hasStaffPermissionsUpdatedAt()) data.setStaffPermissionsUpdatedAt(proto.getStaffPermissionsUpdatedAt());
-        if (proto.hasPunishmentTypesUpdatedAt()) data.setPunishmentTypesUpdatedAt(proto.getPunishmentTypesUpdatedAt());
-        return data;
+        return SyncResponse.SyncData.builder()
+            .pendingPunishments(pending)
+            .recentlyStartedPunishments(recentlyStarted)
+            .recentlyModifiedPunishments(recentlyModified)
+            .playerNotifications(playerNotifications)
+            .activeStaffMembers(activeStaff)
+            .staffNotifications(staffNotifications)
+            .pendingStatWipes(statWipes)
+            .staff2faVerifications(verifications)
+            .migrationTask(proto.hasMigrationTask() ? toMigrationTask(proto.getMigrationTask()) : null)
+            .staffPermissionsUpdatedAt(proto.hasStaffPermissionsUpdatedAt() ? proto.getStaffPermissionsUpdatedAt() : null)
+            .punishmentTypesUpdatedAt(proto.hasPunishmentTypesUpdatedAt() ? proto.getPunishmentTypesUpdatedAt() : null)
+            .build();
     }
 
     private static SyncResponse.PendingPunishment toPendingPunishment(SyncPendingPunishment proto) {
@@ -197,16 +188,10 @@ public final class SyncProtoMapper {
     }
 
     private static SyncResponse.Staff2faVerification toStaff2faVerification(SyncStaff2faVerification proto) {
-        SyncResponse.Staff2faVerification verification = new SyncResponse.Staff2faVerification();
-        verification.setMinecraftUuid(proto.getMinecraftUuid());
-        return verification;
+        return new SyncResponse.Staff2faVerification(proto.getMinecraftUuid());
     }
 
     private static SyncResponse.MigrationTask toMigrationTask(SyncMigrationTask proto) {
         return new SyncResponse.MigrationTask(proto.getTaskId(), proto.getType());
-    }
-
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
     }
 }

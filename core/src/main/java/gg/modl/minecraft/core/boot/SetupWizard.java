@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 
 public class SetupWizard {
     private static final long POLL_INTERVAL_MS = 5000;
-    private static final int MAX_POLL_ATTEMPTS = 120; // 10 minutes
+    private static final int MAX_POLL_ATTEMPTS = 120;
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private static final Pattern SUBDOMAIN_PATTERN = Pattern.compile("^[a-z0-9-]+$");
@@ -54,7 +54,6 @@ public class SetupWizard {
         }
     }
 
-    // ── Input helpers ──
 
     private String readLine(String prompt) {
         String response = input.readLine(prompt);
@@ -197,12 +196,12 @@ public class SetupWizard {
             String email = askEmail("Admin email: ");
             try {
                 RegistrationClient.AvailabilityResponse resp = client.checkAvailability(email, null, null);
-                if (!resp.emailAvailable()) {
+                if (!resp.isEmailAvailable()) {
                     logger.info("This email is already registered. Please use a different email.");
                     continue;
                 }
             } catch (Exception e) {
-                // If the check fails, proceed anyway — the registration call will catch it
+                logger.debug("Email availability check failed; proceeding to registration: " + e.getMessage());
             }
             return email;
         }
@@ -213,12 +212,12 @@ public class SetupWizard {
             String name = askServerName("Server name: ");
             try {
                 RegistrationClient.AvailabilityResponse resp = client.checkAvailability(null, name, null);
-                if (!resp.nameAvailable()) {
+                if (!resp.isNameAvailable()) {
                     logger.info("This server name is already taken. Please choose a different one.");
                     continue;
                 }
             } catch (Exception e) {
-                // If the check fails, proceed anyway
+                logger.debug("Server name availability check failed; proceeding to registration: " + e.getMessage());
             }
             return name;
         }
@@ -229,18 +228,17 @@ public class SetupWizard {
             String subdomain = askSubdomain("Panel subdomain (e.g. \"myserver\" for myserver.modl.gg): ");
             try {
                 RegistrationClient.AvailabilityResponse resp = client.checkAvailability(null, null, subdomain);
-                if (!resp.subdomainAvailable()) {
+                if (!resp.isSubdomainAvailable()) {
                     logger.info("This subdomain is already in use or reserved. Please choose a different one.");
                     continue;
                 }
             } catch (Exception e) {
-                // If the check fails, proceed anyway
+                logger.debug("Subdomain availability check failed; proceeding to registration: " + e.getMessage());
             }
             return subdomain;
         }
     }
 
-    // ── Wizard flows ──
 
     private BootConfig runSpigotWizard() {
         boolean standalone = askYesNo("Is this a standalone server (no proxy)?");
@@ -357,7 +355,6 @@ public class SetupWizard {
         return askYesNo("Save this configuration?");
     }
 
-    // ── Registration flow ──
 
     private RegistrationResult runRegistrationFlowWithRetry() {
         while (true) {
@@ -390,12 +387,12 @@ public class SetupWizard {
                     email, serverName, subdomain, "free"
             );
 
-            if (!registerResponse.success()) {
-                logger.severe("Registration failed: " + registerResponse.message());
+            if (!registerResponse.isSuccess()) {
+                logger.severe("Registration failed: " + registerResponse.getMessage());
                 return null;
             }
 
-            String setupToken = registerResponse.setupToken();
+            String setupToken = registerResponse.getSetupToken();
             if (setupToken == null || setupToken.trim().isEmpty()) {
                 logger.severe("Registration succeeded but no setup token was returned.");
                 return null;
@@ -411,7 +408,7 @@ public class SetupWizard {
             }
 
             logger.info("Registration complete!");
-            return new RegistrationResult(statusResponse.apiKey());
+            return new RegistrationResult(statusResponse.getApiKey());
         } catch (Exception e) {
             logger.severe("Registration error: " + e.getMessage());
             return null;
@@ -426,7 +423,7 @@ public class SetupWizard {
             RegistrationClient.CliStatusResponse status = client.pollCliStatus(setupToken);
 
             if (status.isFailed()) {
-                logger.severe("Server provisioning failed: " + status.message());
+                logger.severe("Server provisioning failed: " + status.getMessage());
                 return null;
             }
 
@@ -434,7 +431,7 @@ public class SetupWizard {
                 return status;
             }
 
-            Boolean emailVerified = status.emailVerified();
+            Boolean emailVerified = status.getEmailVerified();
             if (emailVerified != null && emailVerified) {
                 logger.info("  Email verified. Provisioning status: " + status.humanReadableStatus() +
                         " (attempt " + (attempt + 1) + ")");
@@ -446,7 +443,6 @@ public class SetupWizard {
         return null;
     }
 
-    // ── Utilities ──
 
     private void printBanner() {
         logger.info("===========================================");

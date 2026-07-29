@@ -4,17 +4,15 @@ import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.bridge.reporter.detection.DetectionSource;
 import gg.modl.minecraft.bridge.reporter.detection.ViolationRecord;
 import gg.modl.minecraft.bridge.reporter.detection.ViolationTracker;
-import gg.modl.minecraft.core.service.ReplayCaptureStatus;
 import gg.modl.minecraft.core.service.ReplayService;
+import gg.modl.minecraft.core.util.PluginLogger;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -23,7 +21,7 @@ public class AutoReporter {
     private static final String TICKET_TYPE = "player";
     private static final String TICKET_PRIORITY = "NORMAL";
 
-    private final Logger logger;
+    private final PluginLogger logger;
     private final BridgeConfig config;
     private final TicketCreator ticketCreator;
     private final ViolationTracker violationTracker;
@@ -32,7 +30,7 @@ public class AutoReporter {
 
     private final ConcurrentHashMap<UUID, Long> reportCooldowns = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, Boolean> reportsInFlight = new ConcurrentHashMap<>();
-    private final java.util.concurrent.atomic.AtomicBoolean loggedMissingCreator = new java.util.concurrent.atomic.AtomicBoolean(false);
+    private final AtomicBoolean loggedMissingCreator = new AtomicBoolean(false);
 
     public void checkAndReport(UUID uuid, String playerName, DetectionSource source, String checkName) {
         if (ticketCreator == null) {
@@ -84,80 +82,70 @@ public class AutoReporter {
     }
 
     private void submitReport(UUID uuid, String playerName, DetectionSource source, String checkName, int vl) {
-        List<ViolationRecord> records = violationTracker.getRecords(uuid);
         String anticheatName = config.getAnticheatName();
         String uuidStr = uuid.toString();
-
         String subject = "[" + anticheatName + "] " + checkName + " - " + playerName + " (VL: " + vl + ")";
-
-        String description = "**Automated anticheat report.**\n\n" +
-                "**Player:** " + playerName + "\n\n" +
-                "**Trigger:** " + source.name() + " " + checkName + " (VL: " + vl + ")\n\n" +
-                "**Recent violations:**\n```\n" +
-                records.stream()
-                        .map(ViolationRecord::toString)
-                        .collect(Collectors.joining("\n")) +
-                "\n```";
+        String description = buildDescription(uuid, playerName, source, checkName, vl);
 
         logger.info("Auto-report triggered for " + playerName
                 + " (" + source.name() + " " + checkName + " VL: " + vl + ")");
 
-        if (replayService != null && shouldAttemptReplayCapture(uuid)) {
-            CompletableFuture<String> replayFuture;
-            try {
-                replayFuture = replayService.captureReplay(uuid, playerName);
-            } catch (RuntimeException e) {
-                logger.log(Level.WARNING, "[bridge] Replay capture failed for auto-report: " + playerName, e);
-                createTicketWithoutReplay(uuid, uuidStr, anticheatName, subject, description, playerName);
-                return;
-            }
-            replayFuture.handle((replayId, throwable) -> {
-                try {
-                    String reportReplayId = replayId;
-                    if (throwable != null) {
-                        logger.log(Level.WARNING, "[bridge] Replay capture failed for auto-report: " + playerName, throwable);
-                        reportReplayId = null;
-                    }
-                    if (replayId != null) {
-                        logger.info("[bridge] Replay captured for auto-report: " + playerName + " -> " + replayId);
-                    }
-                    try {
-                        ticketCreator.createTicket(
-                                uuidStr, anticheatName, TICKET_TYPE, subject, description,
-                                uuidStr, playerName, null, TICKET_PRIORITY, config.getServerName(), reportReplayId
-                        );
-                        markReportSubmitted(uuid);
-                    } catch (Exception e) {
-                        logger.log(Level.WARNING, "[bridge] Ticket creation failed for auto-report: " + playerName, e);
-                    }
-                } finally {
-                    reportsInFlight.remove(uuid);
-                }
-                return null;
-            });
-        } else {
-            createTicketWithoutReplay(uuid, uuidStr, anticheatName, subject, description, playerName);
+        if (replayService == null || !replayService.shouldAttemptCapture(uuid)) {
+            finalizeTicket(uuid, uuidStr, anticheatName, subject, description, playerName, null);
+            return;
         }
-    }
 
-    private boolean shouldAttemptReplayCapture(UUID uuid) {
-        ReplayCaptureStatus status = replayService.getReplayStatus(uuid);
-        return status != ReplayCaptureStatus.NO_BRIDGE_CONNECTED
-                && status != ReplayCaptureStatus.FABRIC_DISABLED;
-    }
-
-    private void createTicketWithoutReplay(UUID uuid, String uuidStr, String anticheatName,
-                                           String subject, String description, String playerName) {
+        CompletableFuture<String> replayFuture;
         try {
-            try {
-                ticketCreator.createTicket(
-                        uuidStr, anticheatName, TICKET_TYPE, subject, description,
-                        uuidStr, playerName, null, TICKET_PRIORITY, config.getServerName()
-                );
-                markReportSubmitted(uuid);
-            } catch (Exception e) {
-                logger.log(Level.WARNING, "[bridge] Ticket creation failed for auto-report: " + playerName, e);
+            replayFuture = replayService.captureReplay(uuid, playerName);
+        } catch (RuntimeException e) {
+            logger.warning("[bridge] Replay capture failed for auto-report: " + playerName, e);
+            finalizeTicket(uuid, uuidStr, anticheatName, subject, description, playerName, null);
+            return;
+        }
+
+        replayFuture.handle((replayId, throwable) -> {
+            String reportReplayId = replayId;
+            if (throwable != null) {
+                logger.warning("[bridge] Replay capture failed for auto-report: " + playerName, throwable);
+                reportReplayId = null;
             }
+            if (replayId != null) {
+                logger.info("[bridge] Replay captured for auto-report: " + playerName + " -> " + replayId);
+            }
+            finalizeTicket(uuid, uuidStr, anticheatName, subject, description, playerName, reportReplayId);
+            return null;
+        });
+    }
+
+    private String buildDescription(UUID uuid, String playerName, DetectionSource source, String checkName, int vl) {
+        String recentViolations = violationTracker.getRecords(uuid).stream()
+                .map(ViolationRecord::toString)
+                .collect(Collectors.joining("\n"));
+        return "**Automated anticheat report.**\n\n" +
+                "**Player:** " + playerName + "\n\n" +
+                "**Trigger:** " + source.name() + " " + checkName + " (VL: " + vl + ")\n\n" +
+                "**Recent violations:**\n```\n" + recentViolations + "\n```";
+    }
+
+    private void finalizeTicket(UUID uuid, String uuidStr, String anticheatName,
+                                String subject, String description, String playerName, String replayId) {
+        try {
+            ticketCreator.createTicket(TicketRequest.builder()
+                    .creatorUuid(uuidStr)
+                    .creatorName(anticheatName)
+                    .type(TICKET_TYPE)
+                    .subject(subject)
+                    .description(description)
+                    .reportedPlayerUuid(uuidStr)
+                    .reportedPlayerName(playerName)
+                    .priority(TICKET_PRIORITY)
+                    .createdServer(config.getServerName())
+                    .replayUrl(replayId)
+                    .build());
+            markReportSubmitted(uuid);
+        } catch (Exception e) {
+            logger.warning("[bridge] Ticket creation failed for auto-report: " + playerName, e);
         } finally {
             reportsInFlight.remove(uuid);
         }

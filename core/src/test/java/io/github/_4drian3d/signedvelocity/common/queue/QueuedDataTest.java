@@ -145,18 +145,15 @@ final class QueuedDataTest {
         TestScheduler scheduler = new TestScheduler();
         QueuedData data = new QueuedData(scheduler, 20);
 
-        Future<SignedResult> peek = data.nextResultWithoutAdvance(); // advance=false, enqueued first
-        Future<SignedResult> consume = data.nextResult();            // advance=true
+        Future<SignedResult> peek = data.nextResultWithoutAdvance();
+        Future<SignedResult> consume = data.nextResult();
         assertEquals(2, data.pendingWaiters());
 
         data.complete(SignedResult.cancel());
 
-        // Both waiters receive the real proxy verdict (peek + the advancing consume).
         assertSame(SignedResult.cancel(), peek.get(1, TimeUnit.SECONDS));
         assertSame(SignedResult.cancel(), consume.get(1, TimeUnit.SECONDS));
-        // The advancing waiter consumed it, so the queue is drained and nothing leaked into results.
         assertEquals(0, data.pendingWaiters());
-        // A fresh advancing request must now register a NEW pending waiter (proves results is empty / no leak).
         data.nextResult();
         assertEquals(1, data.pendingWaiters());
     }
@@ -171,8 +168,6 @@ final class QueuedDataTest {
 
         assertSame(SignedResult.cancel(), consume.get(1, TimeUnit.SECONDS));
         assertEquals(0, data.pendingWaiters());
-        // The decision was delivered to the correct waiter; a subsequent request registers a NEW pending
-        // waiter (results is empty), confirming the verdict did not leak/shift to the next message.
         data.nextResult();
         assertEquals(1, data.pendingWaiters());
     }

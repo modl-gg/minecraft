@@ -1,11 +1,11 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.Data;
+import lombok.Value;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-@Data
+@Value
 public class MigrationStatusUpdateRequest {
-    private @NotNull final String taskId, status, message;
-    private @Nullable final Integer recordsProcessed, totalRecords;
+    @NotNull String taskId, status, message;
+    @Nullable Integer recordsProcessed, totalRecords;
 }

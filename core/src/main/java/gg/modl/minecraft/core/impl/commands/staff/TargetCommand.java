@@ -4,14 +4,14 @@ import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.command.PlayerOnly;
+import gg.modl.minecraft.core.command.RequiresPermission;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.StaffModeService;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
-import gg.modl.minecraft.core.util.StaffCommandUtil;
-import gg.modl.minecraft.core.util.StaffCommandUtil.StaffDisplay;
+import gg.modl.minecraft.core.staff.StaffCommandUtil;
+import gg.modl.minecraft.core.staff.StaffCommandUtil.StaffDisplay;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
@@ -30,12 +30,8 @@ public class TargetCommand {
     private final BridgeService bridgeService;
 
     @Description("Target a player for moderation")
+    @RequiresPermission(Permissions.MOD_ACTIONS)
     public void onTarget(CommandActor actor, @Optional AbstractPlayer target) {
-        if (!PermissionUtil.hasPermission(actor, cache, Permissions.MOD_ACTIONS)) {
-            actor.reply(localeManager.getMessage("general.no_permission"));
-            return;
-        }
-
         UUID staffUuid = actor.uniqueId();
 
         if (target == null) {

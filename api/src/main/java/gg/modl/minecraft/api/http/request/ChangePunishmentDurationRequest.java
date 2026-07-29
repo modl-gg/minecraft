@@ -1,11 +1,9 @@
 package gg.modl.minecraft.api.http.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Value;
 
-@Data @NoArgsConstructor @AllArgsConstructor
+@Value
 public class ChangePunishmentDurationRequest {
-    private String punishmentId, issuerName, issuerId;
-    private Long newDuration;
+    String punishmentId, issuerName, issuerId;
+    Long newDuration;
 }

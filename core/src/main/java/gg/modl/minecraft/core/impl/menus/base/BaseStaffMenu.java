@@ -1,46 +1,34 @@
 package gg.modl.minecraft.core.impl.menus.base;
 
-import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.menu.CirrusInventoryType;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.api.http.ModlHttpClient;
 import gg.modl.minecraft.core.Platform;
-import gg.modl.minecraft.core.impl.menus.util.StaffTabItems;
 import gg.modl.minecraft.core.impl.menus.util.StaffTabItems.StaffTab;
 
-import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-public abstract class BaseStaffMenu extends BaseMenu {
+public abstract class BaseStaffMenu extends ChromeMenu {
 
     protected StaffTab activeTab = StaffTab.NONE;
     protected final boolean isAdmin;
+    protected final String panelUrl;
 
     public BaseStaffMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
-                         boolean isAdmin, Consumer<CirrusPlayerWrapper> backAction) {
-        super(platform, httpClient, viewerUuid, viewerName, backAction);
+                         boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction) {
+        super(platform, httpClient, viewerUuid, viewerName, backAction,
+                new StaffChrome(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl));
         this.isAdmin = isAdmin;
+        this.panelUrl = panelUrl;
     }
 
     public BaseStaffMenu(Platform platform, ModlHttpClient httpClient, UUID viewerUuid, String viewerName,
-                         boolean isAdmin, Consumer<CirrusPlayerWrapper> backAction, CirrusInventoryType inventoryType) {
-        super(platform, httpClient, viewerUuid, viewerName, backAction, inventoryType);
+                         boolean isAdmin, String panelUrl, Consumer<CirrusPlayerWrapper> backAction, CirrusInventoryType inventoryType) {
+        super(platform, httpClient, viewerUuid, viewerName, backAction,
+                new StaffChrome(platform, httpClient, viewerUuid, viewerName, isAdmin, panelUrl), inventoryType);
         this.isAdmin = isAdmin;
-    }
-
-    protected void buildHeader() {
-        for (Map.Entry<Integer, CirrusItem> entry : StaffTabItems.createItems().entrySet()) {
-            set(entry.getValue().slot(entry.getKey()));
-        }
-        addBackButton();
-    }
-
-    protected void buildCompactHeader() {
-        for (Map.Entry<Integer, CirrusItem> entry : StaffTabItems.createCompactItems().entrySet()) {
-            set(entry.getValue().slot(entry.getKey()));
-        }
-        addCompactBackButton();
+        this.panelUrl = panelUrl;
     }
 
 }

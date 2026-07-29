@@ -1,5 +1,6 @@
 package gg.modl.minecraft.core.config;
 
+import gg.modl.minecraft.core.util.YamlValues;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.yaml.snakeyaml.Yaml;
@@ -111,9 +112,9 @@ public class PunishGuiConfig {
         PunishSlotConfig config = new PunishSlotConfig();
         config.setSlotNumber(slotNumber);
 
-        if (data.containsKey("enabled")) config.setEnabled(coerceBoolean(data.get("enabled"), config.isEnabled()));
-        if (data.containsKey("item")) config.setItem(coerceString(data.get("item"), config.getItem()));
-        if (data.containsKey("title")) config.setTitle(coerceString(data.get("title"), config.getTitle()));
+        if (data.containsKey("enabled")) config.setEnabled(YamlValues.coerceBoolean(data.get("enabled"), config.isEnabled()));
+        if (data.containsKey("item")) config.setItem(YamlValues.coerceString(data.get("item"), config.getItem()));
+        if (data.containsKey("title")) config.setTitle(YamlValues.coerceString(data.get("title"), config.getTitle()));
         if (data.containsKey("ordinal")) {
             Object val = data.get("ordinal");
             if (val instanceof Number) config.setOrdinal(((Number) val).intValue());
@@ -127,19 +128,6 @@ public class PunishGuiConfig {
         }
 
         return config;
-    }
-
-    private static String coerceString(Object value, String fallback) {
-        return value == null ? fallback : String.valueOf(value);
-    }
-
-    private static boolean coerceBoolean(Object value, boolean fallback) {
-        if (value instanceof Boolean) return (Boolean) value;
-        if (value == null) return fallback;
-        String s = String.valueOf(value).trim();
-        if (s.equalsIgnoreCase("true") || s.equals("1") || s.equalsIgnoreCase("yes") || s.equalsIgnoreCase("on")) return true;
-        if (s.equalsIgnoreCase("false") || s.equals("0") || s.equalsIgnoreCase("no") || s.equalsIgnoreCase("off")) return false;
-        return fallback;
     }
 
     public static PunishGuiConfig createDefault() {

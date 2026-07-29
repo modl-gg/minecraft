@@ -5,7 +5,8 @@ import gg.modl.minecraft.api.Evidence;
 import gg.modl.minecraft.api.Modification;
 import gg.modl.minecraft.api.Note;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.Collections;
@@ -13,16 +14,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-@Data @NoArgsConstructor @AllArgsConstructor
-public class RecentPunishmentsResponse {
+@Getter @NoArgsConstructor @AllArgsConstructor
+public class RecentPunishmentsResponse extends StatusResponse {
     private List<RecentPunishment> punishments;
     private int status;
 
-    public boolean isSuccess() {
-        return status >= 200 && status < 300;
-    }
-
-    @Data @NoArgsConstructor @AllArgsConstructor
+    @Getter @Builder @NoArgsConstructor @AllArgsConstructor
     public static class RecentPunishment {
         private String playerName, playerUuid, id, issuerName;
         private Date issued, started;

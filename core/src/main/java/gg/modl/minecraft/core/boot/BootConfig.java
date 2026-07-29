@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core.boot;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
@@ -10,7 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-@Data
+@Getter @Setter
 public class BootConfig {
     static final String PLACEHOLDER_API_KEY = "your-api-key-here";
 
@@ -20,7 +21,6 @@ public class BootConfig {
     private String proxyType;
     private int bridgePort = 25590;
 
-    // Bridge-only proxy connection settings captured by the setup wizard and persisted in boot.yml
     private String wizardProxyHost;
     private int wizardProxyPort = 25590;
 
@@ -47,7 +47,7 @@ public class BootConfig {
 
     public boolean isValid() {
         if (apiKey == null || apiKey.isEmpty() || apiKey.equals(PLACEHOLDER_API_KEY)) {
-            return mode == Mode.BRIDGE_ONLY; // bridge-only can work without API key for now
+            return mode == Mode.BRIDGE_ONLY;
         }
         return true;
     }

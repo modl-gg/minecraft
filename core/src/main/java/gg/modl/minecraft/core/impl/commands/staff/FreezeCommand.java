@@ -3,14 +3,14 @@ package gg.modl.minecraft.core.impl.commands.staff;
 import gg.modl.minecraft.api.AbstractPlayer;
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.cache.Cache;
+import gg.modl.minecraft.core.command.RequiresPermission;
 import gg.modl.minecraft.core.command.StaffOnly;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.FreezeService;
-import gg.modl.minecraft.core.util.PermissionUtil;
 import gg.modl.minecraft.core.util.Permissions;
-import gg.modl.minecraft.core.util.StaffCommandUtil;
-import gg.modl.minecraft.core.util.StaffCommandUtil.StaffDisplay;
+import gg.modl.minecraft.core.staff.StaffCommandUtil;
+import gg.modl.minecraft.core.staff.StaffCommandUtil.StaffDisplay;
 import lombok.RequiredArgsConstructor;
 import revxrsal.commands.annotation.Command;
 import revxrsal.commands.annotation.Description;
@@ -28,12 +28,8 @@ public class FreezeCommand {
     private final BridgeService bridgeService;
 
     @Description("Freeze or unfreeze a player")
+    @RequiresPermission(Permissions.MOD_ACTIONS)
     public void onFreeze(CommandActor actor, AbstractPlayer target) {
-        if (!PermissionUtil.hasPermission(actor, cache, Permissions.MOD_ACTIONS)) {
-            actor.reply(localeManager.getMessage("general.no_permission"));
-            return;
-        }
-
         UUID targetUuid = target.getUuid();
         String targetName = target.getName();
         StaffDisplay display = StaffCommandUtil.resolveActorDisplay(actor, platform, cache, "Console", "Staff", false);
@@ -56,7 +52,7 @@ public class FreezeCommand {
     }
 
     private void freezePlayer(CommandActor actor, UUID targetUuid, String targetName, StaffDisplay display) {
-        UUID staffUuid = actor.uniqueId() != null ? actor.uniqueId() : null;
+        UUID staffUuid = actor.uniqueId();
         freezeService.freeze(targetUuid, staffUuid);
         platform.staffBroadcast(localeManager.getMessage("freeze.staff_notification_freeze", mapOf(
                 "player", targetName,

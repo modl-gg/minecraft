@@ -2,6 +2,7 @@ package gg.modl.minecraft.core.query;
 
 import gg.modl.minecraft.core.Platform;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.core.PluginServices;
 import gg.modl.minecraft.core.boot.BootConfig;
 import gg.modl.minecraft.core.util.PluginLogger;
 
@@ -38,7 +39,7 @@ public final class ProxyBridgeRuntime {
 
         BridgeReplayService bridgeReplayService = new BridgeReplayService(bridgeServer, pluginLogger);
         dispatcher.setBridgeReplayService(bridgeReplayService);
-        platform.setReplayService(bridgeReplayService);
+        PluginServices.get().setReplayService(bridgeReplayService);
 
         return new ProxyBridgeRuntime(bridgeServer::shutdown, bridgeReplayService);
     }

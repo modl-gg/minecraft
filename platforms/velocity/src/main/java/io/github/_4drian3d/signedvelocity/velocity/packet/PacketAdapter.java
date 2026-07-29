@@ -8,7 +8,7 @@ public interface PacketAdapter {
             Class.forName("com.github.retrooper.packetevents.PacketEvents");
             new PacketEventsAdapter().register();
         } catch (ClassNotFoundException ignored) {
-            // PacketEvents not available — packet adaptation disabled
+            // PacketEvents not available, packet adaptation disabled
         }
     }
 }

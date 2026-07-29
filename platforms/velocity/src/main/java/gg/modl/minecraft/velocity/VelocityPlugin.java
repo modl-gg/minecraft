@@ -14,13 +14,18 @@ import gg.modl.minecraft.api.LibraryRecord;
 import gg.modl.minecraft.core.HttpManager;
 import gg.modl.minecraft.core.Libraries;
 import gg.modl.minecraft.core.PluginLoader;
+import gg.modl.minecraft.core.chat.CommandInterceptService;
 import gg.modl.minecraft.api.http.request.StartupRequest;
 import gg.modl.minecraft.core.boot.BootConfig;
 import gg.modl.minecraft.core.boot.BootConfigMigrator;
 import gg.modl.minecraft.core.boot.ConsoleInput;
+import gg.modl.minecraft.core.boot.LibraryLoader;
 import gg.modl.minecraft.core.boot.PlatformType;
 import gg.modl.minecraft.core.boot.SetupWizard;
 import gg.modl.minecraft.core.boot.StartupClient;
+import gg.modl.minecraft.core.boot.SyncPollingRate;
+import gg.modl.minecraft.core.login.LoginPipeline;
+import gg.modl.minecraft.core.login.ProxyLoginFlow;
 import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.query.ProxyBridgeRuntime;
@@ -30,7 +35,6 @@ import gg.modl.minecraft.core.util.YamlMergeUtil;
 import io.github._4drian3d.signedvelocity.velocity.SignedVelocity;
 
 import io.github.retrooper.packetevents.velocity.factory.VelocityPacketEventsBuilder;
-import com.alessiodp.libby.Library;
 import com.alessiodp.libby.VelocityLibraryManager;
 import org.slf4j.Logger;
 import org.yaml.snakeyaml.Yaml;
@@ -53,7 +57,7 @@ import com.alessiodp.libby.logging.LogLevel;
         url = PluginInfo.URL,
         dependencies = {})
 public final class VelocityPlugin {
-    private static final int MIN_SYNC_POLLING_RATE = 1, DEFAULT_SYNC_POLLING_RATE = 2;
+    private static final long LOGIN_TIMEOUT_SECONDS = 5;
 
     private final PluginContainer plugin;
     private final ProxyServer server;
@@ -71,12 +75,7 @@ public final class VelocityPlugin {
         this.server = server;
         this.folder = folder;
         this.logger = logger;
-        this.pluginLogger = new PluginLogger() {
-            @Override public void info(String message) { logger.info(message); }
-            @Override public void warning(String message) { logger.warn(message); }
-            @Override public void severe(String message) { logger.error(message); }
-            @Override public void debug(String message) { logger.debug(message); }
-        };
+        this.pluginLogger = new VelocityPluginLogger(logger);
     }
 
     @Subscribe
@@ -115,7 +114,7 @@ public final class VelocityPlugin {
 
         VelocityPlatform platform = new VelocityPlatform(this, this.server, logger, folder.toFile(), getConfigString("server.name", "Server 1"), pluginLogger);
         ChatMessageCache chatMessageCache = new ChatMessageCache();
-        int syncPollingRate = Math.max(MIN_SYNC_POLLING_RATE, getConfigInt("sync.polling_rate", DEFAULT_SYNC_POLLING_RATE));
+        int syncPollingRate = SyncPollingRate.clamp(getConfigInt(SyncPollingRate.CONFIG_KEY, SyncPollingRate.DEFAULT_SECONDS));
 
         this.pluginLoader = new PluginLoader(platform, folder, chatMessageCache, httpManager, syncPollingRate);
         configureBridgeExecutor(platform, bootConfig, panelUrl);
@@ -123,20 +122,23 @@ public final class VelocityPlugin {
         @SuppressWarnings("unchecked")
         List<String> mutedCommands = (List<String>) getNestedConfig("muted_commands", Collections.emptyList());
 
+        CommandInterceptService commandInterceptService = new CommandInterceptService(
+                pluginLoader.getCache(), pluginLoader.getFreezeService(), pluginLoader.getChatCommandLogService(),
+                pluginLoader.getLocaleManager(), pluginLoader.getPunishmentMessageService(), mutedCommands);
+
+        ProxyLoginFlow proxyLoginFlow = new ProxyLoginFlow(
+                pluginLoader.getHttpClientHolder(), pluginLoader.getLoginCache(), pluginLoader.getLoginService(),
+                pluginLoader.getLoginRequestBuilder(), pluginLoader.getIpEnrichmentService(),
+                pluginLoader.getPendingIpLookupService(), LOGIN_TIMEOUT_SECONDS);
+
+        LoginPipeline loginPipeline = new LoginPipeline(
+                pluginLoader.getLoginService(), pluginLoader.getLoginCache(), pluginLoader.getPlayerSessionService());
+
         server.getEventManager().register(this, new JoinListener(
-                pluginLoader.getHttpClientHolder(), pluginLoader.getCache(), logger,
-                pluginLoader.getChatMessageCache(), platform, pluginLoader.getSyncService(),
-                pluginLoader.getLocaleManager(), pluginLoader.getMaintenanceService(),
-                pluginLoader.getStaff2faService(), pluginLoader.getBridgeService(),
-                pluginLoader.getCachedProfileRegistry(), pluginLoader.getLoginCache(),
-                pluginLoader.isDebugMode()));
+                pluginLoader.getCache(), logger, platform, loginPipeline, proxyLoginFlow,
+                pluginLoader.getServerSwitchService(), pluginLoader.isDebugMode()));
         server.getEventManager().register(this, new ChatListener(
-                platform, pluginLoader.getCache(), pluginLoader.getChatMessageCache(),
-                pluginLoader.getLocaleManager(), mutedCommands,
-                pluginLoader.getStaffChatService(), pluginLoader.getChatManagementService(),
-                pluginLoader.getFreezeService(), pluginLoader.getNetworkChatInterceptService(),
-                pluginLoader.getChatCommandLogService(),
-                pluginLoader.getConfigManager().getStaffChatConfig()));
+                pluginLoader.getChatService(), commandInterceptService));
 
         logger.info("Successfully booted modl.gg platform plugin!");
     }
@@ -148,7 +150,9 @@ public final class VelocityPlugin {
         if (PacketEvents.getAPI() != null) {
             try {
                 PacketEvents.getAPI().terminate();
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                logger.debug("PacketEvents termination failed during shutdown: {}", e.getMessage());
+            }
         }
     }
 
@@ -249,21 +253,7 @@ public final class VelocityPlugin {
     }
 
     private void loadLibrary(VelocityLibraryManager<VelocityPlugin> libraryManager, LibraryRecord record) {
-        Library.Builder builder = Library.builder()
-                .groupId(record.getGroupId())
-                .artifactId(record.getArtifactId())
-                .version(record.getVersion())
-                ;
-
-        if (record.hasRelocations()) {
-            for (String[] relocation : record.getRelocations()) {
-                builder.relocate(relocation[0], relocation[1]);
-            }
-        }
-        if (record.getUrl() != null) builder.url(record.getUrl());
-        if (record.hasChecksum()) builder.checksumFromBase64(record.getChecksum());
-
-        libraryManager.loadLibrary(builder.build());
+        libraryManager.loadLibrary(LibraryLoader.toLibrary(record));
     }
 
     private void loadConfig() {
@@ -294,16 +284,9 @@ public final class VelocityPlugin {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private String getConfigString(String path, String defaultValue) {
-        if (configuration == null) return defaultValue;
-        String[] keys = path.split("\\.");
-        Object current = configuration;
-        for (String key : keys) {
-            if (current instanceof Map) current = ((Map<String, Object>) current).get(key);
-            else return defaultValue;
-        }
-        return current instanceof String ? (String) current : defaultValue;
+        Object value = getNestedConfig(path, defaultValue);
+        return value instanceof String ? (String) value : defaultValue;
     }
 
     @SuppressWarnings("unchecked")

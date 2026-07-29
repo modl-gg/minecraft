@@ -1,119 +1,75 @@
 package gg.modl.minecraft.fabric.v1_21_11.handler;
 
+import gg.modl.minecraft.bridge.freeze.FreezeCore;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;
-import lombok.Setter;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Vec3d;
 
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
 import java.util.Set;
-import net.minecraft.server.world.ServerWorld;
+import java.util.UUID;
 
-/**
- * Fabric freeze handler using tick-based position reset.
- * Since Fabric has no PlayerMoveEvent, we check frozen player positions each tick
- * and teleport them back if they moved.
- */
 public class FabricFreezeHandler {
+    private static final double MAX_DRIFT_SQUARED = 0.01;
+
     private final MinecraftServer server;
-    private final BridgeLocaleManager localeManager;
-    private final Map<UUID, UUID> frozenPlayers = new ConcurrentHashMap<>(); // frozen -> staff
-    private final Map<UUID, FreezeAnchor> frozenAnchors = new ConcurrentHashMap<>(); // frozen -> anchor
-    private final Map<UUID, String> frozenPlayerNames = new ConcurrentHashMap<>();
-    @Setter private FabricStaffModeHandler staffModeHandler;
-    @Setter private BridgeQueryClient bridgeClient;
-
-    private static final class FreezeAnchor {
-        final ServerWorld world;
-        final double x, y, z;
-        final float yaw, pitch;
-
-        FreezeAnchor(ServerWorld world, double x, double y, double z, float yaw, float pitch) {
-            this.world = world;
-            this.x = x;
-            this.y = y;
-            this.z = z;
-            this.yaw = yaw;
-            this.pitch = pitch;
-        }
-    }
+    private final FabricFreezeOps ops;
+    private final FreezeCore freezeCore;
 
     public FabricFreezeHandler(MinecraftServer server, BridgeLocaleManager localeManager) {
         this.server = server;
-        this.localeManager = localeManager;
+        this.ops = new FabricFreezeOps(server);
+        this.freezeCore = new FreezeCore(localeManager, ops);
+    }
+
+    FreezeCore getFreezeCore() {
+        return freezeCore;
+    }
+
+    public void setBridgeClient(BridgeQueryClient bridgeClient) {
+        freezeCore.setBridgeClient(bridgeClient);
     }
 
     public void freeze(String targetUuid, String staffUuid) {
-        UUID target = UUID.fromString(targetUuid);
-        frozenPlayers.put(target, UUID.fromString(staffUuid));
-
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(target);
-        frozenPlayerNames.put(target, player != null ? player.getName().getString() : "Unknown");
-        if (player != null) {
-            frozenAnchors.put(target, new FreezeAnchor((ServerWorld) player.getEntityWorld(),
-                    player.getX(), player.getY(), player.getZ(), player.getYaw(), player.getPitch()));
-            player.sendMessage(Text.literal(localeManager.getMessage("freeze.frozen")));
-        }
+        freezeCore.freeze(targetUuid, staffUuid);
     }
 
     public void unfreeze(String targetUuid) {
-        UUID target = UUID.fromString(targetUuid);
-        frozenPlayers.remove(target);
-        frozenAnchors.remove(target);
-        frozenPlayerNames.remove(target);
-
-        ServerPlayerEntity player = server.getPlayerManager().getPlayer(target);
-        if (player != null) {
-            player.sendMessage(Text.literal(localeManager.getMessage("freeze.unfrozen")));
-        }
+        freezeCore.unfreeze(targetUuid);
     }
 
     public boolean isFrozen(UUID uuid) {
-        return frozenPlayers.containsKey(uuid);
+        return freezeCore.isFrozen(uuid);
     }
 
     public void onTick() {
-        if (frozenPlayers.isEmpty()) return;
-        frozenPlayers.forEach((uuid, staff) -> {
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-            if (player == null) return;
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            UUID uuid = player.getUuid();
+            if (!freezeCore.isFrozen(uuid)) continue;
 
-            FreezeAnchor anchor = frozenAnchors.get(uuid);
+            FabricFreezeOps.FreezeAnchor anchor = ops.anchor(uuid);
             if (anchor == null) {
-                frozenAnchors.put(uuid, new FreezeAnchor((ServerWorld) player.getEntityWorld(),
-                        player.getX(), player.getY(), player.getZ(), player.getYaw(), player.getPitch()));
-                frozenPlayerNames.put(uuid, player.getName().getString());
-                player.sendMessage(Text.literal(localeManager.getMessage("freeze.frozen")));
-                return;
+                ops.captureAnchor(uuid, player);
+                continue;
             }
 
-            double dx = player.getX() - anchor.x;
-            double dy = player.getY() - anchor.y;
-            double dz = player.getZ() - anchor.z;
-            boolean wrongWorld = (ServerWorld) player.getEntityWorld() != anchor.world;
+            double dx = player.getX() - anchor.getX();
+            double dy = player.getY() - anchor.getY();
+            double dz = player.getZ() - anchor.getZ();
+            boolean wrongWorld = (ServerWorld) player.getEntityWorld() != anchor.getWorld();
 
-            if (wrongWorld || dx * dx + dy * dy + dz * dz > 0.01) {
-                player.teleport(anchor.world, anchor.x, anchor.y, anchor.z,
-                        Set.of(), anchor.yaw, anchor.pitch, false);
+            if (wrongWorld || dx * dx + dy * dy + dz * dz > MAX_DRIFT_SQUARED) {
+                player.teleport(anchor.getWorld(), anchor.getX(), anchor.getY(), anchor.getZ(),
+                        Set.of(), anchor.getYaw(), anchor.getPitch(), false);
                 player.setVelocity(Vec3d.ZERO);
                 player.velocityDirty = true;
             }
-        });
+        }
     }
 
     public void onPlayerQuit(UUID uuid) {
-        if (frozenPlayers.remove(uuid) == null) return;
-        frozenAnchors.remove(uuid);
-
-        String playerName = frozenPlayerNames.remove(uuid);
-        if (bridgeClient != null) {
-            bridgeClient.sendMessage("FREEZE_LOGOUT", uuid.toString(), playerName != null ? playerName : "Unknown");
-        }
+        freezeCore.handleQuit(uuid);
     }
 }

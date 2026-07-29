@@ -11,6 +11,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 public class FabricBridgeScheduler implements BridgeScheduler {
+    private static final long TICK_MILLIS = 50L;
     private final MinecraftServer server;
     private final ScheduledExecutorService asyncExecutor;
 
@@ -24,7 +25,7 @@ public class FabricBridgeScheduler implements BridgeScheduler {
     }
 
     @Override
-    public void runSync(Runnable task) {
+    public void runOnMainThread(Runnable task) {
         server.execute(task);
     }
 
@@ -35,7 +36,7 @@ public class FabricBridgeScheduler implements BridgeScheduler {
 
     @Override
     public void runLater(Runnable task, long delayTicks) {
-        long delayMs = delayTicks * 50L;
+        long delayMs = delayTicks * TICK_MILLIS;
         asyncExecutor.schedule(() -> server.execute(task), delayMs, TimeUnit.MILLISECONDS);
     }
 
