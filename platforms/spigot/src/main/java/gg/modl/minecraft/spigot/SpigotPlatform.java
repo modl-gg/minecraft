@@ -41,11 +41,18 @@ public class SpigotPlatform implements Platform {
     private final FoliaScheduler foliaScheduler;
     private @Setter StaffAudience staffAudience;
 
-    private volatile boolean skinMethodsResolved = false;
+    private static final String TEXTURES_PROPERTY_NAME = "textures";
+    private static final String PLAYER_PROFILE_METHOD_NAME = "getPlayerProfile";
+    private static final String PROFILE_PROPERTIES_METHOD_NAME = "getProperties";
+    private static final String[] PROPERTY_NAME_ACCESSOR_CANDIDATES = {"getName", "name"};
+    private static final String[] PROPERTY_VALUE_ACCESSOR_CANDIDATES = {"getValue", "value"};
+
+    private volatile boolean profileMethodsResolved = false;
+    private volatile boolean propertyAccessorsResolved = false;
     private volatile Method getPlayerProfileMethod;
     private volatile Method getPropertiesMethod;
-    private volatile Method getNameMethod;
-    private volatile Method getValueMethod;
+    private volatile Method propertyNameMethod;
+    private volatile Method propertyValueMethod;
 
     public SpigotPlatform(JavaPlugin plugin, Logger logger, File dataFolder, String configServerName) {
         this(plugin, logger, dataFolder, configServerName, false);
@@ -240,16 +247,17 @@ public class SpigotPlatform implements Platform {
         Player player = Bukkit.getPlayer(uuid);
         if (player == null) return null;
         try {
-            if (!skinMethodsResolved) {
-                resolveSkinMethods(player);
-            }
-            if (getPlayerProfileMethod == null) return null;
+            resolveProfileMethods(player);
+            if (getPlayerProfileMethod == null || getPropertiesMethod == null) return null;
 
             Object profile = getPlayerProfileMethod.invoke(player);
             Collection<?> properties = (Collection<?>) getPropertiesMethod.invoke(profile);
-            for (Object prop : properties) {
-                String name = (String) getNameMethod.invoke(prop);
-                if ("textures".equals(name)) return (String) getValueMethod.invoke(prop);
+            for (Object property : properties) {
+                resolvePropertyAccessors(property);
+                if (propertyNameMethod == null || propertyValueMethod == null) return null;
+
+                String name = (String) propertyNameMethod.invoke(property);
+                if (TEXTURES_PROPERTY_NAME.equals(name)) return (String) propertyValueMethod.invoke(property);
             }
         } catch (ReflectiveOperationException | ClassCastException e) {
             logger.log(Level.FINE, "Failed to read native skin texture for " + uuid, e);
@@ -257,23 +265,40 @@ public class SpigotPlatform implements Platform {
         return null;
     }
 
-    private synchronized void resolveSkinMethods(Player player) {
-        if (skinMethodsResolved) return;
+    private synchronized void resolveProfileMethods(Player player) {
+        if (profileMethodsResolved) return;
         try {
-            getPlayerProfileMethod = player.getClass().getMethod("getPlayerProfile");
+            getPlayerProfileMethod = player.getClass().getMethod(PLAYER_PROFILE_METHOD_NAME);
             Object profile = getPlayerProfileMethod.invoke(player);
-            getPropertiesMethod = profile.getClass().getMethod("getProperties");
-            Collection<?> properties = (Collection<?>) getPropertiesMethod.invoke(profile);
-            for (Object prop : properties) {
-                getNameMethod = prop.getClass().getMethod("getName");
-                getValueMethod = prop.getClass().getMethod("getValue");
-                break;
-            }
+            getPropertiesMethod = profile.getClass().getMethod(PROFILE_PROPERTIES_METHOD_NAME);
         } catch (ReflectiveOperationException | ClassCastException e) {
             getPlayerProfileMethod = null;
-            logger.log(Level.FINE, "Native skin texture API unavailable on this server", e);
+            getPropertiesMethod = null;
+            logger.warning("Native skin texture API unavailable on this server version; skin caching will fall back to Mojang lookups (" + e + ")");
         }
-        skinMethodsResolved = true;
+        profileMethodsResolved = true;
+    }
+
+    private synchronized void resolvePropertyAccessors(Object property) {
+        if (propertyAccessorsResolved) return;
+        propertyNameMethod = findAccessor(property.getClass(), PROPERTY_NAME_ACCESSOR_CANDIDATES);
+        propertyValueMethod = findAccessor(property.getClass(), PROPERTY_VALUE_ACCESSOR_CANDIDATES);
+        if (propertyNameMethod == null || propertyValueMethod == null) {
+            propertyNameMethod = null;
+            propertyValueMethod = null;
+            logger.warning("Unrecognized profile property type " + property.getClass().getName() + "; skin caching will fall back to Mojang lookups");
+        }
+        propertyAccessorsResolved = true;
+    }
+
+    private static Method findAccessor(Class<?> type, String... candidateNames) {
+        for (String candidateName : candidateNames) {
+            try {
+                return type.getMethod(candidateName);
+            } catch (NoSuchMethodException ignored) {
+            }
+        }
+        return null;
     }
 
     @Override
