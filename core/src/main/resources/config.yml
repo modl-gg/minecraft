@@ -7,7 +7,7 @@ server:
   # Allow querying Mojang API for unknown players (default: false)
   query_mojang: false
 
-# Language for in-game messages. Available: en_US, de_DE, es_ES
+# Language for in-game messages. Available: en_US, de_DE, es_ES, fr_FR, hi_IN, it_IT, ja_JP, nl_NL, pt_BR, ru_RU, zh_CN
 locale: "en_US"
 
 # Staff Chat Configuration

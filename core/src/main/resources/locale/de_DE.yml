@@ -23,17 +23,55 @@ messages:
   no_chat_logs_available: "&cKeine kürzlichen Chatnachrichten von {player} gefunden. Chat-Meldung ohne Chatprotokoll nicht möglich."
   view_ticket_label: "Dein Ticket ansehen"
   complete_form_label: "Vervollständige dein {type}"
+  click_to_view: "[Klicken zum Ansehen]"
+  click_to_view_hover: "Klicke, um Ticket {ticketId} anzusehen"
   console_ticket_url: "&6{message}: &b{url}"
   claiming_ticket: "&eTicket &f{ticketId}&e wird mit deinem Konto verknüpft..."
   ticket_claimed_success: "&aTicket &f{ticketId}&a erfolgreich mit deinem Konto verknüpft!"
   ticket_claim_failed: "&cTicket konnte nicht verknüpft werden: {error}"
+  ticket_cooldown: "&cDu musst {seconds}s warten, bevor du ein weiteres Ticket dieser Art öffnen kannst."
+  report_gui_title: "&f{player} melden"
+  report_skull_chat_log:
+    - "&b{player} melden"
+    - "&7Chatprotokoll anhängen?"
+  report_skull_details:
+    - "&b{player} melden"
+    - "&7Weitere Details hinzufügen?"
+  report_skull_confirm:
+    - "&b{player} melden"
+    - "&7Meldung bestätigen?"
+  report_attach_chat: "&aChatprotokoll anhängen"
+  report_attach_chat_lore:
+    - "&7Die letzten Chatnachrichten der"
+    - "&7Zielperson als Beweis anhängen"
+  report_skip_chat: "&cChatprotokoll überspringen"
+  report_skip_chat_lore:
+    - "&7Keine Chatnachrichten anhängen"
+  report_add_details: "&aDetails hinzufügen"
+  report_add_details_lore:
+    - "&7Zusätzliche Details hinzufügen,"
+    - "&7um deine Meldung zu erläutern"
+  report_skip_details: "&cDetails überspringen"
+  report_skip_details_lore:
+    - "&7Zusätzliche Details überspringen."
+  report_confirm: "&aMeldung bestätigen"
+  report_confirm_lore:
+    - "&7Diese Meldung absenden"
+  report_cancel: "&cMeldung abbrechen"
+  report_cancel_lore:
+    - "&7Ohne Absenden abbrechen"
+  report_details_prompt: "Gib zusätzliche Details für deine Meldung gegen {player} ein:"
+  report_submitted: "&aDeine Meldung wurde erfolgreich eingereicht!"
 
 general:
+  players_only: "&cDieser Befehl kann nur von Spielern verwendet werden."
   no_permission: "&cDu hast keine Berechtigung, diesen Befehl zu verwenden."
   no_permission_punishment: "&cDu hast keine Berechtigung, '{type}'-Strafen zu verhängen."
   no_permission_reload: "&cDu hast keine Berechtigung, Strafendaten neu zu laden."
   invalid_syntax: "&cUngültige Befehlssyntax. Bitte überprüfe die Verwendung."
   gui_requires_player: "&cDieser Befehl öffnet eine GUI und kann nur von einem Spieler ausgeführt werden. Verwende &f-p &cfür Textausgabe."
+  unknown: "Unbekannt"
+  staff: "Team"
   player_not_found: "&cSpieler nicht gefunden."
   punishment_error: "&cFehler beim Erstellen der Strafe: {error}"
   punishment_types_not_loaded: "&cStrafentypen nicht geladen. Versuche &f/modl reload&c oder kontaktiere einen Administrator."
@@ -61,6 +99,14 @@ punishment_words:
   tense2_active: "ist"
   temporarily: "vorübergehend"
   permanently: "dauerhaft"
+  will_expire: "\n&7Diese {type} läuft in &f{duration}&7 ab."
+  duration_formatted: "\n&7Diese {type} läuft in {duration} ab"
+  mute_duration_formatted: " für {duration}"
+  for_duration: " für {duration}"
+  type_ban: "Sperre"
+  type_mute: "Stummschaltung"
+  type_punishment: "Strafe"
+  duration_permanent: "permanent"
 
 punishment_types:
   ordinal_0:
@@ -72,7 +118,7 @@ punishment_types:
     public_notification: "&c{target} wurde stummgeschaltet."
     player_notification:
       - ""
-      - "&cDu {tense} {temp} stummgeschaltet für {duration}"
+      - "&cDu {tense} {temp} stummgeschaltet{for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{reason}"
       - ""
@@ -107,7 +153,7 @@ punishment_types:
     public_notification: "&c{target} wurde wegen Chat-Missbrauch stummgeschaltet."
     player_notification:
       - ""
-      - "&cDu {tense} {temp} stummgeschaltet für {duration}"
+      - "&cDu {tense} {temp} stummgeschaltet{for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{player_description}"
       - ""
@@ -115,7 +161,7 @@ punishment_types:
     public_notification: "&c{target} wurde wegen unsozialem Verhalten stummgeschaltet."
     player_notification:
       - ""
-      - "&cDu {tense} stummgeschaltet für {duration}"
+      - "&cDu {tense} {temp} stummgeschaltet{for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{player_description}"
       - ""
@@ -262,7 +308,7 @@ print:
     footer: ""
   punishment_detail:
     not_found: "&cStrafe #{id} nicht gefunden."
-    header: "&6&m--------&r &eStrafe #{id} &6&m--------"
+    header: "&6&m--------&r &eStrafe &6&m--------"
     type: "&eTyp: &f{type}"
     player: "&eSpieler: &f{player}"
     issuer: "&eAusgestellt von: &f{issuer}"
@@ -276,11 +322,12 @@ print:
     footer: "&6&m--------------------------------"
   history:
     header: ""
-    entry: "&6{ordinal}. &e#{id} {date} &f{type} &evon {issuer}."
-    entry_active: "&6{ordinal}. &a#{id} &e{date} &f{type} &evon {issuer} (läuft ab in {expiry})."
-    entry_permanent: "&6{ordinal}. &a#{id} &e{date} &f{type} &evon {issuer} (läuft nie ab)."
-    entry_inactive: "&6{ordinal}. &7#{id} &e{date} &f{type} &evon {issuer} (inaktiv)."
-    entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} &evon {issuer} (begnadigt)."
+    entry_kick: "&6{ordinal}. &7#{id} &e{date} &f{type} &evon {issuer} wegen &f{reason}"
+    entry_active: "&6{ordinal}. &c#{id} &e{date} &f{type} ({duration}) &evon {issuer} wegen &f{reason} &7(läuft ab in {expiry})"
+    entry_permanent: "&6{ordinal}. &c#{id} &e{date} &f{type} (permanent) &evon {issuer} wegen &f{reason}"
+    entry_unstarted: "&6{ordinal}. &c#{id} &e{date} &f{type} ({duration}) &evon {issuer} wegen &f{reason} &7(noch nicht begonnen)"
+    entry_expired: "&6{ordinal}. &7#{id} &e{date} &f{type} ({duration}) &evon {issuer} wegen &f{reason} &7(vor {expired_ago} abgelaufen)"
+    entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} ({duration}) &evon {issuer} wegen &f{reason} &7(vor {pardoned_ago} begnadigt)"
     total: "&eSeite {page}/{total_pages} ({count} gesamt)"
     empty: "&7Spieler wurde noch nie bestraft."
     footer: ""
@@ -330,7 +377,7 @@ pardon:
   processing_id: "&7Begnadigung für Strafen-ID: &e{id}&7 wird bearbeitet..."
   processing_player: "&7Begnadigung für Spieler: &e{player}&7 wird bearbeitet..."
   success_id: "&aStrafe &e#{id}&a erfolgreich begnadigt."
-  success_player: "&a{player}s {type} erfolgreich begnadigt."
+  success_player: "&a{count} {type}(s) von {player} erfolgreich begnadigt."
   already_pardoned_id: "&7Strafe &e#{id}&7 ist bereits inaktiv oder wurde begnadigt."
   no_active_punishment: "&7{player} hat keine aktive {type} zum Begnadigen."
   error: "&cBegnadigung fehlgeschlagen: {error}"
@@ -353,12 +400,14 @@ menus:
       - "&8{uuid}"
       - "&f "
       - "&fErster Login: {first_login}"
-      - "&fOnline: {is_online} ({last_seen_or_session_time})"
+      - "&fOnline: {is_online} ({last_seen_or_session_time} auf {server})"
       - "&fSpielzeit: {playtime}"
       - "&fEchte IP protokolliert: {real_ip_logged}"
       - "&fRegion: {region} (Land: {country})"
       - "&fGebannt: {is_banned}"
       - "&fStummgeschaltet: {is_muted}"
+      - ""
+      - "&eLinksklick, um {player_name} zum Ziel zu machen"
   history_item:
     title_active: "&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
     title_inactive: "&m&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
@@ -408,7 +457,7 @@ menus:
     lore:
       - "&8{uuid}"
       - "&f "
-      - "&fOnline: {is_online} ({last_seen_or_session_time})"
+      - "&fOnline: {is_online} ({last_seen_or_session_time} auf {server})"
       - "&fEchte IP protokolliert: {real_ip}"
       - "&fErster Login: &f{first_login}"
       - "&7{punishments}"
@@ -579,10 +628,16 @@ punishments:
     mute_default: "&c{target} wurde stummgeschaltet."
     kick_default: "&c{target} wurde gekickt."
     default: "&c{target} wurde bestraft."
+  mute_fallback: "&cDu bist stummgeschaltet!"
+  player_notification:
+    ban_default: "&cDu {tense} gebannt (#{id})."
+    mute_default: "&cDu {tense} stummgeschaltet (#{id})."
+    kick_default: "&cDu wurdest gekickt (#{id})."
+    default: "&cDu {tense} bestraft (#{id})."
 
 # Hilfe-Befehl
 help:
-  header: "&a&lmodl.gg &av{version} &f- &eBefehlsliste (Seite {page}/{total_pages})"
+  header: "&a&lmodl.gg &av{version} &f- &eBefehlsliste"
   entry: "&f/{command} &7- {description}"
   footer: "&eSeite {page}/{total_pages}. Verwende &a/modl help {next_page}&e für die nächste Seite."
   no_more_pages: "&7Keine weiteren Seiten."

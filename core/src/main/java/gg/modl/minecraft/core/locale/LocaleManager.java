@@ -14,7 +14,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -30,22 +33,20 @@ public class LocaleManager {
     private static final String MISSING_MESSAGE_PREFIX = "&cMissing locale: ";
     private static final String MISSING_LIST_PREFIX = "&cMissing locale list: ";
 
-    private static final String WILL_EXPIRE_FALLBACK = "\n&7This {type} will expire in &f{duration}&7.";
-    private static final String DURATION_FORMATTED_FALLBACK = "\n&7This {type} will expire in {duration}";
-    private static final String MUTE_DURATION_FORMATTED_FALLBACK = " for {duration}";
-
-    private Map<String, Object> messages;
+    private volatile Map<String, Object> messages;
     private Map<String, Object> configValues;
     private final String currentLocale;
     private final YamlMessageResolver resolver;
+    private final Set<String> reportedMissingKeys = ConcurrentHashMap.newKeySet();
+    private Path externalLocaleFile;
     @Setter private MessageRenderer renderer;
+    @Setter private Consumer<String> missingKeyReporter;
 
     public LocaleManager(String locale) {
         this.currentLocale = locale;
-        this.messages = new HashMap<>();
         this.configValues = new HashMap<>();
         this.resolver = new YamlMessageResolver(this::colorize);
-        loadLocale(locale);
+        publishMessages(composeMessages());
     }
 
     public LocaleManager() {
@@ -56,31 +57,42 @@ public class LocaleManager {
         this.configValues = config != null ? config : new HashMap<>();
     }
 
-    private void loadLocale(String locale) {
-        String resourcePath = "/locale/" + locale + ".yml";
+    private void publishMessages(Map<String, Object> composedMessages) {
+        this.messages = composedMessages;
+        reportedMissingKeys.clear();
+    }
+
+    private Map<String, Object> composeMessages() {
+        Map<String, Object> composed = readBundledMessages();
+        Map<String, Object> overrides = readExternalMessages();
+        return overrides != null ? YamlMergeUtil.deepMerge(composed, overrides) : composed;
+    }
+
+    private Map<String, Object> readBundledMessages() {
+        String resourcePath = "/locale/" + currentLocale + ".yml";
         try (InputStream resourceStream = getClass().getResourceAsStream(resourcePath)) {
             if (resourceStream == null) throw new RuntimeException("Locale file not found: " + resourcePath);
-            Yaml yaml = new Yaml();
-            this.messages = yaml.load(resourceStream);
+            Map<String, Object> bundled = new Yaml().load(resourceStream);
+            return bundled != null ? bundled : new HashMap<String, Object>();
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to load locale: " + locale, e);
+            throw new RuntimeException("Failed to load locale: " + currentLocale, e);
+        }
+    }
+
+    private Map<String, Object> readExternalMessages() {
+        if (externalLocaleFile == null || !Files.exists(externalLocaleFile)) return null;
+        try (InputStream is = Files.newInputStream(externalLocaleFile)) {
+            return new Yaml().load(is);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load locale from file: " + externalLocaleFile, e);
         }
     }
 
     public void loadFromFile(Path localeFile) {
-        try {
-            if (Files.exists(localeFile)) {
-                try (InputStream is = Files.newInputStream(localeFile)) {
-                    Yaml yaml = new Yaml();
-                    Map<String, Object> fileMessages = yaml.load(is);
-                    if (fileMessages != null) this.messages = YamlMergeUtil.deepMerge(this.messages, fileMessages);
-                }
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load locale from file: " + localeFile, e);
-        }
+        this.externalLocaleFile = localeFile;
+        publishMessages(composeMessages());
     }
 
     public String getMessage(String path) {
@@ -90,7 +102,14 @@ public class LocaleManager {
     public String getMessage(String path, Map<String, String> placeholders) {
         Object value = resolveValue(path);
         if (value instanceof String) return resolver.render((String) value, placeholders);
-        return MISSING_MESSAGE_PREFIX + path;
+        return colorize(reportMissing(MISSING_MESSAGE_PREFIX, path));
+    }
+
+    private String reportMissing(String markerPrefix, String path) {
+        if (reportedMissingKeys.add(path) && missingKeyReporter != null) {
+            missingKeyReporter.accept("Missing locale key '" + path + "' in locale '" + currentLocale + "'");
+        }
+        return markerPrefix + path;
     }
 
     public boolean hasMessage(String path) {
@@ -119,7 +138,7 @@ public class LocaleManager {
                     .map(line -> resolver.render(line, placeholders))
                     .collect(Collectors.toList());
         }
-        return listOf(MISSING_LIST_PREFIX + path);
+        return listOf(colorize(reportMissing(MISSING_LIST_PREFIX, path)));
     }
 
     private String resolveAsJoinedLines(String path, Map<String, String> variables) {
@@ -172,7 +191,7 @@ public class LocaleManager {
         variables.put("player_description", playerDesc != null ? playerDesc : "");
 
         String issuer = punishment.getIssuerName();
-        variables.put("issuer", issuer != null ? issuer : "Staff");
+        variables.put("issuer", issuer != null ? issuer : getStaffWord());
 
         variables.put("will_expire", getWillExpireMessage(punishment));
         return getPlayerNotificationMessageWithCategory(ordinal, punishmentType, variables);
@@ -183,12 +202,24 @@ public class LocaleManager {
         return formatDate(issuedDate);
     }
 
-    private String getWillExpireMessage(SimplePunishment punishment) {
+    public String getWillExpireMessage(SimplePunishment punishment) {
         long timeLeft = remainingMillis(punishment);
         if (timeLeft <= 0) return "";
 
-        String punishmentTypeWord = punishment.isBan() ? "ban" : (punishment.isMute() ? "mute" : "punishment");
-        return formatExpiryTemplate("punishment_words.will_expire", WILL_EXPIRE_FALLBACK, punishmentTypeWord, timeLeft);
+        return formatExpiryTemplate("punishment_words.will_expire", getPunishmentTypeWord(punishment), timeLeft);
+    }
+
+    public String getForDurationSuffix(SimplePunishment punishment) {
+        long timeLeft = remainingMillis(punishment);
+        if (timeLeft <= 0) return "";
+
+        return formatExpiryTemplate("punishment_words.for_duration", null, timeLeft);
+    }
+
+    private String getPunishmentTypeWord(SimplePunishment punishment) {
+        if (punishment.isBan()) return getFragment("punishment_words.type_ban");
+        if (punishment.isMute()) return getFragment("punishment_words.type_mute");
+        return getFragment("punishment_words.type_punishment");
     }
 
     private String getPlayerNotificationMessageWithCategory(int ordinal, String category, Map<String, String> variables) {
@@ -200,17 +231,17 @@ public class LocaleManager {
     private String getDefaultPlayerNotificationByCategory(String category, Map<String, String> variables) {
         String defaultPath = getDefaultPlayerPathForCategory(category);
         String result = resolveAsJoinedLines(defaultPath, variables);
-        return result != null ? result : getMessage("punishments.player_notifications.default", variables);
+        return result != null ? result : getMessage("punishments.player_notification.default", variables);
     }
 
     private String getDefaultPlayerPathForCategory(String category) {
-        if (category == null) return "punishments.player_notifications.default";
+        if (category == null) return "punishments.player_notification.default";
 
         String upper = category.toUpperCase();
-        if ("KICK".equals(upper)) return "punishments.player_notifications.kick_default";
-        if ("MUTE".equals(upper)) return "punishments.player_notifications.mute_default";
-        if ("BAN".equals(upper)) return "punishments.player_notifications.ban_default";
-        return "punishments.player_notifications.default";
+        if ("KICK".equals(upper)) return "punishments.player_notification.kick_default";
+        if ("MUTE".equals(upper)) return "punishments.player_notification.mute_default";
+        if ("BAN".equals(upper)) return "punishments.player_notification.ban_default";
+        return "punishments.player_notification.default";
     }
 
     private String getDefaultPublicNotification(int ordinal, Map<String, String> variables) {
@@ -230,36 +261,41 @@ public class LocaleManager {
 
     private String getTenseForContext(PunishmentMessageContext context) {
         if (context == PunishmentMessageContext.SYNC || context == PunishmentMessageContext.CHAT) {
-            return getRawMessage("punishment_words.tense_active", "are");
+            return getFragment("punishment_words.tense_active");
         }
-        return getRawMessage("punishment_words.tense_default", "have been");
+        return getFragment("punishment_words.tense_default");
     }
 
     private String getTense2ForContext(PunishmentMessageContext context) {
         if (context == PunishmentMessageContext.SYNC || context == PunishmentMessageContext.CHAT) {
-            return getRawMessage("punishment_words.tense2_active", "is");
+            return getFragment("punishment_words.tense2_active");
         }
-        return getRawMessage("punishment_words.tense2_default", "has been");
+        return getFragment("punishment_words.tense2_default");
     }
 
     private String getTempTemporary() {
-        return getRawMessage("punishment_words.temporarily", "temporarily");
+        return getFragment("punishment_words.temporarily");
     }
 
     private String getTempPermanent() {
-        return getRawMessage("punishment_words.permanently", "permanently");
+        return getFragment("punishment_words.permanently");
     }
 
-    private String getRawMessage(String path, String fallback) {
+    private String getFragment(String path) {
         Object value = resolver.lookup(messages, path);
-        return value instanceof String ? (String) value : fallback;
+        if (value instanceof String) return (String) value;
+        return reportMissing(MISSING_MESSAGE_PREFIX, path);
     }
 
-    private String formatExpiryTemplate(String path, String fallback, String type, long timeLeftMillis) {
+    private String renderFragment(String path, Map<String, String> variables) {
+        return resolver.applyPlaceholders(getFragment(path), variables);
+    }
+
+    private String formatExpiryTemplate(String path, String type, long timeLeftMillis) {
         Map<String, String> variables = new HashMap<>();
         if (type != null) variables.put("type", type);
         variables.put("duration", TimeUtil.formatTimeMillis(timeLeftMillis));
-        return resolver.applyPlaceholders(getRawMessage(path, fallback), variables);
+        return renderFragment(path, variables);
     }
 
     private long remainingMillis(SimplePunishment punishment) {
@@ -272,22 +308,40 @@ public class LocaleManager {
     private String getDurationFormatted(SimplePunishment punishment, String punishmentType) {
         long timeLeft = remainingMillis(punishment);
         if (timeLeft <= 0) return "";
-        return formatExpiryTemplate("punishment_words.duration_formatted", DURATION_FORMATTED_FALLBACK, punishmentType, timeLeft);
+        return formatExpiryTemplate("punishment_words.duration_formatted", punishmentType, timeLeft);
     }
 
     private String getMuteDurationFormatted(SimplePunishment punishment) {
         long timeLeft = remainingMillis(punishment);
         if (timeLeft <= 0) return "";
-        return formatExpiryTemplate("punishment_words.mute_duration_formatted", MUTE_DURATION_FORMATTED_FALLBACK, null, timeLeft);
+        return formatExpiryTemplate("punishment_words.mute_duration_formatted", null, timeLeft);
     }
 
     private String getPunishmentTypeName(String punishmentType) {
-        if (punishmentType == null) return "punishment";
+        if (punishmentType == null) return getFragment("punishment_words.type_punishment");
+
+        String upper = punishmentType.toUpperCase();
+        if ("BAN".equals(upper)) return getFragment("punishment_words.type_ban");
+        if ("MUTE".equals(upper)) return getFragment("punishment_words.type_mute");
         return punishmentType.toLowerCase();
     }
 
+    public String getPermanentDurationWord() {
+        Object configuredOverride = resolver.lookup(configValues, "duration_format.permanent");
+        if (configuredOverride instanceof String) return resolver.render((String) configuredOverride, mapOf());
+        return getFragment("punishment_words.duration_permanent");
+    }
+
+    public String getUnknownWord() {
+        return getFragment("general.unknown");
+    }
+
+    public String getStaffWord() {
+        return getFragment("general.staff");
+    }
+
     public String formatDuration(long durationMs) {
-        if (durationMs <= 0) return getMessage("config.duration_format.permanent");
+        if (durationMs <= 0) return getPermanentDurationWord();
 
         long days = TimeUnit.MILLISECONDS.toDays(durationMs);
         long hours = TimeUnit.MILLISECONDS.toHours(durationMs) % 24;
@@ -313,7 +367,7 @@ public class LocaleManager {
     }
 
     public String formatDate(Date date) {
-        if (date == null) return "Unknown";
+        if (date == null) return getUnknownWord();
         String format = getMessage("config.date_format");
         try {
             SimpleDateFormat dateFormat = new SimpleDateFormat(format);
@@ -352,8 +406,9 @@ public class LocaleManager {
         }
 
         public PunishmentMessageBuilder duration(long durationMs) {
-            variables.put("duration", localeManager.formatDuration(durationMs));
-            variables.put("for_duration", "for " +localeManager.formatDuration(durationMs));
+            String formattedDuration = localeManager.formatDuration(durationMs);
+            variables.put("duration", formattedDuration);
+            variables.put("for_duration", localeManager.renderFragment("punishment_words.for_duration", mapOf("duration", formattedDuration)));
             return this;
         }
 
@@ -368,7 +423,7 @@ public class LocaleManager {
     }
 
     public void reloadLocale() {
-        loadLocale(currentLocale);
+        publishMessages(composeMessages());
     }
 
     public String sanitizeErrorMessage(String errorMessage) {

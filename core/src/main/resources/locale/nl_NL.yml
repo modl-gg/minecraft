@@ -23,17 +23,52 @@ messages:
   no_chat_logs_available: "&cGeen recente chatberichten gevonden voor {player}. Kan geen chatrapport aanmaken zonder chatlogboek."
   view_ticket_label: "Bekijk je ticket"
   complete_form_label: "Vul je {type} in"
+  click_to_view: "[Klik om te bekijken]"
+  click_to_view_hover: "Klik om ticket {ticketId} te bekijken"
   console_ticket_url: "&6{message}: &b{url}"
   claiming_ticket: "&eTicket &f{ticketId}&e wordt aan je account gekoppeld..."
   ticket_claimed_success: "&aTicket &f{ticketId}&a is succesvol aan je account gekoppeld!"
   ticket_claim_failed: "&cKon ticket niet koppelen: {error}"
-  ticket_cooldown: "&cJe moet wachten voordat je nog een ticket van dit type kunt openen."
+  ticket_cooldown: "&cJe moet {seconds}s wachten voordat je nog een ticket van dit type kunt openen."
+  report_gui_title: "&f{player} rapporteren"
+  report_skull_chat_log:
+    - "&b{player} rapporteren"
+    - "&7Chatlogboek toevoegen?"
+  report_skull_details:
+    - "&b{player} rapporteren"
+    - "&7Meer details toevoegen?"
+  report_skull_confirm:
+    - "&b{player} rapporteren"
+    - "&7Rapport bevestigen?"
+  report_attach_chat: "&aChatlogboek toevoegen"
+  report_attach_chat_lore:
+    - "&7Voeg de recente chatberichten"
+    - "&7van de speler toe als bewijs"
+  report_skip_chat: "&cChatlogboek overslaan"
+  report_skip_chat_lore:
+    - "&7Geen chatberichten toevoegen"
+  report_add_details: "&aDetails toevoegen"
+  report_add_details_lore:
+    - "&7Voeg aanvullende details toe"
+    - "&7om je rapport toe te lichten"
+  report_skip_details: "&cDetails overslaan"
+  report_skip_details_lore:
+    - "&7Aanvullende details overslaan."
+  report_confirm: "&aRapport bevestigen"
+  report_confirm_lore:
+    - "&7Dien dit rapport in"
+  report_cancel: "&cRapport annuleren"
+  report_cancel_lore:
+    - "&7Annuleren zonder in te dienen"
+  report_details_prompt: "Voer aanvullende details in voor je rapport tegen {player}:"
+  report_submitted: "&aJe rapport is succesvol ingediend!"
 
 # Strafsysteem Berichten
 # Beschikbare variabelen: {player}, {target}, {reason}, {duration}, {type}, {id}, {issuer}, {punishment_type}, {expiration}, {server}
 # Algemene strafberichten
 general:
   # Toestemmingsberichten
+  players_only: "&cDit commando kan alleen door spelers worden gebruikt."
   no_permission: "&cJe hebt geen toestemming om dit commando te gebruiken."
   no_permission_punishment: "&cJe hebt geen toestemming om '{type}'-straffen toe te passen."
   no_permission_reload: "&cJe hebt geen toestemming om strafgegevens te herladen."
@@ -41,6 +76,8 @@ general:
   gui_requires_player: "&cDit commando opent een GUI en kan alleen door een speler worden uitgevoerd. Gebruik &f-p &cvoor tekstuitvoer."
 
   # Foutmeldingen
+  unknown: "Onbekend"
+  staff: "Personeel"
   player_not_found: "&cSpeler niet gevonden."
   punishment_error: "&cFout bij het aanmaken van straf: {error}"
   punishment_types_not_loaded: "&cStraftypes niet geladen. Probeer &f/modl reload&c of neem contact op met een beheerder."
@@ -96,6 +133,15 @@ punishment_words:
   tense2_active: "is"
   temporarily: "tijdelijk"
   permanently: "permanent"
+  will_expire: "\n&7Deze {type} verloopt over &f{duration}&7."
+  duration_formatted: "\n&7Deze {type} verloopt over {duration}"
+  mute_duration_formatted: " voor {duration}"
+  for_duration: " voor {duration}"
+  type_ban: "ban"
+  type_mute: "mute"
+  type_punishment: "straf"
+  # Getoond in de {duration}-plaatshouder bij permanente straffen; config.yml locale_config.duration_format.permanent overschrijft dit indien ingesteld
+  duration_permanent: "permanent"
 
 punishment_types:
   ordinal_0: # Kick
@@ -108,7 +154,7 @@ punishment_types:
     public_notification: "&c{target} is gedempt."
     player_notification:
       - ""
-      - "&cJe {tense} {temp} gedempt voor {duration}"
+      - "&cJe {tense} {temp} gedempt{for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{reason}"
       - ""
@@ -149,7 +195,7 @@ punishment_types:
     public_notification: "&c{target} is gedempt wegens chatmisbruik."
     player_notification:
       - ""
-      - "&cJe {tense} {temp} gedempt voor {duration}"
+      - "&cJe {tense} {temp} gedempt{for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{player_description}"
       - ""
@@ -157,7 +203,7 @@ punishment_types:
     public_notification: "&c{target} is gedempt wegens antisociaal gedrag."
     player_notification:
       - ""
-      - "&cJe {tense} gedempt voor {duration}"
+      - "&cJe {tense} {temp} gedempt{for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{player_description}"
       - ""
@@ -339,11 +385,12 @@ print:
   # /history <speler> -p
   history:
     header: ""
-    entry: "&6{ordinal}. &e#{id} {date} &f{type} &edoor {issuer}."
-    entry_active: "&6{ordinal}. &a#{id} &e{date} &f{type} &edoor {issuer} (verloopt over {expiry})."
-    entry_permanent: "&6{ordinal}. &a#{id} &e{date} &f{type} &edoor {issuer} (verloopt nooit)."
-    entry_inactive: "&6{ordinal}. &7#{id} &e{date} &f{type} &edoor {issuer} (inactief)."
-    entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} &edoor {issuer} (kwijtgescholden)."
+    entry_kick: "&6{ordinal}. &7#{id} &e{date} &f{type} &edoor {issuer} wegens &f{reason}"
+    entry_active: "&6{ordinal}. &c#{id} &e{date} &f{type} ({duration}) &edoor {issuer} wegens &f{reason} &7(verloopt over {expiry})"
+    entry_permanent: "&6{ordinal}. &c#{id} &e{date} &f{type} (permanent) &edoor {issuer} wegens &f{reason}"
+    entry_unstarted: "&6{ordinal}. &c#{id} &e{date} &f{type} ({duration}) &edoor {issuer} wegens &f{reason} &7(nog niet gestart)"
+    entry_expired: "&6{ordinal}. &7#{id} &e{date} &f{type} ({duration}) &edoor {issuer} wegens &f{reason} &7({expired_ago} geleden verlopen)"
+    entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} ({duration}) &edoor {issuer} wegens &f{reason} &7({pardoned_ago} geleden kwijtgescholden)"
     total: "&ePagina {page}/{total_pages} ({count} totaal)"
     empty: "&7Speler is nooit bestraft."
     footer: ""
@@ -402,7 +449,7 @@ pardon:
   processing_id: "&7Pardon wordt verwerkt voor straf-ID: &e{id}&7..."
   processing_player: "&7Pardon wordt verwerkt voor speler: &e{player}&7..."
   success_id: "&aStraf &e#{id}&a succesvol kwijtgescholden."
-  success_player: "&a{player}'s {type} succesvol kwijtgescholden."
+  success_player: "&a{count} {type}(s) van {player} succesvol kwijtgescholden."
   already_pardoned_id: "&7Straf &e#{id}&7 is al inactief of kwijtgescholden."
   no_active_punishment: "&7{player} heeft geen actieve {type} om kwijt te schelden."
   error: "&cKwijtschelding mislukt: {error}"
@@ -436,6 +483,8 @@ menus:
       - "&fRegio: {region} (Land: {country})"
       - "&fVerbannen: {is_banned}"
       - "&fGedempt: {is_muted}"
+      - ""
+      - "&eLinksklik om op {player_name} te richten"
 
   # Strafgeschiedenis items
   history_item:
@@ -493,7 +542,7 @@ menus:
     lore:
       - "&8{uuid}"
       - "&f "
-      - "&fOnline: {is_online} ({last_seen_or_session_time})"
+      - "&fOnline: {is_online} ({last_seen_or_session_time} op {server})"
       - "&fEcht IP gelogd: {real_ip}"
       - "&fEerste login: &f{first_login}"
       - "&7{punishments}"
@@ -671,10 +720,16 @@ punishments:
     mute_default: "&c{target} is gedempt."
     kick_default: "&c{target} is van de server gekickt."
     default: "&c{target} is bestraft."
+  mute_fallback: "&cJe bent gedempt!"
+  player_notification:
+    ban_default: "&cJe {tense} verbannen (#{id})."
+    mute_default: "&cJe {tense} gedempt (#{id})."
+    kick_default: "&cJe bent gekickt (#{id})."
+    default: "&cJe {tense} bestraft (#{id})."
 
 # Help Commando
 help:
-  header: "&a&lmodl.gg &av{version} &f- &eCommandolijst (Pagina {page}/{total_pages})"
+  header: "&a&lmodl.gg &av{version} &f- &eCommandolijst"
   entry: "&f/{command} &7- {description}"
   footer: "&ePagina {page}/{total_pages}. Gebruik &a/modl help {next_page}&e voor de volgende pagina."
   no_more_pages: "&7Geen verdere pagina's."

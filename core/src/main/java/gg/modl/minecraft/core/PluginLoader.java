@@ -181,6 +181,7 @@ public class PluginLoader {
         String configuredLocale = PluginConfiguration.readLocaleFromConfig(configYml);
 
         this.localeManager = new LocaleManager(configuredLocale);
+        this.localeManager.setMissingKeyReporter(logger::warning);
         Path localeFile = dataDirectory.resolve("locale").resolve(configuredLocale + ".yml");
         if (Files.exists(localeFile)) {
             if (httpManager.isDebugHttp()) logger.info("Loading locale from external file: " + localeFile);

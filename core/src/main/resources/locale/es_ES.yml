@@ -23,17 +23,55 @@ messages:
   no_chat_logs_available: "&cNo se encontraron mensajes recientes de {player}. No se puede crear un reporte de chat sin registros de chat."
   view_ticket_label: "Ver tu ticket"
   complete_form_label: "Completa tu {type}"
+  click_to_view: "[Clic para ver]"
+  click_to_view_hover: "Clic para ver el ticket {ticketId}"
   console_ticket_url: "&6{message}: &b{url}"
   claiming_ticket: "&eVinculando ticket &f{ticketId}&e a tu cuenta..."
   ticket_claimed_success: "&a¡Ticket &f{ticketId}&a vinculado exitosamente a tu cuenta!"
   ticket_claim_failed: "&cError al vincular ticket: {error}"
+  ticket_cooldown: "&cDebes esperar {seconds}s antes de abrir otro ticket de este tipo."
+  report_gui_title: "&fReportar a {player}"
+  report_skull_chat_log:
+    - "&bReportar a {player}"
+    - "&7¿Adjuntar registros de chat?"
+  report_skull_details:
+    - "&bReportar a {player}"
+    - "&7¿Añadir más detalles?"
+  report_skull_confirm:
+    - "&bReportar a {player}"
+    - "&7¿Confirmar el reporte?"
+  report_attach_chat: "&aAdjuntar Registro de Chat"
+  report_attach_chat_lore:
+    - "&7Incluir los mensajes de chat"
+    - "&7recientes del jugador como evidencia"
+  report_skip_chat: "&cOmitir Registro de Chat"
+  report_skip_chat_lore:
+    - "&7No incluir mensajes de chat"
+  report_add_details: "&aAñadir Detalles"
+  report_add_details_lore:
+    - "&7Añadir detalles adicionales"
+    - "&7para explicar tu reporte"
+  report_skip_details: "&cOmitir Detalles"
+  report_skip_details_lore:
+    - "&7Omitir detalles adicionales."
+  report_confirm: "&aConfirmar Reporte"
+  report_confirm_lore:
+    - "&7Enviar este reporte"
+  report_cancel: "&cCancelar Reporte"
+  report_cancel_lore:
+    - "&7Cancelar sin enviar"
+  report_details_prompt: "Ingresa detalles adicionales para tu reporte contra {player}:"
+  report_submitted: "&a¡Tu reporte ha sido enviado exitosamente!"
 
 general:
+  players_only: "&cEste comando solo puede ser usado por jugadores."
   no_permission: "&cNo tienes permiso para usar este comando."
   no_permission_punishment: "&cNo tienes permiso para aplicar sanciones de tipo '{type}'."
   no_permission_reload: "&cNo tienes permiso para recargar los datos de sanciones."
   invalid_syntax: "&cSintaxis de comando inválida. Por favor verifica el uso."
   gui_requires_player: "&cEste comando abre una interfaz y solo puede ser ejecutado por un jugador. Usa &f-p &cpara salida de texto."
+  unknown: "Desconocido"
+  staff: "Staff"
   player_not_found: "&cJugador no encontrado."
   punishment_error: "&cError al crear la sanción: {error}"
   punishment_types_not_loaded: "&cTipos de sanción no cargados. Intenta &f/modl reload&c o contacta a un administrador."
@@ -61,6 +99,14 @@ punishment_words:
   tense2_active: "está"
   temporarily: "temporalmente"
   permanently: "permanentemente"
+  will_expire: "\n&7Tu {type} expirará en &f{duration}&7."
+  duration_formatted: "\n&7Tu {type} expirará en {duration}"
+  mute_duration_formatted: " por {duration}"
+  for_duration: " por {duration}"
+  type_ban: "baneo"
+  type_mute: "silenciamiento"
+  type_punishment: "sanción"
+  duration_permanent: "permanente"
 
 punishment_types:
   ordinal_0:
@@ -72,7 +118,7 @@ punishment_types:
     public_notification: "&c{target} ha sido silenciado."
     player_notification:
       - ""
-      - "&c{tense} {temp} silenciado por {duration}"
+      - "&c{tense} {temp} silenciado{for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{reason}"
       - ""
@@ -107,7 +153,7 @@ punishment_types:
     public_notification: "&c{target} ha sido silenciado por abuso de chat."
     player_notification:
       - ""
-      - "&c{tense} {temp} silenciado por {duration}"
+      - "&c{tense} {temp} silenciado{for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{player_description}"
       - ""
@@ -115,7 +161,7 @@ punishment_types:
     public_notification: "&c{target} ha sido silenciado por comportamiento antisocial."
     player_notification:
       - ""
-      - "&c{tense} silenciado por {duration}"
+      - "&c{tense} {temp} silenciado{for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{player_description}"
       - ""
@@ -262,7 +308,7 @@ print:
     footer: ""
   punishment_detail:
     not_found: "&cSanción #{id} no encontrada."
-    header: "&6&m--------&r &eSanción #{id} &6&m--------"
+    header: "&6&m--------&r &eSanción &6&m--------"
     type: "&eTipo: &f{type}"
     player: "&eJugador: &f{player}"
     issuer: "&eEmitida por: &f{issuer}"
@@ -276,11 +322,12 @@ print:
     footer: "&6&m--------------------------------"
   history:
     header: ""
-    entry: "&6{ordinal}. &e#{id} {date} &f{type} &epor {issuer}."
-    entry_active: "&6{ordinal}. &a#{id} &e{date} &f{type} &epor {issuer} (expira en {expiry})."
-    entry_permanent: "&6{ordinal}. &a#{id} &e{date} &f{type} &epor {issuer} (nunca expira)."
-    entry_inactive: "&6{ordinal}. &7#{id} &e{date} &f{type} &epor {issuer} (inactiva)."
-    entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} &epor {issuer} (perdonada)."
+    entry_kick: "&6{ordinal}. &7#{id} &e{date} &f{type} &epor {issuer}, razón: &f{reason}"
+    entry_active: "&6{ordinal}. &c#{id} &e{date} &f{type} ({duration}) &epor {issuer}, razón: &f{reason} &7(expira en {expiry})"
+    entry_permanent: "&6{ordinal}. &c#{id} &e{date} &f{type} (permanente) &epor {issuer}, razón: &f{reason}"
+    entry_unstarted: "&6{ordinal}. &c#{id} &e{date} &f{type} ({duration}) &epor {issuer}, razón: &f{reason} &7(aún no ha comenzado)"
+    entry_expired: "&6{ordinal}. &7#{id} &e{date} &f{type} ({duration}) &epor {issuer}, razón: &f{reason} &7(expiró hace {expired_ago})"
+    entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} ({duration}) &epor {issuer}, razón: &f{reason} &7(perdonada hace {pardoned_ago})"
     total: "&ePágina {page}/{total_pages} ({count} total)"
     empty: "&7El jugador nunca ha sido sancionado."
     footer: ""
@@ -330,7 +377,7 @@ pardon:
   processing_id: "&7Procesando perdón para la sanción ID: &e{id}&7..."
   processing_player: "&7Procesando perdón para el jugador: &e{player}&7..."
   success_id: "&aSanción &e#{id}&a perdonada exitosamente."
-  success_player: "&aSanción de tipo {type} de {player} perdonada exitosamente."
+  success_player: "&a{count} sanción(es) de tipo {type} de {player} perdonada(s) exitosamente."
   already_pardoned_id: "&7La sanción &e#{id}&7 ya está inactiva o ha sido perdonada."
   no_active_punishment: "&7{player} no tiene una sanción activa de tipo {type} para perdonar."
   error: "&cError al perdonar: {error}"
@@ -353,12 +400,14 @@ menus:
       - "&8{uuid}"
       - "&f "
       - "&fPrimer Inicio de Sesión: {first_login}"
-      - "&fEn Línea: {is_online} ({last_seen_or_session_time})"
+      - "&fEn Línea: {is_online} ({last_seen_or_session_time} en {server})"
       - "&fTiempo de Juego: {playtime}"
       - "&fIP Real Registrada: {real_ip_logged}"
       - "&fRegión: {region} (País: {country})"
       - "&fBaneado: {is_banned}"
       - "&fSilenciado: {is_muted}"
+      - ""
+      - "&eClic izquierdo para apuntar a {player_name}"
   history_item:
     title_active: "&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
     title_inactive: "&m&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
@@ -408,7 +457,7 @@ menus:
     lore:
       - "&8{uuid}"
       - "&f "
-      - "&fEn Línea: {is_online} ({last_seen_or_session_time})"
+      - "&fEn Línea: {is_online} ({last_seen_or_session_time} en {server})"
       - "&fIP Real registrada: {real_ip}"
       - "&fPrimer Inicio de Sesión: &f{first_login}"
       - "&7{punishments}"
@@ -579,10 +628,16 @@ punishments:
     mute_default: "&c{target} ha sido silenciado."
     kick_default: "&c{target} ha sido expulsado."
     default: "&c{target} ha sido sancionado."
+  mute_fallback: "&c¡Estás silenciado!"
+  player_notification:
+    ban_default: "&c{tense} baneado (#{id})."
+    mute_default: "&c{tense} silenciado (#{id})."
+    kick_default: "&cHas sido expulsado (#{id})."
+    default: "&c{tense} sancionado (#{id})."
 
 # Comando de Ayuda
 help:
-  header: "&a&lmodl.gg &av{version} &f- &eLista de Comandos (Página {page}/{total_pages})"
+  header: "&a&lmodl.gg &av{version} &f- &eLista de Comandos"
   entry: "&f/{command} &7- {description}"
   footer: "&ePágina {page}/{total_pages}. Usa &a/modl help {next_page}&e para la siguiente página."
   no_more_pages: "&7No hay más páginas."
