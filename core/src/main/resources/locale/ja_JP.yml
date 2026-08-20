@@ -74,6 +74,7 @@ general:
   no_permission_reload: "&c処罰データを再読み込みする権限がありません。"
   invalid_syntax: "&cコマンドの構文が正しくありません。使い方をご確認ください。"
   gui_requires_player: "&cこのコマンドはGUIを開くため、プレイヤーのみ実行できます。テキスト出力には&f-p&cを使用してください。"
+  gui_unavailable: "&cこのプロキシではGUIメニューを利用できません。"
 
   # Error messages
   unknown: "不明"
@@ -841,6 +842,9 @@ freeze:
   logout_notification: "&c&l{player}がフリーズ中に切断しました！"
   frozen_chat: "&b[FROZEN] &e{player}&f: {message}"
   command_blocked: "&cフリーズ中はコマンドを使用できません。"
+  target_offline: "&c{player}はこのサーバーにオンラインではないため、フリーズできません。"
+  unavailable: "&c{player}をフリーズできませんでした: 適用できるサーバーが接続されていません。"
+  unfreeze_not_propagated: "&e{player}を解放しましたが、ゲーム内のフリーズを解除できるサーバーが接続されていませんでした。"
 
 # Intercept Chat
 intercept_chat:

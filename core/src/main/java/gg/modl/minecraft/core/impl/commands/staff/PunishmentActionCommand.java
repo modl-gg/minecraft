@@ -38,6 +38,10 @@ public class PunishmentActionCommand {
         }
 
         if ("modify".equals(action)) {
+            if (!platform.areMenusAvailable()) {
+                actor.reply(localeManager.getMessage("general.gui_unavailable"));
+                return;
+            }
             openModifyMenu(actor, punishmentId);
         } else if ("link-evidence".equals(action)) {
             promptLinkEvidence(actor, punishmentId);

@@ -4,24 +4,29 @@ import gg.modl.minecraft.bridge.BridgeScheduler;
 import gg.modl.minecraft.bridge.BridgeTask;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerPortalEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.Vector;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
-import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -29,66 +34,174 @@ import static org.mockito.Mockito.when;
 
 class FreezeHandlerTest {
 
-    @Test
-    void frozenAsyncChatBroadcastRunsThroughScheduler() {
-        JavaPlugin plugin = mock(JavaPlugin.class);
-        BridgeLocaleManager localeManager = mock(BridgeLocaleManager.class);
-        RecordingScheduler scheduler = new RecordingScheduler();
-        FreezeHandler freezeHandler = new FreezeHandler(plugin, localeManager, scheduler);
-        StaffModeHandler staffModeHandler = mock(StaffModeHandler.class);
-        Player frozenPlayer = mock(Player.class);
-        Player staffPlayer = mock(Player.class);
-        UUID frozenUuid = UUID.randomUUID();
-        UUID staffUuid = UUID.randomUUID();
-        AtomicBoolean scheduledTaskRunning = new AtomicBoolean(false);
+    private final InlineScheduler scheduler = new InlineScheduler();
+    private final World world = mock(World.class);
+    private final UUID worldId = UUID.randomUUID();
+    private final UUID frozenUuid = UUID.randomUUID();
+    private final Player frozenPlayer = mock(Player.class);
+    private final FreezeHandler freezeHandler =
+            new FreezeHandler(mock(JavaPlugin.class), mock(BridgeLocaleManager.class), scheduler);
 
+    FreezeHandlerTest() {
+        when(world.getUID()).thenReturn(worldId);
         when(frozenPlayer.getUniqueId()).thenReturn(frozenUuid);
-        when(frozenPlayer.getName()).thenReturn("Frozen");
-        when(staffPlayer.getUniqueId()).thenReturn(staffUuid);
-        when(staffModeHandler.isInStaffMode(staffUuid)).thenReturn(true);
-        when(localeManager.getMessage(eq("freeze.chat"), anyMap())).thenReturn("Frozen: hello");
+    }
 
-        freezeHandler.setStaffModeHandler(staffModeHandler);
-        freezeHandler.freeze(frozenUuid.toString(), staffUuid.toString());
+    private void freezeAndAnchorAt(double x, double y, double z) {
+        scheduler.running = false;
+        freezeHandler.freeze(frozenUuid.toString(), UUID.randomUUID().toString());
+        scheduler.running = true;
+        PlayerMoveEvent anchoring = moveEvent(new Location(world, x, y, z), new Location(world, x, y, z));
+        freezeHandler.onMove(anchoring);
+    }
 
-        AsyncPlayerChatEvent event = mock(AsyncPlayerChatEvent.class);
+    private PlayerMoveEvent moveEvent(Location from, Location to) {
+        PlayerMoveEvent event = mock(PlayerMoveEvent.class);
         when(event.getPlayer()).thenReturn(frozenPlayer);
-        when(event.getMessage()).thenReturn("hello");
+        when(event.getFrom()).thenReturn(from);
+        when(event.getTo()).thenReturn(to);
+        return event;
+    }
+
+    @Test
+    void frozenPlayerIsPinnedBackToTheAnchor() {
+        freezeAndAnchorAt(10, 64, 10);
+
+        PlayerMoveEvent running = moveEvent(new Location(world, 10, 64, 10), new Location(world, 15, 64, 10, 90f, 20f));
+        freezeHandler.onMove(running);
+
+        ArgumentCaptor<Location> pinned = ArgumentCaptor.forClass(Location.class);
+        verify(running).setTo(pinned.capture());
+        assertEquals(10.0, pinned.getValue().getX());
+        assertEquals(10.0, pinned.getValue().getZ());
+        assertEquals(90f, pinned.getValue().getYaw());
+        assertEquals(20f, pinned.getValue().getPitch());
+    }
+
+    @Test
+    void frozenPlayerIsNotPinnedWhileStillAtTheAnchor() {
+        freezeAndAnchorAt(10, 64, 10);
+
+        PlayerMoveEvent lookingAround = moveEvent(new Location(world, 10, 64, 10), new Location(world, 10, 64, 10, 45f, 0f));
+        freezeHandler.onMove(lookingAround);
+
+        verify(lookingAround, never()).setTo(any(Location.class));
+    }
+
+    @Test
+    void crossWorldMovementTeleportsThePlayerBackToTheAnchor() {
+        freezeAndAnchorAt(10, 64, 10);
+
+        World nether = mock(World.class);
+        when(nether.getUID()).thenReturn(UUID.randomUUID());
+        when(frozenPlayer.getLocation()).thenReturn(new Location(nether, 1, 64, 1));
+        PlayerMoveEvent inNether = moveEvent(new Location(nether, 1, 64, 1), new Location(nether, 2, 64, 1));
 
         try (MockedStatic<Bukkit> bukkit = org.mockito.Mockito.mockStatic(Bukkit.class)) {
-            bukkit.when(Bukkit::getOnlinePlayers).thenAnswer(invocation -> {
-                assertTrue(scheduledTaskRunning.get(), "online players must be collected from the scheduled task");
-                return Collections.singletonList(staffPlayer);
-            });
+            bukkit.when(() -> Bukkit.getWorld(worldId)).thenReturn(world);
             bukkit.when(() -> Bukkit.getPlayer(frozenUuid)).thenReturn(frozenPlayer);
-            bukkit.when(() -> Bukkit.getPlayer(staffUuid)).thenReturn(staffPlayer);
-
-            freezeHandler.onChat(event);
-
-            verify(event).setCancelled(true);
-            verify(frozenPlayer, never()).sendMessage("Frozen: hello");
-            verify(staffPlayer, never()).sendMessage("Frozen: hello");
-            assertEquals(1, scheduler.syncRuns);
-
-            scheduledTaskRunning.set(true);
-            scheduler.syncTask.run();
+            freezeHandler.onMove(inNether);
         }
 
-        verify(frozenPlayer).sendMessage("Frozen: hello");
-        verify(staffPlayer).sendMessage("Frozen: hello");
+        verify(inNether, never()).setTo(any(Location.class));
+
+        ArgumentCaptor<Location> destination = ArgumentCaptor.forClass(Location.class);
+        verify(frozenPlayer).teleport(destination.capture());
+        assertEquals(world, destination.getValue().getWorld());
+        assertEquals(10.0, destination.getValue().getX());
+        assertEquals(10.0, destination.getValue().getZ());
+        verify(frozenPlayer).setVelocity(new Vector(0, 0, 0));
+    }
+
+    @Test
+    void freezingCapturesTheAnchorAndDismountsThePlayer() {
+        when(frozenPlayer.getLocation()).thenReturn(new Location(world, 3, 65, 7));
+
+        try (MockedStatic<Bukkit> bukkit = org.mockito.Mockito.mockStatic(Bukkit.class)) {
+            bukkit.when(() -> Bukkit.getPlayer(frozenUuid)).thenReturn(frozenPlayer);
+            freezeHandler.freeze(frozenUuid.toString(), UUID.randomUUID().toString());
+        }
+
+        verify(frozenPlayer).leaveVehicle();
+        verify(frozenPlayer).setVelocity(new Vector(0, 0, 0));
+
+        PlayerMoveEvent running = moveEvent(new Location(world, 3, 65, 7), new Location(world, 9, 65, 7));
+        freezeHandler.onMove(running);
+
+        ArgumentCaptor<Location> pinned = ArgumentCaptor.forClass(Location.class);
+        verify(running).setTo(pinned.capture());
+        assertEquals(3.0, pinned.getValue().getX());
+        assertEquals(7.0, pinned.getValue().getZ());
+    }
+
+    @Test
+    void frozenPlayerCannotTeleportAwayFromTheAnchor() {
+        freezeAndAnchorAt(10, 64, 10);
+
+        PlayerTeleportEvent event = mock(PlayerTeleportEvent.class);
+        when(event.getPlayer()).thenReturn(frozenPlayer);
+        when(event.getTo()).thenReturn(new Location(world, 500, 70, 500));
+
+        freezeHandler.onTeleport(event);
+
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void teleportBackOntoTheAnchorIsAllowed() {
+        freezeAndAnchorAt(10, 64, 10);
+
+        PlayerTeleportEvent event = mock(PlayerTeleportEvent.class);
+        when(event.getPlayer()).thenReturn(frozenPlayer);
+        when(event.getTo()).thenReturn(new Location(world, 10, 64, 10, 12f, 3f));
+
+        freezeHandler.onTeleport(event);
+
+        verify(event, never()).setCancelled(true);
+    }
+
+    @Test
+    void frozenPlayerCannotUsePortals() {
+        freezeAndAnchorAt(10, 64, 10);
+
+        PlayerPortalEvent event = mock(PlayerPortalEvent.class);
+        when(event.getPlayer()).thenReturn(frozenPlayer);
+
+        freezeHandler.onPortal(event);
+
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void respawningMovesTheAnchorToTheRespawnPoint() {
+        freezeAndAnchorAt(10, 64, 10);
+
+        PlayerRespawnEvent respawn = mock(PlayerRespawnEvent.class);
+        when(respawn.getPlayer()).thenReturn(frozenPlayer);
+        when(respawn.getRespawnLocation()).thenReturn(new Location(world, 0, 70, 0));
+        freezeHandler.onRespawn(respawn);
+
+        PlayerMoveEvent atSpawn = moveEvent(new Location(world, 0, 70, 0), new Location(world, 0, 70, 0));
+        freezeHandler.onMove(atSpawn);
+
+        verify(atSpawn, never()).setTo(any(Location.class));
+    }
+
+    @Test
+    void frozenPlayerCannotBoardAVehicle() {
+        freezeAndAnchorAt(10, 64, 10);
+
+        VehicleEnterEvent event = mock(VehicleEnterEvent.class);
+        when(event.getEntered()).thenReturn(frozenPlayer);
+
+        freezeHandler.onVehicleEnter(event);
+
+        verify(event).setCancelled(true);
     }
 
     @Test
     void frozenPlayerCannotDropClickOrInteract() {
-        JavaPlugin plugin = mock(JavaPlugin.class);
-        BridgeLocaleManager localeManager = mock(BridgeLocaleManager.class);
-        RecordingScheduler scheduler = new RecordingScheduler();
-        FreezeHandler freezeHandler = new FreezeHandler(plugin, localeManager, scheduler);
-
-        Player frozenPlayer = mock(Player.class);
-        UUID frozenUuid = UUID.randomUUID();
-        when(frozenPlayer.getUniqueId()).thenReturn(frozenUuid);
-        freezeHandler.freeze(frozenUuid.toString(), UUID.randomUUID().toString());
+        freezeAndAnchorAt(10, 64, 10);
 
         PlayerDropItemEvent dropEvent = mock(PlayerDropItemEvent.class);
         when(dropEvent.getPlayer()).thenReturn(frozenPlayer);
@@ -104,15 +217,15 @@ class FreezeHandlerTest {
         when(interactEvent.getPlayer()).thenReturn(frozenPlayer);
         freezeHandler.onInteract(interactEvent);
         verify(interactEvent).setCancelled(true);
+
+        PlayerInteractEntityEvent interactEntityEvent = mock(PlayerInteractEntityEvent.class);
+        when(interactEntityEvent.getPlayer()).thenReturn(frozenPlayer);
+        freezeHandler.onInteractEntity(interactEntityEvent);
+        verify(interactEntityEvent).setCancelled(true);
     }
 
     @Test
     void unfrozenPlayerDropClickAndInteractNotCancelled() {
-        JavaPlugin plugin = mock(JavaPlugin.class);
-        BridgeLocaleManager localeManager = mock(BridgeLocaleManager.class);
-        RecordingScheduler scheduler = new RecordingScheduler();
-        FreezeHandler freezeHandler = new FreezeHandler(plugin, localeManager, scheduler);
-
         Player player = mock(Player.class);
         when(player.getUniqueId()).thenReturn(UUID.randomUUID());
 
@@ -132,21 +245,17 @@ class FreezeHandlerTest {
         verify(interactEvent, never()).setCancelled(true);
     }
 
-    private static class RecordingScheduler implements BridgeScheduler {
-        private Runnable syncTask;
-        private int syncRuns;
+    private static class InlineScheduler implements BridgeScheduler {
+        private boolean running = true;
 
         @Override
         public void runOnMainThread(Runnable task) {
-            syncRuns++;
-            syncTask = task;
+            if (running) task.run();
         }
 
         @Override
         public void runForPlayer(UUID playerUuid, Runnable task) {
-            if (syncTask != null) {
-                task.run();
-            }
+            if (running) task.run();
         }
 
         @Override

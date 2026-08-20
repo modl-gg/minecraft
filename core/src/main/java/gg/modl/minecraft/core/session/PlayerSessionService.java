@@ -13,6 +13,7 @@ import gg.modl.minecraft.core.cache.LoginCache;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.service.BridgeService;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.service.FreezeService;
 import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.service.Staff2faService;
 import gg.modl.minecraft.core.service.StaffModeService;
@@ -33,13 +34,14 @@ public final class PlayerSessionService {
     private final LoginCache loginCache;
     private final ChatMessageCache chatMessageCache;
     private final BridgeService bridgeService;
+    private final FreezeService freezeService;
     private final CachedProfileRegistry registry;
 
     public PlayerSessionService(Platform platform, Cache cache, LocaleManager localeManager,
                                 Staff2faService staff2faService, SyncService syncService,
                                 HttpClientHolder httpClientHolder, LoginCache loginCache,
                                 ChatMessageCache chatMessageCache, BridgeService bridgeService,
-                                CachedProfileRegistry registry) {
+                                FreezeService freezeService, CachedProfileRegistry registry) {
         this.platform = platform;
         this.cache = cache;
         this.localeManager = localeManager;
@@ -49,6 +51,7 @@ public final class PlayerSessionService {
         this.loginCache = loginCache;
         this.chatMessageCache = chatMessageCache;
         this.bridgeService = bridgeService;
+        this.freezeService = freezeService;
         this.registry = registry;
     }
 
@@ -88,9 +91,10 @@ public final class PlayerSessionService {
             httpClient.reportStaffDisconnect(uuid.toString(), sessionDuration);
         }
 
-        if (profile != null && profile.getFrozenByStaff() != null) {
+        if (freezeService.releaseOnDisconnect(uuid)) {
             platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification",
                     mapOf("player", playerName)));
+            bridgeService.sendUnfreezePlayer(uuid.toString());
         }
 
         if (profile != null && profile.isVanished() && bridgeService != null) {

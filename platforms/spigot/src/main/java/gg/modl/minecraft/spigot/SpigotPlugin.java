@@ -190,6 +190,7 @@ public class SpigotPlugin extends JavaPlugin {
 
         loader.getBridgeService().setLocalHandler(
                 new SpigotStandaloneLocalBridgeHandler(bridgeComponent.getBridgeActions()));
+        loader.getFreezeService().bindStore(bridgeComponent.getFreezeHandler().getFrozenPlayerStore());
 
         CommandInterceptService commandInterceptService = new CommandInterceptService(
                 loader.getCache(), loader.getFreezeService(), loader.getChatCommandLogService(),

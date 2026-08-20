@@ -94,23 +94,28 @@ class ModlHttpClientV2ImplTest {
     }
 
     @Test
-    void shutdownStopsHttpExecutor() throws Exception {
+    void shutdownStopsEveryRequestLane() {
         ModlHttpClientV2Impl client = new ModlHttpClientV2Impl("http://localhost", "api-key", "example.com", false);
-        Field field = findField(ModlHttpClientV2Impl.class, "executor");
-        field.setAccessible(true);
-        ThreadPoolExecutor executor = (ThreadPoolExecutor) field.get(client);
+        ThreadPoolExecutor login = (ThreadPoolExecutor) client.loginLane.executor();
+        ThreadPoolExecutor background = (ThreadPoolExecutor) client.backgroundLane.executor();
 
         client.shutdown();
 
-        assertTrue(executor.isShutdown());
+        assertTrue(login.isShutdown());
+        assertTrue(background.isShutdown());
     }
 
     @Test
-    void newHttpExecutorThreadsAreDaemonAndNamed() throws Exception {
+    void loginAndBackgroundLanesDoNotShareThreads() {
         ModlHttpClientV2Impl client = new ModlHttpClientV2Impl("http://localhost", "api-key", "example.com", false);
-        Field field = findField(ModlHttpClientV2Impl.class, "executor");
-        field.setAccessible(true);
-        ThreadPoolExecutor executor = (ThreadPoolExecutor) field.get(client);
+
+        assertNotEquals(client.loginLane.executor(), client.backgroundLane.executor());
+    }
+
+    @Test
+    void newHttpExecutorThreadsAreDaemonAndNamed() {
+        ModlHttpClientV2Impl client = new ModlHttpClientV2Impl("http://localhost", "api-key", "example.com", false);
+        ThreadPoolExecutor executor = (ThreadPoolExecutor) client.backgroundLane.executor();
 
         Thread thread = executor.getThreadFactory().newThread(() -> {});
 
@@ -120,11 +125,9 @@ class ModlHttpClientV2ImplTest {
     }
 
     @Test
-    void saturatedExecutorYieldsFailedFutureInsteadOfThrowing() throws Exception {
+    void saturatedExecutorYieldsFailedFutureInsteadOfThrowing() {
         ModlHttpClientV2Impl client = new ModlHttpClientV2Impl("http://localhost", "api-key", "example.com", false);
-        Field field = findField(ModlHttpClientV2Impl.class, "executor");
-        field.setAccessible(true);
-        ((ThreadPoolExecutor) field.get(client)).shutdown();
+        ((ThreadPoolExecutor) client.backgroundLane.executor()).shutdown();
 
         CompletableFuture<PunishmentTypesResponse> future = client.getPunishmentTypes();
 

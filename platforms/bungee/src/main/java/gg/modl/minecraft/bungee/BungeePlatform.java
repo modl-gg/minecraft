@@ -34,15 +34,18 @@ public class BungeePlatform implements Platform {
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
+    private final boolean menusAvailable;
     private final PluginLogger pluginLogger;
     private final BungeeSkinResolver skinResolver;
     private @Setter StaffAudience staffAudience;
 
-    public BungeePlatform(Plugin plugin, Logger logger, File dataFolder, String configServerName) {
+    public BungeePlatform(Plugin plugin, Logger logger, File dataFolder, String configServerName,
+                          boolean menusAvailable) {
         this.plugin = plugin;
         this.logger = logger;
         this.dataFolder = dataFolder;
         this.configServerName = configServerName;
+        this.menusAvailable = menusAvailable;
         this.pluginLogger = PluginLogger.fromJul(logger);
         this.skinResolver = new BungeeSkinResolver(pluginLogger);
     }
@@ -116,7 +119,17 @@ public class BungeePlatform implements Platform {
     }
 
     @Override
+    public boolean areMenusAvailable() {
+        return menusAvailable;
+    }
+
+    public TextComponent toKickComponent(String reason) {
+        return new TextComponent(ChatColor.translateAlternateColorCodes('&', StringUtil.unescapeNewlines(reason)));
+    }
+
+    @Override
     public CirrusPlayerWrapper getPlayerWrapper(UUID uuid) {
+        if (!menusAvailable) return null;
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
         return player != null ? new BungeePlayerWrapper(player) : null;
     }
@@ -157,7 +170,7 @@ public class BungeePlatform implements Platform {
     public void kickPlayer(AbstractPlayer player, String reason) {
         if (player == null) return;
         ProxiedPlayer bungeePlayer = ProxyServer.getInstance().getPlayer(player.getUuid());
-        if (bungeePlayer != null && bungeePlayer.isConnected()) bungeePlayer.disconnect(new TextComponent(StringUtil.unescapeNewlines(reason)));
+        if (bungeePlayer != null && bungeePlayer.isConnected()) bungeePlayer.disconnect(toKickComponent(reason));
     }
 
     @Override

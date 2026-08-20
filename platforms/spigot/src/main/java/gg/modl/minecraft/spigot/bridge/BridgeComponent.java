@@ -16,6 +16,7 @@ import gg.modl.minecraft.core.service.ReplayCaptureStatus;
 import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.spigot.bridge.command.ProxyCmdCommand;
+import gg.modl.minecraft.spigot.bridge.handler.BridgeOnlyFreezeHandler;
 import gg.modl.minecraft.spigot.bridge.handler.FreezeHandler;
 import gg.modl.minecraft.spigot.bridge.handler.StaffModeHandler;
 import gg.modl.minecraft.spigot.bridge.reporter.hook.GrimHook;
@@ -70,6 +71,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
     private final JavaPlugin plugin;
     private final boolean polarLoaderAvailable;
     @Getter private FreezeHandler freezeHandler;
+    private BridgeOnlyFreezeHandler bridgeOnlyFreezeHandler;
     @Getter private StaffModeHandler staffModeHandler;
     @Getter private SpigotBridgeActions bridgeActions;
 
@@ -90,6 +92,11 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
     protected void initFreezeHandler(BridgeLocaleManager localeManager) {
         freezeHandler = new FreezeHandler(plugin, localeManager, context.getScheduler());
         freezeHandler.register();
+
+        if (!bridgeOnly) return;
+        bridgeOnlyFreezeHandler = new BridgeOnlyFreezeHandler(plugin, localeManager,
+                context.getScheduler(), freezeHandler.getFrozenPlayerStore());
+        bridgeOnlyFreezeHandler.register();
     }
 
     @Override
@@ -98,7 +105,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
                                          StaffModeConfig staffModeConfig) {
         staffModeHandler = new StaffModeHandler(plugin, bridgeConfig, freezeHandler, localeManager, staffModeConfig, context.getScheduler());
         staffModeHandler.register();
-        freezeHandler.setStaffModeHandler(staffModeHandler);
+        if (bridgeOnlyFreezeHandler != null) bridgeOnlyFreezeHandler.setStaffModeHandler(staffModeHandler);
         bridgeActions = new SpigotBridgeActions(staffModeHandler, freezeHandler);
     }
 

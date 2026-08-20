@@ -36,6 +36,9 @@ public final class SignedVelocity {
         logger.info("Starting SignedVelocity");
 
         Listener.register(server, pluginInstance, this);
+    }
+
+    public void enforceSecureChat() {
         PacketAdapter.registerAdapter();
     }
 

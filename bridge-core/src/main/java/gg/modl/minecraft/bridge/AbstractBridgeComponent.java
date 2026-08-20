@@ -30,6 +30,7 @@ public abstract class AbstractBridgeComponent {
     protected final PluginLogger pluginLogger;
     protected final List<AntiCheatHook> hooks = new ArrayList<>();
 
+    protected boolean bridgeOnly;
     @Getter protected BridgeConfig bridgeConfig;
     @Getter protected BridgeLocaleManager localeManager;
     @Getter protected StaffModeConfig staffModeConfig;
@@ -56,7 +57,8 @@ public abstract class AbstractBridgeComponent {
         startBridge(ticketCreator, true);
     }
 
-    private void startBridge(TicketCreator ticketCreator, boolean connectToProxy) {
+    private void startBridge(TicketCreator ticketCreator, boolean bridgeOnly) {
+        this.bridgeOnly = bridgeOnly;
         Path dataFolder = context.getDataFolder();
 
         prepareBridgeConfig(dataFolder);
@@ -64,7 +66,7 @@ public abstract class AbstractBridgeComponent {
         prepareStaffModeConfig();
         startLifecycleServices(dataFolder);
         initializePlatformHandlers();
-        connectBridgeClientIfConfigured(connectToProxy);
+        connectBridgeClientIfConfigured(bridgeOnly);
         initializeAutoReporting(ticketCreator);
         registerRuntimeHooks();
     }
@@ -113,8 +115,8 @@ public abstract class AbstractBridgeComponent {
         initStaffModeHandler(bridgeConfig, localeManager, staffModeConfig);
     }
 
-    private void connectBridgeClientIfConfigured(boolean connectToProxy) {
-        if (!connectToProxy) {
+    private void connectBridgeClientIfConfigured(boolean bridgeOnly) {
+        if (!bridgeOnly) {
             return;
         }
 

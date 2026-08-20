@@ -387,7 +387,7 @@ public class StaffModeCore {
     }
 
     private void openStaffMenu(UUID uuid) {
-        if (bridgeClient != null && bridgeClient.isConnected()) {
+        if (isProxyConnected()) {
             bridgeClient.sendMessage(BridgeAction.OPEN_STAFF_MENU.wire(), uuid.toString());
         } else {
             scheduler.runForPlayer(uuid, () -> ops.runPlayerCommand(uuid, "staffmenu"));
@@ -428,11 +428,23 @@ public class StaffModeCore {
         if (targetName == null) targetName = UNKNOWN_NAME;
 
         if (freezeCore.isFrozen(targetUuid)) {
-            freezeCore.unfreeze(targetUuid.toString());
+            freezeCore.unfreeze(targetUuid);
+            notifyProxy(BridgeAction.UNFREEZE_PLAYER, targetUuid.toString());
             ops.sendMessage(uuid, localeManager.getMessage("staff_mode.freeze.unfrozen", mapOf("player", targetName)));
         } else {
-            freezeCore.freeze(targetUuid.toString(), uuid.toString());
+            freezeCore.freeze(targetUuid, uuid);
+            notifyProxy(BridgeAction.FREEZE_PLAYER, targetUuid.toString(), uuid.toString());
             ops.sendMessage(uuid, localeManager.getMessage("staff_mode.freeze.frozen", mapOf("player", targetName)));
+        }
+    }
+
+    private boolean isProxyConnected() {
+        return bridgeClient != null && bridgeClient.isConnected();
+    }
+
+    private void notifyProxy(BridgeAction action, String... args) {
+        if (isProxyConnected()) {
+            bridgeClient.sendMessage(action.wire(), args);
         }
     }
 
@@ -441,7 +453,7 @@ public class StaffModeCore {
         if (target == null) return;
 
         String targetName = ops.playerName(target);
-        if (bridgeClient != null && bridgeClient.isConnected()) {
+        if (isProxyConnected()) {
             bridgeClient.sendMessage(BridgeAction.OPEN_INSPECT_MENU.wire(), uuid.toString(), targetName);
         } else {
             scheduler.runForPlayer(uuid, () -> ops.runPlayerCommand(uuid, "inspect " + targetName));

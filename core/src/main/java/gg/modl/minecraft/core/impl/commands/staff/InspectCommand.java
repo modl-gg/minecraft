@@ -67,7 +67,7 @@ public class InspectCommand {
 
         boolean printMode = flags.equalsIgnoreCase("-p") || flags.equalsIgnoreCase("print");
 
-        if (CommandUtil.isConsole(actor) || printMode) {
+        if (CommandUtil.rendersAsText(actor, platform, printMode)) {
             printLookup(actor, playerQuery);
             return;
         }

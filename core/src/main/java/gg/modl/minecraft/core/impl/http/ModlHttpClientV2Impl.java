@@ -65,7 +65,6 @@ import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.api.http.response.TicketsResponse;
 import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.plugin.PluginInfo;
-import gg.modl.minecraft.core.util.CircuitBreaker;
 import org.jetbrains.annotations.NotNull;
 
 import org.apache.hc.client5.http.classic.methods.HttpPost;
@@ -253,7 +252,7 @@ public class ModlHttpClientV2Impl extends AbstractModlHttpTransport implements M
                 .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .timeout(LOGIN_TIMEOUT)
                 .POST(requestBody)
-                .build(), PlayerLoginResponse.class, "LOGIN", loginCircuitBreaker);
+                .build(), PlayerLoginResponse.class, "LOGIN", loginLane);
     }
 
     @NotNull @Override
@@ -653,7 +652,7 @@ public class ModlHttpClientV2Impl extends AbstractModlHttpTransport implements M
                 logger.log(Level.WARNING, "Error uploading migration file: " + e.getMessage(), e);
                 return false;
             }
-        }, executor);
+        }, backgroundLane.executor());
     }
 
     @NotNull @Override
@@ -807,14 +806,14 @@ public class ModlHttpClientV2Impl extends AbstractModlHttpTransport implements M
     }
 
     private <T> CompletableFuture<T> sendAsync(RequestConfig request, Class<T> responseType, String operation) {
-        return sendAsync(request, responseType, operation, backgroundCircuitBreaker);
+        return sendAsync(request, responseType, operation, backgroundLane);
     }
 
     private <T> CompletableFuture<T> sendAsync(RequestConfig request, Class<T> responseType, String operation,
-                                               CircuitBreaker breaker) {
+                                               RequestLane lane) {
         byte[] body = request.body == null ? null : request.body.getBytes(StandardCharsets.UTF_8);
         HttpRequest httpRequest = new HttpRequest(request.url, request.method, body, request.timeout, request.headers);
-        return execute(httpRequest, operation, breaker,
+        return execute(httpRequest, operation, lane,
                 (requestId, responseBody) -> decodeJson(requestId, responseBody, responseType));
     }
 

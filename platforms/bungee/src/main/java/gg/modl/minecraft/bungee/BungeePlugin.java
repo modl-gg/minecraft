@@ -2,6 +2,9 @@ package gg.modl.minecraft.bungee;
 
 import com.github.retrooper.packetevents.PacketEvents;
 import dev.simplix.cirrus.bungee.CirrusBungee;
+import gg.modl.minecraft.core.packet.PacketInterceptionDecision;
+import gg.modl.minecraft.core.packet.PacketInterceptionMode;
+import gg.modl.minecraft.core.packet.PacketInterceptionPolicy;
 import gg.modl.minecraft.api.LibraryRecord;
 import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.HttpManager;
@@ -69,10 +72,10 @@ public class BungeePlugin extends Plugin {
 
     private void initializePlugin() {
         loadLibraries();
-        initializePacketEvents();
-        loadConfig();
         createLocaleFiles();
         mergeDefaultConfigs();
+        loadConfig();
+        boolean packetInterception = initializePacketEvents();
 
         String panelUrl = StartupClient.callStartupWithRetry(
                 bootConfig.getApiKey(), bootConfig.isTestingApi(),
@@ -92,9 +95,9 @@ public class BungeePlugin extends Plugin {
                 configuration.getBoolean("server.query_mojang", false)
         );
 
-        new CirrusBungee(this).init();
+        if (packetInterception) new CirrusBungee(this).init();
 
-        BungeePlatform platform = new BungeePlatform(this, getLogger(), getDataFolder(), configuration.getString("server.name", "Server 1"));
+        BungeePlatform platform = new BungeePlatform(this, getLogger(), getDataFolder(), configuration.getString("server.name", "Server 1"), packetInterception);
         ChatMessageCache chatMessageCache = new ChatMessageCache();
         int syncPollingRate = SyncPollingRate.clamp(configuration.getInt(SyncPollingRate.CONFIG_KEY, SyncPollingRate.DEFAULT_SECONDS));
         List<String> mutedCommands = configuration.getStringList("muted_commands");
@@ -108,7 +111,7 @@ public class BungeePlugin extends Plugin {
 
         ProxyLoginFlow proxyLoginFlow = new ProxyLoginFlow(
                 loader.getHttpClientHolder(), loader.getLoginCache(), loader.getLoginService(),
-                loader.getLoginRequestBuilder(), loader.getIpEnrichmentService(),
+                loader.getIpEnrichmentService(),
                 loader.getPendingIpLookupService(), LOGIN_TIMEOUT_SECONDS);
 
         LoginPipeline loginPipeline = new LoginPipeline(
@@ -129,10 +132,9 @@ public class BungeePlugin extends Plugin {
 
     @Override
     public synchronized void onDisable() {
-        if (bungeeListener != null) bungeeListener.shutdown();
         if (bridgeRuntime != null) bridgeRuntime.shutdown();
         if (loader != null) loader.shutdown();
-        if (PacketEvents.getAPI() != null) PacketEvents.getAPI().terminate();
+        terminatePacketEvents();
     }
 
     private BootConfig loadBootConfig() {
@@ -170,10 +172,40 @@ public class BungeePlugin extends Plugin {
         bridgeRuntime = ProxyBridgeRuntime.startIfProxy(platform, loader, bootConfig, pluginLogger, panelUrl);
     }
 
-    private void initializePacketEvents() {
-        PacketEvents.setAPI(BungeePacketEventsBuilder.build(this));
-        PacketEvents.getAPI().load();
-        PacketEvents.getAPI().init();
+    private boolean initializePacketEvents() {
+        PacketInterceptionDecision decision = PacketInterceptionPolicy.decide(
+                PacketInterceptionMode.fromConfig(configuration == null
+                        ? null : configuration.get(PacketInterceptionPolicy.CONFIG_KEY)),
+                pluginId -> getProxy().getPluginManager().getPlugins().stream()
+                        .anyMatch(installed -> installed.getDescription().getName().equalsIgnoreCase(pluginId)));
+
+        if (!decision.isEnabled()) {
+            getLogger().warning("modl packet interception is off: " + decision.getReason());
+            return false;
+        }
+
+        try {
+            PacketEvents.setAPI(BungeePacketEventsBuilder.build(this));
+            PacketEvents.getAPI().load();
+            PacketEvents.getAPI().init();
+            return true;
+        } catch (Throwable failure) {
+            getLogger().log(Level.WARNING, "modl packet interception could not start on this proxy; proxy menus "
+                    + "and secure-chat enforcement are off. Moderation is unaffected.", failure);
+            terminatePacketEvents();
+            return false;
+        }
+    }
+
+    private void terminatePacketEvents() {
+        if (PacketEvents.getAPI() == null) return;
+        try {
+            PacketEvents.getAPI().terminate();
+        } catch (Throwable failure) {
+            getLogger().fine("PacketEvents termination failed: " + failure.getMessage());
+        } finally {
+            PacketEvents.setAPI(null);
+        }
     }
 
     private void loadLibraries() {

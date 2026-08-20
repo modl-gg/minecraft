@@ -74,6 +74,7 @@ general:
   no_permission_reload: "&cआपके पास सज़ा डेटा रीलोड करने की अनुमति नहीं है।"
   invalid_syntax: "&cगलत कमांड सिंटैक्स। कृपया कमांड का सही उपयोग देखें।"
   gui_requires_player: "&cयह कमांड एक GUI खोलता है और इसे केवल खिलाड़ी ही चला सकता है। टेक्स्ट आउटपुट के लिए &f-p &cइस्तेमाल करें।"
+  gui_unavailable: "&cइस प्रॉक्सी पर GUI मेन्यू उपलब्ध नहीं हैं।"
 
   # Error messages
   unknown: "अज्ञात"
@@ -841,6 +842,9 @@ freeze:
   logout_notification: "&c&l{player} फ़्रीज़ रहते हुए लॉग आउट हो गया!"
   frozen_chat: "&b[FROZEN] &e{player}&f: {message}"
   command_blocked: "&cफ़्रीज़ रहते हुए आप कमांड इस्तेमाल नहीं कर सकते।"
+  target_offline: "&c{player} इस सर्वर पर ऑनलाइन नहीं है, इसलिए उन्हें फ़्रीज़ नहीं किया जा सकता।"
+  unavailable: "&c{player} को फ़्रीज़ नहीं किया जा सका: इसे लागू करने के लिए कोई सर्वर जुड़ा नहीं है।"
+  unfreeze_not_propagated: "&e{player} को रिलीज़ कर दिया गया, लेकिन गेम में फ़्रीज़ हटाने के लिए कोई सर्वर जुड़ा नहीं था।"
 
 # Intercept Chat
 intercept_chat:

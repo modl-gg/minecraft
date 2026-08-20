@@ -74,6 +74,7 @@ general:
   no_permission_reload: "&cYou don't have permission to reload punishment data."
   invalid_syntax: "&cInvalid command syntax. Please check your usage."
   gui_requires_player: "&cThis command opens a GUI and can only be executed by a player. Use &f-p &cfor text output."
+  gui_unavailable: "&cGUI menus are not available on this proxy."
   
   # Error messages
   unknown: "Unknown"
@@ -841,6 +842,9 @@ freeze:
   logout_notification: "&c&l{player} logged out while frozen!"
   frozen_chat: "&b[FROZEN] &e{player}&f: {message}"
   command_blocked: "&cYou cannot use commands while frozen."
+  target_offline: "&c{player} is not online on this server, so they cannot be frozen."
+  unavailable: "&cCould not freeze {player}: no server is connected to enforce it."
+  unfreeze_not_propagated: "&e{player} was released, but no server was connected to clear the freeze in-game."
 
 # Intercept Chat
 intercept_chat:

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -177,18 +177,24 @@ public final class Java8Collections {
     }
 
     private static final ScheduledExecutorService TIMEOUT_SCHEDULER =
-            Executors.newSingleThreadScheduledExecutor(r -> {
-                Thread t = new Thread(r, "cf-timeout");
-                t.setDaemon(true);
-                return t;
-            });
+            newTimeoutScheduler();
+
+    private static ScheduledExecutorService newTimeoutScheduler() {
+        ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(1, r -> {
+            Thread t = new Thread(r, "cf-timeout");
+            t.setDaemon(true);
+            return t;
+        });
+        scheduler.setRemoveOnCancelPolicy(true);
+        return scheduler;
+    }
 
     public static <T> CompletableFuture<T> orTimeout(CompletableFuture<T> future, long timeout, TimeUnit unit) {
         return orTimeout(future, timeout, unit, TIMEOUT_SCHEDULER);
     }
 
     public static void shutdown() {
-        if (!TIMEOUT_SCHEDULER.isShutdown()) TIMEOUT_SCHEDULER.shutdownNow();
+        if (!TIMEOUT_SCHEDULER.isShutdown()) TIMEOUT_SCHEDULER.shutdown();
     }
 
     static <T> CompletableFuture<T> orTimeout(

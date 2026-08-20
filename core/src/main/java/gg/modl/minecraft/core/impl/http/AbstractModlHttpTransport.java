@@ -2,7 +2,6 @@ package gg.modl.minecraft.core.impl.http;
 
 import gg.modl.minecraft.api.http.ApiClientException;
 import gg.modl.minecraft.api.http.PanelUnavailableException;
-import gg.modl.minecraft.core.util.CircuitBreaker;
 import gg.modl.minecraft.core.util.Java8Collections;
 import org.jetbrains.annotations.NotNull;
 
@@ -18,16 +17,15 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 abstract class AbstractModlHttpTransport {
     protected static final String HEADER_API_KEY = "X-API-Key", HEADER_SERVER_DOMAIN = "X-Server-Domain",
         HEADER_CONTENT_TYPE = "Content-Type", HEADER_ACTING_STAFF_ID = "X-Acting-Staff-Id", HEADER_USER_AGENT = "User-Agent";
+    private static final int BACKGROUND_LANE_THREADS = 8, BACKGROUND_LANE_QUEUE = 64,
+            LOGIN_LANE_THREADS = 4, LOGIN_LANE_QUEUE = 16;
     protected static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10), LOGIN_TIMEOUT = Duration.ofSeconds(15),
         SYNC_TIMEOUT = Duration.ofSeconds(20);
     protected static final int STATUS_UNREACHABLE = -1;
@@ -35,10 +33,9 @@ abstract class AbstractModlHttpTransport {
     private static final byte[] EMPTY_BODY = new byte[0];
 
     protected final @NotNull String baseUrl, apiKey, serverDomain;
-    protected final @NotNull ThreadPoolExecutor executor;
     protected final @NotNull Logger logger;
-    protected final @NotNull CircuitBreaker backgroundCircuitBreaker;
-    protected final @NotNull CircuitBreaker loginCircuitBreaker;
+    protected final @NotNull RequestLane backgroundLane;
+    protected final @NotNull RequestLane loginLane;
     protected final boolean debugMode;
     private final @NotNull String versionTag;
 
@@ -49,40 +46,27 @@ abstract class AbstractModlHttpTransport {
         this.serverDomain = serverDomain;
         this.debugMode = debugMode;
         this.versionTag = versionTag;
-        this.backgroundCircuitBreaker = new CircuitBreaker();
-        this.loginCircuitBreaker = new CircuitBreaker();
+        this.backgroundLane = new RequestLane(threadNamePrefix + "bg-", BACKGROUND_LANE_THREADS, BACKGROUND_LANE_QUEUE);
+        this.loginLane = new RequestLane(threadNamePrefix + "login-", LOGIN_LANE_THREADS, LOGIN_LANE_QUEUE);
 
-        AtomicInteger threadCounter = new AtomicInteger();
-        this.executor = new ThreadPoolExecutor(0, 8, 60L, TimeUnit.SECONDS,
-            new SynchronousQueue<>(), r -> {
-            Thread t = new Thread(r, threadNamePrefix + threadCounter.incrementAndGet());
-            t.setDaemon(true);
-            t.setPriority(Thread.NORM_PRIORITY);
-            return t;
-        });
         this.logger = Logger.getLogger(getClass().getName());
     }
 
     public void shutdown() {
-        executor.shutdown();
-        try {
-            if (!executor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) executor.shutdownNow();
-        } catch (InterruptedException e) {
-            executor.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
+        loginLane.shutdown(EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS);
+        backgroundLane.shutdown(EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS);
     }
 
     protected final String generateRequestId() {
         return versionTag + "-" + (System.nanoTime() % 1000000);
     }
 
-    protected final <R> CompletableFuture<R> execute(HttpRequest request, String operation, CircuitBreaker breaker,
+    protected final <R> CompletableFuture<R> execute(HttpRequest request, String operation, RequestLane lane,
                                                      ResponseDecoder<R> decoder) {
         final Instant startTime = Instant.now();
         final String requestId = generateRequestId();
 
-        if (!breaker.allowRequest()) {
+        if (!lane.breaker().allowRequest()) {
             return Java8Collections.failedFuture(new PanelUnavailableException(request.url,
                 HttpURLConnection.HTTP_UNAVAILABLE, versionTag + " API is temporarily unavailable (circuit breaker open)"));
         }
@@ -91,9 +75,9 @@ abstract class AbstractModlHttpTransport {
 
         final CompletableFuture<R> pending;
         try {
-            pending = submit(request, operation, breaker, decoder, startTime, requestId);
+            pending = submit(request, operation, lane, decoder, startTime, requestId);
         } catch (RejectedExecutionException rejected) {
-            breaker.releaseProbe();
+            lane.breaker().releaseProbe();
             return Java8Collections.failedFuture(new PanelUnavailableException(request.url,
                 HttpURLConnection.HTTP_UNAVAILABLE, versionTag + " API request rejected (local executor saturated)"));
         }
@@ -101,13 +85,14 @@ abstract class AbstractModlHttpTransport {
         return pending.exceptionally(throwable -> {
             Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
                 ? throwable.getCause() : throwable;
-            if (!(cause instanceof ApiClientException)) breaker.recordFailure();
+            if (cause instanceof ApiClientException) lane.breaker().recordSuccess();
+            else lane.breaker().recordFailure();
             if (cause instanceof RuntimeException) throw (RuntimeException) cause;
             throw new RuntimeException(versionTag + " HTTP request failed", throwable);
         });
     }
 
-    private <R> CompletableFuture<R> submit(HttpRequest request, String operation, CircuitBreaker breaker,
+    private <R> CompletableFuture<R> submit(HttpRequest request, String operation, RequestLane lane,
                                             ResponseDecoder<R> decoder, Instant startTime, String requestId) {
         return CompletableFuture.supplyAsync(() -> {
             HttpURLConnection connection = null;
@@ -120,7 +105,7 @@ abstract class AbstractModlHttpTransport {
                 if (debugMode) logResponse(requestId, statusCode, responseBody, durationMs, operation);
 
                 if (statusCode >= 200 && statusCode < 300) {
-                    breaker.recordSuccess();
+                    lane.breaker().recordSuccess();
                     return decoder.decode(requestId, responseBody);
                 }
                 throw toError(requestId, request, statusCode, responseBody);
@@ -134,7 +119,7 @@ abstract class AbstractModlHttpTransport {
             } finally {
                 if (connection != null) connection.disconnect();
             }
-        }, executor);
+        }, lane.executor());
     }
 
     private HttpURLConnection open(HttpRequest request) throws IOException {

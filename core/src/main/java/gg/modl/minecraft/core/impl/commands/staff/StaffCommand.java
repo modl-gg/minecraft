@@ -4,6 +4,7 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import gg.modl.minecraft.core.AsyncCommandExecutor;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.Platform;
+import gg.modl.minecraft.core.PluginServices;
 import gg.modl.minecraft.core.cache.Cache;
 import gg.modl.minecraft.core.command.PlayerOnly;
 import gg.modl.minecraft.core.command.StaffOnly;
@@ -29,6 +30,11 @@ public class StaffCommand {
     @Description("Open the staff menu")
     @PlayerOnly @StaffOnly
     public void staff(CommandActor actor) {
+        if (!platform.areMenusAvailable()) {
+            actor.reply(PluginServices.locale().getMessage("general.gui_unavailable"));
+            return;
+        }
+
         UUID senderUuid = actor.uniqueId();
         boolean isAdmin = cache.hasPermission(senderUuid, Permissions.ADMIN);
         String senderName = CommandUtil.resolveSenderName(senderUuid, cache, platform);

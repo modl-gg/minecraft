@@ -43,6 +43,11 @@ public class StandingCommand {
     @Description("View your current standing and punishment history")
     @PlayerOnly
     public void standing(CommandActor actor) {
+        if (!platform.areMenusAvailable()) {
+            actor.reply(localeManager.getMessage("general.gui_unavailable"));
+            return;
+        }
+
         UUID uuid = actor.uniqueId();
 
         if (!checkCooldown(actor, uuid)) return;

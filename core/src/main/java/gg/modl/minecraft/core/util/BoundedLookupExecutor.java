@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core.util;
 
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -30,7 +31,11 @@ public final class BoundedLookupExecutor {
     }
 
     public <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier) {
-        return CompletableFuture.supplyAsync(supplier, liveExecutor());
+        try {
+            return CompletableFuture.supplyAsync(supplier, liveExecutor());
+        } catch (RejectedExecutionException saturated) {
+            return Java8Collections.failedFuture(saturated);
+        }
     }
 
     public void shutdown() {

@@ -48,6 +48,18 @@ sync:
 realtime:
   enabled: true
 
+# Proxy Configuration (Velocity / BungeeCord only, ignored on game servers)
+proxy:
+  # Controls modl's packet interception on the proxy, which powers proxy-side menus and
+  # secure-chat enforcement. Moderation (punishments, chat, reports) never depends on it.
+  #   auto     - on, unless a plugin that rewrites packets on the wire is detected (e.g. LimboAPI).
+  #              LimboAPI and packet interception are incompatible by design: LimboAPI writes
+  #              pre-encoded packets past the encoder, which leaves players stuck on "Encrypting...".
+  #   enabled  - always on. Only safe alongside LimboAPI if LimboAPI has both
+  #              'compatibility-mode: true' and 'save-uncompressed-packets: true'.
+  #   disabled - always off.
+  packet_interception: "auto"
+
 # Update Checker Configuration
 update_checker:
   # Enable periodic plugin update checks against GitHub releases

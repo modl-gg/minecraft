@@ -115,18 +115,12 @@ public class SpigotListener implements Listener {
         }
 
         if (preLoginResult.hasError()) {
-            LoginService.LoginResult errorResult = loginPipeline.getLoginService().handleLoginError(preLoginResult.getError());
-            if (errorResult instanceof LoginService.LoginResult.Denied) {
-                LoginService.LoginResult.Denied denied = (LoginService.LoginResult.Denied) errorResult;
-                if (preLoginResult.getError() instanceof PanelUnavailableException) {
-                    platform.getLogger().warning("Panel 502 during login check for " + event.getPlayer().getName() + " - blocking login for safety");
-                }
-                event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
-                event.setKickMessage(denied.getMessage());
-            } else {
-                platform.getLogger().severe("Failed to verify ban status for " + event.getPlayer().getName() + ": " + preLoginResult.getError().getMessage() + " - blocking login for safety");
-                denyLoginUnverified(event);
+            if (preLoginResult.getError() instanceof PanelUnavailableException) {
+                platform.getLogger().warning("Panel 502 during login check for " + event.getPlayer().getName() + " - blocking login for safety");
             }
+            event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
+            event.setKickMessage(loginPipeline.getLoginService().denialMessage(
+                    loginPipeline.getLoginService().handleLoginError(preLoginResult.getError())));
             return;
         }
 
@@ -139,10 +133,10 @@ public class SpigotListener implements Listener {
         LoginService.LoginResult result = loginPipeline.getLoginService().processLoginResponse(
                 preLoginResult.getResponse(), event.getPlayer().getUniqueId());
 
-        if (result instanceof LoginService.LoginResult.Denied) {
-            LoginService.LoginResult.Denied denied = (LoginService.LoginResult.Denied) result;
+        String denialMessage = loginPipeline.getLoginService().denialMessage(result);
+        if (denialMessage != null) {
             event.setResult(PlayerLoginEvent.Result.KICK_BANNED);
-            event.setKickMessage(denied.getMessage());
+            event.setKickMessage(denialMessage);
         }
     }
 

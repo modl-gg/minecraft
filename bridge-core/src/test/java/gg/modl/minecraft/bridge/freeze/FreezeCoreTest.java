@@ -49,21 +49,21 @@ class FreezeCoreTest {
     }
 
     @Test
-    void handleQuitReturnsTrueForFrozenPlayerAndClearsState() {
+    void releaseOnDisconnectReturnsTrueForFrozenPlayerAndClearsState() {
         UUID target = UUID.randomUUID();
         UUID staff = UUID.randomUUID();
         ops.names.put(target, "Frozen");
         core.freeze(target.toString(), staff.toString());
 
-        boolean wasFrozen = core.handleQuit(target);
+        boolean wasFrozen = core.releaseOnDisconnect(target);
 
         assertTrue(wasFrozen);
         assertFalse(core.isFrozen(target));
     }
 
     @Test
-    void handleQuitReturnsFalseForUnfrozenPlayer() {
-        assertFalse(core.handleQuit(UUID.randomUUID()));
+    void releaseOnDisconnectReturnsFalseForUnfrozenPlayer() {
+        assertFalse(core.releaseOnDisconnect(UUID.randomUUID()));
     }
 
     @Test
@@ -87,15 +87,39 @@ class FreezeCoreTest {
     }
 
     @Test
-    void handleQuitInvokesOnUnfrozenHookAfterReadingName() {
+    void releaseOnDisconnectInvokesOnUnfrozenHookAfterReadingName() {
         UUID target = UUID.randomUUID();
         ops.names.put(target, "Frozen");
         core.freeze(target.toString(), UUID.randomUUID().toString());
         ops.hookEvents.clear();
 
-        core.handleQuit(target);
+        core.releaseOnDisconnect(target);
 
         assertEquals(Arrays.asList("onUnfrozen:" + target), ops.hookEvents);
+    }
+
+    @Test
+    void repeatedFreezeDoesNotReapplyHooksOrNotify() {
+        UUID target = UUID.randomUUID();
+        UUID staff = UUID.randomUUID();
+
+        core.freeze(target.toString(), staff.toString());
+        core.freeze(target.toString(), UUID.randomUUID().toString());
+
+        assertTrue(core.isFrozen(target));
+        assertEquals(1, ops.sent.size());
+        assertEquals(Arrays.asList("onFrozen:" + target), ops.hookEvents);
+    }
+
+    @Test
+    void unfreezingAPlayerWhoIsNotFrozenDoesNothing() {
+        UUID target = UUID.randomUUID();
+
+        core.unfreeze(target.toString());
+
+        assertFalse(core.isFrozen(target));
+        assertTrue(ops.sent.isEmpty());
+        assertTrue(ops.hookEvents.isEmpty());
     }
 
     @Test

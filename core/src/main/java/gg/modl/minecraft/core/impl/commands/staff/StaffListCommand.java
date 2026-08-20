@@ -43,7 +43,7 @@ public class StaffListCommand {
         int page = flag != null ? Pagination.parsePrintFlags(flag) : 0;
         boolean printMode = page > 0;
 
-        if (printMode || CommandUtil.isConsole(actor)) {
+        if (CommandUtil.rendersAsText(actor, platform, printMode)) {
             printStaffList(actor, Math.max(1, page));
             return;
         }

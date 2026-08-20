@@ -91,7 +91,6 @@ import gg.modl.minecraft.core.integration.iplookup.IpEnrichmentService;
 import gg.modl.minecraft.core.integration.iplookup.PendingIpLookupService;
 import gg.modl.minecraft.core.integration.mojang.MojangProfiles;
 import gg.modl.minecraft.core.login.BanEnforcementAcknowledger;
-import gg.modl.minecraft.core.login.LoginRequestBuilder;
 import gg.modl.minecraft.core.login.LoginService;
 import gg.modl.minecraft.core.login.PlayerNotificationMapper;
 import gg.modl.minecraft.core.player.PlayerLookupService;
@@ -147,7 +146,6 @@ public class PluginLoader {
     private final PunishmentTypeCacheManager punishmentTypeCacheManager;
     private final IpEnrichmentService ipEnrichmentService;
     private final PendingIpLookupService pendingIpLookupService;
-    private final LoginRequestBuilder loginRequestBuilder;
     private final LoginService loginService;
     private final PlayerSessionService playerSessionService;
     private final ServerSwitchService serverSwitchService;
@@ -239,7 +237,6 @@ public class PluginLoader {
         PluginConfiguration.IpLookupConfig ipLookupConfig = PluginConfiguration.loadIpLookupConfig(configYml, logger);
         this.ipEnrichmentService = new IpEnrichmentService(ipLookupConfig.enabled, ipLookupConfig.url);
         this.pendingIpLookupService = new PendingIpLookupService(httpClientHolder, this.ipEnrichmentService, logger);
-        this.loginRequestBuilder = new LoginRequestBuilder(logger);
 
         PlayerLookupService playerLookup = new PlayerLookupService(platform, httpClientHolder, queryMojang);
         this.playerLookupService = playerLookup;
@@ -248,7 +245,7 @@ public class PluginLoader {
         this.chatManagementService = new ChatManagementService(cachedProfileRegistry);
         this.maintenanceService = new MaintenanceService();
         this.networkChatInterceptService = new NetworkChatInterceptService(cachedProfileRegistry);
-        this.freezeService = new FreezeService(cachedProfileRegistry);
+        this.freezeService = new FreezeService();
         this.staffModeService = new StaffModeService(cachedProfileRegistry);
         this.vanishService = new VanishService(cachedProfileRegistry);
         this.bridgeService = new BridgeService();
@@ -366,7 +363,8 @@ public class PluginLoader {
                 new BanEnforcementAcknowledger(httpClientHolder, logger, debugMode),
                 new PlayerNotificationMapper(logger));
         this.playerSessionService = new PlayerSessionService(platform, cache, this.localeManager, staff2faService,
-                syncService, httpClientHolder, loginCache, chatMessageCache, bridgeService, cachedProfileRegistry);
+                syncService, httpClientHolder, loginCache, chatMessageCache, bridgeService, freezeService,
+                cachedProfileRegistry);
         this.serverSwitchService = new ServerSwitchService(httpClientHolder, cache, this.localeManager, platform);
         this.chatService = new ChatService(platform, cache, this.localeManager, chatMessageCache,
                 staffChatService, configManager.getStaffChatConfig(), chatManagementService,

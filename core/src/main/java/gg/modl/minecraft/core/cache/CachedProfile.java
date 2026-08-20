@@ -29,7 +29,6 @@ public class CachedProfile {
     @Setter private volatile StaffChatService.ChatMode chatMode = StaffChatService.ChatMode.NORMAL;
     @Setter private volatile StaffModeService.StaffModeState staffModeState = StaffModeService.StaffModeState.OFF;
     @Setter private volatile boolean vanished;
-    @Setter private volatile UUID frozenByStaff;
     @Setter private volatile UUID targetPlayerUuid;
     @Setter private volatile boolean interceptingNetworkChat;
 

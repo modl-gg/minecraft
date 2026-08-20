@@ -43,7 +43,7 @@ public class HistoryCommand {
         int page = Pagination.parsePrintFlags(flags);
         boolean printMode = page > 0;
 
-        if (CommandUtil.isConsole(actor) || printMode) {
+        if (CommandUtil.rendersAsText(actor, platform, printMode)) {
             printHistory(actor, playerQuery, Math.max(1, page));
             return;
         }

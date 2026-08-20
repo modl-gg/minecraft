@@ -70,6 +70,7 @@ general:
   no_permission_reload: "&cNo tienes permiso para recargar los datos de sanciones."
   invalid_syntax: "&cSintaxis de comando inválida. Por favor verifica el uso."
   gui_requires_player: "&cEste comando abre una interfaz y solo puede ser ejecutado por un jugador. Usa &f-p &cpara salida de texto."
+  gui_unavailable: "&cLos menús de interfaz no están disponibles en este proxy."
   unknown: "Desconocido"
   staff: "Staff"
   player_not_found: "&cJugador no encontrado."
@@ -798,6 +799,9 @@ freeze:
   logout_notification: "&c&l¡{player} se desconectó mientras estaba congelado!"
   frozen_chat: "&b[CONGELADO] &e{player}&f: {message}"
   command_blocked: "&cNo puedes usar comandos mientras estás congelado."
+  target_offline: "&c{player} no está conectado en este servidor, así que no se le puede congelar."
+  unavailable: "&cNo se pudo congelar a {player}: ningún servidor está conectado para aplicarlo."
+  unfreeze_not_propagated: "&e{player} fue liberado, pero ningún servidor estaba conectado para quitar la congelación en el juego."
 
 # Intercepción de Chat en Red
 intercept_chat:

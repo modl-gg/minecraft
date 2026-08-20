@@ -116,12 +116,9 @@ public class BridgeMessageDispatcher {
     }
 
     private void handleFreezeLogout(DataInputStream data) throws Exception {
-        String ignoredFrozenUuid = data.readUTF();
+        String frozenUuid = data.readUTF();
         String playerName = data.readUTF();
-        platform.staffBroadcast(localeManager.getMessage("freeze.logout_notification", mapOf(
-                "player", playerName
-        )));
-        logger.info("[bridge] Frozen player " + playerName + " logged out");
+        logger.info("[bridge] Frozen player " + playerName + " (" + frozenUuid + ") left a backend");
     }
 
     private void handleStaffModeEnter(DataInputStream data) throws Exception {

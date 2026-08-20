@@ -231,6 +231,8 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
             if (pluginLoader != null) {
                 pluginLoader.getBridgeService().setLocalHandler(new FabricLocalBridgeHandler(
                         server, bridgeComponent.getFabricStaffModeHandler(), bridgeComponent.getFabricFreezeHandler()));
+                pluginLoader.getFreezeService().bindStore(
+                        bridgeComponent.getFabricFreezeHandler().getFrozenPlayerStore());
 
                 CommandInterceptService commandInterceptService = new CommandInterceptService(
                         pluginLoader.getCache(), pluginLoader.getFreezeService(),

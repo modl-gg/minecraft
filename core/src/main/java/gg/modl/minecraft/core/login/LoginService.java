@@ -1,7 +1,6 @@
 package gg.modl.minecraft.core.login;
 
 import gg.modl.minecraft.api.SimplePunishment;
-import gg.modl.minecraft.api.http.PanelUnavailableException;
 import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.api.http.response.SyncResponse;
 import gg.modl.minecraft.core.cache.Cache;
@@ -14,13 +13,17 @@ import gg.modl.minecraft.core.service.sync.SyncService;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import java.io.InterruptedIOException;
 import java.util.Map;
 import java.util.UUID;
+import java.io.InterruptedIOException;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 public final class LoginService {
+    private static final String BAN_CHECK_FAILED_KEY = "api_errors.ban_check_failed",
+            CONNECTION_FAILED_KEY = "api_errors.connection_failed";
+
     private final LocaleManager localeManager;
     private final SyncService syncService;
     private final MaintenanceService maintenanceService;
@@ -76,23 +79,33 @@ public final class LoginService {
 
     public LoginResult handleLoginError(Exception error) {
         Throwable cause = error;
-        if (error instanceof ExecutionException && error.getCause() != null) {
+        if ((error instanceof ExecutionException || error instanceof CompletionException)
+                && error.getCause() != null) {
             cause = error.getCause();
         }
 
-        if (cause instanceof PanelUnavailableException) {
-            return denyUntilBanStatusVerifiable();
-        }
-
         if (cause instanceof TimeoutException || cause instanceof InterruptedIOException) {
-            return new LoginResult.Denied("Login verification timed out. Please try again.");
+            return new LoginResult.Denied(localeManager.getMessage(CONNECTION_FAILED_KEY));
         }
 
         return denyUntilBanStatusVerifiable();
     }
 
-    private static LoginResult denyUntilBanStatusVerifiable() {
-        return new LoginResult.Denied("Unable to verify ban status. Login temporarily restricted for safety.");
+    private LoginResult denyUntilBanStatusVerifiable() {
+        return new LoginResult.Denied(unverifiableBanStatusMessage());
+    }
+
+    public String unverifiableBanStatusMessage() {
+        return localeManager.getMessage(BAN_CHECK_FAILED_KEY);
+    }
+
+    public String denialMessage(LoginResult result) {
+        if (result instanceof LoginResult.Allowed) return null;
+        if (result instanceof LoginResult.Denied) {
+            String message = ((LoginResult.Denied) result).getMessage();
+            if (message != null && !message.isEmpty()) return message;
+        }
+        return unverifiableBanStatusMessage();
     }
 
     public void cacheLoginData(UUID uuid, PlayerLoginResponse response) {

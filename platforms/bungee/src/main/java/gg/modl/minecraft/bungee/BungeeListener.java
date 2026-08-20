@@ -25,21 +25,9 @@ import net.md_5.bungee.event.EventPriority;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @RequiredArgsConstructor
 public class BungeeListener implements Listener {
-    private static final int LOGIN_EXECUTOR_MAX_THREADS = 4;
-    private static final int LOGIN_EXECUTOR_QUEUE_CAPACITY = 64;
-    private static final long EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5;
-    private static final AtomicInteger LOGIN_THREAD_COUNTER = new AtomicInteger();
-
     private final BungeePlatform platform;
     private final Cache cache;
     private final Plugin plugin;
@@ -48,85 +36,45 @@ public class BungeeListener implements Listener {
     private final CommandInterceptService commandInterceptService;
     private final ProxyLoginFlow proxyLoginFlow;
     private final ServerSwitchService serverSwitchService;
-    private final ThreadPoolExecutor loginExecutor = createLoginExecutor();
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(LoginEvent event) {
         event.registerIntent(plugin);
-        scheduleLoginCheck(event);
-    }
-
-    public void shutdown() {
-        loginExecutor.shutdown();
         try {
-            if (!loginExecutor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) loginExecutor.shutdownNow();
-        } catch (InterruptedException e) {
-            loginExecutor.shutdownNow();
-            Thread.currentThread().interrupt();
+            String ipAddress = extractIpAddress(event.getConnection().getSocketAddress());
+            proxyLoginFlow.begin(event.getConnection().getUniqueId(), event.getConnection().getName(),
+                            ipAddress, platform.getServerName())
+                    .whenComplete((result, failure) -> applyLoginResult(event, result, failure));
+        } catch (Throwable failure) {
+            denyLogin(event, loginPipeline.getLoginService().unverifiableBanStatusMessage(), failure);
+            event.completeIntent(plugin);
         }
     }
 
-    private ThreadPoolExecutor createLoginExecutor() {
-        return new ThreadPoolExecutor(
-                1,
-                LOGIN_EXECUTOR_MAX_THREADS,
-                60L,
-                TimeUnit.SECONDS,
-                new ArrayBlockingQueue<>(LOGIN_EXECUTOR_QUEUE_CAPACITY),
-                runnable -> {
-                    Thread thread = new Thread(runnable, "modl-bungee-login-" + LOGIN_THREAD_COUNTER.incrementAndGet());
-                    thread.setDaemon(true);
-                    return thread;
-                },
-                new ThreadPoolExecutor.AbortPolicy()
-        );
-    }
-
-    private void runLoginCheck(LoginEvent event) {
+    private void applyLoginResult(LoginEvent event, LoginService.LoginResult result, Throwable failure) {
         try {
-            performLoginCheck(event);
-        } catch (TimeoutException e) {
-            platform.getLogger().warning("Login check timed out for " + event.getConnection().getName() + " - blocking login for safety");
-            denyLogin(event, "Login verification timed out. Please try again.");
-        } catch (Exception e) {
-            handleLoginException(event, e);
+            if (failure != null) {
+                denyLogin(event, loginPipeline.getLoginService().unverifiableBanStatusMessage(), failure);
+                return;
+            }
+            String message = loginPipeline.getLoginService().denialMessage(result);
+            if (message != null) denyLogin(event, message, null);
+        } catch (Throwable applyFailure) {
+            denyLogin(event, loginPipeline.getLoginService().unverifiableBanStatusMessage(), applyFailure);
         } finally {
             event.completeIntent(plugin);
         }
     }
 
-    private void scheduleLoginCheck(LoginEvent event) {
-        try {
-            CompletableFuture.runAsync(() -> runLoginCheck(event), loginExecutor);
-        } catch (RejectedExecutionException e) {
-            platform.getLogger().warning("Login check executor rejected " + event.getConnection().getName() + " - blocking login for safety");
-            denyLogin(event, "Login verification is temporarily unavailable. Please try again.");
-            event.completeIntent(plugin);
-        }
-    }
-
-    private void performLoginCheck(LoginEvent event) throws Exception {
-        String ipAddress = extractIpAddress(event.getConnection().getSocketAddress());
-        proxyLoginFlow.execute(
-                event.getConnection().getUniqueId(),
-                event.getConnection().getName(),
-                ipAddress, platform.getServerName(),
-                message -> denyLogin(event, message),
-                () -> {});
-    }
-
-    private void handleLoginException(LoginEvent event, Exception e) {
-        LoginService.LoginResult result = loginPipeline.getLoginService().handleLoginError(e);
-        if (result instanceof LoginService.LoginResult.Denied) {
-            LoginService.LoginResult.Denied denied = (LoginService.LoginResult.Denied) result;
-            platform.getLogger().warning("Login blocked for " + event.getConnection().getName() + ": " + denied.getMessage());
-            denyLogin(event, denied.getMessage());
-        } else platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + e.getMessage());
-    }
-
-    private void denyLogin(LoginEvent event, String reason) {
-        event.setCancelReason(new TextComponent(reason));
+    private void denyLogin(LoginEvent event, String reason, Throwable failure) {
+        event.setCancelReason(platform.toKickComponent(reason));
         event.setCancelled(true);
+        if (failure == null) {
+            platform.getLogger().warning("Login blocked for " + event.getConnection().getName() + ": " + reason);
+        } else {
+            platform.getLogger().warning("Login verification failed for " + event.getConnection().getName()
+                    + " - denying login", failure);
+        }
     }
 
     @EventHandler

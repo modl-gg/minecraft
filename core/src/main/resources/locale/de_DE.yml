@@ -70,6 +70,7 @@ general:
   no_permission_reload: "&cDu hast keine Berechtigung, Strafendaten neu zu laden."
   invalid_syntax: "&cUngültige Befehlssyntax. Bitte überprüfe die Verwendung."
   gui_requires_player: "&cDieser Befehl öffnet eine GUI und kann nur von einem Spieler ausgeführt werden. Verwende &f-p &cfür Textausgabe."
+  gui_unavailable: "&cGUI-Menüs sind auf diesem Proxy nicht verfügbar."
   unknown: "Unbekannt"
   staff: "Team"
   player_not_found: "&cSpieler nicht gefunden."
@@ -798,6 +799,9 @@ freeze:
   logout_notification: "&c&l{player} hat sich eingefroren abgemeldet!"
   frozen_chat: "&b[EINGEFROREN] &e{player}&f: {message}"
   command_blocked: "&cDu kannst keine Befehle verwenden, während du eingefroren bist."
+  target_offline: "&c{player} ist nicht auf diesem Server online und kann daher nicht eingefroren werden."
+  unavailable: "&c{player} konnte nicht eingefroren werden: Kein Server ist verbunden, um es durchzusetzen."
+  unfreeze_not_propagated: "&e{player} wurde freigegeben, aber kein Server war verbunden, um die Einfrierung im Spiel aufzuheben."
 
 # Netzwerk-Chat abfangen
 intercept_chat:

@@ -37,18 +37,24 @@ public class VelocityPlatform implements Platform {
     private final Logger logger;
     private final File dataFolder;
     private final String configServerName;
+    private final boolean menusAvailable;
     private @Setter StaffAudience staffAudience;
 
     private final PluginLogger pluginLogger;
 
     public VelocityPlatform(Object plugin, ProxyServer server, Logger logger, File dataFolder,
-                            String configServerName, PluginLogger pluginLogger) {
+                            String configServerName, PluginLogger pluginLogger, boolean menusAvailable) {
         this.server = server;
         this.plugin = plugin;
         this.logger = logger;
         this.dataFolder = dataFolder;
         this.configServerName = configServerName;
         this.pluginLogger = pluginLogger;
+        this.menusAvailable = menusAvailable;
+    }
+
+    public Component toKickComponent(String reason) {
+        return colorize(StringUtil.unescapeNewlines(reason));
     }
 
     private static Component colorize(String string) {
@@ -167,7 +173,13 @@ public class VelocityPlatform implements Platform {
     }
 
     @Override
+    public boolean areMenusAvailable() {
+        return menusAvailable;
+    }
+
+    @Override
     public CirrusPlayerWrapper getPlayerWrapper(UUID uuid) {
+        if (!menusAvailable) return null;
         Player player = getOnlinePlayer(uuid);
         return player != null ? new VelocityPlayerWrapper(player) : null;
     }
@@ -220,7 +232,7 @@ public class VelocityPlatform implements Platform {
     @Override
     public void kickPlayer(AbstractPlayer player, String reason) {
         if (player == null) return;
-        server.getPlayer(player.getUuid()).ifPresent(velocityPlayer -> velocityPlayer.disconnect(colorize(StringUtil.unescapeNewlines(reason))));
+        server.getPlayer(player.getUuid()).ifPresent(velocityPlayer -> velocityPlayer.disconnect(toKickComponent(reason)));
     }
 
     @Override

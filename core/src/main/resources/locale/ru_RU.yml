@@ -74,6 +74,7 @@ general:
   no_permission_reload: "&cУ вас нет прав на перезагрузку данных о наказаниях."
   invalid_syntax: "&cНеверный синтаксис команды. Проверьте правильность ввода."
   gui_requires_player: "&cЭта команда открывает меню и может быть выполнена только игроком. Используйте &f-p &cдля вывода текстом."
+  gui_unavailable: "&cМеню недоступны на этом прокси-сервере."
 
   # Error messages
   unknown: "Неизвестно"
@@ -841,6 +842,9 @@ freeze:
   logout_notification: "&c&l{player} вышел во время заморозки!"
   frozen_chat: "&b[ЗАМОРОЖЕН] &e{player}&f: {message}"
   command_blocked: "&cВы не можете использовать команды во время заморозки."
+  target_offline: "&c{player} не в сети на этом сервере, поэтому его нельзя заморозить."
+  unavailable: "&cНе удалось заморозить {player}: нет подключённого сервера для её применения."
+  unfreeze_not_propagated: "&e{player} освобождён, но не было подключённого сервера, чтобы снять заморозку в игре."
 
 # Intercept Chat
 intercept_chat:

@@ -25,6 +25,9 @@ import gg.modl.minecraft.core.boot.SetupWizard;
 import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.boot.SyncPollingRate;
 import gg.modl.minecraft.core.login.LoginPipeline;
+import gg.modl.minecraft.core.packet.PacketInterceptionDecision;
+import gg.modl.minecraft.core.packet.PacketInterceptionMode;
+import gg.modl.minecraft.core.packet.PacketInterceptionPolicy;
 import gg.modl.minecraft.core.login.ProxyLoginFlow;
 import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 import gg.modl.minecraft.core.plugin.PluginInfo;
@@ -86,11 +89,11 @@ public final class VelocityPlugin {
         }
 
         loadLibraries();
-        initializePacketEvents();
-        initSignedVelocity();
-        loadConfig();
         createLocaleFiles();
         mergeDefaultConfigs();
+        loadConfig();
+        boolean packetInterception = initializePacketEvents();
+        initSignedVelocity(packetInterception);
 
         String panelUrl = StartupClient.callStartupWithRetry(
                 bootConfig.getApiKey(), bootConfig.isTestingApi(),
@@ -102,7 +105,7 @@ public final class VelocityPlugin {
             return;
         }
 
-        new CirrusVelocity(this, server).init();
+        if (packetInterception) new CirrusVelocity(this, server).init();
 
         HttpManager httpManager = new HttpManager(
                 bootConfig.getApiKey(),
@@ -112,7 +115,7 @@ public final class VelocityPlugin {
                 (Boolean) getNestedConfig("server.query_mojang", false)
         );
 
-        VelocityPlatform platform = new VelocityPlatform(this, this.server, logger, folder.toFile(), getConfigString("server.name", "Server 1"), pluginLogger);
+        VelocityPlatform platform = new VelocityPlatform(this, this.server, logger, folder.toFile(), getConfigString("server.name", "Server 1"), pluginLogger, packetInterception);
         ChatMessageCache chatMessageCache = new ChatMessageCache();
         int syncPollingRate = SyncPollingRate.clamp(getConfigInt(SyncPollingRate.CONFIG_KEY, SyncPollingRate.DEFAULT_SECONDS));
 
@@ -128,7 +131,7 @@ public final class VelocityPlugin {
 
         ProxyLoginFlow proxyLoginFlow = new ProxyLoginFlow(
                 pluginLoader.getHttpClientHolder(), pluginLoader.getLoginCache(), pluginLoader.getLoginService(),
-                pluginLoader.getLoginRequestBuilder(), pluginLoader.getIpEnrichmentService(),
+                pluginLoader.getIpEnrichmentService(),
                 pluginLoader.getPendingIpLookupService(), LOGIN_TIMEOUT_SECONDS);
 
         LoginPipeline loginPipeline = new LoginPipeline(
@@ -147,16 +150,10 @@ public final class VelocityPlugin {
     public synchronized void onProxyShutdown(ProxyShutdownEvent event) {
         if (bridgeRuntime != null) bridgeRuntime.shutdown();
         if (pluginLoader != null) pluginLoader.shutdown();
-        if (PacketEvents.getAPI() != null) {
-            try {
-                PacketEvents.getAPI().terminate();
-            } catch (Exception e) {
-                logger.debug("PacketEvents termination failed during shutdown: {}", e.getMessage());
-            }
-        }
+        terminatePacketEvents();
     }
 
-    private void initSignedVelocity() {
+    private void initSignedVelocity(boolean packetInterceptionEnabled) {
         if (server.getPluginManager().getPlugin("signedvelocity").isPresent()) {
             logger.info("[SignedVelocity] Using standalone SignedVelocity plugin");
             return;
@@ -164,6 +161,7 @@ public final class VelocityPlugin {
 
         SignedVelocity sv = new SignedVelocity(server, this, logger);
         sv.init();
+        if (packetInterceptionEnabled) sv.enforceSecureChat();
         logger.info("[SignedVelocity] Embedded listeners registered");
     }
 
@@ -221,10 +219,39 @@ public final class VelocityPlugin {
         bridgeRuntime = ProxyBridgeRuntime.startIfProxy(platform, pluginLoader, bootConfig, pluginLogger, panelUrl);
     }
 
-    private void initializePacketEvents() {
-        PacketEvents.setAPI(VelocityPacketEventsBuilder.build(server, plugin, logger, folder));
-        PacketEvents.getAPI().load();
-        PacketEvents.getAPI().init();
+    private boolean initializePacketEvents() {
+        PacketInterceptionDecision decision = PacketInterceptionPolicy.decide(
+                PacketInterceptionMode.fromConfig(getNestedConfig(PacketInterceptionPolicy.CONFIG_KEY, null)),
+                pluginId -> server.getPluginManager().getPlugin(pluginId).isPresent());
+
+        if (!decision.isEnabled()) {
+            logger.warn("modl packet interception is off: {}", decision.getReason());
+            return false;
+        }
+
+        try {
+            PacketEvents.setAPI(VelocityPacketEventsBuilder.build(server, plugin, logger, folder));
+            PacketEvents.getAPI().load();
+            PacketEvents.getAPI().init();
+            logger.debug("modl packet interception is on: {}", decision.getReason());
+            return true;
+        } catch (Throwable failure) {
+            logger.warn("modl packet interception could not start on this proxy; proxy menus and secure-chat "
+                    + "enforcement are off. Moderation is unaffected.", failure);
+            terminatePacketEvents();
+            return false;
+        }
+    }
+
+    private void terminatePacketEvents() {
+        if (PacketEvents.getAPI() == null) return;
+        try {
+            PacketEvents.getAPI().terminate();
+        } catch (Throwable failure) {
+            logger.debug("PacketEvents termination failed: {}", failure.getMessage());
+        } finally {
+            PacketEvents.setAPI(null);
+        }
     }
 
     private void loadLibraries() {

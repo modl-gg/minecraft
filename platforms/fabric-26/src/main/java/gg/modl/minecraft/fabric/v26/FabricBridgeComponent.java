@@ -113,10 +113,14 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
             ServerPlayer player = handler.getPlayer();
             UUID uuid = player.getUUID();
             fabricStaffModeHandler.onPlayerQuit(player);
-            fabricFreezeHandler.onPlayerQuit(uuid);
             if (violationTracker != null) violationTracker.resetPlayer(uuid);
             if (autoReporter != null) autoReporter.clearCooldown(uuid);
         });
+
+        if (bridgeOnly) {
+            ServerPlayConnectionEvents.DISCONNECT.register((handler, s) ->
+                    fabricFreezeHandler.onPlayerQuit(handler.getPlayer().getUUID()));
+        }
 
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
             if (fabricStaffModeHandler.isInStaffMode(player.getUUID())) return false;

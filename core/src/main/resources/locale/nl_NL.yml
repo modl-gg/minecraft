@@ -74,6 +74,7 @@ general:
   no_permission_reload: "&cJe hebt geen toestemming om strafgegevens te herladen."
   invalid_syntax: "&cOngeldige commandosyntax. Controleer je gebruik."
   gui_requires_player: "&cDit commando opent een GUI en kan alleen door een speler worden uitgevoerd. Gebruik &f-p &cvoor tekstuitvoer."
+  gui_unavailable: "&cGUI-menu's zijn niet beschikbaar op deze proxy."
 
   # Foutmeldingen
   unknown: "Onbekend"
@@ -890,6 +891,9 @@ freeze:
   logout_notification: "&c&l{player} logde uit terwijl bevroren!"
   frozen_chat: "&b[BEVROREN] &e{player}&f: {message}"
   command_blocked: "&cJe kunt geen commando's gebruiken terwijl je bevroren bent."
+  target_offline: "&c{player} is niet online op deze server en kan dus niet bevroren worden."
+  unavailable: "&cKon {player} niet bevriezen: er is geen server verbonden om het toe te passen."
+  unfreeze_not_propagated: "&e{player} is vrijgegeven, maar er was geen server verbonden om de bevriezing in het spel op te heffen."
 
 # Netwerk Chat Interceptie
 intercept_chat:

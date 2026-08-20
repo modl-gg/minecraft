@@ -74,6 +74,7 @@ general:
   no_permission_reload: "&cTu n'as pas la permission de recharger les données de sanctions."
   invalid_syntax: "&cSyntaxe de commande invalide. Vérifie ton utilisation."
   gui_requires_player: "&cCette commande ouvre une interface et ne peut être exécutée que par un joueur. Utilise &f-p &cpour un affichage texte."
+  gui_unavailable: "&cLes interfaces ne sont pas disponibles sur ce proxy."
 
   # Error messages
   unknown: "Inconnu"
@@ -841,6 +842,9 @@ freeze:
   logout_notification: "&c&l{player} s'est déconnecté alors qu'il était gelé !"
   frozen_chat: "&b[GELÉ] &e{player}&f: {message}"
   command_blocked: "&cTu ne peux pas utiliser de commandes pendant que tu es gelé."
+  target_offline: "&c{player} n'est pas connecté sur ce serveur, il ne peut donc pas être gelé."
+  unavailable: "&cImpossible de geler {player} : aucun serveur n'est connecté pour l'appliquer."
+  unfreeze_not_propagated: "&e{player} a été libéré, mais aucun serveur n'était connecté pour retirer le gel en jeu."
 
 # Intercept Chat
 intercept_chat:

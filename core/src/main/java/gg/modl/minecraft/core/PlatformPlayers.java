@@ -11,4 +11,6 @@ public interface PlatformPlayers extends PlayerLookup {
     void kickPlayer(AbstractPlayer player, String reason);
 
     default String getPlayerSkinTexture(UUID uuid) { return null; }
+
+    default boolean areMenusAvailable() { return true; }
 }

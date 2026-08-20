@@ -69,7 +69,9 @@ public class PunishCommand {
         }
 
         if ((args == null || args.length == 0) && actor.uniqueId() != null) {
-            openPunishmentGui(actor, target);
+            if (platform.areMenusAvailable()) {
+                openPunishmentGui(actor, target);
+            } else actor.reply(localeManager.getMessage("general.gui_unavailable"));
             return;
         }
 
