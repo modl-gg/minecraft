@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core.login;
 
 import gg.modl.minecraft.api.http.request.PlayerLoginRequest;
+import gg.modl.minecraft.api.http.response.PlayerLoginResponse;
 import gg.modl.minecraft.core.HttpClientHolder;
 import gg.modl.minecraft.core.boot.StartupClient;
 import gg.modl.minecraft.core.cache.LoginCache;
@@ -8,6 +9,7 @@ import gg.modl.minecraft.core.integration.iplookup.IpEnrichmentService;
 import gg.modl.minecraft.core.integration.iplookup.PendingIpLookupService;
 import gg.modl.minecraft.core.integration.mojang.MojangProfiles;
 import gg.modl.minecraft.core.util.Java8Collections;
+import lombok.Value;
 
 import java.util.Map;
 import java.util.UUID;
@@ -51,20 +53,30 @@ public final class ProxyLoginFlow {
                 .thenApply(profile -> profile != null && profile.isValid() ? profile.getSkin() : null);
 
         long enrichmentTimeoutSeconds = Math.max(1, timeoutSeconds * 2 / 5);
-        CompletableFuture<LoginService.LoginResult> verdict = bestEffort(ipInfoFuture, enrichmentTimeoutSeconds)
+        CompletableFuture<LoginExchange> exchange = bestEffort(ipInfoFuture, enrichmentTimeoutSeconds)
                 .thenCombine(bestEffort(skinHashFuture, enrichmentTimeoutSeconds), (ipInfo, skinHash) -> new PlayerLoginRequest(
                         uuid.toString(), username, ipAddress, skinHash, serverName, ipInfo,
                         StartupClient.getServerInstanceId()))
-                .thenComposeAsync(request -> httpClientHolder.getClient().playerLogin(request).thenApply(response -> {
-                    loginCache.cacheLoginResult(uuid, response, request.getIpInfo(), request.getSkinHash());
-                    pendingIpLookupService.handlePendingIpLookups(response, uuid.toString(), ipAddress, ipInfoFuture);
-                    return loginService.processLoginResponse(response, uuid);
-                }));
+                .thenComposeAsync(request -> httpClientHolder.getClient().playerLogin(request)
+                        .thenApply(response -> new LoginExchange(request, response)));
 
-        return Java8Collections.orTimeout(verdict, timeoutSeconds, TimeUnit.SECONDS)
-                .handleAsync((result, failure) -> failure == null
-                        ? result
+        return Java8Collections.orTimeout(exchange, timeoutSeconds, TimeUnit.SECONDS)
+                .handleAsync((completed, failure) -> failure == null
+                        ? settle(completed, uuid, ipAddress, ipInfoFuture)
                         : loginService.handleLoginError(asException(failure)));
+    }
+
+    private LoginService.LoginResult settle(LoginExchange exchange, UUID uuid, String ipAddress,
+                                            CompletableFuture<Map<String, Object>> ipInfoFuture) {
+        try {
+            loginCache.cacheLoginResult(uuid, exchange.getResponse(), exchange.getRequest().getIpInfo(),
+                    exchange.getRequest().getSkinHash());
+            pendingIpLookupService.handlePendingIpLookups(exchange.getResponse(), uuid.toString(), ipAddress,
+                    ipInfoFuture);
+            return loginService.processLoginResponse(exchange.getResponse(), uuid);
+        } catch (Throwable failure) {
+            return loginService.handleLoginError(asException(failure));
+        }
     }
 
     private static <T> CompletableFuture<T> bestEffort(CompletableFuture<T> lookup, long timeoutSeconds) {
@@ -77,5 +89,11 @@ public final class ProxyLoginFlow {
         Throwable cause = (failure instanceof CompletionException || failure instanceof ExecutionException)
                 && failure.getCause() != null ? failure.getCause() : failure;
         return cause instanceof Exception ? (Exception) cause : new ExecutionException(cause);
+    }
+
+    @Value
+    private static class LoginExchange {
+        PlayerLoginRequest request;
+        PlayerLoginResponse response;
     }
 }

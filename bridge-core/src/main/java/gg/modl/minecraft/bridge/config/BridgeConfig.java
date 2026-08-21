@@ -121,17 +121,12 @@ public class BridgeConfig {
     }
 
     public void applyReloadableSettings(BridgeConfig other) {
-        proxyHost = other.proxyHost;
-        proxyPort = other.proxyPort;
         statWipeCommands = other.statWipeCommands;
         anticheatName = other.anticheatName;
         anticheatHookEnabled = other.anticheatHookEnabled;
-        serverName = other.serverName;
         debug = other.debug;
         reportCooldown = other.reportCooldown;
         reportViolationThresholds = other.reportViolationThresholds;
-        replayEnabled = other.replayEnabled;
-        replayAutoRecord = other.replayAutoRecord;
         replayBufferDuration = other.replayBufferDuration;
         replayMaxDuration = other.replayMaxDuration;
         replayRadius = other.replayRadius;
