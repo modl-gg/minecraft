@@ -20,3 +20,10 @@ commands:
   proxycmd:
     description: Forward a command to the proxy plugin via TCP query
     usage: /proxycmd <command>
+  modlbridge:
+    description: Manage the modl bridge on this server
+    usage: /modlbridge reload
+permissions:
+  modl.bridge.reload:
+    description: Reload the modl bridge configuration
+    default: op

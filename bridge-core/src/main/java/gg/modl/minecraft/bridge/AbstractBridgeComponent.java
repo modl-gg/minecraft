@@ -1,6 +1,7 @@
 package gg.modl.minecraft.bridge;
 
 import gg.modl.minecraft.bridge.config.BridgeConfig;
+import gg.modl.minecraft.bridge.config.BridgeManagedConfigs;
 import gg.modl.minecraft.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;
@@ -30,6 +31,7 @@ public abstract class AbstractBridgeComponent {
     protected final PluginLogger pluginLogger;
     protected final List<AntiCheatHook> hooks = new ArrayList<>();
 
+    protected boolean bridgeOnly;
     @Getter protected BridgeConfig bridgeConfig;
     @Getter protected BridgeLocaleManager localeManager;
     @Getter protected StaffModeConfig staffModeConfig;
@@ -56,7 +58,8 @@ public abstract class AbstractBridgeComponent {
         startBridge(ticketCreator, true);
     }
 
-    private void startBridge(TicketCreator ticketCreator, boolean connectToProxy) {
+    private void startBridge(TicketCreator ticketCreator, boolean bridgeOnly) {
+        this.bridgeOnly = bridgeOnly;
         Path dataFolder = context.getDataFolder();
 
         prepareBridgeConfig(dataFolder);
@@ -64,7 +67,7 @@ public abstract class AbstractBridgeComponent {
         prepareStaffModeConfig();
         startLifecycleServices(dataFolder);
         initializePlatformHandlers();
-        connectBridgeClientIfConfigured(connectToProxy);
+        connectBridgeClientIfConfigured(bridgeOnly);
         initializeAutoReporting(ticketCreator);
         registerRuntimeHooks();
     }
@@ -80,7 +83,7 @@ public abstract class AbstractBridgeComponent {
     }
 
     private void prepareBridgeConfig(Path dataFolder) {
-        BridgeYamlResource.ensureDefaultFile(context, "bridge-config.yml", pluginLogger);
+        BridgeYamlResource.ensureDefaultFile(context, BridgeManagedConfigs.BRIDGE_CONFIG, pluginLogger);
 
         try {
             bridgeConfig = BridgeConfig.load(dataFolder);
@@ -96,7 +99,7 @@ public abstract class AbstractBridgeComponent {
     }
 
     private void prepareStaffModeConfig() {
-        BridgeYamlResource.ensureDefaultFile(context, "staff_mode.yml", pluginLogger);
+        BridgeYamlResource.ensureDefaultFile(context, BridgeManagedConfigs.STAFF_MODE, pluginLogger);
     }
 
     private void startLifecycleServices(Path dataFolder) {
@@ -113,8 +116,8 @@ public abstract class AbstractBridgeComponent {
         initStaffModeHandler(bridgeConfig, localeManager, staffModeConfig);
     }
 
-    private void connectBridgeClientIfConfigured(boolean connectToProxy) {
-        if (!connectToProxy) {
+    private void connectBridgeClientIfConfigured(boolean bridgeOnly) {
+        if (!bridgeOnly) {
             return;
         }
 
@@ -153,8 +156,9 @@ public abstract class AbstractBridgeComponent {
     }
 
     private void registerRuntimeHooks() {
-        registerAntiCheatHooks(hooks);
+        applyAntiCheatHookSetting();
         registerPlatformEvents();
+        registerBridgeCommand();
 
         if (bridgeClient != null) {
             registerProxyCommand(bridgeClient);
@@ -166,10 +170,59 @@ public abstract class AbstractBridgeComponent {
         if (bridgeClient != null) bridgeClient.shutdown();
     }
 
+    public final BridgeReloadResult reload() {
+        Path dataFolder = context.getDataFolder();
+        List<String> failures = new ArrayList<>();
+        List<String> restartRequired = new ArrayList<>();
+
+        BridgeYamlResource.ensureDefaultFile(context, BridgeManagedConfigs.BRIDGE_CONFIG, pluginLogger);
+        BridgeYamlResource.ensureDefaultFile(context, BridgeManagedConfigs.STAFF_MODE, pluginLogger);
+
+        try {
+            BridgeConfig reloaded = BridgeConfig.load(dataFolder);
+            restartRequired.addAll(bridgeConfig.settingsNeedingRestart(reloaded));
+            bridgeConfig.applyReloadableSettings(reloaded);
+        } catch (IOException | RuntimeException e) {
+            pluginLogger.warning("[bridge] Failed to reload bridge-config.yml", e);
+            failures.add("bridge-config.yml");
+        }
+
+        try {
+            staffModeConfig.reload(dataFolder);
+        } catch (RuntimeException e) {
+            pluginLogger.warning("[bridge] Failed to reload staff_mode.yml", e);
+            failures.add("staff_mode.yml");
+        }
+
+        try {
+            applyAntiCheatHookSetting();
+        } catch (RuntimeException e) {
+            pluginLogger.warning("[bridge] Failed to reapply the anticheat hooks", e);
+            failures.add("anticheat-hooks");
+        }
+
+        return new BridgeReloadResult(failures, restartRequired);
+    }
+
+    protected final void applyAntiCheatHookSetting() {
+        unregisterAntiCheatHooks();
+        if (!bridgeConfig.isAnticheatHookEnabled()) {
+            pluginLogger.info("[bridge] Anticheat auto-reporting is disabled by anticheat-hook-enabled");
+            return;
+        }
+        registerAntiCheatHooks(hooks);
+    }
+
+    public final boolean isAnticheatHookEnabled() {
+        return bridgeConfig != null && bridgeConfig.isAnticheatHookEnabled();
+    }
+
     private void unregisterAntiCheatHooks() {
         hooks.forEach(AntiCheatHook::unregister);
         hooks.clear();
     }
+
+    protected abstract void registerBridgeCommand();
 
     protected abstract void initFreezeHandler(BridgeLocaleManager localeManager);
 

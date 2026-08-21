@@ -1,8 +1,10 @@
 package gg.modl.minecraft.bridge.resource;
 
 import gg.modl.minecraft.bridge.BridgePluginContext;
+import gg.modl.minecraft.core.config.yaml.ConfigUpdate;
+import gg.modl.minecraft.core.config.yaml.ConfigUpdater;
+import gg.modl.minecraft.core.config.yaml.ManagedConfig;
 import gg.modl.minecraft.core.util.PluginLogger;
-import gg.modl.minecraft.core.util.YamlMergeUtil;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileNotFoundException;
@@ -18,13 +20,17 @@ public final class BridgeYamlResource {
     private BridgeYamlResource() {
     }
 
-    public static void ensureDefaultFile(BridgePluginContext context, String resourcePath, PluginLogger logger) {
-        Path externalFile = context.getDataFolder().resolve(resourcePath);
+    public static void ensureDefaultFile(BridgePluginContext context, ManagedConfig config, PluginLogger logger) {
+        Path externalFile = context.getDataFolder().resolve(config.getFileName());
         if (!Files.exists(externalFile)) {
-            context.saveDefaultResource(resourcePath);
+            context.saveDefaultResource(config.getFileName());
         }
 
-        YamlMergeUtil.mergeWithDefaults("/" + resourcePath, externalFile, logger);
+        ConfigUpdate update = ConfigUpdater.update(config, context.getDataFolder(), logger);
+        if (!update.getAddedPaths().isEmpty()) {
+            logger.info("[config] Added " + update.getAddedPaths().size() + " new option(s) to "
+                    + config.getFileName() + ": " + String.join(", ", update.getAddedPaths()));
+        }
     }
 
     public static Map<String, Object> loadMap(Path file) throws IOException {

@@ -16,9 +16,13 @@ class FakeStaffModeOps implements StaffModeOps {
     final Map<UUID, Integer> pings = new HashMap<>();
     final Map<UUID, Double> healths = new HashMap<>();
     int maxPlayers = 20;
+    boolean scoreboardRemovalFails;
+    boolean restoreFails;
+    boolean saveFails;
 
     final List<UUID> saved = new ArrayList<>();
     final List<UUID> restored = new ArrayList<>();
+    final List<UUID> clearedInventories = new ArrayList<>();
     final List<StaffGameMode> gameModes = new ArrayList<>();
     final List<String> hideCalls = new ArrayList<>();
     final List<String> showCalls = new ArrayList<>();
@@ -65,6 +69,7 @@ class FakeStaffModeOps implements StaffModeOps {
 
     @Override
     public void clearInventory(UUID uuid) {
+        clearedInventories.add(uuid);
     }
 
     @Override
@@ -87,20 +92,26 @@ class FakeStaffModeOps implements StaffModeOps {
 
     @Override
     public void saveSnapshot(UUID uuid) {
+        if (saveFails) return;
         if (snapshots.add(uuid)) {
             saved.add(uuid);
         }
     }
 
     @Override
-    public void restoreSnapshot(UUID uuid) {
+    public boolean restoreSnapshot(UUID uuid) {
+        if (restoreFails) {
+            throw new UnsupportedOperationException("restore unsupported on this platform");
+        }
+        if (!online.contains(uuid) || !snapshots.contains(uuid)) return false;
         snapshots.remove(uuid);
         restored.add(uuid);
+        return true;
     }
 
     @Override
-    public void discardSnapshot(UUID uuid) {
-        snapshots.remove(uuid);
+    public Set<UUID> playersWithSnapshots() {
+        return new HashSet<>(snapshots);
     }
 
     @Override
@@ -135,6 +146,9 @@ class FakeStaffModeOps implements StaffModeOps {
 
     @Override
     public void removeScoreboard(UUID uuid) {
+        if (scoreboardRemovalFails) {
+            throw new UnsupportedOperationException("scoreboards unsupported on this platform");
+        }
         scoreboards.remove(uuid);
     }
 

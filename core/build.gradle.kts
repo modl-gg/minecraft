@@ -1,6 +1,25 @@
 import java.security.MessageDigest
 import java.util.Base64
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.yaml.snakeyaml.Yaml
+
+buildscript {
+    // Version is read straight from the [versions] table of the catalog so it can never drift from libs.snakeyaml.
+    val versionsToml = rootDir.resolve("gradle/libs.versions.toml").readText()
+    val snakeYamlVersion = Regex("""^snakeyaml\s*=\s*(?:"([^"]+)"|'([^']+)')""", RegexOption.MULTILINE)
+        .find(versionsToml)
+        ?.groupValues
+        ?.drop(1)
+        ?.firstOrNull { it.isNotEmpty() }
+        ?: throw GradleException("Missing version alias 'snakeyaml' in libs.versions.toml")
+
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.yaml:snakeyaml:$snakeYamlVersion")
+    }
+}
 
 dependencies {
     api(project(":api"))
@@ -202,4 +221,74 @@ val generateLibraryVersions = tasks.register("generateLibraryVersions") {
 
 sourceSets.main {
     java.srcDir(generateLibraryVersions.map { layout.buildDirectory.dir("generated/sources/libraryVersions/java/main") })
+}
+
+val localeDirectory = layout.projectDirectory.dir("src/main/resources/locale")
+val referenceLocaleName = "en_US.yml"
+
+val verifyLocaleParity = tasks.register("verifyLocaleParity") {
+    group = "verification"
+    description = "Fails when a locale file has keys missing from, or absent from, $referenceLocaleName."
+
+    val localeFiles = localeDirectory.asFile
+    val reportFile = layout.buildDirectory.file("locale-parity/report.txt")
+    inputs.dir(localeDirectory).withPropertyName("localeFiles").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.property("referenceLocaleName", referenceLocaleName)
+    outputs.file(reportFile)
+
+    doLast {
+        fun collectLeafKeys(value: Any?, path: String, sink: MutableSet<String>) {
+            when (value) {
+                is Map<*, *> -> value.forEach { (key, child) ->
+                    collectLeafKeys(child, if (path.isEmpty()) "$key" else "$path.$key", sink)
+                }
+                is List<*> -> value.forEachIndexed { index, child ->
+                    collectLeafKeys(child, "$path[$index]", sink)
+                }
+                else -> if (path.isNotEmpty()) sink.add(path)
+            }
+        }
+
+        fun leafKeysOf(file: File): Set<String> {
+            val root = file.inputStream().use { Yaml().load<Any?>(it) }
+            val keys = linkedSetOf<String>()
+            collectLeafKeys(root, "", keys)
+            return keys
+        }
+
+        val referenceKeys = leafKeysOf(localeFiles.resolve(referenceLocaleName))
+        val problems = StringBuilder()
+
+        localeFiles.listFiles()
+            .orEmpty()
+            .filter { it.isFile && it.name.endsWith(".yml") && it.name != referenceLocaleName }
+            .sortedBy { it.name }
+            .forEach { file ->
+                val keys = leafKeysOf(file)
+                val missing = referenceKeys - keys
+                val extra = keys - referenceKeys
+                if (missing.isEmpty() && extra.isEmpty()) return@forEach
+
+                problems.appendLine("  ${file.name}:")
+                missing.sorted().forEach { problems.appendLine("    missing key: $it") }
+                extra.sorted().forEach { problems.appendLine("    unknown key: $it") }
+            }
+
+        if (problems.isNotEmpty()) {
+            throw GradleException("Locale files are not in parity with $referenceLocaleName:\n$problems")
+        }
+
+        reportFile.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText("${referenceKeys.size} keys verified against $referenceLocaleName\n")
+        }
+    }
+}
+
+tasks.named("processResources") {
+    dependsOn(verifyLocaleParity)
+}
+
+tasks.named("check") {
+    dependsOn(verifyLocaleParity)
 }

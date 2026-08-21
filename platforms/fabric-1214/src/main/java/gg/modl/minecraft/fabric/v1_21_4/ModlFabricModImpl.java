@@ -26,6 +26,7 @@ import gg.modl.minecraft.core.PluginServices;
 import gg.modl.minecraft.core.chat.CommandInterceptService;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.service.ChatMessageCache;
+import gg.modl.minecraft.core.config.yaml.CoreConfigBootstrap;
 import gg.modl.minecraft.core.util.PluginLogger;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -81,6 +82,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
     private BootConfig loadOrCreateBootConfig(Path dataFolder) {
         try {
             if (BootConfig.exists(dataFolder)) {
+                CoreConfigBootstrap.updateBootConfig(dataFolder, PLUGIN_LOGGER);
                 BootConfig config = BootConfig.load(dataFolder);
                 if (config != null && config.isValid()) {
                     return config;
@@ -231,6 +233,8 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
             if (pluginLoader != null) {
                 pluginLoader.getBridgeService().setLocalHandler(new FabricLocalBridgeHandler(
                         server, bridgeComponent.getFabricStaffModeHandler(), bridgeComponent.getFabricFreezeHandler()));
+                pluginLoader.getFreezeService().bindStore(
+                        bridgeComponent.getFabricFreezeHandler().getFrozenPlayerStore());
 
                 CommandInterceptService commandInterceptService = new CommandInterceptService(
                         pluginLoader.getCache(), pluginLoader.getFreezeService(),
@@ -340,6 +344,7 @@ public class ModlFabricModImpl implements DedicatedServerModInitializer {
         Path localeDir = dataFolder.resolve("locale");
         localeDir.toFile().mkdirs();
         saveResourceIfAbsent(localeDir, "en_US.yml");
+        CoreConfigBootstrap.updateRuntimeConfigs(dataFolder, PLUGIN_LOGGER);
     }
 
     private void saveResourceIfAbsent(Path targetDir, String resourceName) {

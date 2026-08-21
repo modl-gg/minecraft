@@ -1,0 +1,982 @@
+# modl.gg Minecraft Plugin - Russian Locale
+# Color codes: Use & for color codes (e.g., &c for red, &a for green)
+# Placeholders: {player}, {reason}, {ticketId}, {url}, {title}
+
+# General Messages
+messages:
+  cannot_report_self: "&cВы не можете пожаловаться на самого себя!"
+  player_not_online: "&cЭтот игрок не в сети."
+  submitting: "&eОтправка ({type})..."
+  creating: "&eСоздание ({type})..."
+  success: "&aУспешно отправлено: {type}!"
+  created: "&aУспешно создано: {type}!"
+  ticket_id: "&7ID тикета: &f{ticketId}"
+  view_ticket: "&7Посмотреть ваш тикет: &b{url}"
+  complete_form: "&7Заполните форму ({type}): &b{url}"
+  evidence_note: "&7При необходимости вы можете добавить дополнительные доказательства в тикет."
+  form_title_note: "&7Вы можете изменить заголовок '&f{title}&7' в форме перед отправкой."
+  failed_submit: "&cНе удалось отправить ({type}): {error}"
+  failed_create: "&cНе удалось создать ({type}): {error}"
+  try_again: "&cПопробуйте позже или обратитесь к персоналу напрямую."
+  unknown_error: "Неизвестная ошибка"
+  no_details: "Дополнительные подробности не указаны"
+  no_chat_logs_available: "&cНедавние сообщения игрока {player} не найдены. Невозможно создать жалобу на чат без логов чата."
+  view_ticket_label: "Посмотреть ваш тикет"
+  complete_form_label: "Заполните форму ({type})"
+  click_to_view: "[Нажмите, чтобы посмотреть]"
+  click_to_view_hover: "Нажмите, чтобы посмотреть тикет {ticketId}"
+  console_ticket_url: "&6{message}: &b{url}"
+  claiming_ticket: "&eПривязка тикета &f{ticketId}&e к вашему аккаунту..."
+  ticket_claimed_success: "&aТикет &f{ticketId}&a успешно привязан к вашему аккаунту!"
+  ticket_claim_failed: "&cНе удалось привязать тикет: {error}"
+  ticket_cooldown: "&cПодождите {seconds} с, прежде чем открывать ещё один тикет этого типа."
+  report_gui_title: "&fЖалоба на {player}"
+  report_skull_chat_log:
+    - "&bЖалоба на {player}"
+    - "&7Приложить логи чата?"
+  report_skull_details:
+    - "&bЖалоба на {player}"
+    - "&7Добавить подробности?"
+  report_skull_confirm:
+    - "&bЖалоба на {player}"
+    - "&7Подтвердить жалобу?"
+  report_attach_chat: "&aПриложить лог чата"
+  report_attach_chat_lore:
+    - "&7Приложить недавние сообщения"
+    - "&7этого игрока как доказательства"
+  report_skip_chat: "&cПропустить лог чата"
+  report_skip_chat_lore:
+    - "&7Не прикладывать сообщения чата"
+  report_add_details: "&aДобавить подробности"
+  report_add_details_lore:
+    - "&7Добавьте подробности,"
+    - "&7поясняющие вашу жалобу"
+  report_skip_details: "&cПропустить подробности"
+  report_skip_details_lore:
+    - "&7Пропустить дополнительные подробности."
+  report_confirm: "&aПодтвердить жалобу"
+  report_confirm_lore:
+    - "&7Отправить эту жалобу"
+  report_cancel: "&cОтменить жалобу"
+  report_cancel_lore:
+    - "&7Отменить без отправки"
+  report_details_prompt: "Введите дополнительные подробности для вашей жалобы на игрока {player}:"
+  report_submitted: "&aВаша жалоба успешно отправлена!"
+
+# Punishment System Messages
+# Available variables: {player}, {target}, {reason}, {duration}, {type}, {id}, {issuer}, {punishment_type}, {expiration}, {server}
+# General punishment messages
+general:
+  # Permission messages
+  players_only: "&cЭту команду могут использовать только игроки."
+  no_permission: "&cУ вас нет прав на использование этой команды."
+  no_permission_punishment: "&cУ вас нет прав на выдачу наказаний типа '{type}'."
+  no_permission_reload: "&cУ вас нет прав на перезагрузку данных о наказаниях."
+  invalid_syntax: "&cНеверный синтаксис команды. Проверьте правильность ввода."
+  gui_requires_player: "&cЭта команда открывает меню и может быть выполнена только игроком. Используйте &f-p &cдля вывода текстом."
+  gui_unavailable: "&cМеню недоступны на этом прокси-сервере."
+
+  # Error messages
+  unknown: "Неизвестно"
+  staff: "Персонал"
+  player_not_found: "&cИгрок не найден."
+  punishment_error: "&cОшибка при создании наказания: {error}"
+  punishment_types_not_loaded: "&cТипы наказаний не загружены. Попробуйте &f/modl reload&c или обратитесь к администратору."
+  invalid_punishment_type: "&cНеверный тип наказания. Доступные типы: {types}"
+  invalid_duration: "&cНеверный формат длительности. Примеры: 1d, 2h, 30m, 1w"
+  cannot_punish_self: "&cВы не можете наказать самого себя."
+  target_immune: "&cВы не можете наказать игрока {target}, так как у него есть иммунитет."
+
+  # Success messages
+  punishment_issued: "&aНаказание {type} успешно выдано игроку &f{target}&a."
+  punishment_issued_duration: "&aНаказание {type} успешно выдано игроку &f{target}&a ({duration})."
+
+  # Reload messages
+  reloading: "&eПерезагрузка..."
+  reload_success: "&aПерезагрузка завершена."
+  reload_error: "&cОшибка при перезагрузке: {error}"
+
+# Punishment type validation messages
+validation:
+  single_severity_error: "&cНевозможно указать степень тяжести для типа наказания '{type}' с единственной степенью. У этого типа наказания только один уровень тяжести."
+  permanent_skin_change_error: "&cНевозможно указать степень тяжести для типа наказания '{type}', действующего до смены скина."
+  permanent_username_change_error: "&cНевозможно указать степень тяжести для типа наказания '{type}', действующего до смены никнейма."
+  alt_blocking_not_supported: "&cФлаг блокировки альт-аккаунтов не поддерживается типом наказания '{type}'."
+  stat_wiping_not_supported: "&cФлаг сброса статистики не поддерживается типом наказания '{type}'."
+
+# Punishment placeholder words
+# These are substituted into punishment messages as {tense}, {tense2}, and {temp}
+punishment_words:
+  # {tense} - used in player-facing messages (e.g., "You {tense} banned")
+  tense_default: "были"
+  tense_active: "сейчас"
+  # {tense2} - used in player-facing messages (e.g., "Your account {tense2} restricted")
+  tense2_default: "был"
+  tense2_active: "сейчас"
+  # {temp} - used in player-facing messages (e.g., "You have been {temp} banned")
+  temporarily: "временно"
+  permanently: "навсегда"
+  # {will_expire} - appended to timed ban/mute notifications; {type} is ban/mute/punishment, {duration} is the remaining time
+  will_expire: "\n&7Срок действия ({type}) истечёт через &f{duration}&7."
+  duration_formatted: "\n&7Срок действия ({type}) истечёт через {duration}"
+  mute_duration_formatted: " на {duration}"
+  # {for_duration} - appended to timed mute notifications; the value carries its own leading space
+  for_duration: " на {duration}"
+  # Localized words injected as {type} into will_expire/duration_formatted
+  type_ban: "бан"
+  type_mute: "мут"
+  type_punishment: "наказание"
+  # Shown in the {duration} slot for permanent punishments; config.yml locale_config.duration_format.permanent overrides it when set
+  duration_permanent: "навсегда"
+
+# Punishment Type Specific Messages
+# Format: punishment_types.ordinal_<ordinal_number>
+# Manual punishment types (ordinals 0-5):
+#   0: Kick, 1: Manual Mute, 2: Manual Ban, 3: Security Ban, 4: Linked Ban, 5: Blacklist
+# Dynamic punishment types start at ordinal 6+
+#
+# Structure:
+#   public_notification: Single message shown to all players
+#   player_notification: List of strings shown to the punished player (joined by \n)
+#   Available placeholders:
+#     {target} - The player's name (usually "You" for player notifications)
+#     {reason} - The punishment reason
+#     {duration} - Duration formatted (e.g., "7d 3h" or "permanent")
+#     {description} - Same as reason
+#     {appeal_url} - Full appeal URL (api.url + /appeal)
+#     {id} - The punishment ID
+#     {temp} - "temporarily" or "permanently"
+#     {issued} - Issue date in MM/DD/YY HH:MM format
+#     {player_description} - Player-facing description from punishment type config
+#     {will_expire} - Empty if permanent, or "\nThis ban/mute will expire in {duration}" if timed
+#     {issuer} - Staff name who issued the punishment
+#     {tense} - "have been" or "are" depending on context
+#     {tense2} - "has been" or "is" depending on context
+
+punishments:
+  public_notification:
+    ban_default: "&cИгрок {target} забанен."
+    mute_default: "&cИгрок {target} замучен."
+    kick_default: "&cИгрок {target} кикнут."
+    default: "&cИгрок {target} наказан."
+  mute_fallback: "&cВы замучены!"
+  player_notification:
+    ban_default: "&cВы {tense} забанены (#{id})."
+    mute_default: "&cВы {tense} замучены (#{id})."
+    kick_default: "&cВы были кикнуты (#{id})."
+    default: "&cВы {tense} наказаны (#{id})."
+
+punishment_types:
+  ordinal_0: # Kick
+    public_notification: "&cИгрок {target} кикнут."
+    player_notification:
+      - "&c&lВы были кикнуты с сервера."
+      - "&f{reason} &7(#{id})"
+
+  ordinal_1: # Manual Mute
+    public_notification: "&cИгрок {target} замучен."
+    player_notification:
+      - ""
+      - "&cВы {tense} {temp} замучены{for_duration}"
+      - "&7{issued} | #{id} | {appeal_url}"
+      - "&f{reason}"
+      - ""
+
+  ordinal_2: # Manual Ban
+    public_notification: "&cИгрок {target} забанен."
+    player_notification:
+      - "&c&lВы {tense} {temp} забанены за:"
+      - ""
+      - "&f{reason}"
+      - "&7{will_expire}"
+      - "&7Считаете это ошибкой? Подайте апелляцию на {appeal_url}, указав ID #{id}."
+
+  # Manual punishment types
+  ordinal_3:  # Security Ban
+    public_notification: "&cИгрок {target} забанен."
+    player_notification:
+      - "&c&lВаш аккаунт {tense2} ограничен из соображений безопасности."
+      - "&fНа вашем аккаунте обнаружена подозрительная активность. Защитите свой аккаунт и подайте апелляцию на {appeal_url}, указав ID #{id}."
+
+  ordinal_4:  # Linked Ban
+    public_notification: "&cИгрок {target} забанен."
+    player_notification:
+      - "&c&lВаш аккаунт {tense2} связан с забаненным аккаунтом."
+      - ""
+      - "&fОбход банов через альтернативные аккаунты или передача своего аккаунта другим строго запрещены."
+      - ""
+      - "&7Этот бан будет автоматически снят по истечении связанного бана."
+      - "&7Считаете это ошибкой? Подайте апелляцию на {appeal_url}, указав ID #{id}"
+
+  ordinal_5:  # Blacklist
+    public_notification: "&cИгрок {target} внесён в чёрный список."
+    player_notification:
+      - "&cВы {tense} внесены в чёрный список"
+      - "&7ID: #{id}"
+
+  ordinal_6: # Chat abuse
+    public_notification: "&cИгрок {target} замучен за нарушения в чате."
+    player_notification:
+      - ""
+      - "&cВы {tense} {temp} замучены{for_duration}"
+      - "&7{issued} | #{id} | {appeal_url}"
+      - "&f{player_description}"
+      - ""
+  ordinal_7: # anti social
+    public_notification: "&cИгрок {target} замучен за антисоциальное поведение."
+    player_notification:
+      - ""
+      - "&cВы {tense} {temp} замучены{for_duration}"
+      - "&7{issued} | #{id} | {appeal_url}"
+      - "&f{player_description}"
+      - ""
+
+  ordinal_8: # targeting
+    public_notification: "&cИгрок {target} забанен за травлю."
+    player_notification:
+      - "&c&lВы {tense} {temp} забанены за:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Считаете это ошибкой? Подайте апелляцию на {appeal_url}, указав ID #{id}."
+
+  ordinal_9: # bad content
+    public_notification: "&cИгрок {target} забанен за неприемлемый контент."
+    player_notification:
+      - "&c&lВы {tense} {temp} забанены за:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Считаете это ошибкой? Подайте апелляцию на {appeal_url}, указав ID #{id}."
+
+  ordinal_10: # Bad username
+    public_notification: "&cИгрок {target} забанен."
+    player_notification:
+      - "&c&lВы {tense} забанены из-за вашего никнейма в Minecraft."
+      - ""
+      - "&f{reason}"
+      - ""
+      - "&7Этот бан будет автоматически снят после смены никнейма."
+      - "&7Считаете это ошибкой? Подайте апелляцию на {appeal_url}, указав ID #{id}"
+
+  ordinal_11: # Bad skin
+    public_notification: "&cИгрок {target} забанен."
+    player_notification:
+      - "&c&lВы {tense} забанены из-за вашего скина в Minecraft."
+      - ""
+      - "&f{reason}"
+      - ""
+      - "&7Этот бан будет автоматически снят после смены скина."
+      - "&7Считаете это ошибкой? Подайте апелляцию на {appeal_url}, указав ID #{id}"
+
+  ordinal_12: # team abuse
+    public_notification: "&cИгрок {target} забанен за нарушения в командной игре."
+    player_notification:
+      - "&c&lВы {tense} {temp} забанены за:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Считаете это ошибкой? Подайте апелляцию на {appeal_url}, указав ID #{id}."
+
+  ordinal_13: # game abuse
+    public_notification: "&cИгрок {target} забанен за нарушения игрового процесса."
+    player_notification:
+      - "&c&lВы {tense} {temp} забанены за:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Считаете это ошибкой? Подайте апелляцию на {appeal_url}, указав ID #{id}."
+
+  ordinal_14: # cheating
+    public_notification: "&cИгрок {target} забанен за читы."
+    player_notification:
+      - "&c&lВы {tense} {temp} забанены за:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Считаете это ошибкой? Подайте апелляцию на {appeal_url}, указав ID #{id}."
+
+  ordinal_15: # game trading
+    public_notification: "&cИгрок {target} забанен за торговлю игровыми ценностями."
+    player_notification:
+      - "&c&lВы {tense} {temp} забанены за:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Считаете это ошибкой? Подайте апелляцию на {appeal_url}, указав ID #{id}."
+
+  ordinal_16: # account abuse
+    public_notification: "&cИгрок {target} забанен за нарушения, связанные с аккаунтом."
+    player_notification:
+      - "&c&lВы {tense} {temp} забанены за:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Считаете это ошибкой? Подайте апелляцию на {appeal_url}, указав ID #{id}."
+
+  ordinal_17: # systems abuse
+    public_notification: "&cИгрок {target} забанен за злоупотребление системами сервера."
+    player_notification:
+      - "&c&lВы {tense} {temp} забанены за:"
+      - ""
+      - "&f{player_description}"
+      - "&7{will_expire}"
+      - "&7Считаете это ошибкой? Подайте апелляцию на {appeal_url}, указав ID #{id}."
+
+# Notifications
+notification:
+  ticket_reply: "&6[Тикет] &f{message}"
+  ticket_reply_with_link: "&6[Тикет] &f{message} &b[Нажмите, чтобы посмотреть]"
+  ticket_click_action: "&7Нажмите, чтобы посмотреть тикет {ticketId}"
+
+# IAmMuted Command Messages
+iammuted:
+  only_players: "&cЭту команду могут использовать только игроки."
+  not_muted: "&cВы можете использовать эту команду, только пока вы замучены."
+  player_not_online: "&cЭтот игрок не в сети."
+  cannot_message_self: "&cВы не можете отправить это сообщение самому себе."
+  cooldown_message: "&cПодождите {minutes} мин. и {seconds} сек., прежде чем снова использовать эту команду."
+  notification_to_target: "&6[Замученный игрок] &f{sender} &7сейчас замучен и не может отвечать в чате."
+  success_message: "&aИгрок &f{target}&a уведомлён о том, что вы замучены."
+
+# Standing Command Messages
+standing:
+  loading: "&7Загрузка вашего статуса..."
+  error: "&cНе удалось загрузить ваш статус. Попробуйте позже."
+  cooldown: "&cПодождите {seconds} с, прежде чем снова использовать эту команду."
+
+# Player Lookup Messages
+player_lookup:
+  looking_up: "&7Поиск игрока &e{player}&7..."
+  error: "&cОшибка при поиске игрока: {error}"
+  uuid: "&7UUID: &f{uuid}"
+  currently_banned: "&7Сейчас забанен: {status}"
+  currently_muted: "&7Сейчас замучен: {status}"
+  staff_notes_label: "&7Заметки персонала:"
+  staff_note_format: "  &8• &f{text} &7- {issuer}"
+  no_staff_notes: "  &8Заметок персонала нет"
+  total_punishments: "&7Всего наказаний: &f{count}"
+  linked_accounts_label: "&7Связанные аккаунты:"
+  linked_account_format: "  &8• &f{username}{status}"
+  linked_account_more: "  &8... и ещё {count}"
+  no_linked_accounts: "  &8Связанных аккаунтов нет"
+  total_tickets: "&7Всего тикетов: &f{count}"
+  profile_fallback: "&6Профиль: &b{url}"
+
+  # Status messages for linked accounts
+  status:
+    banned_and_muted: " &c(сейчас забанен и замучен)"
+    banned: " &c(сейчас забанен)"
+    muted: " &e(сейчас замучен)"
+    no_punishments: " &7(активных наказаний нет)"
+
+# Print Mode Messages (for -p flag on commands)
+print:
+  # /inspect <player> -p
+  inspect:
+    header: ""
+    uuid: "&fИнформация об игроке {player} &7({uuid})"
+    currently_banned: "&eЗабанен: {status}"
+    currently_muted: "&eЗамучен: {status}"
+    notes_label: "&eЗаметки персонала:"
+    note_entry: "&6{ordinal}. &f{text} &eот {issuer}"
+    no_notes: "&7Заметок персонала нет"
+    total_punishments: "&eВсего наказаний: &f{count}"
+    linked_accounts_label: "&eСвязанные аккаунты:"
+    linked_account_entry: "&6{ordinal}. &e{username} ({status}&e)"
+    linked_account_more: "&e... и ещё {count}"
+    no_linked_accounts: "&7Связанных аккаунтов нет"
+    total_tickets: "&eВсего тикетов: &f{count}"
+    profile_fallback: "&eПрофиль: &b{url}"
+    footer: ""
+
+  # /inspect #<punishmentId>
+  punishment_detail:
+    not_found: "&cНаказание #{id} не найдено."
+    header: " "
+    type: "&eТип: &f{type}"
+    player: "&eИгрок: &f{player}"
+    issuer: "&eВыдал: &f{issuer}"
+    date: "&eДата: &f{date}"
+    status: "&eСтатус: {status}"
+    duration: "&eДлительность: &f{duration}"
+    reason: "&eПричина: &f{reason}"
+    evidence: "&eДоказательства: &f{count} файл(ов)"
+    notes: "&eЗаметки: &f{count}"
+    modifications: "&eИзменения: &f{count}"
+    footer: " "
+
+  # /history <player> -p
+  history:
+    header: ""
+    entry_kick: "&6{ordinal}. &7#{id} &e{date} &f{type} &eот {issuer} за &f{reason}"
+    entry_active: "&6{ordinal}. &c#{id} &e{date} &f{type} ({duration}) &eот {issuer} за &f{reason} &7(истекает через {expiry})"
+    entry_permanent: "&6{ordinal}. &c#{id} &e{date} &f{type} (навсегда) &eот {issuer} за &f{reason}"
+    entry_unstarted: "&6{ordinal}. &c#{id} &e{date} &f{type} ({duration}) &eот {issuer} за &f{reason} &7(ещё не началось)"
+    entry_expired: "&6{ordinal}. &7#{id} &e{date} &f{type} ({duration}) &eот {issuer} за &f{reason} &7(истекло {expired_ago} назад)"
+    entry_pardoned: "&6{ordinal}. &b#{id} &e{date} &f{type} ({duration}) &eот {issuer} за &f{reason} &7(снято {pardoned_ago} назад)"
+    total: "&eСтраница {page}/{total_pages} (всего {count})"
+    empty: "&7Игрок ни разу не был наказан."
+    footer: ""
+
+  # /notes <player> -p
+  notes:
+    header: ""
+    entry: "&6{ordinal}. &e{date} {author}: &f{content}"
+    total: "&eСтраница {page}/{total_pages} (всего {count})"
+    empty: "&7Заметок персонала не найдено."
+    footer: ""
+
+  # /alts <player> -p
+  alts:
+    header: ""
+    entry: "&6{ordinal}. {color}{username} &e({status}&e)"
+    status_banned: "&cЗабанен"
+    status_muted: "&eЗамучен"
+    status_banned_and_muted: "&cЗабанен и замучен"
+    status_clean: "&aЧисто"
+    total: "&eСтраница {page}/{total_pages} (всего {count})"
+    empty: "&7Связанных аккаунтов не найдено."
+    footer: ""
+
+  # /reports <player> -p
+  reports:
+    header: ""
+    entry: "&6{ordinal}. &e#{id} {date} ({status}&e) &fжалоба ({type}) &eот {reporter}"
+    entry_content: " &f{content}"
+    total: "&eСтраница {page}/{total_pages} (всего {count})"
+    empty: "&7Жалоб не найдено."
+    footer: ""
+
+  # /stafflist -p
+  staff_list:
+    header: ""
+    entry: "&6 - &e{player} ({in-game-name}) &7[{role}] &eна &f{server}{v}"
+    vanish: " &7[V]"
+    empty: "&7Персонала в сети нет."
+    total: "&eСтраница {page}/{total_pages} (всего {count})"
+
+# Punishment Command Messages
+punishment_commands:
+  invalid_severity: "&cНеверная степень тяжести. Допустимые значения: lenient, regular, severe"
+  warning_message: "&c{username} получил наказание: {punishment_type}."
+
+# API Error Handling
+api_errors:
+  panel_restarting: "&cПанель сейчас перезапускается. Повторите попытку через 10 секунд."
+  panel_unavailable: "&cПанель временно недоступна. Повторите попытку чуть позже."
+  connection_failed: "&cНе удалось подключиться к панели. Повторите попытку через мгновение."
+  ban_check_failed: "&cНе удалось проверить статус бана. Вход временно ограничен в целях безопасности."
+
+# Pardon Command Messages
+pardon:
+  processing_id: "&7Снятие наказания с ID: &e{id}&7..."
+  processing_player: "&7Снятие наказаний для игрока: &e{player}&7..."
+  success_id: "&aНаказание &e#{id}&a успешно снято."
+  success_player: "&aУспешно снято наказаний у игрока {player}: {count} ({type})."
+  already_pardoned_id: "&7Наказание &e#{id}&7 уже неактивно или было снято."
+  no_active_punishment: "&7У игрока {player} нет активного наказания типа {type} для снятия."
+  error: "&cНе удалось снять наказание: {error}"
+  error_player: "&cНе удалось снять наказание ({type}) у игрока {player}: {error}"
+  error_wrong_type_ban: "&cНаказание &e#{id}&c не является баном. Используйте &e/pardon {id}&c, чтобы снять наказание любого типа."
+  error_wrong_type_mute: "&cНаказание &e#{id}&c не является мутом. Используйте &e/pardon {id}&c, чтобы снять наказание любого типа."
+  staff_notification_id: "&7&o[{issuer}: снял наказание #{id}&7&o]"
+  staff_notification_player: "&7&o[{issuer}: снял наказание ({type}) у {player}&7&o]"
+
+# Warning Command Messages
+warn:
+  player_message: "&c&lВы получили предупреждение от {issuer}.\n&fПричина: &7{reason}\n&7Ознакомьтесь с правилами сервера и скорректируйте своё поведение."
+  success: "&aИгроку &f{target}&a успешно выдано предупреждение за: &7{reason}"
+  staff_notification: "&7&o[{issuer}: выдал предупреждение {target} за {reason}&7&o]"
+  error: "&cНе удалось создать предупреждение: {error}"
+
+# Menu Item Localization
+# These define titles and lore for items in inspect menus
+# Available placeholders vary by item type and are documented below
+menus:
+  # Player head in inspect menus
+  player_head:
+    title: "&6Информация об игроке {player_name}"
+    lore:
+      - "&8{uuid}"
+      - "&f "
+      - "&7Первый вход: &f{first_login}"
+      - "&7В сети: {is_online} ({last_seen_or_session_time} на {server})"
+      - "&7Время игры: &f{playtime}"
+      - "&7Реальный IP записан: &f{real_ip_logged}"
+      - "&7Регион: &f{region} (Страна: {country})"
+      - "&7Забанен: &f{is_banned}"
+      - "&7Замучен: &f{is_muted}"
+      - ""
+      - "&eЛКМ, чтобы выбрать целью {player_name}"
+
+  # Punishment history items
+  history_item:
+    title_active: "&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    title_inactive: "&m&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    lore:
+      - "&7{status_line}"
+      - "&f "
+      - "{notes}"
+      - "&f "
+      - "&7Сервер: &f{issued_server}"
+      - "&7ID: &c{punishment_id}"
+      - "&bНажмите, чтобы изменить это наказание."
+    status_active: "&7Истекает через {expiry}."
+    status_inactive: "&7Истекло {expired} назад."
+    status_pardoned: "&7Снято {pardoned} назад."
+    status_permanent: "&7&7Это бессрочное наказание никогда не истечёт."
+    status_unstarted: "&7Наказание ещё не началось."
+    note_format: "&e{note_date} {note_issuer}&f: {note}"
+
+  # Recent punishments items (includes target player info)
+  recent_item:
+    title_active: "&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    title_inactive: "&m&f&l{punishment_type} &f({initial_duration_if_not_kick}{space_ban_mute_or_kick})"
+    lore:
+      - "&7Игрок: &f{player}"
+      - "&7{status_line}"
+      - "&f "
+      - "{notes}"
+      - "&f "
+      - "&7Сервер: &f{issued_server}"
+      - "&7ID: &c{punishment_id}"
+      - "&bНажмите, чтобы изменить это наказание."
+
+  # Note items
+  note_item:
+    title: "&e{date} {author}"
+    lore:
+      - "&f{content}"
+      - "&f "
+      - "&eНажмите, чтобы увидеть заметку в чате"
+
+  # Report items
+  report_item:
+    title: "&e{date} {id} ({status}&e)"
+    lore:
+      - "&7Жалоба от &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&cЛКМ, чтобы проверить игрока"
+      - "&aПКМ, чтобы отклонить жалобу"
+
+  # Alt account items
+  alt_item:
+    title: "{color}{player_name}"
+    lore:
+      - "&8{uuid}"
+      - "&f "
+      - "&7В сети: {is_online} ({last_seen_or_session_time} на {server})"
+      - "&7Реальный IP записан: {real_ip}"
+      - "&7Первый вход: &f{first_login}"
+      - "&7{punishments}"
+      - "&f "
+      - "&eНажмите, чтобы проверить {player_name}"
+    punishment_line_active_true:
+      - "&7Активные наказания ({active_count}): &f"
+      - "{active_punishment_list}"
+    punishment_line_active_false:
+      - "&7Активные наказания: &f0"
+      - "&7Неактивные наказания: &f{inactive_count}"
+    active_punishment_format: "&7- &e#{punishment_id} {punishment_date}: {punishment_type} ({punishment_remaining})"
+
+
+  # Empty placeholders for lists
+  empty:
+    history: "История наказаний пуста"
+    notes: "Заметок персонала нет"
+    reports: "Жалоб не подано"
+    alts: "Связанных аккаунтов нет"
+    tickets: "Тикетов нет"
+    staff_reports: "Жалоб нет"
+
+  # Staff menu - Tickets
+  ticket_item:
+    title: "&6Тикет #{id}"
+    lore:
+      - "&7Игрок: &f{player}"
+      - "&7Заголовок: &f{title}"
+      - "&7Создан: &f{date}"
+      - "&7Статус: {status}"
+      - "&f "
+      - "&eНажмите, чтобы открыть в панели"
+
+  # Staff menu - Reports
+  staff_report_item:
+    title: "&e{date} {id} ({status}&e)"
+    lore:
+      - "&cЖалоба на {reported}&7 от &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&cЛКМ, чтобы проверить игрока"
+      - "&aПКМ, чтобы отклонить жалобу"
+  linked_ticket_item:
+    title: "&e{date} {id} ({status}&e)"
+    lore:
+      - "&7{title}"
+      - "&f "
+      - "{content}"
+  link_report_item_unselected:
+    title: "&e{date} {id}"
+    lore:
+      - "&7Жалоба от &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&eНажмите, чтобы выбрать"
+  link_report_item_selected:
+    title: "&a{date} {id}"
+    lore:
+      - "&7Жалоба от &a{reporter} &7({type})"
+      - "&f "
+      - "{content}"
+      - "&f "
+      - "&eНажмите, чтобы снять выбор"
+
+  # Staff Members Menu (lore template for each staff entry)
+  # Placeholders: {display_name}, {online_color}, {role}, {minecraft_username},
+  #   {online_status}, {session_duration}, {last_seen}, {playtime}, {punishments_count}
+  staff_members:
+    title: "&e{panel_name}"
+    lore:
+      - "&7Роль: &f{role}"
+      - "&7Minecraft: &f{minecraft_username}"
+      - ""
+      - "&7В сети: {is_online} ({last_seen_or_session_time} на {server})"
+      - "&7Время игры: &f{playtime}"
+      - "&7Выдано наказаний: &f{punishments_count}"
+
+  notes:
+    created: "&aЗаметка успешно создана!"
+    create_failed: "&cНе удалось создать заметку."
+    cancelled: "&7Создание заметки отменено."
+  modify_punishment:
+    no_permission_tickets: "&cУ вас нет прав на изменение связанных тикетов."
+    no_changes: "&7Связанные тикеты не изменились."
+    tickets_updated: "&aСвязанные тикеты успешно обновлены!"
+    tickets_update_failed: "&cНе удалось обновить связанные тикеты."
+
+  # Online Players Menu (lore template for each player entry)
+  # Placeholders: {player_name}, {session_duration}, {total_playtime}, {punishments}, {report_count}
+  online_players:
+    title: "&6{player_name}"
+    lore:
+      - "&7Сессия: &f{session_duration}"
+      - "&7Всего наиграно: &f{total_playtime}"
+      - "&7Наказания: &f{punishments}"
+      - ""
+      - "&7Жалобы ({report_count}):"
+      - "{report-list}"
+      - ""
+      - "&cЛКМ, чтобы проверить"
+      - "&aПКМ, чтобы выбрать целью"
+    # Placeholders: {date}, {details}, {reporter}
+    report_entry: " &6- &e{date} {reporter}: &f{details}"
+    reports_more: " &e... и ещё {count}"
+    no_reports: " &eЖалоб нет"
+
+# Help Command
+# Set usage to "" to hide a command from the help list (e.g. if you disabled it).
+help:
+  header: "&a&lmodl.gg &av{version} &f- &eСписок команд"
+  entry: "&f/{command} &7- {description}"
+  footer: "&eСтраница {page}/{total_pages}. Используйте &a/modl help {next_page}&e для следующей страницы."
+  no_more_pages: "&7Больше страниц нет."
+  player_commands:
+    iammuted:
+      usage: "iammuted <игрок>"
+      description: "Сообщить кому-либо, что вы замучены"
+    standing:
+      usage: "standing"
+      description: "Посмотреть свой статус нарушений"
+    report:
+      usage: "report <игрок> <причина>"
+      description: "Пожаловаться на игрока"
+    chatreport:
+      usage: "chatreport <игрок>"
+      description: "Пожаловаться на чат игрока"
+    claimticket:
+      usage: "claimticket <id>"
+      description: "Привязать тикет к своему аккаунту"
+    apply:
+      usage: "apply"
+      description: "Подать заявку в персонал"
+    bugreport:
+      usage: "bugreport"
+      description: "Сообщить об ошибке"
+    support:
+      usage: "support"
+      description: "Открыть тикет в поддержку"
+  staff_commands:
+    staffmenu:
+      usage: "staffmenu"
+      description: "Открыть меню персонала"
+    inspect:
+      usage: "inspect <игрок> [-p]"
+      description: "Открыть меню проверки игрока (-p для текста)"
+    history:
+      usage: "history <игрок> [-p [страница]]"
+      description: "Открыть историю игрока (-p для текста)"
+    notes:
+      usage: "notes <игрок> [-p [страница]]"
+      description: "Открыть заметки об игроке (-p для текста)"
+    alts:
+      usage: "alts <игрок> [-p [страница]]"
+      description: "Открыть альт-аккаунты игрока (-p для текста)"
+    reports:
+      usage: "reports [игрок] [-p [страница]]"
+      description: "Открыть меню жалоб (-p для текста)"
+    punish:
+      usage: "punish <игрок> [тип] [причина]"
+      description: "Выдать наказание"
+    ban:
+      usage: "ban <игрок> [длительность] [причина]"
+      description: "Забанить игрока"
+    mute:
+      usage: "mute <игрок> [длительность] [причина]"
+      description: "Замутить игрока"
+    kick:
+      usage: "kick <игрок> [причина]"
+      description: "Кикнуть игрока"
+    blacklist:
+      usage: "blacklist <игрок> [причина]"
+      description: "Внести игрока в чёрный список"
+    pardon:
+      usage: "pardon <игрок>"
+      description: "Снять ВСЕ активные наказания"
+    unban:
+      usage: "unban <игрок>"
+      description: "Снять активный или самый старый неначатый бан"
+    unmute:
+      usage: "unmute <игрок>"
+      description: "Снять активный или самый старый неначатый мут"
+    replay:
+      usage: "replay <status|capture> [игрок]"
+      description: "Управление записями реплеев"
+    modl_reload:
+      usage: "modl reload"
+      description: "Перезагрузить конфигурацию"
+
+# Stat Wipe
+stat_wipe:
+  kick_message: "&cПожалуйста, перезайдите на сервер. Ваша статистика сбрасывается в связи с недавно истёкшим баном."
+
+# Staff Chat
+staff_chat:
+  enabled: "&eЧат персонала &aвключён&e. Сообщения по умолчанию будут отправляться в чат персонала."
+  disabled: "&eЧат персонала &cвыключен&e. Сообщения по умолчанию будут отправляться в локальный чат."
+  feature_disabled: "&cЧат персонала не включён на этом сервере."
+  already_normal: "&cВы уже находитесь в режиме локального чата."
+  format: "&b[ПЕРСОНАЛ] &e{panel-name}&f: {message}"
+  local_chat_enabled: "&eЧат персонала &cвыключен&e. Сообщения по умолчанию будут отправляться в локальный чат."
+
+# Chat Management
+chat_management:
+  chat_toggled_on: "&7&o[{staff}: включил чат]"
+  chat_toggled_off: "&7&o[{staff}: выключил чат]"
+  chat_disabled: "&cЧат сейчас отключён."
+  chat_cleared: "&7&o[{staff}: очистил чат]"
+  slow_mode_enabled: "&7&o[{staff}: включил медленный режим чата — {seconds}с]"
+  slow_mode_disabled: "&7&o[{staff}: выключил медленный режим]"
+  slow_mode_wait: "&cПодождите {seconds} сек., прежде чем снова писать в чат."
+  invalid_seconds: "&cВведите корректное количество секунд."
+  usage_toggle: "&fИспользование: &a/chat &ftoggle"
+  usage_clear: "&fИспользование: &a/chat &fclear"
+  usage_slow: "&fИспользование: &a/chat &fslow <секунды|off>"
+  help:
+    header: "&eКоманды чата:"
+    staff: "&f/chat staff &7- Переключить режим чата персонала"
+    toggle: "&f/chat toggle &7- Включить/выключить публичный чат"
+    clear: "&f/chat clear [количество] &7- Очистить чат"
+    slow: "&f/chat slow <секунды|off> &7- Включить/выключить медленный режим"
+
+
+# Staff Notifications
+staff_notifications:
+  join: "&7&o[{staff}: зашёл]"
+  verified: "&7&o[{staff}: подтвердил личность]"
+  leave: "&7&o[{staff}: вышел]"
+  switch: "&7&o[{staff}: подключился к {server}]"
+  generic: "&7&o[{message}]"
+
+# Staff 2FA
+staff_2fa:
+  not_verified: "&cВы должны подтвердить свою личность перед использованием команд персонала. Используйте &f/verify"
+  verify_prompt: "&aНажмите на ссылку для подтверждения: &f{url}"
+  verify_success: "&aЛичность успешно подтверждена!"
+  verify_error: "&cНе удалось создать ссылку для подтверждения. Попробуйте ещё раз."
+  auto_verified: "&aАвтоматически подтверждено по доверенному IP."
+
+# Verify Command (Staff 2FA)
+verify:
+  only_players: "&cЭту команду могут использовать только игроки."
+  disabled: "&c2FA для персонала не включена на этом сервере."
+  already_verified: "&aВы уже подтвердили свою личность."
+  header: ""
+  instructions: "&aНажмите на ссылку ниже, чтобы подтвердить свою личность:"
+  click_here: "Нажмите здесь для подтверждения"
+  error: "&cНе удалось создать ссылку для подтверждения. Попробуйте ещё раз."
+  footer: "&eСрок действия ссылки скоро истечёт."
+
+# Maintenance
+maintenance:
+  enabled: "&7&o[{staff}: включил режим техработ]"
+  disabled: "&7&o[{staff}: выключил режим техработ]"
+  already_enabled: "&cРежим техработ уже включён."
+  already_disabled: "&cРежим техработ уже выключен."
+  status_enabled: "&eРежим техработ сейчас включён."
+  status_disabled: "&eРежим техработ сейчас выключен."
+  login_denied: "&cНа сервере идут технические работы. Попробуйте позже."
+  kick_message: "&cНа сервере начались технические работы. Попробуйте позже."
+  usage: "&fИспользование: &a/maintenance&f <on|off>"
+
+# Freeze
+freeze:
+  frozen_message: "&cВы заморожены! Не выходите с сервера."
+  staff_notification_freeze: "&7&o[{staff}: заморозил {player}]"
+  staff_notification_unfreeze: "&7&o[{staff}: разморозил {player}]"
+  unfrozen: "&aВы разморожены."
+  logout_notification: "&c&l{player} вышел во время заморозки!"
+  frozen_chat: "&b[ЗАМОРОЖЕН] &e{player}&f: {message}"
+  command_blocked: "&cВы не можете использовать команды во время заморозки."
+  target_offline: "&c{player} не в сети на этом сервере, поэтому его нельзя заморозить."
+  unavailable: "&cНе удалось заморозить {player}: нет подключённого сервера для её применения."
+  unfreeze_not_propagated: "&e{player} освобождён, но не было подключённого сервера, чтобы снять заморозку в игре."
+
+# Intercept Chat
+intercept_chat:
+  enabled: "&aПерехват сетевого чата включён"
+  disabled: "&aПерехват сетевого чата выключен"
+  format: "&8[G-{server}] &e{player}&f: {message}"
+
+# Intercept (staff-only interception messages)
+intercept:
+  message: "&8[Перехват] &f{player}: &7{message}"
+
+# Chat Logs
+chat_logs:
+  header: ""
+  entry: "&7[{timestamp}] &8[{server}] &f{message}"
+  empty: "&7Логи чата для этого игрока не найдены."
+  footer: "&eСтраница {page}/{total_pages} (всего {total})"
+  error: "&cНе удалось загрузить логи чата."
+  usage: "&fИспользование: &a/chatlogs&f <игрок>"
+
+# Command Logs
+command_logs:
+  header: ""
+  entry: "&7[{timestamp}] &e{player}&7: &f/{command}"
+  empty: "&7Логи команд для этого игрока не найдены."
+  footer: "&eСтраница {page}/{total_pages} (всего {total})"
+  error: "&cНе удалось загрузить логи команд."
+  usage: "&fИспользование: &a/commandlogs&f <игрок>"
+
+# Staff Mode
+staff_mode:
+  enabled: "&aРежим персонала включён"
+  disabled: "&aРежим персонала выключен"
+  enabled_broadcast: "&7&o[{staff}: вошёл в режим персонала]"
+  disabled_broadcast: "&7&o[{staff}: вышел из режима персонала]"
+
+# Vanish
+vanish:
+  enabled: "&aВы стали невидимы"
+  disabled: "&aВы снова видимы"
+  enabled_broadcast: "&7&o[{staff}: включил невидимость]"
+  disabled_broadcast: "&7&o[{staff}: выключил невидимость]"
+
+# Target
+target:
+  targeting: "&eТекущая цель: &f{player}"
+  cleared: "&aЦель сброшена."
+  usage: "&fИспользование: &a/target&f <игрок>"
+  connecting: "&eПодключение к &f{server}&e, чтобы выбрать целью &f{player}&e..."
+  cannot_target_self: "&cВы не можете выбрать целью самого себя."
+  not_online: "&cИгрок не в сети."
+
+# Replay
+replay:
+  usage:
+    - "&f/replay status [игрок] &7- Проверить статус записи"
+    - "&f/replay capture [игрок] &7- Сохранить и загрузить реплей"
+  not_available: "&cЗапись реплеев недоступна на этом сервере."
+  status_recording: "&aИгрок {player} сейчас записывается"
+  status_not_recording: "&cИгрок {player} не записывается"
+  fabric_disabled: "&cЗапись реплеев отключена на серверах Fabric."
+  no_bridge_connected: "&cНи один bridge-сервер не подключён для сохранения реплеев."
+  no_active_recording: "&cНет активной записи для игрока {player}"
+  capturing: "&aСохранение и загрузка реплея для игрока {player}..."
+  capture_success: "&aРеплей для игрока {player} успешно сохранён"
+  capture_link: "&b{url}"
+  capture_failed: "&cНе удалось сохранить реплей для игрока {player}"
+  click_to_view: "[Нажмите, чтобы посмотреть реплей]"
+  click_to_view_hover: "Открыть просмотрщик реплеев"
+  console_specify_player: "&cУкажите имя игрока при запуске из консоли."
+
+# Standing GUI (player-facing)
+standing_gui:
+  title: "&fВаш статус"
+  social_status:
+    title: "&eСоциальный статус: {status}"
+    description:
+      Low:
+        - ""
+        - "&fВаш уровень социальных нарушений — низкий."
+        - "&fПродолжайте в том же духе, наказания"
+        - "&fв этой категории будут мягче."
+      Medium:
+        - ""
+        - "&fВаш уровень социальных нарушений — средний."
+        - "&fУ вас накопилось несколько нарушений,"
+        - "&fбудьте внимательнее, ведь наказания"
+        - "&fв этой категории будут строже."
+      Habitual:
+        - ""
+        - "&fВаш уровень социальных нарушений — систематический."
+        - "&fУ вас накопилось много нарушений,"
+        - "&fбудьте внимательны, ведь наказания"
+        - "&fв этой категории будут очень строгими."
+  gameplay_status:
+    title: "&eИгровой статус: {status}"
+    description:
+      Low:
+        - ""
+        - "&fВаш уровень игровых нарушений — низкий."
+        - "&fПродолжайте в том же духе, наказания"
+        - "&fв этой категории будут мягче."
+      Medium:
+        - ""
+        - "&fВаш уровень игровых нарушений — средний."
+        - "&fУ вас накопилось несколько нарушений,"
+        - "&fбудьте внимательнее, ведь наказания"
+        - "&fв этой категории будут строже."
+      Habitual:
+        - ""
+        - "&fВаш уровень игровых нарушений — систематический."
+        - "&fУ вас накопилось много нарушений,"
+        - "&fбудьте внимательны, ведь наказания"
+        - "&fв этой категории будут очень строгими."
+  status_display:
+    Low: "&aНизкий"
+    Medium: "&6Средний"
+    Habitual: "&cСистематический"
+  punishment_item:
+    title: "&e#{id} {date}"
+    lore:
+      - "&7{duration} {type} ({status})"
+      - ""
+      - "&f{reason}"
+
+# Punishment Action Command
+punishment_action:
+  unknown_action: "&cНеизвестное действие: {action}"
+  enter_evidence_url: "&7Введите ссылку на доказательства для наказания #{id}:"
+  no_url: "&cСсылка не указана."
+  evidence_linked: "&aДоказательства привязаны к наказанию #{id}"
+  evidence_link_failed: "&cНе удалось привязать доказательства: {error}"
+  evidence_cancelled: "&7Привязка доказательств отменена."
+  generating_upload: "&7Создание ссылки для загрузки..."
+  upload_failed: "&cНе удалось создать ссылку для загрузки."

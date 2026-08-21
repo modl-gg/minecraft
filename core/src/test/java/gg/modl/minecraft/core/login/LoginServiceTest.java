@@ -1,6 +1,7 @@
 package gg.modl.minecraft.core.login;
 
 import gg.modl.minecraft.api.http.PanelUnavailableException;
+import gg.modl.minecraft.core.support.MapLocaleManager;
 import org.junit.jupiter.api.Test;
 
 import java.net.SocketTimeoutException;
@@ -11,7 +12,11 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 class LoginServiceTest {
 
-    private final LoginService loginService = new LoginService(null, null, null, null, null, null, null);
+    private final LoginService loginService = new LoginService(
+            new MapLocaleManager()
+                    .put("api_errors.ban_check_failed", "ban check failed")
+                    .put("api_errors.connection_failed", "connection failed"),
+            null, null, null, null, null, null);
 
     @Test
     void panelUnavailableFailsClosed() {

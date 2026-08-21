@@ -6,6 +6,8 @@ import gg.modl.minecraft.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;
 import gg.modl.minecraft.bridge.staffmode.StaffModeCore;
+import gg.modl.minecraft.core.util.PluginLogger;
+import gg.modl.minecraft.spigot.bridge.folia.AsyncTeleporter;
 import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -41,10 +43,12 @@ public class StaffModeHandler implements Listener {
     private final StaffModeCore core;
 
     public StaffModeHandler(JavaPlugin plugin, BridgeConfig bridgeConfig, FreezeHandler freezeHandler,
-                            BridgeLocaleManager localeManager, StaffModeConfig staffModeConfig, BridgeScheduler scheduler) {
+                            BridgeLocaleManager localeManager, PluginLogger pluginLogger,
+                            StaffModeConfig staffModeConfig, BridgeScheduler scheduler) {
         this.plugin = plugin;
-        this.core = new StaffModeCore(bridgeConfig, staffModeConfig, localeManager, scheduler,
-                freezeHandler.getFreezeCore(), new SpigotStaffModeOps(plugin.getLogger()));
+        this.core = new StaffModeCore(bridgeConfig, staffModeConfig, localeManager, pluginLogger, scheduler,
+                freezeHandler.getFreezeCore(),
+                new SpigotStaffModeOps(plugin.getLogger(), new AsyncTeleporter(pluginLogger)));
     }
 
     public void register() {

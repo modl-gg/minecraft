@@ -31,9 +31,21 @@ public class StaffModeConfig {
         return new StaffModeConfig(dataFolder, logger);
     }
 
-    @SuppressWarnings("unchecked")
     private StaffModeConfig(Path dataFolder, PluginLogger logger) {
         this.logger = logger;
+        read(dataFolder);
+    }
+
+    public void reload(Path dataFolder) {
+        vanishOnEnable = true;
+        staffHotbar = new LinkedHashMap<>();
+        targetHotbar = new LinkedHashMap<>();
+        staffScoreboard = new ScoreboardConfig();
+        targetScoreboard = new ScoreboardConfig();
+        read(dataFolder);
+    }
+
+    private void read(Path dataFolder) {
         Path configFile = dataFolder.resolve("staff_mode.yml");
         if (!configFile.toFile().exists()) {
             setDefaults();

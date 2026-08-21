@@ -117,7 +117,8 @@ public class BridgeServer implements StatWipeExecutor, BridgeBroadcaster {
     }
 
     private boolean isImmediateOnlyAction(String action) {
-        return BridgeAction.CAPTURE_REPLAY.wire().equals(action);
+        BridgeAction resolved = BridgeAction.fromWire(action);
+        return resolved != null && !resolved.isQueueable();
     }
 
     @Override

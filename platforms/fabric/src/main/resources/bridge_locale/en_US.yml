@@ -25,6 +25,13 @@ freeze:
   no_commands: "&cYou cannot use commands while frozen."
 
 command:
+  modlbridge:
+    usage: "Usage: &a/modlbridge reload"
+    no_permission: "&cYou do not have permission to use this command."
+    reloading: "&eReloading modl bridge configuration..."
+    reloaded: "&aBridge configuration reloaded."
+    reload_failed: "&cReloaded with errors in: &f{files}&c. Check the console for details."
+    restart_required: "&eThese settings only apply after a restart: &f{keys}"
   proxycmd:
     console_only: "&cThis command can only be executed from console."
     usage: "Usage: &a/proxycmd &f<command>"

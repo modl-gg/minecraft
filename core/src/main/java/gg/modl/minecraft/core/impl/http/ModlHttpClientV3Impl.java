@@ -66,7 +66,6 @@ import gg.modl.minecraft.core.impl.http.proto.StaffRoleProtoMapper;
 import gg.modl.minecraft.core.impl.http.proto.SyncProtoMapper;
 import gg.modl.minecraft.core.impl.http.proto.TicketProtoMapper;
 import gg.modl.minecraft.core.plugin.PluginInfo;
-import gg.modl.minecraft.core.util.CircuitBreaker;
 import gg.modl.proto.modl.v1.ApiError;
 import org.jetbrains.annotations.NotNull;
 
@@ -111,7 +110,7 @@ public class ModlHttpClientV3Impl extends AbstractModlHttpTransport implements M
     public CompletableFuture<PlayerLoginResponse> playerLogin(@NotNull PlayerLoginRequest request) {
         return post("/minecraft/players/login", PlayerProtoMapper.toProto(request).toByteArray(), LOGIN_TIMEOUT,
             gg.modl.proto.modl.v1.PlayerLoginResponse.parser(), PlayerProtoMapper::toLoginResponse, "LOGIN",
-            loginCircuitBreaker);
+            loginLane);
     }
 
     @NotNull @Override
@@ -459,18 +458,18 @@ public class ModlHttpClientV3Impl extends AbstractModlHttpTransport implements M
     }
 
     private <P extends Message, R> CompletableFuture<R> get(String endpoint, Parser<P> parser, Function<P, R> mapper) {
-        return send(request(endpoint, "GET", null, null, null), parser, mapper, null, backgroundCircuitBreaker);
+        return send(request(endpoint, "GET", null, null, null), parser, mapper, null, backgroundLane);
     }
 
     private <P extends Message, R> CompletableFuture<R> post(String endpoint, byte[] body, Duration timeout,
                                                              Parser<P> parser, Function<P, R> mapper, String operation) {
-        return send(request(endpoint, "POST", body, timeout, null), parser, mapper, operation, backgroundCircuitBreaker);
+        return send(request(endpoint, "POST", body, timeout, null), parser, mapper, operation, backgroundLane);
     }
 
     private <P extends Message, R> CompletableFuture<R> post(String endpoint, byte[] body, Duration timeout,
                                                              Parser<P> parser, Function<P, R> mapper, String operation,
-                                                             CircuitBreaker breaker) {
-        return send(request(endpoint, "POST", body, timeout, null), parser, mapper, operation, breaker);
+                                                             RequestLane lane) {
+        return send(request(endpoint, "POST", body, timeout, null), parser, mapper, operation, lane);
     }
 
     private CompletableFuture<Void> postVoid(String endpoint, byte[] body) {
@@ -497,12 +496,12 @@ public class ModlHttpClientV3Impl extends AbstractModlHttpTransport implements M
     }
 
     private <P extends Message, R> CompletableFuture<R> send(HttpRequest request, Parser<P> parser,
-                                                             Function<P, R> mapper, String operation, CircuitBreaker breaker) {
-        return execute(request, operation, breaker, (requestId, body) -> decodeProto(requestId, body, parser, mapper));
+                                                             Function<P, R> mapper, String operation, RequestLane lane) {
+        return execute(request, operation, lane, (requestId, body) -> decodeProto(requestId, body, parser, mapper));
     }
 
     private CompletableFuture<Void> sendVoid(HttpRequest request) {
-        return this.<Void>execute(request, null, backgroundCircuitBreaker, (requestId, body) -> null);
+        return this.<Void>execute(request, null, backgroundLane, (requestId, body) -> null);
     }
 
     private <P extends Message, R> R decodeProto(String requestId, byte[] body, Parser<P> parser, Function<P, R> mapper) {

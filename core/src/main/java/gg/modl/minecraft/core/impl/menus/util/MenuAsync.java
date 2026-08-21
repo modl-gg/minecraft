@@ -15,6 +15,7 @@ public final class MenuAsync {
 
     public static void displayWhenLoaded(Platform platform, CompletableFuture<Void> dataFuture,
                                          CirrusPlayerWrapper player, Consumer<CirrusPlayerWrapper> displayAction) {
+        if (player == null) return;
         dataFuture.thenRun(() -> platform.runOnMainThread(() -> displayAction.accept(player)))
                 .exceptionally(throwable -> {
                     logMenuLoadFailure(platform, player, throwable);

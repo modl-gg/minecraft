@@ -9,10 +9,6 @@ public class BridgeService {
     private volatile BridgeBroadcaster executor;
     private volatile LocalBridgeHandler localHandler;
 
-    public boolean isAvailable() {
-        return executor != null || localHandler != null;
-    }
-
     public void sendStaffModeEnter(String staffUuid, String inGameName, String panelName) {
         if (localHandler != null) localHandler.onStaffModeEnter(staffUuid);
         broadcast(BridgeAction.STAFF_MODE_ENTER, staffUuid, inGameName, panelName);
@@ -33,14 +29,16 @@ public class BridgeService {
         broadcast(BridgeAction.VANISH_EXIT, staffUuid, inGameName, panelName);
     }
 
-    public void sendFreezePlayer(String targetUuid, String staffUuid) {
-        if (localHandler != null) localHandler.onFreezePlayer(targetUuid, staffUuid);
-        broadcast(BridgeAction.FREEZE_PLAYER, targetUuid, staffUuid);
+    public boolean sendFreezePlayer(String targetUuid, String staffUuid) {
+        LocalBridgeHandler handler = localHandler;
+        if (handler != null) handler.onFreezePlayer(targetUuid, staffUuid);
+        return broadcast(BridgeAction.FREEZE_PLAYER, targetUuid, staffUuid) > 0 || handler != null;
     }
 
-    public void sendUnfreezePlayer(String targetUuid) {
-        if (localHandler != null) localHandler.onUnfreezePlayer(targetUuid);
-        broadcast(BridgeAction.UNFREEZE_PLAYER, targetUuid);
+    public boolean sendUnfreezePlayer(String targetUuid) {
+        LocalBridgeHandler handler = localHandler;
+        if (handler != null) handler.onUnfreezePlayer(targetUuid);
+        return broadcast(BridgeAction.UNFREEZE_PLAYER, targetUuid) > 0 || handler != null;
     }
 
     public void sendTargetRequest(String staffUuid, String targetUuid) {
@@ -48,8 +46,9 @@ public class BridgeService {
         broadcast(BridgeAction.TARGET_REQUEST, staffUuid, targetUuid);
     }
 
-    private void broadcast(BridgeAction action, String... args) {
-        if (executor != null) executor.sendToAllBridges(action.wire(), args);
+    private int broadcast(BridgeAction action, String... args) {
+        BridgeBroadcaster broadcaster = executor;
+        return broadcaster != null ? broadcaster.sendToAllBridges(action.wire(), args) : 0;
     }
 
     public interface LocalBridgeHandler {

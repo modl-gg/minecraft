@@ -41,24 +41,25 @@ public class BridgeConfig {
     private static final int DEFAULT_REPLAY_MAX_DURATION = 300;
     private static final int DEFAULT_REPLAY_LOCAL_TTL = 10080;
 
-    @Setter @Builder.Default private String apiKey = "";
-    @Setter @Builder.Default private boolean debug = false;
-    @Builder.Default private String proxyHost = "";
-    @Builder.Default private int proxyPort = DEFAULT_QUERY_PORT;
-    @Builder.Default private List<String> statWipeCommands = defaultStatWipeCommands();
-    @Builder.Default private String anticheatName = "Anti-cheat";
-    @Builder.Default private String serverName = "Server 1";
-    @Builder.Default private int reportCooldown = DEFAULT_REPORT_COOLDOWN;
-    @Builder.Default private Map<String, Integer> reportViolationThresholds = defaultViolationThresholds();
+    @Setter @Builder.Default private volatile String apiKey = "";
+    @Setter @Builder.Default private volatile boolean debug = false;
+    @Builder.Default private volatile String proxyHost = "";
+    @Builder.Default private volatile int proxyPort = DEFAULT_QUERY_PORT;
+    @Builder.Default private volatile List<String> statWipeCommands = defaultStatWipeCommands();
+    @Builder.Default private volatile String anticheatName = "Anti-cheat";
+    @Builder.Default private volatile boolean anticheatHookEnabled = true;
+    @Builder.Default private volatile String serverName = "Server 1";
+    @Builder.Default private volatile int reportCooldown = DEFAULT_REPORT_COOLDOWN;
+    @Builder.Default private volatile Map<String, Integer> reportViolationThresholds = defaultViolationThresholds();
 
-    @Builder.Default private boolean replayEnabled = false;
-    @Builder.Default private boolean replayAutoRecord = false;
-    @Builder.Default private int replayBufferDuration = DEFAULT_REPLAY_BUFFER_DURATION;
-    @Builder.Default private int replayMaxDuration = DEFAULT_REPLAY_MAX_DURATION;
-    @Builder.Default private int replayRadius = DEFAULT_REPLAY_RADIUS;
-    @Builder.Default private int replayMoveThrottle = DEFAULT_REPLAY_MOVE_THROTTLE;
-    @Builder.Default private boolean replaySaveLocal = true;
-    @Builder.Default private int replayLocalTtl = DEFAULT_REPLAY_LOCAL_TTL;
+    @Builder.Default private volatile boolean replayEnabled = false;
+    @Builder.Default private volatile boolean replayAutoRecord = false;
+    @Builder.Default private volatile int replayBufferDuration = DEFAULT_REPLAY_BUFFER_DURATION;
+    @Builder.Default private volatile int replayMaxDuration = DEFAULT_REPLAY_MAX_DURATION;
+    @Builder.Default private volatile int replayRadius = DEFAULT_REPLAY_RADIUS;
+    @Builder.Default private volatile int replayMoveThrottle = DEFAULT_REPLAY_MOVE_THROTTLE;
+    @Builder.Default private volatile boolean replaySaveLocal = true;
+    @Builder.Default private volatile int replayLocalTtl = DEFAULT_REPLAY_LOCAL_TTL;
 
     private static List<String> defaultStatWipeCommands() {
         return new ArrayList<>(listOf(DEFAULT_STAT_WIPE_COMMAND));
@@ -109,11 +110,37 @@ public class BridgeConfig {
         }
     }
 
+    public List<String> settingsNeedingRestart(BridgeConfig other) {
+        List<String> changed = new ArrayList<>();
+        if (replayEnabled != other.replayEnabled) changed.add("replay-enabled");
+        if (replayAutoRecord != other.replayAutoRecord) changed.add("replay-auto-record");
+        if (!proxyHost.equals(other.proxyHost)) changed.add("proxy-host");
+        if (proxyPort != other.proxyPort) changed.add("proxy-port");
+        if (!serverName.equals(other.serverName)) changed.add("server-name");
+        return changed;
+    }
+
+    public void applyReloadableSettings(BridgeConfig other) {
+        statWipeCommands = other.statWipeCommands;
+        anticheatName = other.anticheatName;
+        anticheatHookEnabled = other.anticheatHookEnabled;
+        debug = other.debug;
+        reportCooldown = other.reportCooldown;
+        reportViolationThresholds = other.reportViolationThresholds;
+        replayBufferDuration = other.replayBufferDuration;
+        replayMaxDuration = other.replayMaxDuration;
+        replayRadius = other.replayRadius;
+        replayMoveThrottle = other.replayMoveThrottle;
+        replaySaveLocal = other.replaySaveLocal;
+        replayLocalTtl = other.replayLocalTtl;
+    }
+
     private static BridgeConfig fromMap(Map<String, Object> data) {
         return BridgeConfig.builder()
                 .proxyHost(getStr(data, "proxy-host", getStr(data, "host", getStr(data, "query-host", ""))))
                 .proxyPort(getInt(data, "proxy-port", getInt(data, "port", getInt(data, "query-port", DEFAULT_QUERY_PORT))))
                 .anticheatName(getStr(data, "anticheat-name", "Anti-cheat"))
+                .anticheatHookEnabled(getBool(data, "anticheat-hook-enabled", true))
                 .serverName(getStr(data, "server-name", "Server 1"))
                 .reportCooldown(getInt(data, "report-cooldown", DEFAULT_REPORT_COOLDOWN))
                 .debug(getBool(data, "debug", false))
@@ -157,6 +184,7 @@ public class BridgeConfig {
         map.put("proxy-port", proxyPort);
         map.put("stat-wipe-commands", statWipeCommands);
         map.put("anticheat-name", anticheatName);
+        map.put("anticheat-hook-enabled", anticheatHookEnabled);
         map.put("server-name", serverName);
         map.put("debug", debug);
         map.put("report-cooldown", reportCooldown);

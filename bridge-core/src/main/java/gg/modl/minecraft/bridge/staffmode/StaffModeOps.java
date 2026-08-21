@@ -31,9 +31,9 @@ public interface StaffModeOps {
 
     void saveSnapshot(UUID uuid);
 
-    void restoreSnapshot(UUID uuid);
+    boolean restoreSnapshot(UUID uuid);
 
-    void discardSnapshot(UUID uuid);
+    Set<UUID> playersWithSnapshots();
 
     void clearSnapshots();
 

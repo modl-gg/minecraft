@@ -39,7 +39,7 @@ public class NotesCommand {
         int page = Pagination.parsePrintFlags(flags);
         boolean printMode = page > 0;
 
-        if (CommandUtil.isConsole(actor) || printMode) {
+        if (CommandUtil.rendersAsText(actor, platform, printMode)) {
             printNotes(actor, playerQuery, Math.max(1, page));
             return;
         }

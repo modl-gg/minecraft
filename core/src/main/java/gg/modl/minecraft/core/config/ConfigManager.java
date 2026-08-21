@@ -1,11 +1,12 @@
 package gg.modl.minecraft.core.config;
 
 import gg.modl.minecraft.core.util.PluginLogger;
-import gg.modl.minecraft.core.util.YamlMergeUtil;
+import gg.modl.minecraft.core.config.yaml.ConfigUpdater;
+import gg.modl.minecraft.core.config.yaml.CoreManagedConfigs;
+import gg.modl.minecraft.core.config.yaml.ManagedConfig;
 import lombok.Getter;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -69,16 +70,11 @@ public class ConfigManager {
         private String socialItem = "minecraft:creeper_head";
         private String gameplayItem = "minecraft:tnt";
     }
-    private static final String[] GUI_CONFIG_FILES = {
-            "punish_gui.yml", "report_gui.yml"
-    };
-
     public ConfigManager(Path dataFolder, PluginLogger logger) {
         this.dataFolder = dataFolder;
         this.logger = logger;
         migrateGuiConfigsFromConfigYml();
         createDefaultGuiConfigFiles();
-        mergeGuiConfigDefaults();
         reloadAll();
     }
 
@@ -234,22 +230,10 @@ public class ConfigManager {
     }
 
     private void createDefaultGuiConfigFiles() {
-        for (String fileName : GUI_CONFIG_FILES) {
-            Path target = dataFolder.resolve(fileName);
-            if (!Files.exists(target)) {
-                try (InputStream is = getClass().getResourceAsStream("/" + fileName)) {
-                    if (is != null) {
-                        Files.copy(is, target);
-                        logger.info("Created default config file: " + fileName);
-                    }
-                } catch (Exception e) { logger.warning("Failed to create " + fileName + ": " + e.getMessage()); }
+        for (ManagedConfig config : CoreManagedConfigs.guiConfigs()) {
+            if (ConfigUpdater.update(config, dataFolder, logger).isCreated()) {
+                logger.info("Created default config file: " + config.getFileName());
             }
-        }
-    }
-
-    private void mergeGuiConfigDefaults() {
-        for (String fileName : GUI_CONFIG_FILES) {
-            YamlMergeUtil.mergeWithDefaults("/" + fileName, dataFolder.resolve(fileName), logger);
         }
     }
 

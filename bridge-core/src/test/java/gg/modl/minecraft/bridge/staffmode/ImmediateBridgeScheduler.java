@@ -7,6 +7,18 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 class ImmediateBridgeScheduler implements BridgeScheduler {
+    private final FakeStaffModeOps ops;
+
+    private Runnable timer;
+
+    ImmediateBridgeScheduler(FakeStaffModeOps ops) {
+        this.ops = ops;
+    }
+
+    void runTimerOnce() {
+        if (timer != null) timer.run();
+    }
+
     @Override
     public void runOnMainThread(Runnable task) {
         task.run();
@@ -14,6 +26,7 @@ class ImmediateBridgeScheduler implements BridgeScheduler {
 
     @Override
     public void runForPlayer(UUID playerUuid, Runnable task) {
+        if (!ops.isOnline(playerUuid)) return;
         task.run();
     }
 
@@ -24,13 +37,14 @@ class ImmediateBridgeScheduler implements BridgeScheduler {
 
     @Override
     public void runForPlayerLater(UUID playerUuid, Runnable task, long delayTicks) {
+        if (!ops.isOnline(playerUuid)) return;
         task.run();
     }
 
     @Override
     public BridgeTask runTimerAsync(Runnable task, long delay, long period, TimeUnit unit) {
-        return () -> {
-        };
+        timer = task;
+        return () -> timer = null;
     }
 
     @Override

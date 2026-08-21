@@ -9,6 +9,8 @@ import java.util.regex.Pattern;
 
 public final class LegacyTextRenderer {
     private static final char SECTION = '\u00a7';
+    private static final Pattern LEGACY_COLOR_PATTERN = Pattern.compile("[§&][0-9a-fk-orA-FK-OR]");
+
     private static final Pattern MINIMESSAGE_TAG_PATTERN = Pattern.compile("<[a-zA-Z_/!#][^>]*>");
     private static final Pattern MINIMESSAGE_TAG_REPLACE_PATTERN = Pattern.compile("<(/?)([^>\\s]+)(?:\\s[^>]*)?>");
     private static final Map<String, String> TAGS = createTags();
@@ -108,5 +110,9 @@ public final class LegacyTextRenderer {
 
     private static String code(char code) {
         return String.valueOf(SECTION) + code;
+    }
+
+    public static String stripColors(String text) {
+        return text == null ? null : LEGACY_COLOR_PATTERN.matcher(text).replaceAll("");
     }
 }

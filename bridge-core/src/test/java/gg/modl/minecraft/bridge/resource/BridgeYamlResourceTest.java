@@ -2,6 +2,7 @@ package gg.modl.minecraft.bridge.resource;
 
 import gg.modl.minecraft.bridge.BridgePlayerProvider;
 import gg.modl.minecraft.bridge.BridgePluginContext;
+import gg.modl.minecraft.bridge.config.BridgeManagedConfigs;
 import gg.modl.minecraft.bridge.BridgeScheduler;
 import gg.modl.minecraft.core.util.PluginLogger;
 import org.junit.jupiter.api.Test;
@@ -25,7 +26,7 @@ class BridgeYamlResourceTest {
 
     @Test
     void ensureDefaultFileCopiesMissingPackagedResource() throws IOException {
-        BridgeYamlResource.ensureDefaultFile(new TestContext(tempDir), "staff_mode.yml", testLogger());
+        BridgeYamlResource.ensureDefaultFile(new TestContext(tempDir), BridgeManagedConfigs.STAFF_MODE, testLogger());
 
         Path copiedFile = tempDir.resolve("staff_mode.yml");
         assertTrue(Files.exists(copiedFile));

@@ -74,8 +74,11 @@ general:
   no_permission_reload: "&cYou don't have permission to reload punishment data."
   invalid_syntax: "&cInvalid command syntax. Please check your usage."
   gui_requires_player: "&cThis command opens a GUI and can only be executed by a player. Use &f-p &cfor text output."
+  gui_unavailable: "&cGUI menus are not available on this proxy."
   
   # Error messages
+  unknown: "Unknown"
+  staff: "Staff"
   player_not_found: "&cPlayer not found."
   punishment_error: "&cError creating punishment: {error}"
   punishment_types_not_loaded: "&cPunishment types not loaded. Try &f/modl reload&c or contact an administrator."
@@ -117,6 +120,14 @@ punishment_words:
   will_expire: "\n&7This {type} will expire in &f{duration}&7."
   duration_formatted: "\n&7This {type} will expire in {duration}"
   mute_duration_formatted: " for {duration}"
+  # {for_duration} - appended to timed mute notifications; the value carries its own leading space
+  for_duration: " for {duration}"
+  # Localized words injected as {type} into will_expire/duration_formatted
+  type_ban: "ban"
+  type_mute: "mute"
+  type_punishment: "punishment"
+  # Shown in the {duration} slot for permanent punishments; config.yml locale_config.duration_format.permanent overrides it when set
+  duration_permanent: "permanent"
 
 # Punishment Type Specific Messages
 # Format: punishment_types.ordinal_<ordinal_number>
@@ -148,6 +159,7 @@ punishments:
     mute_default: "&c{target} has been muted."
     kick_default: "&c{target} has been kicked."
     default: "&c{target} has been punished."
+  mute_fallback: "&cYou are muted!"
   player_notification:
     ban_default: "&cYou {tense} banned (#{id})."
     mute_default: "&cYou {tense} muted (#{id})."
@@ -165,7 +177,7 @@ punishment_types:
     public_notification: "&c{target} has been muted."
     player_notification:
       - ""
-      - "&cYou {tense} {temp} muted {for_duration}"
+      - "&cYou {tense} {temp} muted{for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{reason}"
       - ""
@@ -206,7 +218,7 @@ punishment_types:
     public_notification: "&c{target} has been muted for chat abuse."
     player_notification:
       - ""
-      - "&cYou {tense} {temp} muted {for_duration}"
+      - "&cYou {tense} {temp} muted{for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{player_description}"
       - ""
@@ -214,7 +226,7 @@ punishment_types:
     public_notification: "&c{target} has been muted for anti social behavior."
     player_notification:
       - ""
-      - "&cYou {tense} {temp} muted {for_duration}"
+      - "&cYou {tense} {temp} muted{for_duration}"
       - "&7{issued} | #{id} | {appeal_url}"
       - "&f{player_description}"
       - ""
@@ -830,6 +842,9 @@ freeze:
   logout_notification: "&c&l{player} logged out while frozen!"
   frozen_chat: "&b[FROZEN] &e{player}&f: {message}"
   command_blocked: "&cYou cannot use commands while frozen."
+  target_offline: "&c{player} is not online on this server, so they cannot be frozen."
+  unavailable: "&cCould not freeze {player}: no server is connected to enforce it."
+  unfreeze_not_propagated: "&e{player} was released, but no server was connected to clear the freeze in-game."
 
 # Intercept Chat
 intercept_chat:

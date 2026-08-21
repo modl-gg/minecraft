@@ -36,6 +36,11 @@ public class ReportCommand {
     public void report(CommandActor actor, AbstractPlayer targetPlayer) {
         if (ticketUtil.checkCooldown(actor, "player")) return;
 
+        if (!platform.areMenusAvailable()) {
+            actor.reply(localeManager.getMessage("general.gui_unavailable"));
+            return;
+        }
+
         AbstractPlayer reporter = platform.getAbstractPlayer(actor.uniqueId(), false);
 
         if (reporter == null) {

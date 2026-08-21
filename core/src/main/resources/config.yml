@@ -7,7 +7,7 @@ server:
   # Allow querying Mojang API for unknown players (default: false)
   query_mojang: false
 
-# Language for in-game messages. Available: en_US, de_DE, es_ES
+# Language for in-game messages. Available: en_US, de_DE, es_ES, fr_FR, hi_IN, it_IT, ja_JP, nl_NL, pt_BR, ru_RU, zh_CN
 locale: "en_US"
 
 # Staff Chat Configuration
@@ -47,6 +47,18 @@ sync:
 # slow HTTP fetch above (kill-switch).
 realtime:
   enabled: true
+
+# Proxy Configuration (Velocity / BungeeCord only, ignored on game servers)
+proxy:
+  # Controls modl's packet interception on the proxy, which powers proxy-side menus and
+  # secure-chat enforcement. Moderation (punishments, chat, reports) never depends on it.
+  #   auto     - on, unless a plugin that rewrites packets on the wire is detected (e.g. LimboAPI).
+  #              LimboAPI and packet interception are incompatible by design: LimboAPI writes
+  #              pre-encoded packets past the encoder, which leaves players stuck on "Encrypting...".
+  #   enabled  - always on. Only safe alongside LimboAPI if LimboAPI has both
+  #              'compatibility-mode: true' and 'save-uncompressed-packets: true'.
+  #   disabled - always off.
+  packet_interception: "auto"
 
 # Update Checker Configuration
 update_checker:

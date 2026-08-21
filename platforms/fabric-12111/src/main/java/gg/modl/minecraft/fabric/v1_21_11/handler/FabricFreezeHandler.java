@@ -1,8 +1,10 @@
 package gg.modl.minecraft.fabric.v1_21_11.handler;
 
 import gg.modl.minecraft.bridge.freeze.FreezeCore;
+import gg.modl.minecraft.bridge.freeze.FreezeDrift;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;
+import gg.modl.minecraft.core.service.FrozenPlayerStore;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -12,7 +14,6 @@ import java.util.Set;
 import java.util.UUID;
 
 public class FabricFreezeHandler {
-    private static final double MAX_DRIFT_SQUARED = 0.01;
 
     private final MinecraftServer server;
     private final FabricFreezeOps ops;
@@ -25,6 +26,10 @@ public class FabricFreezeHandler {
     }
 
     FreezeCore getFreezeCore() {
+        return freezeCore;
+    }
+
+    public FrozenPlayerStore getFrozenPlayerStore() {
         return freezeCore;
     }
 
@@ -60,7 +65,7 @@ public class FabricFreezeHandler {
             double dz = player.getZ() - anchor.getZ();
             boolean wrongWorld = (ServerWorld) player.getEntityWorld() != anchor.getWorld();
 
-            if (wrongWorld || dx * dx + dy * dy + dz * dz > MAX_DRIFT_SQUARED) {
+            if (wrongWorld || FreezeDrift.exceeded(dx, dy, dz)) {
                 player.teleport(anchor.getWorld(), anchor.getX(), anchor.getY(), anchor.getZ(),
                         Set.of(), anchor.getYaw(), anchor.getPitch(), false);
                 player.setVelocity(Vec3d.ZERO);
@@ -70,6 +75,6 @@ public class FabricFreezeHandler {
     }
 
     public void onPlayerQuit(UUID uuid) {
-        freezeCore.handleQuit(uuid);
+        freezeCore.releaseOnDisconnect(uuid);
     }
 }

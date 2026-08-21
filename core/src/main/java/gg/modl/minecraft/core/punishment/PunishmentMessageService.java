@@ -3,7 +3,6 @@ package gg.modl.minecraft.core.punishment;
 import gg.modl.minecraft.api.SimplePunishment;
 import gg.modl.minecraft.core.locale.LocaleManager;
 import gg.modl.minecraft.core.locale.PunishmentMessageContext;
-import gg.modl.minecraft.core.util.Constants;
 import gg.modl.minecraft.core.util.DateFormatter;
 import gg.modl.minecraft.core.util.TimeUtil;
 
@@ -12,8 +11,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class PunishmentMessageService {
-    private static final String FALLBACK_MUTE_MESSAGE = "§cYou are muted!";
-
     private final LocaleManager localeManager;
     private final DateFormatter dateFormatter;
     private final String panelUrl;
@@ -42,7 +39,7 @@ public final class PunishmentMessageService {
 
     public String getMuteMessage(SimplePunishment mute) {
         if (mute != null) return formatMuteMessage(mute, PunishmentMessageContext.CHAT);
-        return FALLBACK_MUTE_MESSAGE;
+        return localeManager.getMessage("punishments.mute_fallback");
     }
 
     public String formatMuteMessage(SimplePunishment mute, PunishmentMessageContext context) {
@@ -73,8 +70,10 @@ public final class PunishmentMessageService {
         return localeManager.getPublicNotificationMessage(punishment.getOrdinal(), variables);
     }
 
-    private static String formatRemainingDuration(SimplePunishment punishment) {
-        if (punishment.isPermanent() || punishment.getExpiration() == null) return "permanent";
+    private String formatRemainingDuration(SimplePunishment punishment) {
+        if (punishment.isPermanent() || punishment.getExpiration() == null) {
+            return localeManager.getPermanentDurationWord();
+        }
         return TimeUtil.formatTimeMillis(punishment.getExpiration() - System.currentTimeMillis());
     }
 
@@ -89,34 +88,19 @@ public final class PunishmentMessageService {
         variables.put("temp", punishment.isPermanent()
                 ? localeManager.getMessage("punishment_words.permanently")
                 : localeManager.getMessage("punishment_words.temporarily"));
-        variables.put("for_duration", computeForDuration(punishment));
+        variables.put("for_duration", localeManager.getForDurationSuffix(punishment));
 
         Date issuedDate = punishment.getIssuedAsDate();
-        variables.put("issued", issuedDate != null ? dateFormatter.format(issuedDate) : Constants.UNKNOWN);
+        variables.put("issued", issuedDate != null ? dateFormatter.format(issuedDate) : localeManager.getUnknownWord());
 
         String playerDesc = punishment.getPlayerDescription();
         variables.put("player_description", playerDesc != null ? playerDesc : "");
 
         String issuer = punishment.getIssuerName();
-        variables.put("issuer", issuer != null ? issuer : Constants.DEFAULT_STAFF_NAME);
+        variables.put("issuer", issuer != null ? issuer : localeManager.getStaffWord());
 
-        variables.put("will_expire", computeWillExpire(punishment));
+        variables.put("will_expire", localeManager.getWillExpireMessage(punishment));
 
         return variables;
-    }
-
-    private static String computeForDuration(SimplePunishment punishment) {
-        if (punishment.isPermanent() || punishment.getExpiration() == null) return "";
-        long timeLeft = punishment.getExpiration() - System.currentTimeMillis();
-        return timeLeft > 0 ? " for " + TimeUtil.formatTimeMillis(timeLeft) : "";
-    }
-
-    private static String computeWillExpire(SimplePunishment punishment) {
-        if (punishment.isPermanent() || punishment.getExpiration() == null) return "";
-        long timeLeft = punishment.getExpiration() - System.currentTimeMillis();
-        if (timeLeft <= 0) return "";
-        String durationStr = TimeUtil.formatTimeMillis(timeLeft);
-        String typeWord = punishment.isBan() ? "ban" : (punishment.isMute() ? "mute" : "punishment");
-        return "\n§7This " + typeWord + " will expire in §f" + durationStr + "§7.";
     }
 }

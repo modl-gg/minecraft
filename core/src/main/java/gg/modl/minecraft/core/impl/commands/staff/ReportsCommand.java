@@ -42,7 +42,7 @@ public class ReportsCommand {
     private final DateFormatter dateFormatter;
 
     @Command("reports")
-    @Description("Open the reports menu (for a player or all reports), or use -p to print to chat")
+    @Description("Open the reports menu (for a player or all reports), or use -p with a player to print to chat")
     @StaffOnly
     public void reports(CommandActor actor, @Optional @Named("player") String playerQuery, @Optional String flags) {
         if (flags == null) flags = "";
@@ -60,26 +60,19 @@ public class ReportsCommand {
             actualPlayerQuery = playerQuery;
         }
 
-        if (printMode && actualPlayerQuery != null && !actualPlayerQuery.isEmpty()) {
-            printPlayerReports(actor, actualPlayerQuery, Math.max(1, page));
-            return;
-        }
-
-        if (CommandUtil.isConsole(actor)) {
+        if (CommandUtil.rendersAsText(actor, platform, printMode)) {
             if (actualPlayerQuery != null && !actualPlayerQuery.isEmpty()) {
                 printPlayerReports(actor, actualPlayerQuery, Math.max(1, page));
-            } else actor.reply(localeManager.getMessage("general.invalid_syntax"));
-
+                return;
+            }
+            actor.reply(localeManager.getMessage(printMode || CommandUtil.isConsole(actor)
+                    ? "general.invalid_syntax" : "general.gui_unavailable"));
             return;
         }
 
         UUID senderUuid = actor.uniqueId();
 
         if (actualPlayerQuery == null || actualPlayerQuery.isEmpty()) {
-            if (printMode) {
-                actor.reply(localeManager.getMessage("general.invalid_syntax"));
-                return;
-            }
             openStaffReportsMenu(senderUuid);
             return;
         }
@@ -182,7 +175,7 @@ public class ReportsCommand {
         );
         MenuAsync.displayWhenLoaded(platform, menu.getDataFuture(),
                 platform.getPlayerWrapper(senderUuid),
-                p -> { if (p != null) menu.display(p); });
+                menu::display);
     }
 
 }

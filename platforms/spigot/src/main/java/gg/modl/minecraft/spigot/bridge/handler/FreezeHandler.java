@@ -4,7 +4,7 @@ import gg.modl.minecraft.bridge.BridgeScheduler;
 import gg.modl.minecraft.bridge.freeze.FreezeCore;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;
-import lombok.Setter;
+import gg.modl.minecraft.core.service.FrozenPlayerStore;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -15,31 +15,30 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerPortalEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
+import gg.modl.minecraft.core.util.PluginLogger;
+import gg.modl.minecraft.spigot.bridge.folia.AsyncTeleporter;
+import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
 
 import java.util.UUID;
 
 public class FreezeHandler implements Listener {
     private final JavaPlugin plugin;
-    private final BridgeLocaleManager localeManager;
-    private final BridgeScheduler scheduler;
+    private final SpigotFreezeOps ops;
     private final FreezeCore freezeCore;
 
-    @Setter private StaffModeHandler staffModeHandler;
-
-    public FreezeHandler(JavaPlugin plugin, BridgeLocaleManager localeManager, BridgeScheduler scheduler) {
+    public FreezeHandler(JavaPlugin plugin, BridgeLocaleManager localeManager, PluginLogger pluginLogger,
+                         BridgeScheduler scheduler) {
         this.plugin = plugin;
-        this.localeManager = localeManager;
-        this.scheduler = scheduler;
-        this.freezeCore = new FreezeCore(localeManager, new SpigotFreezeOps(scheduler));
+        this.ops = new SpigotFreezeOps(scheduler, new AsyncTeleporter(pluginLogger));
+        this.freezeCore = new FreezeCore(localeManager, ops);
     }
 
     public void register() {
@@ -66,39 +65,63 @@ public class FreezeHandler implements Listener {
         return freezeCore;
     }
 
+    public FrozenPlayerStore getFrozenPlayerStore() {
+        return freezeCore;
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onMove(PlayerMoveEvent event) {
-        if (!isFrozen(event.getPlayer().getUniqueId())) return;
+        UUID uuid = event.getPlayer().getUniqueId();
+        if (!isFrozen(uuid)) return;
 
-        Location from = event.getFrom();
         Location to = event.getTo();
-        if (from.getBlockX() != to.getBlockX()
-                || from.getBlockY() != to.getBlockY()
-                || from.getBlockZ() != to.getBlockZ()) {
-            event.setTo(from);
+        if (to == null) return;
+
+        FreezeAnchor anchor = ops.anchor(uuid);
+        if (anchor == null) {
+            ops.captureAnchor(uuid, event.getFrom());
+            return;
+        }
+
+        if (!anchor.inWorldOf(to)) {
+            ops.returnToAnchor(uuid);
+            return;
+        }
+
+        if (!anchor.holds(to)) {
+            event.setTo(anchor.toLocation(to.getWorld(), to.getYaw(), to.getPitch()));
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
-    public void onChat(AsyncPlayerChatEvent event) {
-        Player player = event.getPlayer();
-        if (!isFrozen(player.getUniqueId())) return;
+    public void onTeleport(PlayerTeleportEvent event) {
+        UUID uuid = event.getPlayer().getUniqueId();
+        if (!isFrozen(uuid)) return;
 
-        event.setCancelled(true);
+        FreezeAnchor anchor = ops.anchor(uuid);
+        Location to = event.getTo();
+        if (anchor == null || to == null || !anchor.holds(to)) {
+            event.setCancelled(true);
+        }
+    }
 
-        UUID playerUuid = player.getUniqueId();
-        String message = localeManager.getMessage("freeze.chat",
-                mapOf("player", player.getName(), "message", event.getMessage()));
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPortal(PlayerPortalEvent event) {
+        cancelIfFrozen(event, event.getPlayer());
+    }
 
-        scheduler.runOnMainThread(() -> {
-            if (staffModeHandler != null) {
-                Bukkit.getOnlinePlayers().stream()
-                        .filter(online -> staffModeHandler.isInStaffMode(online.getUniqueId()))
-                        .forEach(online -> sendScheduledMessage(online.getUniqueId(), message));
-            }
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onRespawn(PlayerRespawnEvent event) {
+        UUID uuid = event.getPlayer().getUniqueId();
+        if (!isFrozen(uuid)) return;
+        ops.captureAnchor(uuid, event.getRespawnLocation());
+    }
 
-            sendScheduledMessage(playerUuid, message);
-        });
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onVehicleEnter(VehicleEnterEvent event) {
+        if (event.getEntered() instanceof Player) {
+            cancelIfFrozen(event, (Player) event.getEntered());
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -129,33 +152,13 @@ public class FreezeHandler implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
-    public void onCommand(PlayerCommandPreprocessEvent event) {
-        if (cancelIfFrozen(event, event.getPlayer())) {
-            event.getPlayer().sendMessage(localeManager.getMessage("freeze.no_commands"));
-        }
-    }
-
-    @EventHandler
-    public void onQuit(PlayerQuitEvent event) {
-        UUID uuid = event.getPlayer().getUniqueId();
-        if (!isFrozen(uuid)) return;
-
-        plugin.getLogger().warning("Frozen player " + event.getPlayer().getName() + " logged out!");
-        freezeCore.handleQuit(uuid);
+    public void onInteractEntity(PlayerInteractEntityEvent event) {
+        cancelIfFrozen(event, event.getPlayer());
     }
 
     private boolean cancelIfFrozen(Cancellable event, Player player) {
         if (!isFrozen(player.getUniqueId())) return false;
         event.setCancelled(true);
         return true;
-    }
-
-    private void sendScheduledMessage(UUID target, String message) {
-        scheduler.runForPlayer(target, () -> {
-            Player player = Bukkit.getPlayer(target);
-            if (player != null) {
-                player.sendMessage(message);
-            }
-        });
     }
 }

@@ -25,6 +25,10 @@ public final class CommandUtil {
         return uuid == null || CONSOLE_UUID.equals(uuid);
     }
 
+    public static boolean rendersAsText(CommandActor actor, Platform platform, boolean printMode) {
+        return printMode || isConsole(actor) || !platform.areMenusAvailable();
+    }
+
     public static String resolveActorName(CommandActor actor, Cache cache, Platform platform) {
         if (isConsole(actor))
             return "Console";

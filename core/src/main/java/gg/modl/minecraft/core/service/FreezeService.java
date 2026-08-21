@@ -1,29 +1,32 @@
 package gg.modl.minecraft.core.service;
 
-import gg.modl.minecraft.core.cache.CachedProfile;
-import gg.modl.minecraft.core.cache.CachedProfileRegistry;
-
+import java.util.Objects;
 import java.util.UUID;
 
-public class FreezeService {
-    private final CachedProfileRegistry registry;
+public class FreezeService implements FrozenPlayerStore {
+    private volatile FrozenPlayerStore store = new InMemoryFrozenPlayerStore();
 
-    public FreezeService(CachedProfileRegistry registry) {
-        this.registry = registry;
+    public void bindStore(FrozenPlayerStore enforcingStore) {
+        this.store = Objects.requireNonNull(enforcingStore, "enforcingStore");
     }
 
+    @Override
     public void freeze(UUID target, UUID staff) {
-        CachedProfile profile = registry.getProfile(target);
-        if (profile != null) profile.setFrozenByStaff(staff);
+        store.freeze(target, staff);
     }
 
+    @Override
     public void unfreeze(UUID target) {
-        CachedProfile profile = registry.getProfile(target);
-        if (profile != null) profile.setFrozenByStaff(null);
+        store.unfreeze(target);
     }
 
+    @Override
     public boolean isFrozen(UUID target) {
-        CachedProfile profile = registry.getProfile(target);
-        return profile != null && profile.getFrozenByStaff() != null;
+        return store.isFrozen(target);
+    }
+
+    @Override
+    public boolean releaseOnDisconnect(UUID target) {
+        return store.releaseOnDisconnect(target);
     }
 }
