@@ -2,6 +2,7 @@ package gg.modl.minecraft.spigot.bridge.handler;
 
 import gg.modl.minecraft.bridge.BridgeScheduler;
 import gg.modl.minecraft.bridge.freeze.FreezeOps;
+import gg.modl.minecraft.spigot.bridge.folia.AsyncTeleporter;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -16,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 class SpigotFreezeOps implements FreezeOps {
     private final BridgeScheduler scheduler;
+    private final AsyncTeleporter teleporter;
     private final Map<UUID, FreezeAnchor> anchors = new ConcurrentHashMap<>();
 
     @Override
@@ -69,8 +71,8 @@ class SpigotFreezeOps implements FreezeOps {
         scheduler.runForPlayer(uuid, () -> {
             Player player = Bukkit.getPlayer(uuid);
             if (player == null) return;
-            player.teleport(anchor.toLocation(world, player.getLocation().getYaw(), player.getLocation().getPitch()));
             player.setVelocity(new Vector(0, 0, 0));
+            teleporter.teleport(player, anchor.toLocation(world, player.getLocation().getYaw(), player.getLocation().getPitch()));
         });
     }
 }

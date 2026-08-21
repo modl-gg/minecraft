@@ -24,7 +24,7 @@ import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.query.ProxyBridgeRuntime;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
-import gg.modl.minecraft.core.util.YamlMergeUtil;
+import gg.modl.minecraft.core.config.yaml.CoreConfigBootstrap;
 import io.github.retrooper.packetevents.bungee.factory.BungeePacketEventsBuilder;
 import com.alessiodp.libby.BungeeLibraryManager;
 import net.md_5.bungee.api.plugin.Plugin;
@@ -160,12 +160,8 @@ public class BungeePlugin extends Plugin {
     }
 
     private void mergeDefaultConfigs() {
-        YamlMergeUtil.mergeWithDefaults("/boot.yml",
-                getDataFolder().toPath().resolve("boot.yml"), pluginLogger);
-        YamlMergeUtil.mergeWithDefaults("/config.yml",
-                getDataFolder().toPath().resolve("config.yml"), pluginLogger);
-        YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",
-                getDataFolder().toPath().resolve("locale/en_US.yml"), pluginLogger);
+        CoreConfigBootstrap.updateBootConfig(getDataFolder().toPath(), pluginLogger);
+        CoreConfigBootstrap.updateRuntimeConfigs(getDataFolder().toPath(), pluginLogger);
     }
 
     private void configureBridgeExecutor(BungeePlatform platform, BootConfig bootConfig, String panelUrl) {

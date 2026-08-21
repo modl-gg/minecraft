@@ -1,0 +1,24 @@
+# Root toggle
+enabled: true
+
+# Slots are user-defined; modl must never add or remove entries here
+slots:
+  0:
+    item: "minecraft:lead"
+    name: "Target"
+    lore:
+      - "line one"
+  4:
+    item: "minecraft:compass"
+    name: "Teleport"
+
+# Fixed section, new keys belong here
+display:
+  title: "Menu"
+  enabled: true
+  lines:
+    - "first"
+    - "second"
+
+# Added later than the rest
+footer: "bye"

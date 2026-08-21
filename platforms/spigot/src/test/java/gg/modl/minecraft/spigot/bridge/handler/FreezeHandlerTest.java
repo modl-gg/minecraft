@@ -3,6 +3,7 @@ package gg.modl.minecraft.spigot.bridge.handler;
 import gg.modl.minecraft.bridge.BridgeScheduler;
 import gg.modl.minecraft.bridge.BridgeTask;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
+import gg.modl.minecraft.core.util.PluginLogger;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -40,7 +41,8 @@ class FreezeHandlerTest {
     private final UUID frozenUuid = UUID.randomUUID();
     private final Player frozenPlayer = mock(Player.class);
     private final FreezeHandler freezeHandler =
-            new FreezeHandler(mock(JavaPlugin.class), mock(BridgeLocaleManager.class), scheduler);
+            new FreezeHandler(mock(JavaPlugin.class), mock(BridgeLocaleManager.class),
+                    mock(PluginLogger.class), scheduler);
 
     FreezeHandlerTest() {
         when(world.getUID()).thenReturn(worldId);

@@ -34,7 +34,7 @@ import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.query.ProxyBridgeRuntime;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
-import gg.modl.minecraft.core.util.YamlMergeUtil;
+import gg.modl.minecraft.core.config.yaml.CoreConfigBootstrap;
 import io.github._4drian3d.signedvelocity.velocity.SignedVelocity;
 
 import io.github.retrooper.packetevents.velocity.factory.VelocityPacketEventsBuilder;
@@ -199,9 +199,8 @@ public final class VelocityPlugin {
     }
 
     private void mergeDefaultConfigs() {
-        YamlMergeUtil.mergeWithDefaults("/boot.yml", folder.resolve("boot.yml"), pluginLogger);
-        YamlMergeUtil.mergeWithDefaults("/config.yml", folder.resolve("config.yml"), pluginLogger);
-        YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml", folder.resolve("locale/en_US.yml"), pluginLogger);
+        CoreConfigBootstrap.updateBootConfig(folder, pluginLogger);
+        CoreConfigBootstrap.updateRuntimeConfigs(folder, pluginLogger);
     }
 
     private void logConfigurationError() {

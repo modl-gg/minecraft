@@ -6,6 +6,7 @@ import gg.modl.minecraft.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;
 import gg.modl.minecraft.bridge.staffmode.StaffModeCore;
+import gg.modl.minecraft.core.util.PluginLogger;
 import gg.modl.minecraft.fabric.v1_21_11.ModlFabricModImpl;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.inventory.SimpleInventory;
@@ -39,10 +40,11 @@ public class FabricStaffModeHandler {
                                   FabricFreezeHandler freezeHandler,
                                   BridgeLocaleManager localeManager,
                                   StaffModeConfig staffModeConfig,
+                                  PluginLogger pluginLogger,
                                   BridgeScheduler scheduler) {
         this.server = server;
         this.ops = new FabricStaffModeOps(server, ModlFabricModImpl.LOGGER);
-        this.core = new StaffModeCore(bridgeConfig, staffModeConfig, localeManager, scheduler,
+        this.core = new StaffModeCore(bridgeConfig, staffModeConfig, localeManager, pluginLogger, scheduler,
                 freezeHandler.getFreezeCore(), ops);
     }
 

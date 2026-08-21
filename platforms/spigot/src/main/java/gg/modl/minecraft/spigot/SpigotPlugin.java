@@ -19,7 +19,7 @@ import gg.modl.minecraft.core.login.LoginPipeline;
 import gg.modl.minecraft.core.plugin.PluginInfo;
 import gg.modl.minecraft.core.service.ChatMessageCache;
 import gg.modl.minecraft.core.util.PluginLogger;
-import gg.modl.minecraft.core.util.YamlMergeUtil;
+import gg.modl.minecraft.core.config.yaml.CoreConfigBootstrap;
 import gg.modl.minecraft.spigot.boot.LibraryBootstrap;
 import gg.modl.minecraft.spigot.boot.SignedVelocityBootstrap;
 import gg.modl.minecraft.spigot.boot.TicketCreatorFactory;
@@ -262,16 +262,12 @@ public class SpigotPlugin extends JavaPlugin {
     }
 
     private void mergeBootConfig() {
-        YamlMergeUtil.mergeWithDefaults("/boot.yml",
-                getDataFolder().toPath().resolve("boot.yml"), pluginLogger);
+        CoreConfigBootstrap.updateBootConfig(getDataFolder().toPath(), pluginLogger);
     }
 
     private void mergeDefaultConfigs() {
         mergeBootConfig();
-        YamlMergeUtil.mergeWithDefaults("/config.yml",
-                getDataFolder().toPath().resolve("config.yml"), pluginLogger);
-        YamlMergeUtil.mergeWithDefaults("/locale/en_US.yml",
-                getDataFolder().toPath().resolve("locale/en_US.yml"), pluginLogger);
+        CoreConfigBootstrap.updateRuntimeConfigs(getDataFolder().toPath(), pluginLogger);
     }
 
     private void loadPacketEvents() {

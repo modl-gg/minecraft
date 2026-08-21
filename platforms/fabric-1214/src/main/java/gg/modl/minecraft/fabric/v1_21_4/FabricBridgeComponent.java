@@ -2,6 +2,8 @@ package gg.modl.minecraft.fabric.v1_21_4;
 
 import com.mojang.brigadier.CommandDispatcher;
 import gg.modl.minecraft.bridge.AbstractBridgeComponent;
+import gg.modl.minecraft.bridge.BridgeReloadPresenter;
+import gg.modl.minecraft.core.locale.LegacyTextRenderer;
 import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.bridge.config.StaffModeConfig;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
@@ -37,6 +39,8 @@ import net.minecraft.inventory.Inventory;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.util.ActionResult;
 
+import static gg.modl.minecraft.core.util.Java8Collections.mapOf;
+
 public class FabricBridgeComponent extends AbstractBridgeComponent {
     private final MinecraftServer server;
     private final FabricBridgePluginContext fabricContext;
@@ -65,7 +69,7 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
                                          BridgeLocaleManager localeManager,
                                          StaffModeConfig staffModeConfig) {
         fabricStaffModeHandler = new FabricStaffModeHandler(server, bridgeConfig, fabricFreezeHandler,
-                localeManager, staffModeConfig, context.getScheduler());
+                localeManager, staffModeConfig, pluginLogger, context.getScheduler());
         fabricStaffModeHandler.start();
     }
 
@@ -186,6 +190,28 @@ public class FabricBridgeComponent extends AbstractBridgeComponent {
             return ActionResult.FAIL;
         });
 
+    }
+
+    @Override
+    protected void registerBridgeCommand() {
+        BridgeReloadPresenter presenter = new BridgeReloadPresenter(localeManager, this::reload);
+        try {
+            CommandDispatcher<ServerCommandSource> dispatcher = server.getCommandManager().getDispatcher();
+            dispatcher.register(
+                    CommandManager.literal("modlbridge")
+                            .requires(source -> source.hasPermissionLevel(4))
+                            .then(CommandManager.literal("reload")
+                                    .executes(ctx -> {
+                                        presenter.reload(message -> ctx.getSource().sendMessage(
+                                                Text.literal(LegacyTextRenderer.stripColors(message))));
+                                        return 1;
+                                    })));
+            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                server.getCommandManager().sendCommandTree(player);
+            }
+        } catch (Exception e) {
+            pluginLogger.warning("[bridge] Failed to register the modlbridge command: " + e.getMessage());
+        }
     }
 
     @Override

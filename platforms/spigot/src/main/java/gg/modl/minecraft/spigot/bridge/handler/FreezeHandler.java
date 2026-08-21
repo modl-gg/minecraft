@@ -22,6 +22,8 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import gg.modl.minecraft.core.util.PluginLogger;
+import gg.modl.minecraft.spigot.bridge.folia.AsyncTeleporter;
 import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -32,9 +34,10 @@ public class FreezeHandler implements Listener {
     private final SpigotFreezeOps ops;
     private final FreezeCore freezeCore;
 
-    public FreezeHandler(JavaPlugin plugin, BridgeLocaleManager localeManager, BridgeScheduler scheduler) {
+    public FreezeHandler(JavaPlugin plugin, BridgeLocaleManager localeManager, PluginLogger pluginLogger,
+                         BridgeScheduler scheduler) {
         this.plugin = plugin;
-        this.ops = new SpigotFreezeOps(scheduler);
+        this.ops = new SpigotFreezeOps(scheduler, new AsyncTeleporter(pluginLogger));
         this.freezeCore = new FreezeCore(localeManager, ops);
     }
 

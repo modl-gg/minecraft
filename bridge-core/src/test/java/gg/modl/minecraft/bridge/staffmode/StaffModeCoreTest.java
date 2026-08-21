@@ -13,9 +13,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -25,18 +25,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StaffModeCoreTest {
 
-    private static final PluginLogger LOGGER = PluginLogger.fromJul(Logger.getLogger("staff-mode-core-test"));
+    private final RecordingPluginLogger logger = new RecordingPluginLogger();
 
     @TempDir
     Path tempDir;
 
     private final FakeStaffModeOps ops = new FakeStaffModeOps();
-    private final BridgeLocaleManager localeManager = new BridgeLocaleManager(LOGGER);
+    private final ImmediateBridgeScheduler scheduler = new ImmediateBridgeScheduler(ops);
+    private final BridgeLocaleManager localeManager = new BridgeLocaleManager(logger);
 
     private StaffModeCore newCore(StaffModeConfig config) {
         FreezeCore freezeCore = new FreezeCore(localeManager, new NoOpFreezeOps());
-        return new StaffModeCore(new BridgeConfig(), config, localeManager,
-                new ImmediateBridgeScheduler(), freezeCore, ops);
+        return new StaffModeCore(new BridgeConfig(), config, localeManager, logger,
+                scheduler, freezeCore, ops);
     }
 
     @Test
@@ -146,6 +147,172 @@ class StaffModeCoreTest {
     }
 
     @Test
+    void exitRestoresSnapshotWhenScoreboardTeardownFails() throws IOException {
+        StaffModeConfig config = config("vanish_on_enable: false");
+        StaffModeCore core = newCore(config);
+        UUID staff = UUID.randomUUID();
+        ops.connect(staff, "Staffer");
+        core.enterStaffMode(staff.toString());
+        ops.scoreboardRemovalFails = true;
+
+        core.exitStaffMode(staff.toString());
+
+        assertFalse(core.isInStaffMode(staff));
+        assertTrue(ops.restored.contains(staff));
+        assertFalse(ops.hasSnapshot(staff));
+    }
+
+    @Test
+    void quitRestoresSnapshotWhenScoreboardTeardownFails() throws IOException {
+        StaffModeConfig config = config("vanish_on_enable: true");
+        StaffModeCore core = newCore(config);
+        UUID staff = UUID.randomUUID();
+        ops.connect(staff, "Staffer");
+        core.enterStaffMode(staff.toString());
+        ops.scoreboardRemovalFails = true;
+
+        core.handlePlayerQuit(staff);
+
+        assertTrue(ops.restored.contains(staff));
+        assertFalse(core.isVanished(staff));
+        assertFalse(ops.hasSnapshot(staff));
+    }
+
+    @Test
+    void shutdownRestoresEveryStaffMemberWhenScoreboardTeardownFails() throws IOException {
+        StaffModeConfig config = config("vanish_on_enable: false");
+        StaffModeCore core = newCore(config);
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        ops.connect(first, "First");
+        ops.connect(second, "Second");
+        core.enterStaffMode(first.toString());
+        core.enterStaffMode(second.toString());
+        ops.scoreboardRemovalFails = true;
+
+        core.shutdown();
+
+        assertTrue(ops.restored.contains(first));
+        assertTrue(ops.restored.contains(second));
+        assertFalse(core.isInStaffMode(first));
+        assertFalse(core.isInStaffMode(second));
+    }
+
+    @Test
+    void quitKeepsBelongingsWhenRestoreFails() throws IOException {
+        StaffModeConfig config = config("vanish_on_enable: false");
+        StaffModeCore core = newCore(config);
+        UUID staff = UUID.randomUUID();
+        ops.connect(staff, "Staffer");
+        core.enterStaffMode(staff.toString());
+        ops.restoreFails = true;
+
+        core.handlePlayerQuit(staff);
+
+        assertFalse(core.isInStaffMode(staff));
+        assertTrue(ops.hasSnapshot(staff));
+    }
+
+    @Test
+    void rejoinAfterFailedRestoreReturnsBelongings() throws IOException {
+        StaffModeConfig config = config("vanish_on_enable: false");
+        StaffModeCore core = newCore(config);
+        UUID staff = UUID.randomUUID();
+        ops.connect(staff, "Staffer");
+        core.enterStaffMode(staff.toString());
+        ops.restoreFails = true;
+        core.handlePlayerQuit(staff);
+
+        ops.restoreFails = false;
+        core.handlePlayerJoin(staff);
+
+        assertTrue(ops.restored.contains(staff));
+        assertFalse(ops.hasSnapshot(staff));
+    }
+
+    @Test
+    void quitRestoresBelongingsAfterEagerExitClearedTheFlag() throws IOException {
+        StaffModeConfig config = config("vanish_on_enable: false");
+        StaffModeCore core = newCore(config);
+        UUID staff = UUID.randomUUID();
+        ops.connect(staff, "Staffer");
+        core.enterStaffMode(staff.toString());
+        ops.scoreboardRemovalFails = true;
+        ops.restoreFails = true;
+        core.exitStaffMode(staff.toString());
+
+        ops.restoreFails = false;
+        core.handlePlayerQuit(staff);
+
+        assertTrue(ops.restored.contains(staff));
+        assertFalse(ops.hasSnapshot(staff));
+    }
+
+    @Test
+    void shutdownRestoresCustodyHolderThatIsNoLongerFlagged() throws IOException {
+        StaffModeConfig config = config("vanish_on_enable: false");
+        StaffModeCore core = newCore(config);
+        UUID staff = UUID.randomUUID();
+        ops.connect(staff, "Staffer");
+        core.enterStaffMode(staff.toString());
+        ops.restoreFails = true;
+        core.exitStaffMode(staff.toString());
+        ops.restoreFails = false;
+
+        core.shutdown();
+
+        assertTrue(ops.restored.contains(staff));
+    }
+
+    @Test
+    void enterDoesNotClearInventoryWhenSnapshotCannotBeTaken() throws IOException {
+        StaffModeConfig config = config("vanish_on_enable: false");
+        StaffModeCore core = newCore(config);
+        UUID staff = UUID.randomUUID();
+        ops.connect(staff, "Staffer");
+        ops.saveFails = true;
+
+        core.enterStaffMode(staff.toString());
+
+        assertTrue(ops.clearedInventories.isEmpty());
+        assertFalse(core.isInStaffMode(staff));
+    }
+
+    @Test
+    void offlineExitClearsVanishWithoutScheduling() throws IOException {
+        StaffModeConfig config = config("vanish_on_enable: true");
+        StaffModeCore core = newCore(config);
+        UUID staff = UUID.randomUUID();
+        ops.connect(staff, "Staffer");
+        core.enterStaffMode(staff.toString());
+        ops.online.remove(staff);
+
+        core.exitStaffMode(staff.toString());
+
+        assertFalse(core.isInStaffMode(staff));
+        assertFalse(core.isVanished(staff));
+    }
+
+    @Test
+    void shutdownReportsBelongingsItCouldNotReturn() throws IOException {
+        StaffModeConfig config = config("vanish_on_enable: false");
+        StaffModeCore core = newCore(config);
+        UUID staff = UUID.randomUUID();
+        ops.connect(staff, "Staffer");
+        core.enterStaffMode(staff.toString());
+        ops.restoreFails = true;
+        core.handlePlayerQuit(staff);
+        ops.restoreFails = false;
+        ops.online.remove(staff);
+
+        core.shutdown();
+
+        assertFalse(ops.restored.contains(staff));
+        assertEquals(1, logger.severe.size());
+        assertTrue(logger.severe.get(0).contains(staff.toString()));
+    }
+
+    @Test
     void scoreboardResolvesPlaceholders() throws IOException {
         StaffModeConfig config = config(
                 "vanish_on_enable: false",
@@ -219,7 +386,7 @@ class StaffModeCoreTest {
     private StaffModeConfig config(String... lines) throws IOException {
         Files.write(tempDir.resolve("staff_mode.yml"),
                 String.join(System.lineSeparator(), lines).getBytes(StandardCharsets.UTF_8));
-        return StaffModeConfig.load(tempDir, LOGGER);
+        return StaffModeConfig.load(tempDir, logger);
     }
 
     private static String repeat(String value, int times) {
@@ -228,6 +395,23 @@ class StaffModeCoreTest {
             builder.append(value);
         }
         return builder.toString();
+    }
+
+    private static final class RecordingPluginLogger implements PluginLogger {
+        private final List<String> severe = new ArrayList<>();
+
+        @Override
+        public void info(String message) {
+        }
+
+        @Override
+        public void warning(String message) {
+        }
+
+        @Override
+        public void severe(String message) {
+            severe.add(message);
+        }
     }
 
     private static final class NoOpFreezeOps implements FreezeOps {

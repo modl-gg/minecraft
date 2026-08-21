@@ -10,6 +10,7 @@ import gg.modl.minecraft.bridge.freeze.FreezeCore;
 import gg.modl.minecraft.bridge.locale.BridgeLocaleManager;
 import gg.modl.minecraft.bridge.query.BridgeQueryClient;
 import gg.modl.minecraft.core.bridge.protocol.BridgeAction;
+import gg.modl.minecraft.core.util.PluginLogger;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
@@ -17,7 +18,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,6 +52,7 @@ public class StaffModeCore {
     private final BridgeConfig bridgeConfig;
     private final StaffModeConfig staffModeConfig;
     private final BridgeLocaleManager localeManager;
+    private final PluginLogger logger;
     private final BridgeScheduler scheduler;
     private final FreezeCore freezeCore;
     private final StaffModeOps ops;
@@ -67,19 +68,19 @@ public class StaffModeCore {
     private BridgeTask scoreboardTimer;
 
     public StaffModeCore(BridgeConfig bridgeConfig, StaffModeConfig staffModeConfig,
-                         BridgeLocaleManager localeManager, BridgeScheduler scheduler,
+                         BridgeLocaleManager localeManager, PluginLogger logger, BridgeScheduler scheduler,
                          FreezeCore freezeCore, StaffModeOps ops) {
         this.bridgeConfig = bridgeConfig;
         this.staffModeConfig = staffModeConfig;
         this.localeManager = localeManager;
+        this.logger = logger;
         this.scheduler = scheduler;
         this.freezeCore = freezeCore;
-        this.ops = ops;
+        this.ops = new GuardedStaffModeOps(ops, logger);
     }
 
     public void start() {
-        scoreboardTimer = scheduler.runTimerAsync(
-                () -> scheduler.runOnMainThread(this::tickScoreboards), 1, 1, TimeUnit.SECONDS);
+        scoreboardTimer = scheduler.runTimerAsync(this::tickScoreboards, 1, 1, TimeUnit.SECONDS);
     }
 
     public void shutdown() {
@@ -87,11 +88,14 @@ public class StaffModeCore {
             scoreboardTimer.cancel();
             scoreboardTimer = null;
         }
-        for (UUID uuid : staffModeActive) {
-            if (ops.isOnline(uuid)) {
-                ops.restoreSnapshot(uuid);
-                removeScoreboard(uuid);
-            }
+        Set<UUID> holdingCustody = new HashSet<>(staffModeActive);
+        holdingCustody.addAll(ops.playersWithSnapshots());
+        List<UUID> unreturned = new ArrayList<>();
+        for (UUID uuid : holdingCustody) {
+            if (!releaseStaffMode(uuid)) unreturned.add(uuid);
+        }
+        if (!unreturned.isEmpty()) {
+            logger.severe("[staff-mode] Belongings could not be returned before shutdown for " + unreturned);
         }
         for (UUID uuid : vanished) {
             if (ops.isOnline(uuid)) {
@@ -116,13 +120,24 @@ public class StaffModeCore {
 
     public void enterStaffMode(String staffUuid) {
         UUID uuid = UUID.fromString(staffUuid);
-        if (staffModeActive.contains(uuid)) return;
+        if (!staffModeActive.add(uuid)) return;
 
         scheduler.runForPlayer(uuid, () -> {
             if (!ops.isOnline(uuid)) return;
-            if (!staffModeActive.add(uuid)) return;
-            applyStaffModeSetup(uuid);
+            enterOrRollBack(uuid);
         });
+    }
+
+    private void enterOrRollBack(UUID uuid) {
+        boolean applied = false;
+        try {
+            applied = applyStaffModeSetup(uuid);
+        } finally {
+            if (!applied) {
+                staffModeActive.remove(uuid);
+                releaseStaffMode(uuid);
+            }
+        }
     }
 
     public void exitStaffMode(String staffUuid) {
@@ -130,15 +145,16 @@ public class StaffModeCore {
         staffModeActive.remove(uuid);
         targetByStaff.remove(uuid);
 
-        scheduler.runForPlayer(uuid, () -> {
-            if (!ops.isOnline(uuid)) {
-                vanished.remove(uuid);
-                return;
-            }
+        if (!ops.isOnline(uuid)) {
+            scoreboardActive.remove(uuid);
+            vanished.remove(uuid);
+            return;
+        }
 
-            removeScoreboard(uuid);
-            unvanish(uuid);
-            ops.restoreSnapshot(uuid);
+        scheduler.runForPlayer(uuid, () -> {
+            if (!ops.isOnline(uuid)) return;
+
+            releaseStaffMode(uuid);
 
             for (UUID vanishedUuid : vanished) {
                 if (vanishedUuid.equals(uuid)) continue;
@@ -215,7 +231,8 @@ public class StaffModeCore {
     public void handlePlayerJoin(UUID uuid) {
         if (staffModeActive.contains(uuid) && !ops.hasSnapshot(uuid)) {
             scheduler.runForPlayer(uuid, () -> {
-                if (ops.isOnline(uuid)) applyStaffModeSetup(uuid);
+                if (!ops.isOnline(uuid)) return;
+                enterOrRollBack(uuid);
             });
         }
         if (!staffModeActive.contains(uuid) && ops.hasSnapshot(uuid)) {
@@ -264,19 +281,15 @@ public class StaffModeCore {
             }
         }
 
-        if (staffModeActive.remove(uuid)) {
-            removeScoreboard(uuid);
-            unvanish(uuid);
-            ops.restoreSnapshot(uuid);
-        }
+        staffModeActive.remove(uuid);
+        releaseStaffMode(uuid);
         targetByStaff.remove(uuid);
         vanished.remove(uuid);
-        ops.discardSnapshot(uuid);
         discardScoreboard(uuid);
     }
 
-    private void applyStaffModeSetup(UUID uuid) {
-        ops.saveSnapshot(uuid);
+    private boolean applyStaffModeSetup(UUID uuid) {
+        if (!takeCustody(uuid)) return false;
         ops.clearInventory(uuid);
         ops.clearArmor(uuid);
         ops.setGameMode(uuid, StaffGameMode.CREATIVE);
@@ -287,6 +300,7 @@ public class StaffModeCore {
 
         setupHotbar(uuid, staffModeConfig.getStaffHotbar());
         createScoreboard(uuid);
+        return true;
     }
 
     private void setupHotbar(UUID uuid, Map<Integer, HotbarItem> hotbar) {
@@ -486,6 +500,18 @@ public class StaffModeCore {
         }
     }
 
+    private boolean releaseStaffMode(UUID uuid) {
+        if (scoreboardActive.remove(uuid)) ops.removeScoreboard(uuid);
+        if (vanished.contains(uuid)) unvanish(uuid);
+        if (!ops.hasSnapshot(uuid)) return true;
+        return ops.restoreSnapshot(uuid);
+    }
+
+    private boolean takeCustody(UUID uuid) {
+        ops.saveSnapshot(uuid);
+        return ops.hasSnapshot(uuid);
+    }
+
     private void createScoreboard(UUID uuid) {
         ScoreboardConfig config = getScoreboardConfig(uuid);
         if (!config.isEnabled()) return;
@@ -509,16 +535,30 @@ public class StaffModeCore {
     }
 
     private void tickScoreboards() {
-        Iterator<UUID> it = scoreboardActive.iterator();
-        while (it.hasNext()) {
-            UUID uuid = it.next();
+        try {
+            renderActiveScoreboards();
+        } catch (RuntimeException | LinkageError e) {
+            logger.warning("[staff-mode] Scoreboard tick failed", e);
+        }
+    }
+
+    private void renderActiveScoreboards() {
+        for (UUID uuid : scoreboardActive) {
             if (!ops.isOnline(uuid)) {
-                it.remove();
-                ops.discardScoreboard(uuid);
+                discardScoreboard(uuid);
                 continue;
             }
-            ops.updateScoreboard(uuid, buildContent(uuid, getScoreboardConfig(uuid)));
+            scheduler.runForPlayer(uuid, () -> renderScoreboard(uuid));
         }
+    }
+
+    private void renderScoreboard(UUID uuid) {
+        if (!scoreboardActive.contains(uuid)) return;
+        if (!ops.isOnline(uuid)) {
+            discardScoreboard(uuid);
+            return;
+        }
+        ops.updateScoreboard(uuid, buildContent(uuid, getScoreboardConfig(uuid)));
     }
 
     private ScoreboardContent buildContent(UUID uuid, ScoreboardConfig config) {
@@ -558,8 +598,9 @@ public class StaffModeCore {
         boolean isVanished = vanished.contains(uuid);
         ScoreboardConfig config = getScoreboardConfig(uuid);
 
+        String playerName = ops.playerName(uuid);
         String result = line
-                .replace("{player_name}", ops.playerName(uuid))
+                .replace("{player_name}", playerName != null ? playerName : UNKNOWN_NAME)
                 .replace("{server}", bridgeConfig.getServerName())
                 .replace("{online}", String.valueOf(ops.onlinePlayerCount()))
                 .replace("{max_players}", String.valueOf(ops.maxPlayerCount()))

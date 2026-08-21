@@ -1,8 +1,10 @@
 package gg.modl.minecraft.spigot.bridge.handler;
 
+import gg.modl.minecraft.bridge.staffmode.PacketSidebar;
 import gg.modl.minecraft.bridge.staffmode.ScoreboardContent;
 import gg.modl.minecraft.bridge.staffmode.StaffGameMode;
 import gg.modl.minecraft.bridge.staffmode.StaffModeOps;
+import gg.modl.minecraft.spigot.bridge.folia.AsyncTeleporter;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
@@ -10,12 +12,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.scoreboard.DisplaySlot;
-import org.bukkit.scoreboard.Objective;
-import org.bukkit.scoreboard.Scoreboard;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,19 +26,21 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 class SpigotStaffModeOps implements StaffModeOps {
-    private static final String SCOREBOARD_OBJECTIVE_NAME = "staffmode";
+    private static final String SCOREBOARD_OBJECTIVE_NAME = "modl_staff";
     private static final int TARGET_INVENTORY_SIZE = 54;
 
     private final Logger logger;
-    private final Map<UUID, Scoreboard> activeScoreboards = new ConcurrentHashMap<>();
+    private final AsyncTeleporter teleporter;
+    private final PacketSidebar sidebar = new PacketSidebar(SCOREBOARD_OBJECTIVE_NAME);
     private final Map<UUID, PlayerSnapshot> snapshots = new ConcurrentHashMap<>();
     private final Set<String> warnedMaterials = ConcurrentHashMap.newKeySet();
 
     private volatile boolean pingMethodResolved;
     private volatile Method getPingMethod;
 
-    SpigotStaffModeOps(Logger logger) {
+    SpigotStaffModeOps(Logger logger, AsyncTeleporter teleporter) {
         this.logger = logger;
+        this.teleporter = teleporter;
     }
 
     @Override
@@ -154,31 +156,27 @@ class SpigotStaffModeOps implements StaffModeOps {
     }
 
     @Override
-    public void restoreSnapshot(UUID uuid) {
+    public boolean restoreSnapshot(UUID uuid) {
         Player player = Bukkit.getPlayer(uuid);
-        if (player == null) {
-            snapshots.remove(uuid);
-            return;
-        }
-        PlayerSnapshot snapshot = snapshots.remove(uuid);
-        if (snapshot != null) {
-            player.teleport(snapshot.getLocation());
-            player.getInventory().setContents(snapshot.getInventoryContents());
-            player.getInventory().setArmorContents(snapshot.getArmorContents());
-            player.setGameMode(snapshot.getGameMode());
-            player.setHealth(Math.min(snapshot.getHealth(), player.getMaxHealth()));
-            player.setFoodLevel(snapshot.getFoodLevel());
-            player.setExp(snapshot.getExp());
-            player.setLevel(snapshot.getLevel());
-        } else {
-            player.getInventory().clear();
-            player.setGameMode(GameMode.SURVIVAL);
-        }
+        if (player == null) return false;
+        PlayerSnapshot snapshot = snapshots.get(uuid);
+        if (snapshot == null) return false;
+
+        player.getInventory().setContents(snapshot.getInventoryContents());
+        player.getInventory().setArmorContents(snapshot.getArmorContents());
+        player.setGameMode(snapshot.getGameMode());
+        player.setHealth(Math.min(snapshot.getHealth(), player.getMaxHealth()));
+        player.setFoodLevel(snapshot.getFoodLevel());
+        player.setExp(snapshot.getExp());
+        player.setLevel(snapshot.getLevel());
+        snapshots.remove(uuid);
+        teleporter.teleport(player, snapshot.getLocation());
+        return true;
     }
 
     @Override
-    public void discardSnapshot(UUID uuid) {
-        snapshots.remove(uuid);
+    public Set<UUID> playersWithSnapshots() {
+        return new HashSet<>(snapshots.keySet());
     }
 
     @Override
@@ -211,58 +209,33 @@ class SpigotStaffModeOps implements StaffModeOps {
         Player player = Bukkit.getPlayer(uuid);
         Player target = Bukkit.getPlayer(targetUuid);
         if (player != null && target != null) {
-            player.teleport(target.getLocation());
+            teleporter.teleport(player, target.getLocation());
         }
     }
 
     @Override
     public void createScoreboard(UUID uuid, ScoreboardContent content) {
-        Player player = Bukkit.getPlayer(uuid);
-        if (player == null) return;
-        Scoreboard sb = Bukkit.getScoreboardManager().getNewScoreboard();
-        @SuppressWarnings("deprecation")
-        Objective obj = sb.registerNewObjective(SCOREBOARD_OBJECTIVE_NAME, "dummy");
-        obj.setDisplayName(content.getTitle());
-        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
-        activeScoreboards.put(uuid, sb);
-        applyContent(sb, content);
-        player.setScoreboard(sb);
+        sidebar.show(uuid, Bukkit.getPlayer(uuid), content);
     }
 
     @Override
     public void updateScoreboard(UUID uuid, ScoreboardContent content) {
-        Scoreboard sb = activeScoreboards.get(uuid);
-        if (sb == null) return;
-        applyContent(sb, content);
-    }
-
-    private void applyContent(Scoreboard sb, ScoreboardContent content) {
-        sb.getEntries().forEach(sb::resetScores);
-        Objective obj = sb.getObjective(SCOREBOARD_OBJECTIVE_NAME);
-        if (obj == null) return;
-        obj.setDisplayName(content.getTitle());
-        for (ScoreboardContent.Line line : content.getLines()) {
-            obj.getScore(line.getText()).setScore(line.getScore());
-        }
+        sidebar.update(uuid, Bukkit.getPlayer(uuid), content);
     }
 
     @Override
     public void removeScoreboard(UUID uuid) {
-        activeScoreboards.remove(uuid);
-        Player player = Bukkit.getPlayer(uuid);
-        if (player != null && player.isOnline()) {
-            player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
-        }
+        sidebar.hide(uuid, Bukkit.getPlayer(uuid));
     }
 
     @Override
     public void discardScoreboard(UUID uuid) {
-        activeScoreboards.remove(uuid);
+        sidebar.forget(uuid);
     }
 
     @Override
     public void clearScoreboards() {
-        activeScoreboards.clear();
+        sidebar.forgetAll();
     }
 
     @Override

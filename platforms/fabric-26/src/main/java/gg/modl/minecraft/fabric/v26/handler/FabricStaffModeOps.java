@@ -6,18 +6,14 @@ import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.protocol.player.GameMode;
 import com.github.retrooper.packetevents.protocol.player.TextureProperty;
 import com.github.retrooper.packetevents.protocol.player.UserProfile;
-import com.github.retrooper.packetevents.protocol.score.ScoreFormat;
 import com.github.retrooper.packetevents.util.Vector3d;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDisplayScoreboard;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoRemove;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerResetScore;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerScoreboardObjective;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerUpdateScore;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
+import gg.modl.minecraft.bridge.staffmode.PacketSidebar;
 import gg.modl.minecraft.bridge.staffmode.ScoreboardContent;
 import gg.modl.minecraft.bridge.staffmode.StaffGameMode;
 import gg.modl.minecraft.bridge.staffmode.StaffModeOps;
@@ -42,7 +38,6 @@ import net.minecraft.world.level.GameType;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -61,7 +56,7 @@ class FabricStaffModeOps implements StaffModeOps {
     private final Logger logger;
     private final Set<String> warnedItemIds = ConcurrentHashMap.newKeySet();
     private final Map<UUID, PlayerSnapshot> snapshots = new ConcurrentHashMap<>();
-    private final Map<UUID, Set<String>> previousScoreEntries = new ConcurrentHashMap<>();
+    private final PacketSidebar sidebar = new PacketSidebar(SCOREBOARD_OBJECTIVE);
     private final Map<UUID, Set<UUID>> hiddenFromViewer = new ConcurrentHashMap<>();
     private final Map<UUID, Set<Integer>> hotbarSlots = new ConcurrentHashMap<>();
 
@@ -199,40 +194,36 @@ class FabricStaffModeOps implements StaffModeOps {
     }
 
     @Override
-    public void restoreSnapshot(UUID uuid) {
-        hotbarSlots.remove(uuid);
+    public boolean restoreSnapshot(UUID uuid) {
         ServerPlayer player = player(uuid);
-        if (player == null) {
-            snapshots.remove(uuid);
-            return;
-        }
-        PlayerSnapshot snapshot = snapshots.remove(uuid);
-        if (snapshot != null) {
-            player.getInventory().clearContent();
-            for (int i = 0; i < snapshot.getInventoryContents().length && i < player.getInventory().getContainerSize(); i++) {
-                player.getInventory().setItem(i, snapshot.getInventoryContents()[i].copy());
-            }
-            player.setGameMode(snapshot.getGameMode());
-            player.setHealth(Math.min(snapshot.getHealth(), player.getMaxHealth()));
-            player.getFoodData().setFoodLevel(snapshot.getFoodLevel());
-            player.experienceProgress = snapshot.getExp();
-            player.experienceLevel = snapshot.getLevel();
-            ServerLevel world = server.getLevel(snapshot.getDimension());
-            if (world == null) {
-                world = (ServerLevel) player.level();
-            }
-            player.teleportTo(world, snapshot.getX(), snapshot.getY(), snapshot.getZ(),
-                    Set.<Relative>of(), snapshot.getYaw(), snapshot.getPitch(), false);
-        } else {
-            player.getInventory().clearContent();
-            player.setGameMode(GameType.SURVIVAL);
-        }
-    }
+        if (player == null) return false;
+        PlayerSnapshot snapshot = snapshots.get(uuid);
+        if (snapshot == null) return false;
 
-    @Override
-    public void discardSnapshot(UUID uuid) {
+        player.getInventory().clearContent();
+        for (int i = 0; i < snapshot.getInventoryContents().length && i < player.getInventory().getContainerSize(); i++) {
+            player.getInventory().setItem(i, snapshot.getInventoryContents()[i].copy());
+        }
+        player.setGameMode(snapshot.getGameMode());
+        player.setHealth(Math.min(snapshot.getHealth(), player.getMaxHealth()));
+        player.getFoodData().setFoodLevel(snapshot.getFoodLevel());
+        player.experienceProgress = snapshot.getExp();
+        player.experienceLevel = snapshot.getLevel();
+        ServerLevel world = server.getLevel(snapshot.getDimension());
+        if (world == null) {
+            world = (ServerLevel) player.level();
+        }
         snapshots.remove(uuid);
         hotbarSlots.remove(uuid);
+        player.teleportTo(world, snapshot.getX(), snapshot.getY(), snapshot.getZ(),
+                Set.<Relative>of(), snapshot.getYaw(), snapshot.getPitch(), false);
+        return true;
+    }
+
+
+    @Override
+    public Set<UUID> playersWithSnapshots() {
+        return new HashSet<>(snapshots.keySet());
     }
 
     @Override
@@ -299,6 +290,7 @@ class FabricStaffModeOps implements StaffModeOps {
     }
 
     void forgetViewer(UUID uuid) {
+        hotbarSlots.remove(uuid);
         hiddenFromViewer.remove(uuid);
         for (Set<UUID> hidden : hiddenFromViewer.values()) {
             hidden.remove(uuid);
@@ -320,82 +312,27 @@ class FabricStaffModeOps implements StaffModeOps {
 
     @Override
     public void createScoreboard(UUID uuid, ScoreboardContent content) {
-        ServerPlayer player = player(uuid);
-        if (player == null) return;
-        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
-        if (peApi == null) return;
-
-        peApi.getPlayerManager().sendPacket(player, new WrapperPlayServerScoreboardObjective(
-                SCOREBOARD_OBJECTIVE,
-                WrapperPlayServerScoreboardObjective.ObjectiveMode.CREATE,
-                net.kyori.adventure.text.Component.text(content.getTitle()),
-                WrapperPlayServerScoreboardObjective.RenderType.INTEGER,
-                ScoreFormat.blankScore()));
-        peApi.getPlayerManager().sendPacket(player, new WrapperPlayServerDisplayScoreboard(1, SCOREBOARD_OBJECTIVE));
-        renderScores(peApi, player, content);
+        sidebar.show(uuid, player(uuid), content);
     }
 
     @Override
     public void updateScoreboard(UUID uuid, ScoreboardContent content) {
-        ServerPlayer player = player(uuid);
-        if (player == null) return;
-        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
-        if (peApi == null) return;
-        renderScores(peApi, player, content);
-    }
-
-    private void renderScores(PacketEventsAPI<?> peApi, ServerPlayer player, ScoreboardContent content) {
-        peApi.getPlayerManager().sendPacket(player, new WrapperPlayServerScoreboardObjective(
-                SCOREBOARD_OBJECTIVE,
-                WrapperPlayServerScoreboardObjective.ObjectiveMode.UPDATE,
-                net.kyori.adventure.text.Component.text(content.getTitle()),
-                WrapperPlayServerScoreboardObjective.RenderType.INTEGER,
-                ScoreFormat.blankScore()));
-
-        Set<String> oldEntries = previousScoreEntries.getOrDefault(player.getUUID(), Collections.emptySet());
-        Set<String> newEntries = new HashSet<>();
-        for (ScoreboardContent.Line line : content.getLines()) {
-            String entry = line.getText();
-            newEntries.add(entry);
-            peApi.getPlayerManager().sendPacket(player, new WrapperPlayServerUpdateScore(
-                    entry,
-                    WrapperPlayServerUpdateScore.Action.CREATE_OR_UPDATE_ITEM,
-                    SCOREBOARD_OBJECTIVE,
-                    line.getScore(),
-                    null,
-                    ScoreFormat.blankScore()));
-        }
-        for (String oldEntry : oldEntries) {
-            if (!newEntries.contains(oldEntry)) {
-                peApi.getPlayerManager().sendPacket(player,
-                        new WrapperPlayServerResetScore(oldEntry, SCOREBOARD_OBJECTIVE));
-            }
-        }
-        previousScoreEntries.put(player.getUUID(), newEntries);
+        sidebar.update(uuid, player(uuid), content);
     }
 
     @Override
     public void removeScoreboard(UUID uuid) {
-        previousScoreEntries.remove(uuid);
-        ServerPlayer player = player(uuid);
-        if (player == null) return;
-        PacketEventsAPI<?> peApi = PacketEvents.getAPI();
-        if (peApi == null) return;
-        peApi.getPlayerManager().sendPacket(player, new WrapperPlayServerScoreboardObjective(
-                SCOREBOARD_OBJECTIVE,
-                WrapperPlayServerScoreboardObjective.ObjectiveMode.REMOVE,
-                net.kyori.adventure.text.Component.empty(),
-                null));
+        sidebar.hide(uuid, player(uuid));
     }
 
     @Override
     public void discardScoreboard(UUID uuid) {
-        previousScoreEntries.remove(uuid);
+        sidebar.forget(uuid);
     }
 
     @Override
     public void clearScoreboards() {
-        previousScoreEntries.clear();
+        sidebar.forgetAll();
     }
 
     @Override

@@ -4,7 +4,9 @@ dependencies {
     compileOnly(libs.snakeyaml)
     compileOnly(libs.adventure.minimessage)
     compileOnly(libs.adventure.serializer.legacy)
+    compileOnly(libs.adventure.api)
     compileOnly(libs.netty.all)
+    compileOnly(libs.packetevents.api)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)

@@ -1,6 +1,7 @@
 package gg.modl.minecraft.spigot.bridge;
 
 import gg.modl.minecraft.bridge.AbstractBridgeComponent;
+import gg.modl.minecraft.bridge.BridgeReloadPresenter;
 import gg.modl.minecraft.bridge.BridgePluginContext;
 import gg.modl.minecraft.bridge.config.BridgeConfig;
 import gg.modl.minecraft.bridge.config.StaffModeConfig;
@@ -15,6 +16,7 @@ import gg.modl.minecraft.core.service.ReplayCaptureResult;
 import gg.modl.minecraft.core.service.ReplayCaptureStatus;
 import gg.modl.minecraft.core.service.ReplayService;
 import gg.modl.minecraft.core.util.PluginLogger;
+import gg.modl.minecraft.spigot.bridge.command.ModlBridgeCommand;
 import gg.modl.minecraft.spigot.bridge.command.ProxyCmdCommand;
 import gg.modl.minecraft.spigot.bridge.handler.BridgeOnlyFreezeHandler;
 import gg.modl.minecraft.spigot.bridge.handler.FreezeHandler;
@@ -30,6 +32,7 @@ import gg.modl.minecraft.replay.recording.RecordingManager;
 import lombok.Getter;
 import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import org.bukkit.Bukkit;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -90,7 +93,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
 
     @Override
     protected void initFreezeHandler(BridgeLocaleManager localeManager) {
-        freezeHandler = new FreezeHandler(plugin, localeManager, context.getScheduler());
+        freezeHandler = new FreezeHandler(plugin, localeManager, pluginLogger, context.getScheduler());
         freezeHandler.register();
 
         if (!bridgeOnly) return;
@@ -103,7 +106,8 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
     protected void initStaffModeHandler(BridgeConfig bridgeConfig,
                                          BridgeLocaleManager localeManager,
                                          StaffModeConfig staffModeConfig) {
-        staffModeHandler = new StaffModeHandler(plugin, bridgeConfig, freezeHandler, localeManager, staffModeConfig, context.getScheduler());
+        staffModeHandler = new StaffModeHandler(plugin, bridgeConfig, freezeHandler, localeManager, pluginLogger,
+                staffModeConfig, context.getScheduler());
         staffModeHandler.register();
         if (bridgeOnlyFreezeHandler != null) bridgeOnlyFreezeHandler.setStaffModeHandler(staffModeHandler);
         bridgeActions = new SpigotBridgeActions(staffModeHandler, freezeHandler);
@@ -135,13 +139,7 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
             hooks.add(vulcanHook);
         }
 
-        if (!polarLoaderAvailable) {
-            PolarHook polarHook = new PolarHook(plugin, bridgeConfig, violationTracker, autoReporter);
-            if (polarHook.isAvailable()) {
-                polarHook.register();
-                hooks.add(polarHook);
-            }
-        }
+        attachPolarIfLoaded(hooks);
 
         if (hooks.isEmpty() && !polarLoaderAvailable) {
             pluginLogger.warning("[bridge] No anticheat plugins detected. Install GrimAC, Vulcan, or Polar for anticheat reporting.");
@@ -153,15 +151,20 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
     }
 
     private void hookPolarOnMainThread() {
+        if (!isAnticheatHookEnabled()) return;
         if (violationTracker == null || autoReporter == null) {
             pluginLogger.warning("Polar enable callback fired but bridge is not fully initialized");
             return;
         }
+        attachPolarIfLoaded(hooks);
+    }
+
+    private void attachPolarIfLoaded(List<AntiCheatHook> hooks) {
         for (AntiCheatHook hook : hooks) {
             if (hook instanceof PolarHook) return;
         }
-
         PolarHook polarHook = new PolarHook(plugin, bridgeConfig, violationTracker, autoReporter);
+        if (!polarHook.isAvailable()) return;
         polarHook.register();
         if (polarHook.isRegistered()) {
             hooks.add(polarHook);
@@ -273,6 +276,19 @@ public class BridgeComponent extends AbstractBridgeComponent implements Listener
     @Override
     protected void registerPlatformEvents() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
+    }
+
+    @Override
+    protected void registerBridgeCommand() {
+        PluginCommand command = plugin.getCommand("modlbridge");
+        if (command == null) {
+            pluginLogger.warning("[bridge] /modlbridge is missing from plugin.yml, reload command unavailable");
+            return;
+        }
+        ModlBridgeCommand executor = new ModlBridgeCommand(
+                new BridgeReloadPresenter(localeManager, this::reload));
+        command.setExecutor(executor);
+        command.setTabCompleter(executor);
     }
 
     @Override
