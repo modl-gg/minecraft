@@ -53,6 +53,7 @@ dependencies {
     compileOnly(libs.grim.api)
     compileOnly(libs.polar.api)
     compileOnly(files("libs/VulcanAPI.jar"))
+    compileOnly(files("libs/Intave.jar"))
 
     // Netty (provided by Minecraft server)
     compileOnly(libs.netty.all)
